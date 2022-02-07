@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="scaleform.cpp" />
+    <ClCompile Include="scripts.cpp" />
+    <ClCompile Include="hacks.cpp" />
+    <ClCompile Include="sam.cpp" />
+    <ClCompile Include="papyrus.cpp" />
+    <ClCompile Include="pose.cpp" />
+    <ClCompile Include="mfg.cpp" />
+    <ClCompile Include="eyes.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="scaleform.h" />
+    <ClInclude Include="scripts.h" />
+    <ClInclude Include="hacks.h" />
+    <ClInclude Include="sam.h" />
+    <ClInclude Include="papyrus.h" />
+    <ClInclude Include="pose.h" />
+    <ClInclude Include="mfg.h" />
+    <ClInclude Include="eyes.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="exports.def" />
+  </ItemGroup>
+</Project>

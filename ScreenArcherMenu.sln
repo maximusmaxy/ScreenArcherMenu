@@ -1,0 +1,87 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31911.196
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "f4se_common", "f4se_common\f4se_common.vcxproj", "{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8} = {D4C128A1-73DC-4941-A453-CE55AF239BA8}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common_vc11", "..\common\common_vc11.vcxproj", "{D4C128A1-73DC-4941-A453-CE55AF239BA8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScreenArcherMenu", "SAM\ScreenArcherMenu.vcxproj", "{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "f4se", "f4se\f4se.vcxproj", "{A236F69D-8FF9-4491-AC5F-45BF49448BBE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SAF", "SAF\Skeletal Adjustment Framework.vcxproj", "{A73FB382-13B3-4A86-AC25-19922250AAA4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		DLL|x64 = DLL|x64
+		DLL|x86 = DLL|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Debug|x64.ActiveCfg = Debug|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Debug|x64.Build.0 = Debug|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Debug|x86.ActiveCfg = Debug|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.DLL|x64.ActiveCfg = Debug|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.DLL|x64.Build.0 = Debug|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.DLL|x86.ActiveCfg = Release|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.DLL|x86.Build.0 = Release|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release|x64.ActiveCfg = Release|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release|x64.Build.0 = Release|x64
+		{20C6411C-596F-4B85-BE4E-8BC91F59D8A6}.Release|x86.ActiveCfg = Release|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Debug|x64.ActiveCfg = Debug|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Debug|x64.Build.0 = Debug|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Debug|x86.ActiveCfg = Debug|Win32
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Debug|x86.Build.0 = Debug|Win32
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.DLL|x64.ActiveCfg = Debug|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.DLL|x64.Build.0 = Debug|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.DLL|x86.ActiveCfg = Debug|Win32
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.DLL|x86.Build.0 = Debug|Win32
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Release|x64.ActiveCfg = Release|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Release|x64.Build.0 = Release|x64
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Release|x86.ActiveCfg = Release|Win32
+		{D4C128A1-73DC-4941-A453-CE55AF239BA8}.Release|x86.Build.0 = Release|Win32
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.Debug|x64.ActiveCfg = Debug|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.Debug|x64.Build.0 = Debug|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.Debug|x86.ActiveCfg = Debug|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.DLL|x64.ActiveCfg = Debug|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.DLL|x64.Build.0 = Debug|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.DLL|x86.ActiveCfg = Release|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.DLL|x86.Build.0 = Release|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.Release|x64.ActiveCfg = Release|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.Release|x64.Build.0 = Release|x64
+		{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}.Release|x86.ActiveCfg = Release|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.Debug|x64.ActiveCfg = Debug|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.Debug|x64.Build.0 = Debug|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.Debug|x86.ActiveCfg = Debug|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.DLL|x64.ActiveCfg = Debug|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.DLL|x64.Build.0 = Debug|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.DLL|x86.ActiveCfg = Release|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.DLL|x86.Build.0 = Release|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.Release|x64.ActiveCfg = Release|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.Release|x64.Build.0 = Release|x64
+		{A236F69D-8FF9-4491-AC5F-45BF49448BBE}.Release|x86.ActiveCfg = Release|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.Debug|x64.ActiveCfg = Debug|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.Debug|x64.Build.0 = Debug|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.Debug|x86.ActiveCfg = Debug|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.DLL|x64.ActiveCfg = DLL|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.DLL|x64.Build.0 = DLL|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.DLL|x86.ActiveCfg = DLL|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.Release|x64.ActiveCfg = Release|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.Release|x64.Build.0 = Release|x64
+		{A73FB382-13B3-4A86-AC25-19922250AAA4}.Release|x86.ActiveCfg = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6B41775C-D91F-4244-AF88-F55460B4EFDF}
+	EndGlobalSection
+EndGlobal
