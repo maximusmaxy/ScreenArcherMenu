@@ -73,7 +73,7 @@ SamInputHandler samInputHandler;
 void SetInput(bool enable) {
 	BSFixedString samMenu("ScreenArcherMenu");
 	samInputHandler.enabled = enable;
-	_LogCat("input ", enable ? "enabled" : "disabled");
+	//_LogCat("input ", enable ? "enabled" : "disabled");
 	if (enable) {
 		samRoot = (*g_ui)->GetMenu(samMenu)->movie->movieRoot;
 	}
@@ -140,13 +140,11 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
 	{
-		case SAF::kSafMessageManager:
+		case SAF::kSafAdjustmentManager:
 		{
 			if (msg->data) 
 			{
-				_DMESSAGE("Casting adjustment manager");
 				safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
-				_DMESSAGE("Casted");
 				LoadMenuFiles();
 			}
 		}

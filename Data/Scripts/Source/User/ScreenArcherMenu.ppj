@@ -1,0 +1,20 @@
+<?xml version='1.0'?>
+<PapyrusProject 
+  xmlns="PapyrusProject.xsd"
+  Flags="Institute_Papyrus_Flags.flg"
+  Output="..\..\"
+  Asm="Discard"
+  Optimize="false"
+  Release="false"
+  Final="false"
+>
+  <Imports>
+    <Import>.</Import>
+    <Import>..\User</Import>
+    <Import>..\Base</Import>
+  </Imports>
+  <Scripts>
+    <Script>ScreenArcherMenu</Script>
+    <Script>SAF</Script>
+  </Scripts>
+</PapyrusProject>

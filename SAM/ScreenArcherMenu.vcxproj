@@ -51,8 +51,7 @@
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgTriplet>
     </VcpkgTriplet>
-    <VcpkgUseStatic>
-    </VcpkgUseStatic>
+    <VcpkgUseStatic>true</VcpkgUseStatic>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -71,7 +70,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;"D:\Projects\F4SE2\f4se\x64\Debug\f4se_1_10_163.lib";"D:\Projects\F4SE2\f4se\x64\Debug\f4se_common.lib";"D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib";"D:\Projects\F4SE2\f4se\x64\Debug\SkeletonAdjustmentFramework.lib";%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;"D:\Projects\F4SE2\f4se\x64\Debug\f4se_1_10_163.lib";"D:\Projects\F4SE2\f4se\x64\Debug\f4se_common.lib";"D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib";"D:\Projects\F4SE2\f4se\x64\Debug\SAF.lib";%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
@@ -80,6 +79,9 @@
       </FunctionOrder>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+    <PostBuildEvent>
+      <Command>$(SolutionDir)sam.bat</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>

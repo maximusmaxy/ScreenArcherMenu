@@ -13,10 +13,16 @@ public:
 	virtual void	Invoke(Args * args);
 };
 
-class LoadMorphs : public GFxFunctionHandler
+class GetMorphCategories : public GFxFunctionHandler
 {
 public:
 	virtual void	Invoke(Args * args);
+};
+
+class GetMorphs : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
 };
 
 class SavePreset : public GFxFunctionHandler
@@ -196,11 +202,5 @@ public:
 class Test : public GFxFunctionHandler
 {
 public:
-	virtual void	Invoke(Args * args);
-};
-
-class Test2 : public GFxFunctionHandler
-{
-public:
-	virtual void	Invoke(Args * args);
+	virtual void	Invoke(Args* args);
 };

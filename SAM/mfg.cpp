@@ -23,31 +23,16 @@ float* GetMorphPointer() {
 	return faceGenAnimData->mfgMorphs;
 }
 
-void SetFaceMorph(UInt32 id, UInt32 scale) {
+void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale)
+{
+	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
+	if (!menu) return;
+
 	float* ptr = GetMorphPointer();
 	if (!ptr) return;
 
-	ptr[id] = (float)scale * 0.0099999998;
-}
-
-SInt32 GetFaceMorph(UInt32 id) {
-	float* ptr = GetMorphPointer();
-	if (!ptr) return -1;
-
-	float scale = ptr[id] * 100;
-	return (SInt32)(scale + 0.5);
-}
-
-bool GetMorphArray(SInt32* morphs) {
-	float* ptr = GetMorphPointer();
-	if (!ptr) return false;
-
-	for (int i = 0; i < 50; ++i) {
-		UInt32 scale = (UInt32)((ptr[i] * 100) + 0.5);
-		scale = max(0, min(100, scale));
-		morphs[i] = scale;
-	}
-	return true;
+	UInt32 key = std::stoul((*menu)[categoryIndex].second[morphIndex].second);
+	ptr[key] = scale * 0.0099999998f;
 }
 
 void SaveMfg(std::string filename) {
@@ -82,7 +67,7 @@ void SaveMfg(std::string filename) {
 
 std::regex mfgRegex("\\s*mfg\\s+morphs\\s+(\\d+)\\s+(\\d+).*");
 
-bool LoadMfg(std::string filename, SInt32* morphs) {
+bool LoadMfg(std::string filename) {
 	float* ptr = GetMorphPointer();
 	if (!ptr) return false;
 
@@ -105,15 +90,11 @@ bool LoadMfg(std::string filename, SInt32* morphs) {
 		if (std::regex_match(buf, match, mfgRegex)) {
 			int id = max(0, min(49, std::stoi(match[1].str())));
 			int scale = max(0, min(100, std::stoi(match[2].str())));
-			morphs[id] = scale;
+			ptr[id] = scale * 0.0099999998f;
 		}
 	}
 
 	file.Close();
-
-	for (int i = 0; i < 50; ++i) {
-		ptr[i] = (float)morphs[i] * 0.0099999998;
-	}
 
 	return true;
 }
@@ -125,14 +106,46 @@ void ResetMfg() {
 	memset(ptr, 0, sizeof(float) * 50);
 }
 
-bool GetGFxMorphArray(GFxMovieRoot* root, GFxValue* morphArray)
+void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
-	SInt32 morphs[50];
-	if (GetMorphArray(morphs)) {
-		for (SInt32* p = morphs; p < morphs + 50; ++p) {
-			morphArray->PushBack(&GFxValue(*p));
-		}
-		return true;
+	root->CreateArray(result);
+	
+	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
+	if (!menu) return;
+
+	for (auto& kvp : *menu) {
+		GFxValue category(kvp.first.c_str());
+		result->PushBack(&category);
 	}
-	return false;
+}
+
+void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
+{
+	root->CreateObject(result);
+
+	GFxValue names;
+	root->CreateArray(&names);
+	
+	GFxValue values;
+	root->CreateArray(&values);
+
+	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
+	if (!menu) return;
+
+	float* ptr = GetMorphPointer();
+	if (!ptr) return;
+
+	for (auto& kvp : (*menu)[categoryIndex].second) {
+		GFxValue name(kvp.first.c_str());
+		names.PushBack(&name);
+
+		UInt32 key = std::stoul(kvp.second);
+		key = max(0, min(49, key));
+
+		GFxValue value(ptr[key]);
+		values.PushBack(&value);
+	}
+
+	result->SetMember("names", &names);
+	result->SetMember("values", &values);
 }

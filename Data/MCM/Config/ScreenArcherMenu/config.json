@@ -1,0 +1,18 @@
+{
+    "modName": "ScreenArcherMenu",
+    "displayName": "$SAM_DP",
+    "pluginRequirements": ["ScreenArcherMenu.esp"],
+    "content": [
+        {
+        "text": "<p align='center'><font size='30'>$SAM_DP</font></p>",
+        "html": true,
+        "type": "text"
+        },
+        {
+        "id": "samOpenMenu",
+        "text": "$SAM_OpenMenu",
+        "type": "hotkey",
+        "help": "$SAM_OpenMenuHelp"
+        }
+    ]
+}

@@ -25,18 +25,20 @@ void ModifyFacegenMorph::Invoke(Args * args)
 	ASSERT(args->numArgs >= 2);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	SetFaceMorph(args->args[0].GetInt(), args->args[1].GetInt());
+	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
+	SetFaceMorph(args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
 }
 
-void LoadMorphs::Invoke(Args * args)
+void GetMorphCategories::Invoke(Args* args)
 {
-	args->movie->movieRoot->CreateArray(args->result);
-	SInt32 morphs[50];
-	if (GetMorphArray(morphs)) {
-		for(SInt32* p = morphs; p < morphs + 50; ++p) {
-			args->result->PushBack(&GFxValue(*p));
-		}
-	}
+	GetMorphCategoriesGFx(args->movie->movieRoot, args->result);
+}
+
+void GetMorphs::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	GetMorphsGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
 }
 
 void SavePreset::Invoke(Args * args)
@@ -50,15 +52,8 @@ void LoadPreset::Invoke(Args * args)
 {
 	ASSERT(args->numArgs >= 1);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	args->movie->movieRoot->CreateArray(args->result);
-	SInt32 morphs[50];
-	std::memset(morphs, 0, sizeof(morphs));
-	if (LoadMfg(args->args[0].GetString(), morphs)) {
-		SInt32* p = morphs;
-		for (int i = 0; i < 50; ++i) {
-			args->result->PushBack(&GFxValue(p[i]));
-		}
-	}
+	LoadMfg(args->args[0].GetString());
+	GetMorphsGFx(args->movie->movieRoot, args->result, args->args[1].GetInt());
 }
 
 void ResetMorphs::Invoke(Args * args)
@@ -142,8 +137,8 @@ void GetEyeCoords::Invoke(Args * args)
 	args->movie->movieRoot->CreateArray(args->result);
 	float coords[2];
 	if (GetEyecoords(coords)) {
-		args->result->PushBack(&GFxValue(coords[0]));
-		args->result->PushBack(&GFxValue(coords[1]));
+		args->result->PushBack(&GFxValue(coords[0] * 4));
+		args->result->PushBack(&GFxValue(coords[1] * 5));
 	} else {
 		args->result->PushBack(&GFxValue(0.0));
 		args->result->PushBack(&GFxValue(0.0));
@@ -155,7 +150,7 @@ void SetEyeCoords::Invoke(Args * args)
 	ASSERT(args->numArgs >= 2);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Number);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Number);
-	SetEyecoords(args->args[0].GetNumber(), args->args[1].GetNumber());
+	SetEyecoords(args->args[0].GetNumber() / 4, args->args[1].GetNumber() / 5);
 }
 
 void GetAdjustmentList::Invoke(Args* args)
@@ -289,27 +284,11 @@ void Test::Invoke(Args * args)
 	}
 }
 
-void Test2::Invoke(Args * args)
-{
-	static BSFixedString pelvisSkinName("Pelvis_skin_Override");
-	static BSFixedString fingerName("LArm_Finger21_Override");
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Number);
-	//heading is Y
-	//attitude is Z
-	//bank is X
-	//float heading, attitude, bank;
-	//sam::GetBoneRot(&pelvisSkinName, &heading, &attitude, &bank);
-	//sam::SetBoneRot(&pelvisSkinName, heading, args->args[0].GetNumber(), bank);
-	//sam::SetBoneScale(&pelvisSkinName, args->args[0].GetNumber());
-	//GetBoneRot(&fingerName, &heading, &attitude, &bank);
-	//SetBoneRot(&fingerName, args->args[0].GetNumber(), attitude, bank);
-}
-
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 { 
 	RegisterFunction<ModifyFacegenMorph>(value, view->movieRoot, "ModifyFacegenMorph");
-	RegisterFunction<LoadMorphs>(value, view->movieRoot, "LoadMorphs");
+	RegisterFunction<GetMorphCategories>(value, view->movieRoot, "GetMorphCategories");
+	RegisterFunction<GetMorphs>(value, view->movieRoot, "GetMorphs");
 	RegisterFunction<SavePreset>(value, view->movieRoot, "SaveMorphPreset");
 	RegisterFunction<LoadPreset>(value, view->movieRoot, "LoadMorphPreset");
 	RegisterFunction<ResetMorphs>(value, view->movieRoot, "ResetMorphs");
@@ -333,13 +312,12 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<RemoveAdjustment>(value, view->movieRoot, "RemoveAdjustment");
 	RegisterFunction<GetCategoryList>(value, view->movieRoot, "GetCategoryList");
 	RegisterFunction<GetNodeList>(value, view->movieRoot, "GetNodeList");
-	RegisterFunction<GetNodeTransform>(value, view->movieRoot, "GetBoneTransform");
+	RegisterFunction<GetNodeTransform>(value, view->movieRoot, "GetNodeTransform");
 	RegisterFunction<SetNodePosition>(value, view->movieRoot, "SetNodePosition");
 	RegisterFunction<SetNodeRotation>(value, view->movieRoot, "SetNodeRotation");
 	RegisterFunction<SetNodeScale>(value, view->movieRoot, "SetNodeScale");
 	RegisterFunction<ResetTransform>(value, view->movieRoot, "ResetTransform");
 	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
 	RegisterFunction<Test>(value, view->movieRoot, "Test");
-	RegisterFunction<Test2>(value, view->movieRoot, "Test2");
 	return true;
 }

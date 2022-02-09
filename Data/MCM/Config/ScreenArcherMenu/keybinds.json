@@ -1,0 +1,15 @@
+{
+  "modName": "ScreenArcherMenu",
+  "keybinds": [
+    {
+      "id": "samOpenMenu",
+      "desc": "Opens the screen archer menu",
+      "action": {
+        "type": "CallGlobalFunction",
+        "script": "ScreenArcherMenu",
+        "function": "ToggleMenu",
+        "params": []
+      }
+    }
+  ]
+}

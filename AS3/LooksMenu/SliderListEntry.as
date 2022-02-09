@@ -24,7 +24,9 @@
 		public var func:Function;
 		public var func2:Function;
 		public var func3:Function;
-		internal var sliderMod:Number = 0.0;
+		
+		public var sliderMod:Number = 0.0;
+		public var sliderFixed:int = 0;
 		
 		public static const LIST = 0;
 		public static const SLIDER = 1;
@@ -51,6 +53,9 @@
 			slider.addEventListener(Option_Scrollbar.VALUE_CHANGE, onValueChange);
 			text.addEventListener(MouseEvent.CLICK, onMouseClick);
 			text.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+			
+			value.addEventListener(MouseEvent.CLICK, onValueClick);
+			value.addEventListener(Event.CHANGE, onValueInput);
 		}
 
 		public function onMouseClick(event:flash.events.Event)
@@ -74,7 +79,56 @@
 		{
 			//Util.playFocus();
 			func.call(null, id, event.target.value - sliderMod);
+			Data.selectedSlider = this;
 			updateValue(false);
+		}
+		
+		public function onValueInput(event:Event)
+		{
+			var menuValue:Number;
+			switch (valueType)
+			{
+				case INT:
+				{
+					menuValue =  parseInt(value.text);
+					if (!isNaN(menuValue)) {
+						var parsedInt:int = int(menuValue);
+						func.call(null, id, parsedInt);
+						slider.position = parsedInt + sliderMod;
+					}
+					break;
+				}
+				case FLOAT:
+				{
+					menuValue = parseFloat(value.text);
+					if (!isNaN(menuValue)) {
+						func.call(null, id, menuValue);
+						slider.position = menuValue + sliderMod;
+					}
+					break;
+				}
+			}
+		}
+		
+		public function onValueClick(event:MouseEvent)
+		{
+			if (value.visible) {
+				if (Data.selectedText == null) {
+					try {
+						Data.f4seObj.AllowTextInput(true);
+					} catch (e:Error) {
+						trace("Failed to allow text input");
+					}
+				}
+				Data.selectedSlider = null;
+				Data.selectedText = this;
+				value.type = TextFieldType.INPUT;
+				value.selectable = true;
+				value.maxChars = 10;
+				stage.focus = value;
+				value.setSelection(0, value.text.length);
+
+			}
 		}
 		
 		public function onMouseOver(event:MouseEvent)
@@ -121,7 +175,7 @@
 					break;
 				case FLOAT:
 					menuValue = Data.menuValues[id];
-					value.text = menuValue.toFixed(4);
+					value.text = menuValue.toFixed(sliderFixed);
 					break;
 			}
 			switch (type)

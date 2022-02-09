@@ -6,12 +6,11 @@
 #include "f4se/GameObjects.h"
 #include "f4se/GameTypes.h"
 #include "f4se/PluginAPI.h"
-#include "f4se/PapyrusArgs.h"
 
 #include <memory>
 #include <unordered_set>
 #include <unordered_map>
-#include <mutex>
+#include <shared_mutex>
 
 namespace SAF {
 
@@ -25,7 +24,7 @@ namespace SAF {
 	extern RelocAddr<GetRefrModelFilename> getRefrModelFilename;
 
 	enum {
-		kSafMessageManager = 1
+		kSafAdjustmentManager = 1
 	};
 
 	class NodeSets
@@ -40,7 +39,8 @@ namespace SAF {
 	class Adjustment
 	{
 	private:
-		SimpleLock lock;
+		std::shared_mutex mutex;
+		std::unordered_map<std::string, NiTransform> map;
 
 	public:
 		std::string name;
@@ -51,8 +51,7 @@ namespace SAF {
 		bool isWeighted = false;
 		bool isDefault = false;
 		float weight = 1.0f;
-		std::unordered_map<std::string, NiTransform> map;
-
+		
 		Adjustment() {}
 
 		Adjustment(UInt32 handle, std::string name) :
@@ -63,11 +62,15 @@ namespace SAF {
 		NiTransform GetTransform(std::string name);
 		NiTransform GetTransformOrDefault(std::string name);
 		void SetTransform(std::string name, NiTransform transform);
+		bool HasTransform(std::string name);
 		void ResetTransform(std::string name);
 
 		void SetTransformPos(std::string name, float x, float y, float z);
 		void SetTransformRot(std::string name, float heading, float attitude, float bank);
 		void SetTransformSca(std::string name, float scale);
+
+		void SetMap(std::unordered_map<std::string, NiTransform> map);
+		void CopyMap(std::unordered_map<std::string, NiTransform>* map);
 
 		void ForEachTransform(const std::function<void(std::string, NiTransform*)>& functor);
 
@@ -78,14 +81,14 @@ namespace SAF {
 	{
 	private:
 		UInt32 nextHandle = 1; //0 handle is null
-		SimpleLock lock;
+		std::shared_mutex mutex;
 
 	public:
-		UInt32 race;
-		bool isFemale;
+		UInt32 race = 0;
+		bool isFemale = false;
 
-		Actor* actor;
-		TESNPC* npc;
+		Actor* actor = nullptr;
+		TESNPC* npc = nullptr;
 
 		std::vector<std::shared_ptr<Adjustment>> list;
 		std::unordered_map<UInt32, std::shared_ptr<Adjustment>> map;
@@ -109,21 +112,23 @@ namespace SAF {
 		std::shared_ptr<Adjustment> GetListAdjustment(UInt32 index);
 		void RemoveAdjustment(UInt32 handle);
 		void RemoveListAdjustment(UInt32 index);
+		void Clear();
 
 		bool UpdateKey(UInt32 race, bool isFemale);
 		void UpdateDefault(std::vector<std::string>* adjustments);
 		void UpdateSaved(std::vector<std::pair<std::string, std::string>>* adjustments);
+		void UpdateUnique(std::vector<std::pair<std::string, std::string>>* uniques);
 		void UpdateAdjustments(std::string name);
 		void UpdateAllAdjustments();
 
-		std::shared_ptr<Adjustment> LoadAdjustment(std::string filename);
-		UInt32 LoadAdjustment(std::string filename, std::string espName, bool persistent, bool hidden);
+		std::shared_ptr<Adjustment> LoadAdjustment(std::string filename, bool cached = false);
+		UInt32 LoadAdjustment(std::string filename, std::string espName, bool persistent, bool hidden, bool cached = false);
+
 		void SaveAdjustment(std::string filename, UInt32 handle);
 		void SaveListAdjustment(std::string filename, UInt32 index);
 
 		void ForEachAdjustment(const std::function<void(std::shared_ptr<Adjustment>)>& functor);
 
-		void GetModAdjustmentsPapyrus(std::string espName, VMArray<UInt32>* result);
 		bool RemoveMod(std::string espName);
 
 		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, std::string name, NiTransform transform);
@@ -134,35 +139,40 @@ namespace SAF {
 	class AdjustmentManager
 	{
 	private:
-		SimpleLock lock;
+		std::shared_mutex actorMutex;
+		std::shared_mutex fileMutex;
 		bool loaded = false;
 
 	public:
 		std::unordered_map<UInt64, NodeSets> nodeSets;
 		std::unordered_map<UInt64, std::vector<std::string>> defaultAdjustments;
-		std::unordered_map<std::string, std::unordered_map<std::string, NiTransform>> defaultAdjustmentCache;
+		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> uniqueAdjustments;
+
+		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> savedAdjustments;
 		std::unordered_map<UInt32, NodeMap> actorNodeMapCache;
 		std::unordered_map<std::string, NodeMap> baseNodeMapCache;
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
-		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> savedAdjustmentCache;
+		std::unordered_map<std::string, std::unordered_map<std::string, NiTransform>> adjustmentFileCache;
+
+		std::vector<std::shared_ptr<ActorAdjustments>> actorUpdateQueue;
 
 		void Load();
 		void RemoveMod(std::string espName);
 
 		void UpdateActor(Actor* actor, TESNPC* npc, bool loaded);
+		void UpdateQueue();
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 
-		NodeSets* GetNodeSets(UInt64 key);
-		void SetNodeSets(UInt64 key, NodeSets nodeSets);
+		NodeSets* GetNodeSets(UInt32 race, bool isFemale);
 
-		std::unordered_map<std::string, NiTransform>* GetDefaultAdjustment(std::string);
-		std::vector<std::string>* GetDefaultAdjustments(UInt64 key);
-		void SetDefaultAdjustments(UInt64 key, std::vector<std::string> defaultAdjustments);
-		std::vector<std::pair<std::string, std::string>>* GetSavedAdjustments(UInt32 formId);
+		std::unordered_map<std::string, NiTransform>* GetAdjustmentFile(std::string);
+		void SetAdjustmentFile(std::string filename, std::unordered_map<std::string, NiTransform> map);
+
+		std::vector<std::string>* GetDefaultAdjustments(UInt32 race, bool isFemale);
 		
 		NodeMap CreateNodeMap(NiNode* root, NodeSet* set);
-		NodeMap* GetActorNodeMap(TESObjectREFR* actor, NodeSet* nodeSet);
-		NodeMap* GetActorBaseMap(TESObjectREFR* actor, NodeSet* nodeSet);
+		NodeMap* GetActorNodeMap(Actor* actor, TESNPC* npc, NodeSet* nodeSet);
+		NodeMap* GetActorBaseMap(Actor* actor, TESNPC* npc, NodeSet* nodeSet);
 
 		void SerializeSave(const F4SESerializationInterface* ifc);
 		void SerializeLoad(const F4SESerializationInterface* ifc);

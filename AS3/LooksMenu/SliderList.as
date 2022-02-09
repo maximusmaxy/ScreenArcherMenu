@@ -79,6 +79,7 @@
 					entries[i].id = listPosition + i;
 					updateType(entries[i]);
 				}
+				Util.unselectText();
 				//Util.playFocus();
 				return true;
 			}
@@ -220,28 +221,31 @@
 	
 		public function updateTransformEntry(entry:SliderListEntry)
 		{
-			if (entry.id < 3) //pos
+			if (entry.id < 3) //rot
+			{
+				entry.slider.minimum = 0.0;
+				entry.slider.maximum = 360.0;
+				entry.slider.StepSize = 0.1;
+				entry.sliderMod = 180.0;
+				entry.sliderFixed = 2
+				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
+			}
+			else if (entry.id < 6) //pos
 			{
 				entry.slider.minimum = 0.0;
 				entry.slider.maximum = 20.0;
-				entry.slider.StepSize = 0.1;
+				entry.slider.StepSize = 0.01;
 				entry.sliderMod = 10.0;
-				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
-			}
-			else if (entry.id < 6) //rot
-			{
-				entry.slider.minimum = 0.0;
-				entry.slider.maximum = 6.0;
-				entry.slider.StepSize = 0.1;
-				entry.sliderMod = 3.0;
+				entry.sliderFixed = 4;
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 7)//scale
 			{
 				entry.slider.minimum = 0.0;
 				entry.slider.maximum = 2.0;
-				entry.slider.StepSize = 0.1;
+				entry.slider.StepSize = 0.01;
 				entry.sliderMod = 0;
+				entry.sliderFixed = 4;
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 		}
@@ -249,21 +253,16 @@
 		public function updateMorphs(func:Function):void
 		{
 			this.type = MORPH;
-			update(Data.MORPH_NAMES.length + Data.DIVIDER_NAMES.length, SLIDER_MAX, func);
+			update(Data.menuOptions.length, SLIDER_MAX, func);
 		}
 		
 		public function updateMorphsEntry(entry:SliderListEntry):void
 		{
-			var realId:int = Data.MORPH_ORDER[entry.id];
-			if (realId < Data.MORPH_NAMES.length) {
-				entry.slider.minimum = 0;
-				entry.slider.maximum = 100;
-				entry.slider.StepSize = 1;
-				entry.sliderMod = 0;
-				entry.updateSlider(Data.MORPH_NAMES[realId], SliderListEntry.INT);
-			} else {
-				entry.updateDivider(Data.DIVIDER_NAMES[realId - Data.MORPH_NAMES.length]);
-			}
+			entry.slider.minimum = 0;
+			entry.slider.maximum = 100;
+			entry.slider.StepSize = 1;
+			entry.sliderMod = 0;
+			entry.updateSlider(Data.menuOptions[entry.id], SliderListEntry.INT);
 		}
 		
 		public function updateEyes(func:Function):void
@@ -276,9 +275,10 @@
 		{
 			if (entry.id < 2) {
 				entry.slider.minimum = 0.0;
-				entry.slider.maximum = 0.4;
+				entry.slider.maximum = 2.0;
 				entry.slider.StepSize = 0.01;
-				entry.sliderMod = 0.2;
+				entry.sliderMod = 1.0;
+				entry.sliderFixed = 4;
 				entry.updateSlider(Data.EYE_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else {

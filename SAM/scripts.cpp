@@ -96,6 +96,7 @@ RelocAddr<UInt64> scriptVfTable(0x2C97C48);
 
 const char* mfgComand = "mfg morphs %d %d";
 
+//Not using this anymore but is a good reference on how to manually execute console commands if needed in the future
 void ExecuteMfgObScript(TESObjectREFR* refr, UInt32 id, UInt32 scale) {
 
 	id = max(0, min(49, id));

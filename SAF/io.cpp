@@ -75,7 +75,7 @@ namespace SAF {
 			if (isFemale)
 				formId |= 0x100000000;
 
-			g_adjustmentManager.SetNodeSets(key, nodeSet);
+			g_adjustmentManager.nodeSets[key] = nodeSet;
 		}
 		catch (...) {
 			_LogCat("Failed to read ", path);
@@ -88,6 +88,11 @@ namespace SAF {
 	bool LoadDefaultAdjustmentFile(std::string path)
 	{
 		IFileStream file;
+
+		if (!file.Open(path.c_str())) {
+			_LogCat("Could not open ", path);
+			return false;
+		}
 
 		std::string defaultAdjustment;
 		ReadAll(&file, &defaultAdjustment);
@@ -102,7 +107,7 @@ namespace SAF {
 			return false;
 		}
 
-		std::vector<std::string> defaultAdjustments;
+		std::vector<std::string> adjustmentList;
 
 		try {
 			std::string mod = value["mod"].asString();
@@ -120,10 +125,55 @@ namespace SAF {
 			Json::Value adjustments = value["adjustments"];
 
 			for (auto& adjustment : adjustments) {
-				defaultAdjustments.push_back(adjustment.asString());
+				adjustmentList.push_back(adjustment.asString());
 			}
 
-			g_adjustmentManager.SetDefaultAdjustments(key, defaultAdjustments);
+			g_adjustmentManager.defaultAdjustments[key] =  adjustmentList;
+		}
+		catch (...) {
+			_LogCat("Failed to read ", path);
+			return false;
+		}
+
+		return true;
+	}
+
+
+	bool LoadUniqueAdjustmentFile(std::string path) {
+		IFileStream file;
+
+		if (!file.Open(path.c_str())) {
+			_LogCat(path, " not found");
+			return false;
+		}
+
+		std::string actorString;
+		ReadAll(&file, &actorString);
+		file.Close();
+
+		Json::Reader reader;
+		Json::Value value;
+
+		if (!reader.parse(actorString, value)) {
+			_LogCat("Failed to parse ", path);
+			return false;
+		}
+
+		try {
+			std::string mod = value["mod"].asString();
+			std::string actor = value["actor"].asString();
+
+			UInt32 formId = GetFormID(mod, actor);
+			if (!formId) return false;
+
+			Json::Value members = value["adjustments"];
+			std::vector<std::pair<std::string, std::string>> adjustments;
+
+			for (auto& member : members) {
+				adjustments.push_back(std::make_pair(member.asString(), mod));
+			}
+
+			g_adjustmentManager.uniqueAdjustments[formId] = adjustments;
 		}
 		catch (...) {
 			_LogCat("Failed to read ", path);
@@ -148,9 +198,9 @@ namespace SAF {
 				//heading, attitude, bank
 				//pitch, roll, yaw
 				transform->rot.GetEulerAngles(&heading, &attitude, &bank);
-				member["p"] = Json::Value(heading * -180 / MATH_PI);
-				member["r"] = Json::Value(attitude * -180 / MATH_PI);
-				member["y"] = Json::Value(bank * -180 / MATH_PI);
+				member["p"] = Json::Value(heading * 180 / MATH_PI);
+				member["r"] = Json::Value(attitude * 180 / MATH_PI);
+				member["y"] = Json::Value(bank * 180 / MATH_PI);
 				member["s"] = Json::Value(transform->scale);
 				value[name] = member;
 			}
@@ -209,9 +259,9 @@ namespace SAF {
 					transform.pos.x = value[member]["x"].asFloat();
 					transform.pos.y = value[member]["y"].asFloat();
 					transform.pos.z = value[member]["z"].asFloat();
-					heading = value[member]["p"].asFloat() * MATH_PI / -180;
-					attitude = value[member]["r"].asFloat() * MATH_PI / -180;
-					bank = value[member]["y"].asFloat() * MATH_PI / -180;
+					heading = value[member]["p"].asFloat() * MATH_PI / 180;
+					attitude = value[member]["r"].asFloat() * MATH_PI / 180;
+					bank = value[member]["y"].asFloat() * MATH_PI / 180;
 					transform.rot.SetEulerAngles(heading, attitude, bank);
 					transform.scale = value[member]["s"].asFloat();
 					(*map)[member] = transform;
@@ -240,15 +290,20 @@ namespace SAF {
 	}
 
 	void LoadFiles() {
-		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\NodeMaps", ".json"); !iter.Done(); iter.Next())
+		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\NodeMaps", "*.json"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();
 			LoadNodeSetsFile(path);
 		}
-		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\DefaultAdjustments", ".json"); !iter.Done(); iter.Next())
+		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\DefaultAdjustments", "*.json"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();
 			LoadDefaultAdjustmentFile(path);
+		}
+		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Actors", "*.json"); !iter.Done(); iter.Next())
+		{
+			std::string	path = iter.GetFullPath();
+			LoadUniqueAdjustmentFile(path);
 		}
 	}
 }

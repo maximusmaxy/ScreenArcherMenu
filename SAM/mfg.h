@@ -11,11 +11,12 @@ public:
 	UInt64 unk2;
 	float faceAnimMorphs[54];
 	float mfgMorphs[54];
+	//incomplete
 };
 
-bool GetMorphArray(SInt32* morphs);
-void SetFaceMorph(UInt32 id, UInt32 scale);
+void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale);
 void SaveMfg(std::string filename);
-bool LoadMfg(std::string filename, SInt32* morphs);
+bool LoadMfg(std::string filename);
 void ResetMfg();
-bool GetGFxMorphArray(GFxMovieRoot* root, GFxValue* morphArray);
+void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* morphArray);
+void GetMorphsGFx(GFxMovieRoot* root, GFxValue* morphArray, UInt32 categoryIndex);

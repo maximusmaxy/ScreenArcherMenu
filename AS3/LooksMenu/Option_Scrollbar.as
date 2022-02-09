@@ -16,7 +16,7 @@
 		public var RightCatcher_mc:flash.display.MovieClip;
 		public var BarCatcher_mc:flash.display.MovieClip;
 		public var TrackBorder_mc:flash.display.MovieClip;
-		public var Pattern:flash.display.MovieClip; //dunno why this crashes
+		public var Pattern:flash.display.MovieClip;
 		internal var fValue:Number;
 		protected var fMinThumbX:Number;
 		protected var fMaxThumbX:Number;

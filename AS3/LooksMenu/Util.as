@@ -1,4 +1,10 @@
 ﻿package {
+	import flash.display.*;
+	import flash.events.*;
+	import flash.geom.*;
+	import flash.text.*;
+	import flash.ui.*;
+	
     public class Util {
 		public static var debug:Boolean = false;
 
@@ -21,6 +27,24 @@
 		public static function playCancel() {
 			if (!debug) {
 				Data.sam.PlaySound(UI_CANCEL);
+			}
+		}
+		
+		public static function unselectText() {
+			if (Data.selectedText != null)
+			{
+				Data.selectedText.value.type = TextFieldType.DYNAMIC;
+				Data.selectedText.value.setSelection(0,0);
+				Data.selectedText.value.selectable = false;
+				try
+				{
+					Data.f4seObj.AllowTextInput(false);
+				}
+				catch (e:Error)
+				{
+					trace("Disable text input failed");
+				}
+				Data.selectedText = null;
 			}
 		}
 		

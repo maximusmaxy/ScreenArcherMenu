@@ -2,9 +2,6 @@
 
 #include "f4se/NiTypes.h"
 
-#include "common/IDirectoryIterator.h"
-#include "common/IFileStream.h"
-
 #include <regex>
 #include <unordered_map>
 
@@ -16,58 +13,56 @@ using namespace SAF;
 
 AdjustmentManager* safAdjustmentManager;
 
-MenuCache menuCache;
-
-void SetAdjustmentPos(std::string name, UInt32 adjustmentIndex, float x, float y, float z) {
+void SetAdjustmentPos(std::string name, UInt32 adjustmentHandle, float x, float y, float z) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentIndex);
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
 	adjustment->SetTransformPos(name, x, y, z);
 	adjustments->UpdateAdjustments(name);
 }
 
-void SetAdjustmentRot(std::string name, UInt32 adjustmentIndex, float heading, float attitude, float bank) {
+void SetAdjustmentRot(std::string name, UInt32 adjustmentHandle, float heading, float attitude, float bank) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentIndex);
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	adjustment->SetTransformRot(name, heading, attitude, bank);
+	adjustment->SetTransformRot(name, heading / 180 * MATH_PI, attitude / 180 * MATH_PI, bank / 180 * MATH_PI);
 	adjustments->UpdateAdjustments(name);
 }
 
-void SetAdjustmentSca(std::string name, UInt32 adjustmentIndex, float scale) {
+void SetAdjustmentSca(std::string name, UInt32 adjustmentHandle, float scale) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentIndex);
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
 	adjustment->SetTransformSca(name, scale);
 	adjustments->UpdateAdjustments(name);
 }
 
-void ResetAdjustmentTransform(std::string name, int adjustmentIndex) {
+void ResetAdjustmentTransform(std::string name, int adjustmentHandle) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentIndex);
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
 	adjustment->ResetTransform(name);
 	adjustments->UpdateAdjustments(name);
 }
 
-void SaveAdjustmentFile(std::string filename, int adjustmentIndex) {
+void SaveAdjustmentFile(std::string filename, int adjustmentHandle) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	adjustments->SaveListAdjustment(filename, adjustmentIndex);
+	adjustments->SaveAdjustment(filename, adjustmentHandle);
 }
 
 void LoadAdjustmentFile(std::string filename) {
@@ -87,12 +82,12 @@ void PushNewAdjustment(std::string name) {
 	adjustments->CreateAdjustment(name, "ScreenArcherMenu.esp", false, false);
 }
 
-void EraseAdjustment(int adjustmentIndex) {
+void EraseAdjustment(int adjustmentHandle) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	adjustments->RemoveListAdjustment(adjustmentIndex);
+	adjustments->RemoveAdjustment(adjustmentHandle);
 	adjustments->UpdateAllAdjustments();
 }
 
@@ -174,13 +169,14 @@ std::vector<NiAVObject*> FindAdjustableChildren(NiAVObject* root, NodeSet* set) 
 
 MenuCategoryList* GetAdjustmentMenu()
 {
-	if (menuCache.count(selected.key))
-		return &menuCache[selected.key];
-	if (selected.isFemale && menuCache.count(selected.race))
-		return &menuCache[selected.race];
+	MenuCategoryList* menu = GetMenu(&poseMenuCache);
 
-	//Just dump everything into one menu option if it's not defined
+	if (menu) return menu;
+
+	//If for some reason the human menu can't be found dump it all into one menu
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+
+	if (!adjustments || !adjustments->nodeSets) return nullptr;
 	
 	MenuList list;
 	for (auto& name : adjustments->nodeSets->all) {
@@ -190,23 +186,39 @@ MenuCategoryList* GetAdjustmentMenu()
 	MenuCategoryList categories;
 	categories.push_back(std::make_pair("All", list));
 
-	menuCache[selected.race] = categories;
+	poseMenuCache[selected.race] = categories;
 
-	return &menuCache[selected.race];
+	return &poseMenuCache[selected.race];
 }
 
 void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 {
-	root->CreateArray(result);
+	static std::string samEsp("ScreenArcherMenu.esp");
+
+	root->CreateObject(result);
+
+	GFxValue names;
+	root->CreateArray(&names);
+
+	GFxValue values;
+	root->CreateArray(&values);
 
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-		GFxValue adjustmentName(adjustment->name.c_str());
-		result->PushBack(&adjustmentName);
+		if (!adjustment->hidden || adjustment->esp == samEsp) {
+			GFxValue name(adjustment->name.c_str());
+			names.PushBack(&name);
+
+			GFxValue value(adjustment->handle);
+			values.PushBack(&value);
+		}
 	});
+
+	result->SetMember("names", &names);
+	result->SetMember("values", &values);
 }
 
 void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
@@ -216,6 +228,8 @@ void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 	if (!selected.refr) return;
 
 	MenuCategoryList* categories = GetAdjustmentMenu();
+
+	if (!categories) return;
 
 	for (auto& kvp : *categories) {
 		GFxValue category(kvp.first.c_str());
@@ -231,27 +245,43 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 
 	MenuCategoryList* categories = GetAdjustmentMenu();
 
+	if (!categories) return;
+
 	for (auto& kvp : (*categories)[categoryIndex].second) {
 		GFxValue node(kvp.first.c_str());
 		result->PushBack(&node);
 	}
 }
 
-void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, int nodeIndex, int adjustmentIndex) {
+void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, int nodeIndex, int adjustmentHandle) {
 
 	root->CreateArray(result);
 
 	if (!selected.refr) return;
 
 	MenuCategoryList* categories = GetAdjustmentMenu();
+
+	if (!categories) return;
+
 	std::string name = (*categories)[categoryIndex].second[nodeIndex].second;
 
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentIndex);
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
 	NiTransform transform = adjustment->GetTransformOrDefault(name);
+
+	float heading, attitude, bank;
+	transform.rot.GetEulerAngles(&heading, &attitude, &bank);
+
+	//heading attitude bank, y z x
+	GFxValue rx(bank * 180 / MATH_PI);
+	GFxValue ry(heading * 180 / MATH_PI);
+	GFxValue rz(attitude * 180 / MATH_PI);
+	result->PushBack(&rx);
+	result->PushBack(&ry);
+	result->PushBack(&rz);
 
 	GFxValue px(transform.pos.x);
 	GFxValue py(transform.pos.y);
@@ -260,92 +290,9 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 	result->PushBack(&py);
 	result->PushBack(&pz);
 
-	float heading, attitude, bank;
-	transform.rot.GetEulerAngles(&heading, &attitude, &bank);
-
-	//heading attitude bank, y z x
-	GFxValue rx(bank);
-	GFxValue ry(heading);
-	GFxValue rz(attitude);
-	result->PushBack(&rx);
-	result->PushBack(&ry);
-	result->PushBack(&rz);
-
 	GFxValue scale(transform.scale);
 	result->PushBack(&scale);
 
 	GFxValue nodeName(name.c_str());
 	result->PushBack(&nodeName);
-}
-
-std::regex menuCategoryRegex("([^\\t]+)\\t+([^\\t]+)");
-std::unordered_map<std::string, UInt32> menuHeaderMap = {
-	{"Race", 0},
-	{"Mod", 1},
-	{"Sex", 2}
-};
-
-bool LoadMenuFile(std::string path) {
-	IFileStream file;
-
-	if (!file.Open(path.c_str())) {
-		_DMESSAGE("File not found");
-		return false;
-	}
-
-	char buf[512];
-	std::cmatch match;
-	std::string categoryIdentifier = "Category";
-	std::string header[3];
-
-	//header
-	for (int i = 0; i < 3; ++i) {
-		file.ReadString(buf, 512, '\n', '\r');
-		bool fail = false;
-		if (std::regex_match(buf, match, menuCategoryRegex)) {
-			std::string key = match[1].str();
-			if (menuHeaderMap.count(key))
-				header[menuHeaderMap[key]] = match[2].str();
-			else
-				fail = true;
-		}
-		else {
-			fail = true;
-		}
-		if (fail) {
-			_LogCat("Failed to read header ", path);
-			file.Close();
-			return false;
-		}
-	}
-
-	UInt64 key = GetFormID(header[1], header[0]);
-	if (header[2] == "female" || header[2] == "Female")
-		key |= 0x100000000;
-
-	//categories
-	while (!file.HitEOF()) {
-		file.ReadString(buf, 512, '\n', '\r');
-		if (std::regex_match(buf, match, menuCategoryRegex)) {
-			if (match[1].str() == categoryIdentifier) {
-				std::vector<std::pair<std::string, std::string>> list;
-				menuCache[key].push_back(std::make_pair(match[2].str(), list));
-			}
-			else {
-				menuCache[key].back().second.push_back(std::make_pair(match[2].str(), match[1].str()));
-			}
-		}
-	}
-
-	file.Close();
-
-	return true;
-}
-
-void LoadMenuFiles() {
-	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Menus", ".txt"); !iter.Done(); iter.Next())
-	{
-		std::string	path = iter.GetFullPath();
-		LoadMenuFile(path);
-	}
 }

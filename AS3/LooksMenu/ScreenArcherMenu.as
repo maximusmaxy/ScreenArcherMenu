@@ -25,17 +25,18 @@
 		public var menuStack:Vector.<int>; 
 		
 		public static const MAIN_STATE:int = 0;
-		public static const MORPH_STATE:int = 1;
-		public static const LOADMFG_STATE:int = 2;
-		public static const SAVEMFG_STATE:int = 3;
-		public static const CATEGORY_STATE:int = 4;
-		public static const BONE_STATE:int = 5;
-		public static const TRANSFORM_STATE:int = 6;
-		public static const EYE_STATE:int = 7;
-		public static const HACK_STATE:int = 8;
-		public static const ADJUSTMENT_STATE:int = 9;
-		public static const LOADADJUSTMENT_STATE:int = 10;
-		public static const SAVEADJUSTMENT_STATE:int = 11;
+		public static const MORPH_CATEGORY_STATE:int = 1;
+		public static const MORPH_STATE = 2;
+		public static const LOADMFG_STATE:int = 3;
+		public static const SAVEMFG_STATE:int = 4;
+		public static const POSE_CATEGORY_STATE:int = 5;
+		public static const POSE_NODE_STATE:int = 6;
+		public static const TRANSFORM_STATE:int = 7;
+		public static const EYE_STATE:int = 8;
+		public static const HACK_STATE:int = 9;
+		public static const ADJUSTMENT_STATE:int = 10;
+		public static const LOADADJUSTMENT_STATE:int = 11;
+		public static const SAVEADJUSTMENT_STATE:int = 12;
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
@@ -62,20 +63,27 @@
 		
 		public function ScreenArcherMenu()
 		{
-			trace("hi");
 			super();
+			
+			Util.debug = false;
+			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
 			initButtonHints();
-			Util.debug = true;
+			
 			filenameInput.visible = false;
 			sliderList.bUseShadedBackground = false;
 			ButtonHintBar_mc.bUseShadedBackground = true;
 			ButtonHintBar_mc.BackgroundAlpha = 0.05;
 			ButtonHintBar_mc.ShadedBackgroundMethod = "Flash";
+			
 			state = MAIN_STATE;
 			menuStack = new <int>[];
 			updateState();
+			
+			if (Util.debug) {
+				addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+			}
 		}
 
 		internal function initButtonHints():void
@@ -102,26 +110,24 @@
 
 		public function menuOpened(data:Object)
 		{
-			Data.load(data, root, this.f4seObj);
-			
+			Data.load(data, root, this.f4seObj, stage);
 			Util.playOk();
 		}
 
 		public function consoleRefUpdated(data:Object)
 		{
 			switch (this.state) {
-				case MORPH_STATE:
-					if (data.morphArray.length != 0)
-					{
-						Data.morphValues = data.morphArray;
-						Data.updateRealMorphValues();
-					}
-					sliderList.updateValues();
-					break;
+//				case MORPH_STATE:
+//					if (data.morphArray.length != 0)
+//					{
+//						Data.morphValues = data.morphArray;
+//						Data.updateRealMorphValues();
+//					}
+//					sliderList.updateValues();
+//					break;
 				case EYE_STATE:
 					Data.menuValues[0] = data.eyeX;
 					Data.menuValues[1] = data.eyeY;
-					Data.menuValues[2] = data.hacks[2];
 					sliderList.updateValues();
 					break;
 				case HACK_STATE:
@@ -130,8 +136,9 @@
 					Data.menuValues[2] = data.hacks[2];
 					sliderList.updateValues();
 					break;
-				default:
-					resetState();
+			}
+			if (data.isReset) {
+				resetState();
 			}
 			Util.playOk();
 		}
@@ -139,6 +146,29 @@
 		public function onF4SEObjCreated(obj:Object)
 		{
 			this.f4seObj = obj;
+		}
+		
+		public function onKeyDown(event:KeyboardEvent) 
+		{
+			switch(event.keyCode)
+			{
+				case 13://Enter
+					Util.unselectText();
+					break;
+				case 37://Left
+					if (Data.selectedSlider != null)
+					{
+						Data.selectedSlider.slider.Decrement();
+					}
+					break;
+	
+				case 39://Right
+					if (Data.selectedSlider != null)
+					{
+						Data.selectedSlider.slider.Increment();
+					}
+					break;
+			}
 		}
 
 		public function processKeyDown(keyCode:uint)
@@ -155,7 +185,24 @@
 					if (buttonHintConfirm.ButtonVisible) {
 						confirm();
 					}
+					Util.unselectText();
 					break;
+				case 37://Left
+					if (Data.selectedSlider != null)
+					{
+						Data.selectedSlider.slider.Decrement();
+					}
+					break;
+//				case 38://Up
+//					break;
+				case 39://Right
+					if (Data.selectedSlider != null)
+					{
+						Data.selectedSlider.slider.Increment();
+					}
+					break;
+//				case 40://Down
+//					break;
 				case 69://E
 					if (buttonHintLoad.ButtonVisible) {
 						load();
@@ -218,6 +265,9 @@
 		{
 			this.state = MAIN_STATE;
 			menuStack.length = 0;
+			if (filenameInput.visible) {
+				setTextInput(false);
+			}
 			updateState();
 		}
 		
@@ -233,11 +283,11 @@
 					Data.loadAdjustmentList();
 					sliderList.updateAdjustment(selectAdjustment, saveAdjustment, removeAdjustment);
 					break;
-				case CATEGORY_STATE:
+				case POSE_CATEGORY_STATE:
 					Data.loadCategories();
 					sliderList.updateList(selectCategory);
 					break;
-				case BONE_STATE:
+				case POSE_NODE_STATE:
 					Data.loadBones();
 					sliderList.updateList(selectBone);
 					break;
@@ -245,6 +295,10 @@
 					Data.loadTransforms();
 					Data.menuValues = Data.boneTransform;
 					sliderList.updateTransform(selectTransform);
+					break;
+				case MORPH_CATEGORY_STATE:
+					Data.loadMorphCategories();
+					sliderList.updateList(selectMorphCategory);
 					break;
 				case MORPH_STATE:
 					Data.loadMorphs();
@@ -275,6 +329,8 @@
 					sliderList.updateCheckboxes(selectHack);
 					break;
 			}
+			Data.selectedSlider = null;
+			Util.unselectText();
 			updateButtonHints();
 		}
 		
@@ -283,7 +339,7 @@
 			switch (id)
 			{
 				case 0: pushState(ADJUSTMENT_STATE); break;
-				case 1:	pushState(MORPH_STATE) ; break;
+				case 1:	pushState(MORPH_CATEGORY_STATE) ; break;
 				case 2: pushState(EYE_STATE); break;
 				case 3:	pushState(HACK_STATE); break;
 			}
@@ -291,13 +347,13 @@
 		
 		public function selectAdjustment(id:int):void
 		{
-			Data.selectedAdjustment = id;
-			pushState(CATEGORY_STATE);
+			Data.selectedAdjustment = Data.menuValues[id];
+			pushState(POSE_CATEGORY_STATE);
 		}
 		
 		public function saveAdjustment(id:int):void
 		{
-			Data.selectedAdjustment = id;
+			Data.selectedAdjustment = Data.menuValues[id];
 			pushState(SAVEADJUSTMENT_STATE);
 		}
 		
@@ -309,7 +365,7 @@
 		
 		public function removeAdjustment(id:int):void
 		{
-			Data.removeAdjustment(id);
+			Data.removeAdjustment(Data.menuValues[id]);
 			Data.loadAdjustmentList();
 			sliderList.updateAdjustment(selectAdjustment, saveAdjustment, removeAdjustment);
 		}
@@ -317,7 +373,7 @@
 		public function selectCategory(id:int):void
 		{
 			Data.selectedCategory = id;
-			pushState(BONE_STATE);
+			pushState(POSE_NODE_STATE);
 		}
 		
 		public function selectBone(id:int):void
@@ -329,6 +385,12 @@
 		public function selectTransform(id:int, value:Number):void
 		{
 			Data.setTransform(id, value);
+		}
+		
+		public function selectMorphCategory(id:int):void
+		{
+			Data.selectedCategory = id;
+			pushState(MORPH_STATE);
 		}
 		
 		public function selectMorph(id:int, value:Number):void
@@ -387,7 +449,9 @@
 		internal function save():void
 		{
 			switch (this.state) {
-				case MORPH_STATE: pushState(SAVEMFG_STATE); break;
+				case MORPH_STATE:
+				case MORPH_CATEGORY_STATE:
+					pushState(SAVEMFG_STATE); break;
 				case ADJUSTMENT_STATE: pushState(SAVEADJUSTMENT_STATE); break;
 			}
 		}
@@ -395,7 +459,9 @@
 		internal function load():void
 		{
 			switch (this.state) {
-				case MORPH_STATE: pushState(LOADMFG_STATE); break;
+				case MORPH_STATE: 
+				case MORPH_CATEGORY_STATE:
+					pushState(LOADMFG_STATE); break;
 				case ADJUSTMENT_STATE: pushState(LOADADJUSTMENT_STATE); break;
 			}
 		}
@@ -412,7 +478,8 @@
 		
 		internal function selectMfgFile(id:int)
 		{
-			Data.loadMfg(id);
+			var update:Boolean = (this.menuStack[this.menuStack.length - 1] == MORPH_STATE);
+			Data.loadMfg(id, update);
 		}
 		
 		internal function selectAdjustmentFile(id:int)
@@ -428,7 +495,9 @@
 					Data.resetTransform(); 
 					break;
 				case MORPH_STATE:
-					Data.resetMorphs();
+				case MORPH_CATEGORY_STATE:
+					var update:Boolean = (this.menuStack[this.menuStack.length - 1] == MORPH_STATE);
+					Data.resetMorphs(update);
 					break;
 			}
 			sliderList.updateValues();
@@ -480,6 +549,15 @@
 				trace(allow ? "Allow text input failed" : "Disable text input failed");
 			}
 		}
+		
+//		public function unselectText()
+//		{
+//			Data.selectedSlider.value.type = TextFieldType.DYNAMIC;
+//			Data.selectedSlider.value.setSelection(0,0);
+//			Data.selectedSlider.value.selectable = false;
+//			allowTextInput(false);
+//			stage.focus = sliderList;
+//		}
 
 		internal function updateButtonHints():void
 		{
@@ -516,6 +594,7 @@
 					buttonHintNew.ButtonVisible = false;
 					break;
 				case MORPH_STATE :
+				case MORPH_CATEGORY_STATE:
 					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = true;
 					buttonHintLoad.ButtonVisible = true;

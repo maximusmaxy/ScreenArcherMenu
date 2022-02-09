@@ -1,7 +1,10 @@
 ﻿package {
+	import flash.display.DisplayObject;
+
     public class Data {
 		public static var sam:Object;
 		public static var f4seObj:Object;
+		public static var stage:DisplayObject;
 		
 		public static var menuOptions:Object;
 		public static var menuValues:Array;
@@ -10,7 +13,7 @@
 		public static var morphFiles:Array;
 
 		public static var selectedAdjustment:int;
-		public static var selectedCategory:int;
+		public static var selectedCategory:int = 0;
 		public static var selectedBone:int;
 		public static var boneTransform:Array;
 		public static var boneName:String;
@@ -26,25 +29,11 @@
 		
 		public static var hackValues:Array;
 		
+		public static var selectedSlider:SliderListEntry = null;
+		public static var selectedText:SliderListEntry = null;
+		
 		public static const MORPH_DIRECTORY:String = "Data/F4SE/Plugins/SAM/FaceMorphs";
-		public static const ADJUSTMENT_DIRECTORY:String = "Data/F4SE/Plugins/SAM/PoseAdjustments";
-
-        public static const MORPH_ORDER:Vector.<int> = new <int>[
-			//Lips
-			50, 17, 5, 7, 8, 20, 21, 11, 12, 40, 28, 30, 31, 43, 44, 34, 35, 22, 23, 24, 46, 47, 48, 25, 45, 
-			//Jaw
-			51, 6, 29, 1, 2,
-			//Eyes
-			52, 18, 19, 9, 10, 41, 42, 32, 33,
-			//Eyebrows
-			53, 13, 14, 16, 3, 36, 37, 39, 26, 0,
-			//Nose
-			54, 15, 38,
-			//Cheeks
-			55, 4, 27,
-			//Tongue
-			56, 49
-		];
+		public static const ADJUSTMENT_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Adjustments";
 
         public static const MAIN_MENU:Vector.<String> = new <String>[
             "$SAM_PoseAdjustMenu",
@@ -54,76 +43,13 @@
         ];
 		
 		public static const TRANSFORM_NAMES:Vector.<String> = new <String>[
-			"$SAM_PosX",
-			"$SAM_PosY",
-			"$SAM_PosZ",
 			"$SAM_RotX",
 			"$SAM_RotY",
 			"$SAM_RotZ",
+			"$SAM_PosX",
+			"$SAM_PosY",
+			"$SAM_PosZ",
 			"$SAM_Scale"
-		];
-		
-        public static const MORPH_NAMES:Vector.<String> = new <String>[
-			"$SAM_BrowSqueeze",
-			"$SAM_JawForward",
-			"$SAM_JawOpen",
-			"$SAM_LeftBrowOuterUp",
-			"$SAM_LeftCheekUp",
-			"$SAM_LeftFrown",
-			"$SAM_LeftJaw",
-			"$SAM_LeftLipCornerIn",
-			"$SAM_LeftLipCornerOut",
-			"$SAM_LeftLowerEyeLidDown",
-			"$SAM_LeftLowerEyeLidUp",
-			"$SAM_LeftLowerLipDown",
-			"$SAM_LeftLowerLipUp",
-			"$SAM_LeftMiddleBrowDown",
-			"$SAM_LeftMiddleBrowUp",
-			"$SAM_LeftNoseUp",
-			"$SAM_LeftOuterBrowDown",
-			"$SAM_LeftSmile",
-			"$SAM_LeftUpperEyeLidDown",
-			"$SAM_LeftUpperEyeLidUp",
-			"$SAM_LeftUpperLipDown",
-			"$SAM_LeftUpperLipUp",
-			"$SAM_LowerLipFunnel",
-			"$SAM_LowerLipRollIn",
-			"$SAM_LowerLipRollOut",
-			"$SAM_Pucker",
-			"$SAM_RightBrowOuterUp",
-			"$SAM_RightCheekUp",
-			"$SAM_RightFrown",
-			"$SAM_RightJaw",
-			"$SAM_RightLipCornerIn",
-			"$SAM_RightLipCornerOut",
-			"$SAM_RightLowerEyeLidDown",
-			"$SAM_RightLowerEyeLidUp",
-			"$SAM_RightLowerLipDown",
-			"$SAM_RightLowerLipUp",
-			"$SAM_RightMiddleBrowDown",
-			"$SAM_RightMiddleBrowUp",
-			"$SAM_RightNoseUp",
-			"$SAM_RightOuterBrowDown",
-			"$SAM_RightSmile",
-			"$SAM_RightUpperEyeLidDown",
-			"$SAM_RightUpperEyeLidUp",
-			"$SAM_RightUpperLipDown",
-			"$SAM_RightUpperLipUp",
-			"$SAM_StickyLips",
-			"$SAM_UpperLipFunnel",
-			"$SAM_UpperLipRollIn",
-			"$SAM_UpperLipRollOut",
-			"$SAM_TongueLift"
-		];
-		
-		public static const DIVIDER_NAMES:Vector.<String> = new <String>[
-			"$SAM_Lips",
-			"$SAM_Jaw",
-			"$SAM_Eyes",
-			"$SAM_Eyebrows",
-			"$SAM_Nose",
-			"$SAM_Cheeks",
-			"$SAM_Tongue"
 		];
 		
 		public static const EYE_NAMES:Vector.<String> = new <String>[
@@ -138,29 +64,14 @@
 			"$SAM_EyeTrackingHack",
 		];
 		
-		public static function load(data:Object, root:Object, f4se:Object)
+		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
 		{
 			sam = root.f4se.plugins.ScreenArcherMenu;
 			f4seObj = f4se;
-			trace(f4seObj);
 			
-			if (data.morphArray.length != 0)
-			{
-				Data.morphValues = data.morphArray;
-			}
-			else
-			{
-				trace("Failed initial morph load");
-				Data.morphValues = new Array();
-				var len:int = Data.MORPH_NAMES.length + Data.DIVIDER_NAMES.length;
-				for (var i:int = 0; i < len; i++)
-				{
-					Data.morphValues[i] = 0;
-				}
-			}
-			
-			trace("delay close");
 			delayClose = data.delayClose;
+			
+			stage = stageObj;
 			
 			hideMenu = true;
 		}
@@ -168,12 +79,17 @@
 		public static function loadAdjustmentList()
 		{
 			try {
-				menuOptions = sam.GetAdjustmentList();
+				var adjustments:Object = sam.GetAdjustmentList();
+				menuOptions = adjustments.names;
+				menuValues = adjustments.values;
 			}
 			catch (e:Error)
 			{
 				trace("Failed to load adjustment list");
-				menuOptions = ["New Adjustment"];
+				if (Util.debug) {
+					menuOptions = ["New Adjustment"];
+					menuOptions.values = [0];
+				}
 			}
 		}
 		
@@ -212,18 +128,6 @@
 			}
 		}
 		
-//		public static function saveAdjustment(filename:String)
-//		{
-//			try
-//			{
-//				sam.SaveAdjustment(filename);
-//			}
-//			catch (e:Error)
-//			{
-//				trace("Failed to save adjustment");
-//			}
-//		}
-		
 		public static function loadAdjustment(id:int)
 		{
 			try
@@ -240,7 +144,9 @@
 		{
 			try
 			{
-				menuOptions = sam.NewAdjustment();
+				var adjustments:Object = sam.NewAdjustment();
+				menuOptions = adjustments.names;
+				menuValues = adjustments.values;
 			}
 			catch (e:Error)
 			{
@@ -336,13 +242,13 @@
 			}
 			try 
 			{
-				if (id < 3) //pos
+				if (id < 3) //rot
 				{ 
-					sam.SetNodePosition(boneName, selectedAdjustment, boneTransform[0], boneTransform[1], boneTransform[2]);
+					sam.SetNodeRotation(boneName, selectedAdjustment, boneTransform[0], boneTransform[1], boneTransform[2]);
 				} 
-				else if (id < 6) //rot
+				else if (id < 6) //pos
 				{
-					sam.SetNodeRotation(boneName, selectedAdjustment, boneTransform[3], boneTransform[4], boneTransform[5]);
+					sam.SetNodePosition(boneName, selectedAdjustment, boneTransform[3], boneTransform[4], boneTransform[5]);
 				}
 				else //scale
 				{
@@ -374,52 +280,61 @@
 			}
 		}
 		
-		public static function loadMorphs()
+		public static function loadMorphCategories()
 		{
-			menuValues = new Array();
 			try
 			{
-				morphValues = sam.LoadMorphs();
-				updateRealMorphValues();
+				menuOptions = sam.GetMorphCategories();
 			}
 			catch (e:Error)
 			{
-				trace("Failed to load morphs");
-				morphValues = new Array();
-				for (var y:int; y < MORPH_ORDER.length; y++)
-				{
-					var fakeId:int = MORPH_ORDER[y];
-					if (fakeId < 50) {
-						menuValues[y] = 0;
-						morphValues[fakeId] = 0;
-					}
+				trace("Failed to load morph categories");
+				if (Util.debug) {
+					menuOptions = [
+						"Lips",
+						"Jaw",
+						"Eyes",
+						"Eyebrows",
+						"Nose",
+						"Cheek",
+						"Tongue"
+					];
 				}
 			}
 		}
 		
-		public static function updateRealMorphValues()
+		public static function loadMorphs()
 		{
-			for (var i:int; i < MORPH_ORDER.length; i++)
-				{
-					var realId:int = MORPH_ORDER[i];
-					if (realId < 50) {
-						menuValues[i] = morphValues[realId];
+			try
+			{
+				var morphs:Object = sam.GetMorphs(selectedCategory);
+				menuOptions = morphs.names;
+				menuValues = morphs.values;
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load morphs");
+				menuOptions = new Array();
+				menuValues = new Array();
+				if (Util.debug) {
+					for (var i:int = 0; i < 10; i++) {
+						menuOptions[i] = "Test" + i;
+						menuValues[i] = i;
 					}
 				}
+			}
 		}
 		
 		public static function setMorph(id:int, value:int)
 		{
 			menuValues[id] = value;
-			var realId:int = MORPH_ORDER[id];
-			morphValues[realId] = value;
 			try
 			{
-				sam.ModifyFacegenMorph(realId, value);
+				sam.ModifyFacegenMorph(selectedCategory, id, value);
 			}
 			catch (e:Error)
 			{
-				trace("Failed to modify morph");
+				trace("Failed to set morph");
 			}
 		}
 		
@@ -458,13 +373,16 @@
 			}
 		}
 		
-		public static function loadMfg(id:int) 
+		public static function loadMfg(id:int, update:Boolean) 
 		{
-			var filename:String = morphFiles[id]
+			var filename:String = morphFiles[id];
 			try
 			{
-				var morphs:Array = sam.LoadMorphPreset(filename);
-				morphValues = morphs;
+				var morphs:Object = sam.LoadMorphPreset(filename, selectedCategory);
+				if (update) {
+					menuOptions = morphs.names;
+					menuValues = morphs.values;
+				}
 			}
 			catch (e:Error)
 			{
@@ -472,15 +390,17 @@
 			}
 		}
 		
-		public static function resetMorphs()
+		public static function resetMorphs(update:Boolean)
 		{
 			try 
 			{
 				sam.ResetMorphs();
-				var len:int = Data.MORPH_NAMES.length;
-				for (var i:int = 0; i < len; i++)
-				{
-					Data.morphValues[i] = 0;
+				if (update) {
+					var len:int = menuValues.length;
+					for (var i:int = 0; i < len; i++)
+					{
+						menuValues[i] = 0;
+					}
 				}
 			}
 			catch (e:Error)

@@ -7,12 +7,6 @@
 
 extern SAF::AdjustmentManager* safAdjustmentManager;
 
-typedef std::vector<std::pair<std::string, std::string>> MenuList;
-typedef std::vector<std::pair<std::string, MenuList>> MenuCategoryList;
-typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
-
-extern MenuCache menuCache;
-
 void SetAdjustmentPos(std::string name, UInt32 adjustmentIndex, float x, float y, float z);
 void SetAdjustmentRot(std::string name, UInt32 adjustmentIndex, float heading, float attitude, float bank);
 void SetAdjustmentSca(std::string name, UInt32 adjustmentIndex, float scale);
@@ -27,4 +21,3 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);
 void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
 void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex);
 void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, int nodeIndex, int adjustmentIndex);
-void LoadMenuFiles();

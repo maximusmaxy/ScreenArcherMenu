@@ -27,8 +27,8 @@ F4SEPapyrusInterface* g_papyrus = nullptr;
 F4SESerializationInterface* g_serialization = nullptr;
 
 class SAFEventReciever :
-	public BSTEventSink<TESInitScriptEvent>,
-	public BSTEventSink<TESObjectLoadedEvent>
+	public BSTEventSink<TESObjectLoadedEvent>,
+	public BSTEventSink<TESLoadGameEvent>
 {
 public:
 	EventResult	ReceiveEvent(TESObjectLoadedEvent* evn, void* dispatcher) 
@@ -46,6 +46,13 @@ public:
 
 		return kEvent_Continue;
 	}
+
+	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
+	{
+		SAF::g_adjustmentManager.UpdateQueue();
+
+		return kEvent_Continue;
+	}
 };
 
 SAFEventReciever safEventReciever;
@@ -57,15 +64,14 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 		case F4SEMessagingInterface::kMessage_GameLoaded:
 		{
 			GetEventDispatcher<TESObjectLoadedEvent>()->AddEventSink(&safEventReciever);
+			GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&safEventReciever);
 		}
 		break;
 		case F4SEMessagingInterface::kMessage_GameDataReady:
 		{
 			if (msg->data) {
-				_DMESSAGE("Loading");
 				SAF::g_adjustmentManager.Load();
-				_DMESSAGE("Dispatching");
-				g_messaging->Dispatch(g_pluginHandle, SAF::kSafMessageManager, &SAF::g_adjustmentManager, 8, nullptr);
+				g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
 			}
 			break;
 		}
@@ -144,9 +150,9 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 
 	if (g_serialization) {
 		g_serialization->SetUniqueID(g_pluginHandle, 'SAF'); 
-		g_serialization->SetRevertCallback(g_pluginHandle, SAFSaveCallback);
+		g_serialization->SetSaveCallback(g_pluginHandle, SAFSaveCallback);
 		g_serialization->SetLoadCallback(g_pluginHandle, SAFLoadCallback);
-		g_serialization->SetSaveCallback(g_pluginHandle, SAFRevertCallback);
+		g_serialization->SetRevertCallback(g_pluginHandle, SAFRevertCallback);
 	}
 
 	_DMESSAGE("SAF Loaded");
