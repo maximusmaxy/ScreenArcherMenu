@@ -40,6 +40,8 @@ MenuCategoryList* GetMenu(MenuCache* cache)
 		return &(*cache)[key];
 	if (selected.isFemale && cache->count(race))
 		return &(*cache)[race];
+
+	return nullptr;
 }
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
@@ -101,6 +103,13 @@ void OnMenuOpen() {
 	GFxValue delayClose((*g_ui)->IsMenuOpen(photoMenu));
 	data.SetMember("delayClose", &delayClose);
 
+	GFxValue title;
+	if (selected.refr) {
+		TESNPC* npc = (TESNPC*)selected.refr->baseForm;
+		title.SetString(npc->fullName.name);
+	}
+	data.SetMember("title", &title);
+
 	root->Invoke("root1.Menu_mc.menuOpened", nullptr, &data, 1);
 }
 
@@ -159,6 +168,13 @@ void OnConsoleRefUpdate() {
 
 		GFxValue reset(isReset);
 		data.SetMember("reset", &reset);
+
+		GFxValue title;
+		if (selected.refr) {
+			TESNPC* npc = (TESNPC*)selected.refr->baseForm;
+			title.SetString(npc->fullName.name);
+		}
+		data.SetMember("title", &title);
 
 		root->Invoke("root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
 	}

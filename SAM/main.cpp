@@ -152,6 +152,31 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	}
 }
 
+void SafCreateAdjustment(UInt32 formId, const char* name) {
+	SAF::AdjustmentCreateMessage message(formId, name, "ScreenArcherMenu.esp", false, false);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentCreate, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafLoadAdjustment(UInt32 formId, const char* filename) {
+	SAF::AdjustmentCreateMessage message(formId, filename, "ScreenArcherMenu.esp", true, false);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafRemoveAdjustment(UInt32 formId, UInt32 handle) {
+	SAF::AdjustmentMessage message(formId, handle);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentErase, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafResetAdjustment(UInt32 formId, UInt32 handle) {
+	SAF::AdjustmentMessage message(formId, handle);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentReset, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafTransformAdjustment(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c) {
+	SAF::AdjustmentTransformMessage message(formId, handle, key, type, a, b, c);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTransform, &message, sizeof(uintptr_t), "SAF");
+}
+
 extern "C"
 {
 
@@ -203,10 +228,14 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 	if (g_scaleform) 
 		g_scaleform->Register("ScreenArcherMenu", RegisterScaleform);
 
-
 	if (g_messaging) {
 		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
 		g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
+		safMessageDispatcher.createAdjustment = SafCreateAdjustment;
+		safMessageDispatcher.loadAdjustment = SafLoadAdjustment;
+		safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;
+		safMessageDispatcher.resetAdjustment = SafResetAdjustment;
+		safMessageDispatcher.transformAdjustment = SafTransformAdjustment;
 	}
 		
 	_DMESSAGE("Screen Archer Menu Loaded");

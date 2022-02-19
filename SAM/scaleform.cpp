@@ -19,6 +19,8 @@
 #include "eyes.h"
 #include "pose.h"
 #include "mfg.h"
+#include "idle.h"
+#include "SAF/util.h"
 
 void ModifyFacegenMorph::Invoke(Args * args)
 {
@@ -153,6 +155,29 @@ void SetEyeCoords::Invoke(Args * args)
 	SetEyecoords(args->args[0].GetNumber() / 4, args->args[1].GetNumber() / 5);
 }
 
+void GetAdjustment::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	GetAdjustmentGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
+}
+
+void SetAdjustmentPersistence::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
+	SetPersistence(args->args[0].GetInt(), args->args[1].GetBool());
+}
+
+void SetAdjustmentScale::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+	SetScale(args->args[0].GetInt(), args->args[1].GetInt());
+}
+
 void GetAdjustmentList::Invoke(Args* args)
 {
 	GetAdjustmentsGFx(args->movie->movieRoot, args->result);
@@ -251,6 +276,37 @@ void RemoveAdjustment::Invoke(Args* args)
 	EraseAdjustment(args->args[0].GetInt());
 }
 
+void ResetAdjustment::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ClearAdjustment(args->args[0].GetInt());
+}
+
+void GetIdleCategories::Invoke(Args* args)
+{
+	GetIdleMenuCategoriesGFx(args->movie->movieRoot, args->result);
+}
+
+void GetIdles::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	GetIdleMenuGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
+}
+
+void PlayIdle::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_UInt);
+	PlayIdleAnimation(args->args[0].GetUInt());
+}
+
+void ResetIdle::Invoke(Args* args)
+{
+	ResetIdleAnimation();
+}
+
 void HideMenu::Invoke(Args * args)
 {
 	ASSERT(args->numArgs >= 4);
@@ -267,21 +323,44 @@ void HideMenu::Invoke(Args * args)
 	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", !hide);
 }
 
-BGSHeadPart* storedEyePart;
+#include "SAF/adjustments.h"
 
 void Test::Invoke(Args * args)
 {
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
-	if (args->args[0].GetBool() && !storedEyePart) {
-		BGSHeadPart* eyePart = GetHeadPartByID(0x1000266F);
-		if (eyePart) {
-			storedEyePart = ChangeEyeMesh((*g_player), eyePart);
-		}
-	} else if (!args->args[0].GetBool() && storedEyePart) {
-		ChangeEyeMesh((*g_player), storedEyePart);
-		storedEyePart = nullptr;
+	if (!selected.refr) return;
+	//std::shared_ptr<SAF::ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	//if (!adjustments) return;
+	//std::shared_ptr<SAF::Adjustment> adjustment = adjustments->GetAdjustment(1);
+	//if (!adjustment) return;
+
+	//SAF::NodeSet overrides = adjustments->nodeSets->overrides;
+	//for (auto& name : overrides) {
+	//	adjustments->NegateTransform(adjustment, name);
+	//}
+	//adjustments->UpdateAllAdjustments(adjustment);
+
+	auto node = selected.refr->GetActorRootNode(false);
+
+	_Log("Refs? ", node->m_uiRefCount);
+
+	node = selected.refr->GetActorRootNode(false);
+
+	_Log("Incresed? ", node->m_uiRefCount);
+}
+
+void Test2::Invoke(Args* args)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<SAF::ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<SAF::Adjustment> adjustment = adjustments->GetAdjustment(1);
+	if (!adjustment) return;
+
+	SAF::NodeSet overrides = adjustments->nodeSets->overrides;
+	for (auto& name : overrides) {
+		adjustments->NegateTransform2(adjustment, name);
 	}
+	adjustments->UpdateAllAdjustments(adjustment);
 }
 
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
@@ -305,11 +384,15 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SetEyeTrackingHack>(value, view->movieRoot, "SetEyeTrackingHack");
 	RegisterFunction<GetEyeCoords>(value, view->movieRoot, "GetEyeCoords");
 	RegisterFunction<SetEyeCoords>(value, view->movieRoot, "SetEyeCoords");
+	RegisterFunction<GetAdjustment>(value, view->movieRoot, "GetAdjustment");
+	RegisterFunction<SetAdjustmentPersistence>(value, view->movieRoot, "SetAdjustmentPersistence");
+	RegisterFunction<SetAdjustmentScale>(value, view->movieRoot, "SetAdjustmentScale");
 	RegisterFunction<GetAdjustmentList>(value, view->movieRoot, "GetAdjustmentList");
 	RegisterFunction<SaveAdjustment>(value, view->movieRoot, "SaveAdjustment");
 	RegisterFunction<LoadAdjustment>(value, view->movieRoot, "LoadAdjustment");
 	RegisterFunction<NewAdjustment>(value, view->movieRoot, "NewAdjustment");
 	RegisterFunction<RemoveAdjustment>(value, view->movieRoot, "RemoveAdjustment");
+	RegisterFunction<ResetAdjustment>(value, view->movieRoot, "ResetAdjustment");
 	RegisterFunction<GetCategoryList>(value, view->movieRoot, "GetCategoryList");
 	RegisterFunction<GetNodeList>(value, view->movieRoot, "GetNodeList");
 	RegisterFunction<GetNodeTransform>(value, view->movieRoot, "GetNodeTransform");
@@ -317,7 +400,12 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SetNodeRotation>(value, view->movieRoot, "SetNodeRotation");
 	RegisterFunction<SetNodeScale>(value, view->movieRoot, "SetNodeScale");
 	RegisterFunction<ResetTransform>(value, view->movieRoot, "ResetTransform");
+	RegisterFunction<GetIdleCategories>(value, view->movieRoot, "GetIdleCategories");
+	RegisterFunction<GetIdles>(value, view->movieRoot, "GetIdles");
+	RegisterFunction<PlayIdle>(value, view->movieRoot, "PlayIdle");
+	RegisterFunction<ResetIdle>(value, view->movieRoot, "ResetIdle");
 	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
 	RegisterFunction<Test>(value, view->movieRoot, "Test");
+	RegisterFunction<Test2>(value, view->movieRoot, "Test2");
 	return true;
 }

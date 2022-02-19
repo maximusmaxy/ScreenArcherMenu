@@ -26,6 +26,51 @@ F4SEMessagingInterface* g_messaging = nullptr;
 F4SEPapyrusInterface* g_papyrus = nullptr;
 F4SESerializationInterface* g_serialization = nullptr;
 
+const std::string& GetSafConfigPath()
+{
+	static std::string safConfigPath;
+
+	if (safConfigPath.empty())
+	{
+		std::string	runtimePath = GetRuntimeDirectory();
+		if (!runtimePath.empty())
+		{
+			safConfigPath = runtimePath + "Data\\F4SE\\Plugins\\SAF.ini";
+
+			//_MESSAGE("config path = %s", safConfigPath.c_str());
+		}
+	}
+
+	return safConfigPath;
+}
+
+std::string GetSafConfigOption(const char* section, const char* key)
+{
+	std::string	result;
+
+	const std::string& configPath = GetSafConfigPath();
+	if (!configPath.empty())
+	{
+		char	resultBuf[256];
+		resultBuf[0] = 0;
+
+		UInt32	resultLen = GetPrivateProfileString(section, key, NULL, resultBuf, sizeof(resultBuf), configPath.c_str());
+
+		result = resultBuf;
+	}
+
+	return result;
+}
+
+bool GetSafConfigOption_UInt32(const char* section, const char* key, UInt32* dataOut)
+{
+	std::string	data = GetSafConfigOption(section, key);
+	if (data.empty())
+		return false;
+
+	return (sscanf_s(data.c_str(), "%u", dataOut) == 1);
+}
+
 class SAFEventReciever :
 	public BSTEventSink<TESObjectLoadedEvent>,
 	public BSTEventSink<TESLoadGameEvent>
@@ -69,15 +114,52 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 		break;
 		case F4SEMessagingInterface::kMessage_GameDataReady:
 		{
-			if (msg->data) {
-				SAF::g_adjustmentManager.Load();
-				g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
-			}
-			break;
+			SAF::g_adjustmentManager.overridePostfix = GetSafConfigOption("skeleton", "override");
+			SAF::g_adjustmentManager.offsetPostfix = GetSafConfigOption("skeleton", "offset");
+			SAF::g_adjustmentManager.Load();
+			g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
 		}
 		break;
 	}
 }
+
+void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
+{
+	switch (msg->type)
+	{
+	case SAF::kSafAdjustmentCreate:
+	{
+		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
+		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
+	}
+	break;
+	case SAF::kSafAdjustmentLoad:
+	{
+		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
+		SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
+	}
+	break;
+	case SAF::kSafAdjustmentErase:
+	{
+		auto data = (SAF::AdjustmentMessage*)msg->data;
+		SAF::g_adjustmentManager.RemoveAdjustment(data->formId, data->handle);
+	}
+	break;
+	case SAF::kSafAdjustmentReset:
+	{
+		auto data = (SAF::AdjustmentMessage*)msg->data;
+		SAF::g_adjustmentManager.ResetAdjustment(data->formId, data->handle);
+	}
+	break;
+	case SAF::kSafAdjustmentTransform:
+	{
+		auto data = (SAF::AdjustmentTransformMessage*)msg->data;
+		SAF::g_adjustmentManager.SetTransform(data);
+	}
+	break;
+	}
+}
+
 
 void SAFSaveCallback(const F4SESerializationInterface* ifc) {
 	_DMESSAGE("Serializing save");
@@ -142,8 +224,10 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 
 bool F4SEPlugin_Load(const F4SEInterface* f4se)
 {
-	if (g_messaging)
+	if (g_messaging) {
 		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
+		g_messaging->RegisterListener(g_pluginHandle, nullptr, SAFMessageHandler);
+	}
 	
 	if (g_papyrus)
 		g_papyrus->Register(SAF::RegisterPapyrus);

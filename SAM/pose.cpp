@@ -13,48 +13,51 @@ using namespace SAF;
 
 AdjustmentManager* safAdjustmentManager;
 
-void SetAdjustmentPos(std::string name, UInt32 adjustmentHandle, float x, float y, float z) {
-	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetListAdjustment(adjustmentHandle);
-	if (!adjustment) return;
+SafMessageDispatcher safMessageDispatcher;
 
-	adjustment->SetTransformPos(name, x, y, z);
-	adjustments->UpdateAdjustments(name);
-}
-
-void SetAdjustmentRot(std::string name, UInt32 adjustmentHandle, float heading, float attitude, float bank) {
+void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y, float z) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	adjustment->SetTransformRot(name, heading / 180 * MATH_PI, attitude / 180 * MATH_PI, bank / 180 * MATH_PI);
-	adjustments->UpdateAdjustments(name);
+	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformPosition, x, y, z);
+	adjustments->UpdateAdjustments(key);
 }
 
-void SetAdjustmentSca(std::string name, UInt32 adjustmentHandle, float scale) {
+void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float heading, float attitude, float bank) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	adjustment->SetTransformSca(name, scale);
-	adjustments->UpdateAdjustments(name);
+	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformRotation,
+		heading * DEGREE_TO_RADIAN, attitude * DEGREE_TO_RADIAN, bank * DEGREE_TO_RADIAN);
+	adjustments->UpdateAdjustments(key);
 }
 
-void ResetAdjustmentTransform(std::string name, int adjustmentHandle) {
+void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	adjustment->ResetTransform(name);
-	adjustments->UpdateAdjustments(name);
+	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformScale, scale, 0, 0);
+	adjustments->UpdateAdjustments(key);
+}
+
+void ResetAdjustmentTransform(const char* key, int adjustmentHandle) {
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
+	if (!adjustment) return;
+
+	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformReset, 0, 0, 0);
+	adjustments->UpdateAdjustments(key);
 }
 
 void SaveAdjustmentFile(std::string filename, int adjustmentHandle) {
@@ -65,21 +68,19 @@ void SaveAdjustmentFile(std::string filename, int adjustmentHandle) {
 	adjustments->SaveAdjustment(filename, adjustmentHandle);
 }
 
-void LoadAdjustmentFile(std::string filename) {
+void LoadAdjustmentFile(const char* filename) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	adjustments->LoadAdjustment(filename, "ScreenArcherMenu.esp", true, false);
+	safMessageDispatcher.loadAdjustment(selected.refr->formID, filename);
 	adjustments->UpdateAllAdjustments();
 }
 
-void PushNewAdjustment(std::string name) {
+void PushNewAdjustment(const char* name) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
 
-	adjustments->CreateAdjustment(name, "ScreenArcherMenu.esp", false, false);
+	safMessageDispatcher.createAdjustment(selected.refr->formID, name);
 }
 
 void EraseAdjustment(int adjustmentHandle) {
@@ -87,7 +88,19 @@ void EraseAdjustment(int adjustmentHandle) {
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	adjustments->RemoveAdjustment(adjustmentHandle);
+	safMessageDispatcher.removeAdjustment(selected.refr->formID, adjustmentHandle);
+
+	adjustments->UpdateAllAdjustments();
+}
+
+void ClearAdjustment(UInt32 adjustmentHandle)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	safMessageDispatcher.resetAdjustment(selected.refr->formID, adjustmentHandle);
+
 	adjustments->UpdateAllAdjustments();
 }
 
@@ -167,6 +180,46 @@ std::vector<NiAVObject*> FindAdjustableChildren(NiAVObject* root, NodeSet* set) 
 	return nodes;
 }
 
+void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle)
+{
+	root->CreateObject(result);
+
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
+	if (!adjustment) return;
+
+	GFxValue scale((SInt32)std::round(adjustment->scale * 100));
+	result->SetMember("scale", &scale);
+	
+	GFxValue persistent(adjustment->persistent);
+	result->SetMember("persistent", &persistent);
+}
+
+void SetPersistence(UInt32 adjustmentHandle, bool isPersistent)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
+	if (!adjustment) return;
+
+	adjustment->persistent = isPersistent;
+}
+
+void SetScale(UInt32 adjustmentHandle, int scale)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
+	if (!adjustment) return;
+
+	adjustment->scale = scale * 0.01;
+	adjustments->UpdateAllAdjustments(adjustment);
+}
+
 MenuCategoryList* GetAdjustmentMenu()
 {
 	MenuCategoryList* menu = GetMenu(&poseMenuCache);
@@ -193,8 +246,6 @@ MenuCategoryList* GetAdjustmentMenu()
 
 void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 {
-	static std::string samEsp("ScreenArcherMenu.esp");
-
 	root->CreateObject(result);
 
 	GFxValue names;
@@ -208,7 +259,7 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 	if (!adjustments) return;
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-		if (!adjustment->hidden || adjustment->esp == samEsp) {
+		if (!adjustment->hidden) {
 			GFxValue name(adjustment->name.c_str());
 			names.PushBack(&name);
 
@@ -276,9 +327,9 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 	transform.rot.GetEulerAngles(&heading, &attitude, &bank);
 
 	//heading attitude bank, y z x
-	GFxValue rx(bank * 180 / MATH_PI);
-	GFxValue ry(heading * 180 / MATH_PI);
-	GFxValue rz(attitude * 180 / MATH_PI);
+	GFxValue rx(bank * RADIAN_TO_DEGREE);
+	GFxValue ry(heading * RADIAN_TO_DEGREE);
+	GFxValue rz(attitude * RADIAN_TO_DEGREE);
 	result->PushBack(&rx);
 	result->PushBack(&ry);
 	result->PushBack(&rz);

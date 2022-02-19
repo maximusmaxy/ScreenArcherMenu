@@ -163,6 +163,24 @@ public:
 	virtual void	Invoke(Args * args);
 };
 
+class GetAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SetAdjustmentPersistence : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SetAdjustmentScale : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class GetAdjustmentList : public GFxFunctionHandler
 {
 public:
@@ -193,6 +211,36 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class ResetAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class GetIdleCategories : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class GetIdles : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class PlayIdle : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class ResetIdle : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class HideMenu : public GFxFunctionHandler
 {
 public:
@@ -200,6 +248,12 @@ public:
 };
 
 class Test : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class Test2 : public GFxFunctionHandler
 {
 public:
 	virtual void	Invoke(Args* args);

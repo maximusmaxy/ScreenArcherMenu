@@ -1,6 +1,6 @@
 #include "util.h"
 
-#include "GameData.h"
+#include "f4se/GameData.h"
 
 void _Log(std::string msg, UInt64 num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
@@ -46,5 +46,16 @@ bool TransormIsDefault(NiTransform* transform) {
 		bank == 0.0f &&
 		transform->scale == 1.0f)
 		return true;
+	return false;
+}
+
+//Case insensitive compare
+bool ContainsBSFixed(SAF::NodeSet* set, BSFixedString* str, std::string* res) {
+	for (auto it = set->begin(); it != set->end(); it++) {
+		if (*str == BSFixedString(it->c_str())) {
+			*res = *it;
+			return true;
+		}
+	}
 	return false;
 }

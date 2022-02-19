@@ -10,6 +10,7 @@
     <ClCompile Include="pose.cpp" />
     <ClCompile Include="mfg.cpp" />
     <ClCompile Include="eyes.cpp" />
+    <ClCompile Include="idle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -20,6 +21,7 @@
     <ClInclude Include="pose.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="eyes.h" />
+    <ClInclude Include="idle.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

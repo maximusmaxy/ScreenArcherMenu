@@ -66,17 +66,16 @@
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgTriplet>
     </VcpkgTriplet>
-    <VcpkgUseStatic>
-    </VcpkgUseStatic>
+    <VcpkgUseStatic>false</VcpkgUseStatic>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL|x64'" Label="Vcpkg">
     <VcpkgTriplet />
-    <VcpkgUseStatic>true</VcpkgUseStatic>
+    <VcpkgUseStatic>false</VcpkgUseStatic>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Projects\F4SE2\f4se\Eigen;D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -103,7 +102,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;D:\Projects\F4SE2\f4se\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -152,6 +151,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="adjustments.cpp" />
+    <ClCompile Include="conversions.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="papyrus.cpp" />
@@ -159,6 +159,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="adjustments.h" />
+    <ClInclude Include="conversions.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="util.h" />

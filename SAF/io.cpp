@@ -51,7 +51,8 @@ namespace SAF {
 			UInt32 formId = GetFormID(mod, race);
 			if (!formId) return false;
 
-			bool isFemale = (value["sex"].asString() == "female");
+			std::string sex = value["sex"].asString();
+			bool isFemale = (sex == "female" || sex == "Female");
 
 			Json::Value offsets = value["offsets"];
 			Json::Value overrides = value["overrides"];
@@ -59,21 +60,26 @@ namespace SAF {
 			NodeSets nodeSet;
 
 			for (auto& node : offsets) {
-				nodeSet.offsets.insert(node.asString());
-				nodeSet.all.insert(node.asString());
+				std::string offset = node.asString();
+				nodeSet.offsets.insert(offset);
+				nodeSet.all.insert(offset);
+				nodeSet.allOrBase.insert(offset);
 			}
 
 			for (auto& node : overrides) {
 				std::string base = node.asString();
-				std::string overrider = base + "_Override";
-				nodeSet.base[overrider] = base;
+				std::string overrider = base + g_adjustmentManager.overridePostfix;
+				nodeSet.base.insert(base);
 				nodeSet.overrides.insert(overrider);
 				nodeSet.all.insert(overrider);
+				nodeSet.allOrBase.insert(base);
+				nodeSet.allOrBase.insert(overrider);
+				nodeSet.baseMap[overrider] = base;
 			}
 
 			UInt64 key = formId;
 			if (isFemale)
-				formId |= 0x100000000;
+				key |= 0x100000000;
 
 			g_adjustmentManager.nodeSets[key] = nodeSet;
 		}
@@ -116,11 +122,12 @@ namespace SAF {
 			UInt32 formId = GetFormID(mod, race);
 			if (!formId) return false;
 
-			bool isFemale = (value["sex"].asString() == "female");
+			std::string sex = value["sex"].asString();
+			bool isFemale = (sex == "female" || sex == "Female");
 
 			UInt64 key = formId;
 			if (isFemale)
-				formId |= 0x100000000;
+				key |= 0x100000000;
 
 			Json::Value adjustments = value["adjustments"];
 
@@ -198,10 +205,10 @@ namespace SAF {
 				//heading, attitude, bank
 				//pitch, roll, yaw
 				transform->rot.GetEulerAngles(&heading, &attitude, &bank);
-				member["p"] = Json::Value(heading * 180 / MATH_PI);
-				member["r"] = Json::Value(attitude * 180 / MATH_PI);
-				member["y"] = Json::Value(bank * 180 / MATH_PI);
-				member["s"] = Json::Value(transform->scale);
+				member["pitch"] = Json::Value(heading * RADIAN_TO_DEGREE);
+				member["roll"] = Json::Value(attitude * RADIAN_TO_DEGREE);
+				member["yaw"] = Json::Value(bank * RADIAN_TO_DEGREE);
+				member["scale"] = Json::Value(transform->scale);
 				value[name] = member;
 			}
 		});
@@ -225,7 +232,7 @@ namespace SAF {
 		return true;
 	}
 
-	bool LoadAdjustmentFile(std::string filename, NodeSet* set, std::unordered_map<std::string, NiTransform>* map) {
+	bool LoadAdjustmentFile(std::string filename, TransformMap* map) {
 		IFileStream file;
 
 		std::string path("Data\\F4SE\\Plugins\\SAF\\Adjustments\\");
@@ -254,21 +261,16 @@ namespace SAF {
 
 			float heading, attitude, bank;
 			for (auto& member : members) {
-				if (set->count(member)) {
-					NiTransform transform;
-					transform.pos.x = value[member]["x"].asFloat();
-					transform.pos.y = value[member]["y"].asFloat();
-					transform.pos.z = value[member]["z"].asFloat();
-					heading = value[member]["p"].asFloat() * MATH_PI / 180;
-					attitude = value[member]["r"].asFloat() * MATH_PI / 180;
-					bank = value[member]["y"].asFloat() * MATH_PI / 180;
-					transform.rot.SetEulerAngles(heading, attitude, bank);
-					transform.scale = value[member]["s"].asFloat();
-					(*map)[member] = transform;
-				}
-				else {
-					_LogCat("Could not find ", member);
-				}
+				NiTransform transform;
+				transform.pos.x = value[member]["x"].asFloat();
+				transform.pos.y = value[member]["y"].asFloat();
+				transform.pos.z = value[member]["z"].asFloat();
+				heading = value[member]["pitch"].asFloat() * DEGREE_TO_RADIAN;
+				attitude = value[member]["roll"].asFloat() * DEGREE_TO_RADIAN;
+				bank = value[member]["yaw"].asFloat() * DEGREE_TO_RADIAN;
+				transform.rot.SetEulerAngles(heading, attitude, bank);
+				transform.scale = value[member]["scale"].asFloat();
+				(*map)[member] = transform;
 			}
 		}
 		catch (...) {

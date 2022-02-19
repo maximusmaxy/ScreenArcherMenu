@@ -37,6 +37,7 @@
 
         public static const MAIN_MENU:Vector.<String> = new <String>[
             "$SAM_PoseAdjustMenu",
+			"$SAM_PlayIdleMenu",
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
             "$SAM_HacksMenu",
@@ -88,7 +89,7 @@
 				trace("Failed to load adjustment list");
 				if (Util.debug) {
 					menuOptions = ["New Adjustment"];
-					menuOptions.values = [0];
+					menuValues = [0];
 				}
 			}
 		}
@@ -137,6 +138,65 @@
 			catch (e:Error)
 			{
 				trace("Failed to load adjustment");
+			}
+		}
+		
+		public static function editAdjustment()
+		{
+			try
+			{
+				menuValues = [0, 0, 0, false];
+				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
+				
+				if (adjustment.scale) {
+					menuValues[0] = adjustment.scale;
+				}
+				if (ajustment.persistent) {
+					menuValues[3] = adjustment.persistent;
+				}
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get adjustment");
+				if (Util.debug) {
+					menuValues = [50, 0, 0, true];
+				}
+			}
+		}
+		
+		public static function setAdjustmentPersistent(persistent:Boolean)
+		{
+			try
+			{
+				sam.SetAdjustmentPersistence(selectedAdjustment, persistent);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to set adjustment persistence");
+			}
+		}
+		
+		public static function setAdjustmentScale(scale:int)
+		{
+			try
+			{
+				sam.SetAdjustmentScale(selectedAdjustment, scale);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to set adjustment weight");
+			}
+		}
+		
+		public static function resetAdjustment()
+		{
+			try
+			{
+				sam.ResetAdjustment(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to reset adjustment");
 			}
 		}
 		
@@ -474,6 +534,64 @@
 			catch (e:Error)
 			{
 				trace("Failed to set hack");
+			}
+		}
+		
+		public static function loadIdleCategories()
+		{
+			try {
+				menuOptions = sam.GetIdleCategories();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get idle categories")
+				if (Util.debug) {
+					menuOptions = ["Pose mod"];
+				} else {
+					menuOption = new Array();
+				}
+			}
+		}
+		
+		public static function loadIdles()
+		{
+			try {
+				var idles:Object = sam.GetIdles(selectedCategory);
+				menuOptions = idles.names;
+				menuValues = idles.values;
+			} 
+			catch (e:Error)
+			{
+				trace("Failed to load idles");
+				if (Util.debug) {
+					menuOptions =  ["Idle 1", "Idle 2", "Idle 3"];
+					menuValues = [0, 1, 2];
+				} else {
+					menuOptions = new Array();
+					menuValues = new Array();
+				}
+			}
+		}
+		
+		public static function playIdle(id:int)
+		{
+			try {
+				sam.PlayIdle(menuValues[id]);
+			} 
+			catch (e:Error)
+			{
+				trace("Failed to play idle");
+			}
+		}
+		
+		public static function resetIdle()
+		{
+			try {
+				sam.ResetIdle();
+			} 
+			catch (e:Error)
+			{
+				trace("Failed to reset idle");
 			}
 		}
     }

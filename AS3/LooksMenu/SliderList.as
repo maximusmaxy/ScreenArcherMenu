@@ -9,15 +9,16 @@
 	public class SliderList extends BSUIComponent
 	{
 		public var entries:Vector.<SliderListEntry> = new Vector.<SliderListEntry>(15);
-		
-		public static const SLIDER_MAX:int = 10;
-		public static const LIST_MAX:int = 15;
-		
 		public var listScroll:Option_Scrollbar_Vertical;
+		public var title:TextField;
+		
 		public var entrySize:int = 57;
 		public var listSize:int = 10;
 		public var stepSize:Number;
 		public var listPosition: int = 0;
+		
+		public static const SLIDER_MAX:int = 10;
+		public static const LIST_MAX:int = 15;
 		
 		public static const LIST = 0;
 		public static const TRANSFORM = 1;
@@ -25,6 +26,7 @@
 		public static const CHECKBOX = 3;
 		public static const EYES = 4;
 		public static const ADJUSTMENT = 5;
+		public static const ADJUSTMENTEDIT = 6;
 		
 		public var type:int;
 		
@@ -88,6 +90,7 @@
 
 		public function updateValues():void
 		{
+			if (type == LIST) return;
 			for(var i:int = 0; i < listSize; i++) 
 			{
 				if (entries[i].visible) {
@@ -102,7 +105,7 @@
 			this.listSize = listSize;
 			if (this.entrySize > this.listSize)
 			{
-				stepSize = 99.0 / (this.entrySize - this.listSize);
+				stepSize = 100.0 / (this.entrySize - this.listSize);
 				var thumbHeight:Number = listScroll.Track_mc.height *  this.listSize / this.entrySize;
 				listScroll.Thumb_mc.height = Math.max(thumbHeight, 40);
 				listScroll.visible = true;
@@ -177,6 +180,7 @@
 				case CHECKBOX: updateCheckboxEntry(entry); break;
 				case EYES: updateEyesEntry(entry); break;
 				case ADJUSTMENT: updateAdjustmentEntry(entry); break;
+				case ADJUSTMENTEDIT: updateAdjustmentEditEntry(entry); break;
 			}
 		}
 		
@@ -213,6 +217,32 @@
 			entry.updateAdjustment(Data.menuOptions[entry.id]);
 		}
 		
+		public function updateAdjustmentEdit(func:Function)
+		{
+			this.type = ADJUSTMENTEDIT;
+			update(4, LIST_MAX, func);
+		}
+		
+		public function updateAdjustmentEditEntry(entry:SliderListEntry)
+		{
+			switch (entry.id)
+			{
+				case 0: //Scale
+					entry.updateSliderData(0, 100, 1, 0)
+					entry.updateSlider("$SAM_Scale", SliderListEntry.INT);
+					break;
+				case 1: //Reset
+					entry.updateList("$SAM_ResetAdjustment");
+					break;
+				case 2: //Save
+					entry.updateList("$SAM_SaveAdjustment");
+					break;
+				case 3: //Persistent
+					entry.updateCheckbox("$SAM_Saved", Data.menuValues[entry.id]);
+					break;
+			}
+		}
+		
 		public function updateTransform(func:Function):void
 		{
 			this.type = TRANSFORM;
@@ -223,29 +253,17 @@
 		{
 			if (entry.id < 3) //rot
 			{
-				entry.slider.minimum = 0.0;
-				entry.slider.maximum = 360.0;
-				entry.slider.StepSize = 0.1;
-				entry.sliderMod = 180.0;
-				entry.sliderFixed = 2
+				entry.updateSliderData(0.0, 360.0, 0.1, 180.0, 2);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 6) //pos
 			{
-				entry.slider.minimum = 0.0;
-				entry.slider.maximum = 20.0;
-				entry.slider.StepSize = 0.01;
-				entry.sliderMod = 10.0;
-				entry.sliderFixed = 4;
+				entry.updateSliderData(0.0, 20.0, 0.01, 10.0, 4);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 7)//scale
 			{
-				entry.slider.minimum = 0.0;
-				entry.slider.maximum = 2.0;
-				entry.slider.StepSize = 0.01;
-				entry.sliderMod = 0;
-				entry.sliderFixed = 4;
+				entry.updateSliderData(0.0, 2.0, 0.01, 0.0, 4);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 		}
@@ -258,10 +276,7 @@
 		
 		public function updateMorphsEntry(entry:SliderListEntry):void
 		{
-			entry.slider.minimum = 0;
-			entry.slider.maximum = 100;
-			entry.slider.StepSize = 1;
-			entry.sliderMod = 0;
+			entry.updateSliderData(0, 100, 1, 0);
 			entry.updateSlider(Data.menuOptions[entry.id], SliderListEntry.INT);
 		}
 		
@@ -274,11 +289,7 @@
 		public function updateEyesEntry(entry:SliderListEntry):void
 		{
 			if (entry.id < 2) {
-				entry.slider.minimum = 0.0;
-				entry.slider.maximum = 2.0;
-				entry.slider.StepSize = 0.01;
-				entry.sliderMod = 1.0;
-				entry.sliderFixed = 4;
+				entry.updateSliderData(0.0, 2.0, 0.01, 1.0, 4);
 				entry.updateSlider(Data.EYE_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else {

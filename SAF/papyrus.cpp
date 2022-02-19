@@ -16,43 +16,43 @@ namespace SAF {
 
 	UInt32 PapyrusCreateAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, BSFixedString espName, bool persistent, bool hidden)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return 0;
-		
 		UInt32 handle = adjustments->CreateAdjustment(std::string(name), std::string(espName), persistent, hidden);
 		return handle;
 	}
 
 	bool PapyrusHasAdjustment(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return false;
 		return (adjustments->GetAdjustment(handle) != nullptr);
 	}
 
 	void PapyrusRemoveAdjustment(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		adjustments->RemoveAdjustment(handle);
 	}
 
 	BSFixedString PapyrusAdjustmentName(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle) {
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return BSFixedString();
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return BSFixedString();
 		return BSFixedString(adjustment->name.c_str());
 	}
 
-	VMArray<UInt32> PapyrusGetAdjustments(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString espName)
+	VMArray<SInt32> PapyrusGetAdjustments(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString espName)
 	{
-		VMArray<UInt32> result;
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		VMArray<SInt32> result;
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return result;
 
 		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-			result.Push(&adjustment->handle);
+			SInt32 adjustmentHandle = adjustment->handle;
+			result.Push(&adjustmentHandle);
 		});
 
 		return result;
@@ -60,7 +60,7 @@ namespace SAF {
 
 	void PapyrusAdjustmentPersistence(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, bool isPersistent)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -69,7 +69,7 @@ namespace SAF {
 
 	void PapyrusAdjustmentHidden(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, bool isHidden)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -78,13 +78,13 @@ namespace SAF {
 
 	void PapyrusRemoveModAdjustments(StaticFunctionTag*, BSFixedString espName)
 	{
-		g_adjustmentManager.RemoveMod(std::string(espName));
+		g_adjustmentManager.RemoveMod(espName);
 	}
 
 	VMArray<BSFixedString> PapyrusNodeNames(StaticFunctionTag*, TESObjectREFR* refr)
 	{
 		VMArray<BSFixedString> result;
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return result;
 		for (auto& nodeName: adjustments->nodeSets->all) {
 			result.Push(&BSFixedString(nodeName.c_str()));
@@ -131,7 +131,7 @@ namespace SAF {
 	Transform PapyrusGetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
 	{
 		Transform result;
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return result;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return result;
@@ -145,7 +145,7 @@ namespace SAF {
 
 	void PapyrusSetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle, Transform transform)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -157,7 +157,7 @@ namespace SAF {
 
 	void PapyrusOverrideTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle, Transform transform)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -169,7 +169,7 @@ namespace SAF {
 
 	void PapyrusResetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -182,22 +182,22 @@ namespace SAF {
 	VMArray<Transform> PapyrusGetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
 		VMArray<Transform> result;
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return result;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return result;
 
-		adjustment->ForEachTransform([&](std::string name, NiTransform* transform) {
+		adjustment->ForEachTransformOrDefault([&](std::string name, NiTransform* transform) {
 			bool isOverride = adjustments->nodeSets->overrides.count(name) > 0;
 			result.Push(&TransformToPapyrus(*transform, BSFixedString(name.c_str()), isOverride));
-		});
+		}, &adjustments->nodeSets->all);
 
 		return result;
 	}
 
 	void PapyrusSetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, VMArray<Transform> transforms)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -216,7 +216,7 @@ namespace SAF {
 
 	void PapyrusOverrideAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, VMArray<Transform> transforms)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -238,7 +238,7 @@ namespace SAF {
 
 	void PapyrusResetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
@@ -249,7 +249,7 @@ namespace SAF {
 
 	UInt32 PapyrusLoadAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename, BSFixedString espName, bool persistent, bool hidden)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return 0;
 
 		UInt32 handle = adjustments->LoadAdjustment(std::string(filename), std::string(espName), persistent, hidden);
@@ -259,7 +259,7 @@ namespace SAF {
 
 	void PapyrusSaveAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename, UInt32 handle)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr->formID);
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 
 		adjustments->SaveAdjustment(std::string(filename), handle);
@@ -286,7 +286,7 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, bool, TESObjectREFR*, UInt32>("HasAdjustment", "SAF", PapyrusHasAdjustment, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, UInt32>("RemoveAdjustment", "SAF", PapyrusRemoveAdjustment, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, BSFixedString, TESObjectREFR*, UInt32>("GetAdjustmentName", "SAF", PapyrusAdjustmentName, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, VMArray<UInt32>, TESObjectREFR*, BSFixedString>("GetAdjustments", "SAF", PapyrusGetAdjustments, vm));
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, VMArray<SInt32>, TESObjectREFR*, BSFixedString>("GetAdjustments", "SAF", PapyrusGetAdjustments, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, UInt32, bool>("SetAdjustmentPersistence", "SAF", PapyrusAdjustmentPersistence, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, UInt32, bool>("SetAdjustmentHidden", "SAF", PapyrusAdjustmentHidden, vm));
 		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, BSFixedString>("RemoveAllAdjustments", "SAF", PapyrusRemoveModAdjustments, vm));

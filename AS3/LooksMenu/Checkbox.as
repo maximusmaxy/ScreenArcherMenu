@@ -8,28 +8,33 @@
 		
 		public var bounds:MovieClip;
 		public var check:MovieClip;
-		public var text:TextField;
+		public var settings:MovieClip;
+		public var recycle:MovieClip;
 		
 		public var id:int;
 		public var func:Function;
 		public var value:Boolean;
+		
+		public static const SETTINGS = 1;
+		public static const RECYCLE = 2;
 		
 		public function Checkbox() {
 			super();
 			bounds.addEventListener(MouseEvent.CLICK, onClick);
 		}
 		
-		public function init(x:int, id:int, checked:Boolean, name:String, func:Function)
+		public function init(x:int, id:int, checked:Boolean, type:int, func:Function)
 		{
+			settings.visible = false;
+			recycle.visible = false;
 			this.visible = true;
 			this.x = x;
 			this.id = id;
 			setCheck(checked);
-			if (name != null) {
-				this.text.visible = true;
-				this.text.text = name;
-			} else {
-				this.text.visible = false;
+			switch (type) {
+				case SETTINGS: settings.visible = true; recycle.visible = false; break;
+				case RECYCLE: settings.visible = false; recycle.visible = true; break;
+				default: settings.visible = false; recycle.visible = false;
 			}
 			this.func = func;
 		}
@@ -46,7 +51,7 @@
 		}
 		
 		public function onClick(event:MouseEvent) {
-			if (this.text.visible) { //button
+			if (settings.visible || recycle.visible) { //button
 				if (func != null) {
 					func.call(null, id);
 				}

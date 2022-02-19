@@ -44,14 +44,14 @@ void SaveMfg(std::string filename) {
 	path += filename;
 	path += ".txt";
 	IFileStream::MakeAllDirs(path.c_str());
-	if (!file.Create(path.c_str())) {
 		_DMESSAGE("Failed to create file");
+	if (!file.Create(path.c_str())) {
 		return;
 	}
 
 	std::string morphs;
 	for (int i = 0; i < 50; ++i) {
-		UInt32 scale = (UInt32)((ptr[i] * 100) + 0.5);
+		UInt32 scale = std::round(ptr[i] * 100);
 		scale = max(0, min(100, scale));
 		if (scale != 0) {
 			morphs += "mfg morphs ";
@@ -85,13 +85,20 @@ bool LoadMfg(std::string filename) {
 	char buf[512];
 	std::cmatch match;
 
+	float morphs[50];
+	std::memset(morphs, 0, sizeof(morphs));
+
 	while (!file.HitEOF()) {
 		file.ReadString(buf, 512, '\n', '\r');
 		if (std::regex_match(buf, match, mfgRegex)) {
 			int id = max(0, min(49, std::stoi(match[1].str())));
 			int scale = max(0, min(100, std::stoi(match[2].str())));
-			ptr[id] = scale * 0.0099999998f;
+			morphs[id] = scale * 0.0099999998f; 
 		}
+	}
+
+	for (int i = 0; i < 50; ++i) {
+		ptr[i] = morphs[i];
 	}
 
 	file.Close();
@@ -142,7 +149,7 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 		UInt32 key = std::stoul(kvp.second);
 		key = max(0, min(49, key));
 
-		GFxValue value(ptr[key]);
+		GFxValue value((SInt32)std::round(ptr[key] * 100));
 		values.PushBack(&value);
 	}
 

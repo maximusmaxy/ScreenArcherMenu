@@ -56,7 +56,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Projects\F4SE2\f4se\Eigen;D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -109,6 +109,7 @@
   <ItemGroup>
     <ClCompile Include="eyes.cpp" />
     <ClCompile Include="hacks.cpp" />
+    <ClCompile Include="idle.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mfg.cpp" />
     <ClCompile Include="papyrus.cpp" />
@@ -119,6 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="eyes.h" />
+    <ClInclude Include="idle.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="pose.h" />

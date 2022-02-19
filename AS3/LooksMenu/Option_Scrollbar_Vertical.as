@@ -32,8 +32,8 @@
 		
 		public function updateHeight()
 		{
-			fMinThumbY = Track_mc.y -2;
-			fMaxThumbY = Track_mc.y + Track_mc.height - Thumb_mc.height + 2;
+			fMinThumbY = Track_mc.y;// -2;
+			fMaxThumbY = Track_mc.y + Track_mc.height - Thumb_mc.height;// + 2;
 		}
 		
         public function get maximum():Number { return fMaxValue; }
@@ -83,7 +83,7 @@
         public function set position(value:Number):void
 		{
 			fValue = Math.min(Math.max(value, this.fMinValue), this.fMaxValue);
-			var yOffset = (fValue - fMinValue) / (fMaxValue - fMinValue);
+			var yOffset:Number = (fValue - fMinValue) / (fMaxValue - fMinValue);
 			Thumb_mc.y = fMinThumbY + yOffset * (fMaxThumbY - fMinThumbY);
 		}
 
@@ -134,7 +134,7 @@
 
 		internal function onThumbMouseDown(arg1:flash.events.MouseEvent):*
 		{
-			Thumb_mc.startDrag(false, new flash.geom.Rectangle(Thumb_mc.x, fMinThumbY, 0, fMaxThumbY));
+			Thumb_mc.startDrag(false, new flash.geom.Rectangle(Thumb_mc.x, fMinThumbY, 0, fMaxThumbY + 5));
 			stage.addEventListener(flash.events.MouseEvent.MOUSE_UP, onThumbMouseUp);
 			stage.addEventListener(flash.events.MouseEvent.MOUSE_MOVE, onThumbMouseMove);
 		}

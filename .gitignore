@@ -16,6 +16,9 @@ xbyak/
 /hudextension.sln
 /tagpatch.sln
 
+# Includes
+Eigen/
+
 # Build events
 sam.bat
 

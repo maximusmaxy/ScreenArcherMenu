@@ -6,12 +6,14 @@
     <ClCompile Include="adjustments.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="util.cpp" />
+    <ClCompile Include="conversions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="adjustments.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="util.h" />
+    <ClInclude Include="conversions.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

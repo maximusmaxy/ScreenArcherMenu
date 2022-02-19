@@ -254,7 +254,7 @@
 			slider.visible = false;
 			value.visible = false;
 			divider.visible = false;
-			checkbox.init(1, this.id, checked, null, func);
+			checkbox.init(1, this.id, checked, 0, func);
 			checkbox2.visible = false;
 			background.x = 31;
 			background.width = 258;
@@ -268,11 +268,20 @@
 			slider.visible = false;
 			value.visible = false;
 			divider.visible = false;
-			checkbox.init(222, this.id, false, "S", func2);
-			checkbox2.init(256, this.id, false, "-", func3);
+			checkbox.init(222, this.id, false, Checkbox.SETTINGS, func2);
+			checkbox2.init(256, this.id, false, Checkbox.RECYCLE, func3);
 			background.x = -2;
 			background.width = 218;
 			this.type = ADJUSTMENT;
+		}
+		
+		public function updateSliderData(min:Number, max:Number, step:Number, mod:Number, fixed:int = 0)
+		{
+			slider.minimum = min;
+			slider.maximum = max;
+			slider.StepSize = step;
+			this.sliderMod = mod;
+			this.sliderFixed = fixed;
 		}
 		
 		public function disable()
