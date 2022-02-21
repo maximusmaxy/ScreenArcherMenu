@@ -5,15 +5,23 @@
 
 #include "SAF/adjustments.h"
 
+#include <mutex>
+
 extern SAF::AdjustmentManager* safAdjustmentManager;
 
 class SafMessageDispatcher {
+private:
+	std::mutex mutex;
 public:
+	std::shared_ptr<SAF::ActorAdjustments> actorAdjustments;
+
+	std::shared_ptr<SAF::ActorAdjustments> GetActorAdjustments(UInt32 formId);
 	void (*createAdjustment)(UInt32 formId, const char* name);
 	void (*loadAdjustment)(UInt32 formId, const char* filename);
 	void (*removeAdjustment)(UInt32 formId, UInt32 handle);
 	void (*resetAdjustment)(UInt32 formId, UInt32 handle);
 	void (*transformAdjustment)(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c);
+	void (*createActorAdjustments)(UInt32 formId);
 };
 
 extern SafMessageDispatcher safMessageDispatcher;

@@ -15,9 +15,21 @@ AdjustmentManager* safAdjustmentManager;
 
 SafMessageDispatcher safMessageDispatcher;
 
+std::shared_ptr<ActorAdjustments> SafMessageDispatcher::GetActorAdjustments(UInt32 formId) {
+	std::lock_guard<std::mutex> lock(mutex);
+
+	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+
+	if (!adjustments) {
+		createActorAdjustments(formId);
+		adjustments = actorAdjustments;
+	}
+	return adjustments;
+}
+
 void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y, float z) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -28,7 +40,7 @@ void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y
 
 void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float heading, float attitude, float bank) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -40,7 +52,7 @@ void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float heading, f
 
 void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -51,7 +63,7 @@ void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale) {
 
 void ResetAdjustmentTransform(const char* key, int adjustmentHandle) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -62,7 +74,7 @@ void ResetAdjustmentTransform(const char* key, int adjustmentHandle) {
 
 void SaveAdjustmentFile(std::string filename, int adjustmentHandle) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	adjustments->SaveAdjustment(filename, adjustmentHandle);
@@ -70,7 +82,7 @@ void SaveAdjustmentFile(std::string filename, int adjustmentHandle) {
 
 void LoadAdjustmentFile(const char* filename) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	safMessageDispatcher.loadAdjustment(selected.refr->formID, filename);
@@ -85,7 +97,7 @@ void PushNewAdjustment(const char* name) {
 
 void EraseAdjustment(int adjustmentHandle) {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	safMessageDispatcher.removeAdjustment(selected.refr->formID, adjustmentHandle);
@@ -96,7 +108,7 @@ void EraseAdjustment(int adjustmentHandle) {
 void ClearAdjustment(UInt32 adjustmentHandle)
 {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	safMessageDispatcher.resetAdjustment(selected.refr->formID, adjustmentHandle);
@@ -185,7 +197,7 @@ void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle
 	root->CreateObject(result);
 
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -200,7 +212,7 @@ void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle
 void SetPersistence(UInt32 adjustmentHandle, bool isPersistent)
 {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -211,7 +223,7 @@ void SetPersistence(UInt32 adjustmentHandle, bool isPersistent)
 void SetScale(UInt32 adjustmentHandle, int scale)
 {
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
@@ -227,7 +239,7 @@ MenuCategoryList* GetAdjustmentMenu()
 	if (menu) return menu;
 
 	//If for some reason the human menu can't be found dump it all into one menu
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 
 	if (!adjustments || !adjustments->nodeSets) return nullptr;
 	
@@ -255,7 +267,7 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 	root->CreateArray(&values);
 
 	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
@@ -316,7 +328,7 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 
 	std::string name = (*categories)[categoryIndex].second[nodeIndex].second;
 
-	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;

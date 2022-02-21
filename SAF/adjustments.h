@@ -30,7 +30,8 @@ namespace SAF {
 		kSafAdjustmentLoad,
 		kSafAdjustmentErase,
 		kSafAdjustmentReset,
-		kSafAdjustmentTransform
+		kSafAdjustmentTransform,
+		kSafAdjustmentActor
 	};
 
 	struct AdjustmentMessage {
@@ -83,6 +84,16 @@ namespace SAF {
 			a(a),
 			b(b),
 			c(c)
+		{}
+	};
+
+	struct AdjustmentActorMessage {
+		UInt32 formId;
+		const char* mod;
+
+		AdjustmentActorMessage(UInt32 formId, const char* mod) :
+			formId(formId),
+			mod(mod)
 		{}
 	};
 
@@ -194,7 +205,7 @@ namespace SAF {
 		std::unordered_map<UInt32, std::shared_ptr<Adjustment>> map;
 
 		NodeSets* nodeSets = nullptr;
-		NodeMap* nodeMap = nullptr;
+		NodeMap nodeMap;
 		NodeMap* nodeMapBase = nullptr;
 
 		std::unordered_set<std::string> removedAdjustments;
@@ -212,7 +223,7 @@ namespace SAF {
 		std::shared_ptr<Adjustment> GetListAdjustment(UInt32 index);
 		void RemoveAdjustment(UInt32 handle);
 
-		bool UpdateKey(UInt32 race, bool isFemale);
+		bool ShouldUpdate();
 		bool UpdateRoot(NiNode* root);
 		void UpdatePersistentAdjustments(std::vector<std::string>* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents);
 		void UpdateAdjustments(std::string name);
@@ -253,8 +264,8 @@ namespace SAF {
 		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> uniqueAdjustments;
 		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> persistentAdjustments;
 
-		std::unordered_map<UInt32, NodeMap> actorNodeMapCache;
 		std::unordered_map<std::string, NodeMap> baseNodeMapCache;
+		std::unordered_map<std::string, NiNode*> baseNodeMapRoots;
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
 		std::unordered_map<std::string, TransformMap> adjustmentFileCache;
 
@@ -268,13 +279,13 @@ namespace SAF {
 		void RemoveAdjustment(UInt32 formId, UInt32 handle);
 		void ResetAdjustment(UInt32 formId, UInt32 handle);
 		void SetTransform(AdjustmentTransformMessage* message);
+		std::shared_ptr<ActorAdjustments> CreateActorAdjustment(UInt32 formId);
 
 		void UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
 		void UpdateActor(Actor* actor, TESNPC* npc, bool loaded);
 		void UpdateAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
 		void UpdateQueue();
 		
-		std::shared_ptr<ActorAdjustments> GetSharedActorAdjustment(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);
 
@@ -286,8 +297,8 @@ namespace SAF {
 		std::vector<std::string>* GetDefaultAdjustments(UInt32 race, bool isFemale);
 		
 		NodeMap CreateNodeMap(NiNode* root, NodeSet* set);
-		NodeMap* GetActorNodeMap(Actor* actor, TESNPC* npc, NodeSet* nodeSet, NiNode** root);
-		NodeMap* GetActorBaseMap(Actor* actor, TESNPC* npc, NodeSet* nodeSet);
+		NodeMap* GetActorNodeMap(std::shared_ptr<ActorAdjustments> actorAdjustments, NiNode* root, NodeSet* nodeSet);
+		NodeMap* GetActorBaseMap(std::shared_ptr<ActorAdjustments> actorAdjustments, NodeSet* nodeSet);
 		
 		void SerializeSave(const F4SESerializationInterface* ifc);
 		void SerializeLoad(const F4SESerializationInterface* ifc);

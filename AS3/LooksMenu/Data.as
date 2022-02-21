@@ -147,12 +147,11 @@
 			{
 				menuValues = [0, 0, 0, false];
 				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
-				
 				if (adjustment.scale) {
 					menuValues[0] = adjustment.scale;
 				}
-				if (ajustment.persistent) {
-					menuValues[3] = adjustment.persistent;
+				if (adjustment.persistent) {
+					menuValues[3] = adjustment.persistent;				
 				}
 			}
 			catch (e:Error)
@@ -433,16 +432,12 @@
 			}
 		}
 		
-		public static function loadMfg(id:int, update:Boolean) 
+		public static function loadMfg(id:int) 
 		{
 			var filename:String = morphFiles[id];
 			try
 			{
-				var morphs:Object = sam.LoadMorphPreset(filename, selectedCategory);
-				if (update) {
-					menuOptions = morphs.names;
-					menuValues = morphs.values;
-				}
+				sam.LoadMorphPreset(filename, selectedCategory);
 			}
 			catch (e:Error)
 			{

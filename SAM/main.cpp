@@ -21,6 +21,7 @@
 
 #include <shlobj.h>
 #include <string>
+#include <mutex>
 
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 
@@ -142,13 +143,15 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		case SAF::kSafAdjustmentManager:
 		{
-			if (msg->data) 
-			{
-				safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
-				LoadMenuFiles();
-			}
+			safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
+			LoadMenuFiles();
+			break;
 		}
-		break;
+		case SAF::kSafAdjustmentActor:
+		{
+			safMessageDispatcher.actorAdjustments = (*(std::shared_ptr<SAF::ActorAdjustments>*)msg->data);
+			break;
+		}
 	}
 }
 
@@ -175,6 +178,11 @@ void SafResetAdjustment(UInt32 formId, UInt32 handle) {
 void SafTransformAdjustment(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c) {
 	SAF::AdjustmentTransformMessage message(formId, handle, key, type, a, b, c);
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTransform, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafCreateActorAdjustments(UInt32 formId) {
+	SAF::AdjustmentActorMessage message(formId, "ScreenArcherMenu");
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &message, sizeof(uintptr_t), "SAF");
 }
 
 extern "C"
@@ -231,6 +239,7 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 	if (g_messaging) {
 		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
 		g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
+		safMessageDispatcher.createActorAdjustments = SafCreateActorAdjustments;
 		safMessageDispatcher.createAdjustment = SafCreateAdjustment;
 		safMessageDispatcher.loadAdjustment = SafLoadAdjustment;
 		safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;

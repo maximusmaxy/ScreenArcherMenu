@@ -131,32 +131,39 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
 		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
+		break;
 	}
-	break;
 	case SAF::kSafAdjustmentLoad:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
 		SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
+		break;
 	}
-	break;
 	case SAF::kSafAdjustmentErase:
 	{
 		auto data = (SAF::AdjustmentMessage*)msg->data;
 		SAF::g_adjustmentManager.RemoveAdjustment(data->formId, data->handle);
+		break;
 	}
-	break;
 	case SAF::kSafAdjustmentReset:
 	{
 		auto data = (SAF::AdjustmentMessage*)msg->data;
 		SAF::g_adjustmentManager.ResetAdjustment(data->formId, data->handle);
+		break;
 	}
-	break;
 	case SAF::kSafAdjustmentTransform:
 	{
 		auto data = (SAF::AdjustmentTransformMessage*)msg->data;
 		SAF::g_adjustmentManager.SetTransform(data);
+		break;
 	}
-	break;
+	case SAF::kSafAdjustmentActor:
+	{
+		auto data = (SAF::AdjustmentActorMessage*)msg->data;
+		std::shared_ptr<SAF::ActorAdjustments> adjustments = SAF::g_adjustmentManager.CreateActorAdjustment(data->formId);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), data->mod);
+		break;
+	}
 	}
 }
 

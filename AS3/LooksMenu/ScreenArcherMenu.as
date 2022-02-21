@@ -538,8 +538,7 @@
 		
 		internal function selectMfgFile(id:int)
 		{
-			var update:Boolean = (this.menuStack[this.menuStack.length - 1] == MORPH_STATE);
-			Data.loadMfg(id, update);
+			Data.loadMfg(id);
 		}
 		
 		internal function selectAdjustmentFile(id:int)
