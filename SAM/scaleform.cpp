@@ -328,24 +328,16 @@ void HideMenu::Invoke(Args * args)
 void Test::Invoke(Args * args)
 {
 	if (!selected.refr) return;
-	//std::shared_ptr<SAF::ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
-	//if (!adjustments) return;
-	//std::shared_ptr<SAF::Adjustment> adjustment = adjustments->GetAdjustment(1);
-	//if (!adjustment) return;
+	std::shared_ptr<SAF::ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<SAF::Adjustment> adjustment = adjustments->GetAdjustment(1);
+	if (!adjustment) return;
 
-	//SAF::NodeSet overrides = adjustments->nodeSets->overrides;
-	//for (auto& name : overrides) {
-	//	adjustments->NegateTransform(adjustment, name);
-	//}
-	//adjustments->UpdateAllAdjustments(adjustment);
-
-	auto node = selected.refr->GetActorRootNode(false);
-
-	_Log("Refs? ", node->m_uiRefCount);
-
-	node = selected.refr->GetActorRootNode(false);
-
-	_Log("Incresed? ", node->m_uiRefCount);
+	SAF::NodeSet overrides = adjustments->nodeSets->overrides;
+	for (auto& name : overrides) {
+		adjustments->NegateTransform(adjustment, name);
+	}
+	adjustments->UpdateAllAdjustments(adjustment);
 }
 
 void Test2::Invoke(Args* args)

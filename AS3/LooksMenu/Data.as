@@ -228,6 +228,18 @@
 			}
 		}
 		
+		public static function negateAdjustment()
+		{
+			try
+			{
+				sam.NegateAdjustment(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to negate adjustment");
+			}
+		}
+		
 		public static function loadCategories()
 		{
 			try {

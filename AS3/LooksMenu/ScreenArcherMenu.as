@@ -55,6 +55,7 @@
 		internal var buttonHintConfirm:BSButtonHintData;
 		internal var buttonHintSwap:BSButtonHintData;
 		internal var buttonHintNew:BSButtonHintData;
+		internal var buttonHintNegate:BSButtonHintData;
 		
 		internal var closeTimer:Timer;
 		private var delayClose:Boolean = false;
@@ -118,14 +119,16 @@
 			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirm);
 			buttonHintSwap = new BSButtonHintData("$SAM_Swap","Z","PSN_R2","Xenon_R2",1,swap);
 			buttonHintNew = new BSButtonHintData("$SAM_New","X","PSN_L1","Xenon_L1",1,newButton);
+			buttonHintNegate = new BSButtonHintData("$SAM_Negate","X","PSN_L1","Xenon_L1",1,negate);
 			buttonHintData.push(buttonHintExit);
+			buttonHintData.push(buttonHintBack);
 			buttonHintData.push(buttonHintSave);
 			buttonHintData.push(buttonHintLoad);
 			buttonHintData.push(buttonHintReset);
-			buttonHintData.push(buttonHintBack);
-			buttonHintData.push(buttonHintConfirm);
-			buttonHintData.push(buttonHintSwap);
+			buttonHintData.push(buttonHintNegate);
 			buttonHintData.push(buttonHintNew);
+			buttonHintData.push(buttonHintSwap);
+			buttonHintData.push(buttonHintConfirm);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
 		}
 		
@@ -245,6 +248,8 @@
 						save();
 					} else if (buttonHintNew.ButtonVisible) {
 						newButton();
+					} else if (buttonHintNegate.ButtonVisible) {
+						negate();
 					}
 					break;
 				case 90://Z
@@ -536,6 +541,11 @@
 			}
 		}
 		
+		internal function negate():void
+		{
+			Data.negateAdjustment();
+		}
+		
 		internal function selectMfgFile(id:int)
 		{
 			Data.loadMfg(id);
@@ -638,6 +648,7 @@
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = false;
 					break;
 				case ADJUSTMENT_STATE :
 					buttonHintExit.ButtonVisible = false;
@@ -648,8 +659,19 @@
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = true;
+					buttonHintNegate.ButtonVisible = false;
 					break;
 				case TRANSFORM_STATE :
+					buttonHintExit.ButtonVisible = false;
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintBack.ButtonVisible = true;
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintSwap.ButtonVisible = true;
+					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = true;
+					break;
 				case IDLECATEGORY_STATE:
 				case IDLE_STATE:
 					buttonHintExit.ButtonVisible = false;
@@ -660,6 +682,7 @@
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = false;
 					break;
 				case MORPH_STATE :
 				case MORPHCATEGORY_STATE:
@@ -671,6 +694,7 @@
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = false;
 					break;
 				case SAVEMFG_STATE :
 				case SAVEADJUSTMENT_STATE:
@@ -682,6 +706,7 @@
 					buttonHintConfirm.ButtonVisible = true;
 					buttonHintSwap.ButtonVisible = false;
 					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = false;
 					break;
 				default:
 					buttonHintExit.ButtonVisible = false;
@@ -692,6 +717,7 @@
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = false;
 			}
 		};
 

@@ -1,52 +1,100 @@
+/***** BEGIN LICENSE BLOCK *****
+BSD License
+Copyright (c) 2005-2015, NIF File Format Library and Tools
+All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. The name of the NIF File Format Library and Tools project may not be
+   used to endorse or promote products derived from this software
+   without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+***** END LICENCE BLOCK *****/
+
+//Most of this is from nifskope
+//https://github.com/niftools/nifskope/blob/develop/src/data/niftypes.h
+
 #pragma once
 
 #include "f4se/NiTypes.h"
 
-#include <Eigen/Dense>
-
 namespace SAF {
-	class SafTransform {
+
+	class Quat {
 	public:
-		float x;
-		float y;
-		float z;
-		float yaw;
-		float pitch;
-		float roll;
-		float scale;
+		float wxyz[4];
 
-		SafTransform() :
-			x(0.0f), y(0.0f), z(0.0f),
-			yaw(0.0f), pitch(0.0f), roll(0.0f),
-			scale(1.0f)
-		{}
+		Quat() {}
 
-		SafTransform(float x, float y, float z, float yaw, float pitch, float roll, float scale) :
-			x(x), y(y), z(z),
-			yaw(yaw), pitch(pitch), roll(roll),
-			scale(scale)
-		{}
-
-		SafTransform(NiTransform transform)
-		{
-			x = transform.pos.x;
-			y = transform.pos.y;
-			z = transform.pos.z;
-			transform.rot.GetEulerAngles(&yaw, &pitch, &roll);
-			scale = transform.scale;
+		Quat(float w, float x, float y, float z) {
+			wxyz[0] = w;
+			wxyz[1] = x;
+			wxyz[2] = y;
+			wxyz[3] = z;
 		}
 
-		NiTransform ToNi();
-		void FromNi(NiTransform transform);
+		void Normalize()
+		{
+			float mag = (
+				(wxyz[0] * wxyz[0])
+				+ (wxyz[1] * wxyz[1])
+				+ (wxyz[2] * wxyz[2])
+				+ (wxyz[3] * wxyz[3])
+				);
+			wxyz[0] /= mag;
+			wxyz[1] /= mag;
+			wxyz[2] /= mag;
+			wxyz[3] /= mag;
+		}
 
-		Eigen::Matrix3f GetMatrix();
-		void SetMatrix(Eigen::Matrix3f);
+		void Negate()
+		{
+			wxyz[0] = -wxyz[0];
+			wxyz[1] = -wxyz[1];
+			wxyz[2] = -wxyz[2];
+			wxyz[3] = -wxyz[3];
+		}
 
-		NiTransform Slerp(float scalar);
+		float& operator[](unsigned int i)
+		{
+			return wxyz[i];
+		}
+
+		const float& operator[](unsigned int i) const
+		{
+			return wxyz[i];
+		}
+
+		Quat operator*=(float s)
+		{
+			for (int c = 0; c < 4; c++)
+				wxyz[c] *= s;
+
+			return *this;
+		}
+		
+		Quat operator*(float s) const
+		{
+			Quat q(*this);
+			return (q *= s);
+		}
 	};
 
-
-	NiTransform SlerpNiTransform(NiTransform transform, float scalar);
+	NiTransform SlerpNiTransform(NiTransform &transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform src, NiTransform dest);
 	NiTransform NegateNiTransform2(NiTransform src, NiTransform dest);
 }
