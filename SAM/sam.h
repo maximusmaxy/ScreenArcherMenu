@@ -6,6 +6,8 @@
 #include "f4se/GameForms.h"
 #include "f4se/ScaleformValue.h"
 
+#include "json.h"
+
 #include <unordered_map>
 
 class SelectedRefr {
@@ -21,6 +23,20 @@ public:
 };
 
 extern SelectedRefr selected;
+
+class SavedMenuData {
+public:
+	TESObjectREFR* refr;
+	Json::Value data;
+
+	void Save(GFxValue* data);
+	bool Load(GFxMovieRoot* root, GFxValue* res);
+	void Clear();
+
+	void GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value);
+};
+
+extern SavedMenuData saveData;
 
 typedef std::vector<std::pair<std::string, std::string>> MenuList;
 typedef std::vector<std::pair<std::string, MenuList>> MenuCategoryList;

@@ -6,20 +6,19 @@
 		public static var f4seObj:Object;
 		public static var stage:DisplayObject;
 		
-		public static var menuOptions:Object;
-		public static var menuValues:Array;
+		public static var menuOptions:Object = {};
+		public static var menuValues:Array = [];
 		
-        public static var morphValues:Array;
-		public static var morphFiles:Array;
+		public static var morphFiles:Array = [];
 
-		public static var selectedAdjustment:int;
+		public static var selectedAdjustment:int = 0;
 		public static var selectedCategory:int = 0;
-		public static var selectedBone:int;
-		public static var boneTransform:Array;
-		public static var boneName:String;
+		public static var selectedBone:int = 0;
+		public static var boneTransform:Array = [];
+		public static var boneName:String = "";
 		
-		public static var eyeX:Number;
-		public static var eyeY:Number;
+		public static var poseHandles:Array = [];
+
 		public static var delayClose:Boolean;
 		public static var hideMenu:Boolean;
 		
@@ -27,16 +26,16 @@
 		public static var scriptHandleHigh:uint;
 		public static var scriptHandleLow:uint;
 		
-		public static var hackValues:Array;
-		
 		public static var selectedSlider:SliderListEntry = null;
 		public static var selectedText:SliderListEntry = null;
 		
 		public static const MORPH_DIRECTORY:String = "Data/F4SE/Plugins/SAM/FaceMorphs";
 		public static const ADJUSTMENT_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Adjustments";
+		public static const POSE_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Poses";
 
         public static const MAIN_MENU:Vector.<String> = new <String>[
             "$SAM_PoseAdjustMenu",
+			"$SAM_PoseExporter",
 			"$SAM_PlayIdleMenu",
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
@@ -75,6 +74,57 @@
 			stage = stageObj;
 			
 			hideMenu = true;
+			
+			if (data.saved) {
+				menuOptions = data.saved.options;
+				menuValues = data.saved.values;
+				morphsFiles = data.saved.files;
+				selectedAdjustment = data.saved.adjustment;
+				selectedCategory = data.saved.category;
+				selectedBone = data.saved.bone;
+				boneTransform = data.saved.transform;
+				boneName = data.saved.boneName;
+				poseHandles = data.saved.handles;
+			}
+		}
+		
+		public static function saveState(menuState:int, menuStack:Array, sliderPos:int, sliderPosStack:Array)
+		{
+			var data:Object = {
+				state: menuState,
+				stack: menuStack,
+				options: menuOptions,
+				values: menuValues,
+				files: morphFiles,
+				adjustment: selectedAdjustment,
+				category: selectedCategory,
+				bone: selectedBone,
+				transform: boneTransform,
+				boneName: boneName,
+				handles: poseHandles,
+				slider: sliderPos,
+				sliders: sliderPosStack
+			}
+			
+			try 
+			{
+				sam.SaveState(data);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to save state");
+			}
+		}
+		
+		public static function clearState()
+		{
+			try {
+				sam.ClearState();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to clear state");
+			}
 		}
 		
 		public static function loadAdjustmentList()
@@ -153,12 +203,17 @@
 				if (adjustment.persistent) {
 					menuValues[3] = adjustment.persistent;				
 				}
+				if (adjustment.groups) {
+					for (var i:int = 0; i < adjustment.groups.length; i++) {
+						menuValues.push(adjustment.groups[i]);
+					}
+				}
 			}
 			catch (e:Error)
 			{
 				trace("Failed to get adjustment");
 				if (Util.debug) {
-					menuValues = [50, 0, 0, true];
+					menuValues = [50, 0, 0, true, "Head", "Left Arm", "Left Leg"]
 				}
 			}
 		}
@@ -232,11 +287,23 @@
 		{
 			try
 			{
-				sam.NegateAdjustment(selectedAdjustment);
+				sam.NegateAdjustment(boneName, selectedAdjustment);
 			}
 			catch (e:Error)
 			{
 				trace("Failed to negate adjustment");
+			}
+		}
+		
+		public static function negateAdjustmentGroup(id:int)
+		{
+			try
+			{
+				sam.NegateAdjustmentGroup(selectedAdjustment, menuValues[id]);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to negate adjustment group");
 			}
 		}
 		
@@ -272,12 +339,11 @@
 			{
 				trace("Failed to load bones");
 				if (Util.debug) {
-					menuOptions = [
-						"COM",
-						"Pelvis",
-						"Spine1",
-						"Spine2"
-					];
+					menuOptions = [];
+					for (var i:int = 0; i < 30; i++)
+					{
+						menuOptions[i] = i.toString();
+					}
 				}
 			}
 		}
@@ -515,21 +581,18 @@
 		{
 			try 
 			{
-				hackValues = sam.GetHacks();
+				menuValues = sam.GetHacks();
 			}
 			catch (e:Error)
 			{
 				trace("Failed to load hacks");
-				hackValues = new Array();
-				for (var i:int = 0; i < HACK_NAMES.length; i++) {
-					hackValues[i] = false;
-				}
+				menuValues = [false, false, false];
 			}
 		}
 		
 		public static function setHack(id:int, enabled:Boolean)
 		{
-			hackValues[id] = enabled;
+			menuValues[id] = enabled;
 			try {
 				switch (id)
 				{
@@ -601,5 +664,93 @@
 				trace("Failed to reset idle");
 			}
 		}
-    }
+		
+		public static function getPoseList() 
+		{
+			try {
+				var poses:Object = sam.GetPoseList();
+				menuOptions = poses.names;
+				menuValues = poses.values;
+				poseHandles = poses.handles;
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get pose list");
+				if (Util.debug) {
+					menuOptions = ["1", "2", "3"];
+					menuValues = [false, true, false];
+					poseHandles = [1, 2, 3];
+				} else {
+					menuOptions = [];
+					menuValues = [];
+					poseHandles = [];
+				}
+			}
+		}
+		
+		public static function savePose(filename:String)
+		{
+			try 
+			{
+				var handles:Array = []
+				for (var i:int = 0; i < menuValues.length; i++) {
+					if (menuValues[i]) {
+						handles.push(poseHandles[i]);
+					}
+				}
+				sam.SavePose(filename, handles);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to save pose");
+			}
+		}
+		
+		public static function loadPose(id:int)
+		{
+			try 
+			{
+				sam.LoadPose(morphFiles[id]);
+			}
+			catch (e:Error)
+			{
+				trace("failed to load pose");
+			}
+		}
+		
+		public static function loadPoseFiles()
+		{
+			morphFiles = new Array();
+			try
+			{
+				var files:Array = f4seObj.GetDirectoryListing(POSE_DIRECTORY,"*.json");
+				for (var i:int = 0; i < files.length; i++) {
+					var filename = files[i]["nativePath"]; //name is bugged so use nativePath instead
+					var startIndex:int = filename.lastIndexOf("\\") + 1;
+					morphFiles[i] = filename.substring(startIndex, filename.length - 5);
+				}
+			}
+			catch (e:Error)
+			{
+				trace("Get directory listing failed");
+				if (Util.debug){
+					for (var y:int = 0; y < 1000; y++) {
+						morphFiles[y] = y.toString();
+					}
+				}
+			}
+		}
+		
+		public static function resetPose()
+		{
+			try
+			{
+				sam.ResetPose();
+			}
+			catch (e:Error)
+			{
+				trace("Reset pose failed");
+			}
+		}
+	}
 }

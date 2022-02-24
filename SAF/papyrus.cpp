@@ -8,6 +8,7 @@
 #include "GameObjects.h"
 
 #include "adjustments.h"
+#include "conversions.h"
 
 #include "f4se_common/Utilities.h"
 
@@ -92,7 +93,7 @@ namespace SAF {
 		return result;
 	}
 
-	Transform TransformToPapyrus(NiTransform transform, BSFixedString name, bool override) {
+	Transform TransformToPapyrus(NiTransform& transform, BSFixedString name, bool override) {
 		Transform result;
 
 		result.Set<BSFixedString>("name", name);
@@ -100,29 +101,27 @@ namespace SAF {
 		result.Set<float>("x", transform.pos.x);
 		result.Set<float>("y", transform.pos.y);
 		result.Set<float>("z", transform.pos.z);
-		float heading, attitude, bank;
-		transform.rot.GetEulerAngles(&heading, &attitude, &bank);
-		//heading, attitude, bank
-		//pitch, roll, yaw
-		result.Set<float>("pitch", -heading);
-		result.Set<float>("roll", -attitude);
-		result.Set<float>("yaw", -bank);
+		float yaw, pitch, roll;
+		NiToEuler(transform.rot, yaw, pitch, roll);
+		result.Set<float>("yaw", yaw);
+		result.Set<float>("pitch", pitch);
+		result.Set<float>("roll", roll);
 		result.Set<float>("scale", transform.scale);
 
 		return result;
 	}
 
-	NiTransform TransformFromPapyrus(Transform transform) {
+	NiTransform TransformFromPapyrus(Transform& transform) {
 		NiTransform result;
 
 		transform.Get<float>("x", &result.pos.x);
 		transform.Get<float>("y", &result.pos.y);
 		transform.Get<float>("z", &result.pos.z);
-		float heading, attitude, bank;
-		transform.Get<float>("pitch", &heading);
-		transform.Get<float>("roll", &attitude);
-		transform.Get<float>("yaw", &bank);
-		result.rot.SetEulerAngles(-heading, -attitude, -bank);
+		float yaw, pitch, roll;
+		transform.Get<float>("yaw", &yaw);
+		transform.Get<float>("pitch", &pitch);
+		transform.Get<float>("roll", &roll);
+		NiFromEuler(result.rot, yaw, pitch, roll);
 		transform.Get<float>("scale", &result.scale);
 
 		return result;
@@ -267,17 +266,35 @@ namespace SAF {
 
 	void PapyrusLoadPose(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
 	{
-		//todo
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return;
+
+		adjustments->LoadPose(std::string(filename));
+		adjustments->UpdateAllAdjustments();
 	}
 
 	void PapyrusSavePose(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
 	{
-		//todo
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return;
+
+		std::vector<UInt32> handles;
+		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+			if (!adjustment->saved && !adjustment->isDefault) {
+				handles.push_back(adjustment->handle);
+			}
+		});
+
+		adjustments->SavePose(std::string(filename), handles);
 	}
 
 	void PapyrusResetPose(StaticFunctionTag*, TESObjectREFR* refr)
 	{
-		//todo
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return;
+
+		adjustments->ResetPose();
+		adjustments->UpdateAllAdjustments();
 	}
 
 	bool RegisterPapyrus(VirtualMachine* vm)

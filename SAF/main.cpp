@@ -164,6 +164,24 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), data->mod);
 		break;
 	}
+	case SAF::kSafAdjustmentNegate:
+	{
+		auto data = (SAF::AdjustmentNegateMessage*)msg->data;
+		SAF::g_adjustmentManager.NegateAdjustments(data->formId, data->handle, data->group);
+		break;
+	}
+	case SAF::kSafPoseLoad:
+	{
+		auto data = (SAF::PoseMessage*)msg->data;
+		SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
+		break;
+	}
+	case SAF::kSafPoseReset:
+	{
+		auto data = (SAF::PoseMessage*)msg->data;
+		SAF::g_adjustmentManager.ResetPose(data->formId);
+		break;
+	}
 	}
 }
 

@@ -10,6 +10,7 @@
 
 #include "adjustments.h"
 #include "util.h"
+#include "conversions.h"
 
 namespace SAF {
 
@@ -20,6 +21,16 @@ namespace SAF {
 			str->push_back(ret);
 			ret = file->Read8();
 		}
+	}
+
+	float ReadFloat(Json::Value& value) {
+		if (value.isDouble()) {
+			return value.asFloat();
+		}
+		else if (value.isString()) {
+			return std::stof(value.asString());
+		}
+		return 0.0f;
 	}
 
 	bool LoadNodeSetsFile(std::string path)
@@ -56,6 +67,8 @@ namespace SAF {
 
 			Json::Value offsets = value["offsets"];
 			Json::Value overrides = value["overrides"];
+			Json::Value groups = value["groups"];
+			Json::Value::Members groupMembers = groups.getMemberNames();
 
 			NodeSets nodeSet;
 
@@ -75,6 +88,18 @@ namespace SAF {
 				nodeSet.allOrBase.insert(base);
 				nodeSet.allOrBase.insert(overrider);
 				nodeSet.baseMap[overrider] = base;
+			}
+
+			for (auto& name : groupMembers) {
+				for (auto& node : groups[name]) {
+					std::string base = node.asString();
+					if (nodeSet.base.count(base)) {
+						nodeSet.groups[name].push_back(base);
+					}
+					else {
+						_LogCat("Could not find node for group: ", base);
+					}
+				}
 			}
 
 			UInt64 key = formId;
@@ -195,20 +220,28 @@ namespace SAF {
 		Json::StyledWriter writer;
 		Json::Value value;
 
-		float heading, attitude, bank;
+		char buffer[32];
+
+		float yaw, pitch, roll;
 		adjustment->ForEachTransform([&](std::string name, NiTransform* transform) {
-			if (!TransormIsDefault(transform)) {
+			if (!TransormIsDefault(*transform)) {
 				Json::Value member;
-				member["x"] = Json::Value(transform->pos.x);
-				member["y"] = Json::Value(transform->pos.y);
-				member["z"] = Json::Value(transform->pos.z);
-				//heading, attitude, bank
-				//pitch, roll, yaw
-				transform->rot.GetEulerAngles(&heading, &attitude, &bank);
-				member["pitch"] = Json::Value(heading * RADIAN_TO_DEGREE);
-				member["roll"] = Json::Value(attitude * RADIAN_TO_DEGREE);
-				member["yaw"] = Json::Value(bank * RADIAN_TO_DEGREE);
-				member["scale"] = Json::Value(transform->scale);
+				
+				sprintf_s(buffer, "%.06f", transform->pos.x);
+				member["x"] = Json::Value(buffer);
+				sprintf_s(buffer, "%.06f", transform->pos.y);
+				member["y"] = Json::Value(buffer);
+				sprintf_s(buffer, "%.06f", transform->pos.z);
+				member["z"] = Json::Value(buffer);
+				NiToDegree(transform->rot, yaw, pitch, roll);
+				sprintf_s(buffer, "%.02f", yaw);
+				member["yaw"] = Json::Value(buffer);
+				sprintf_s(buffer, "%.02f", pitch);
+				member["pitch"] = Json::Value(buffer);
+				sprintf_s(buffer, "%.02f", roll);
+				member["roll"] = Json::Value(buffer);
+				sprintf_s(buffer, "%.06f", transform->scale);
+				member["scale"] = Json::Value(buffer);
 				value[name] = member;
 			}
 		});
@@ -259,17 +292,18 @@ namespace SAF {
 		try {
 			Json::Value::Members members = value.getMemberNames();
 
-			float heading, attitude, bank;
+			float yaw, pitch, roll;
 			for (auto& member : members) {
 				NiTransform transform;
-				transform.pos.x = value[member]["x"].asFloat();
-				transform.pos.y = value[member]["y"].asFloat();
-				transform.pos.z = value[member]["z"].asFloat();
-				heading = value[member]["pitch"].asFloat() * DEGREE_TO_RADIAN;
-				attitude = value[member]["roll"].asFloat() * DEGREE_TO_RADIAN;
-				bank = value[member]["yaw"].asFloat() * DEGREE_TO_RADIAN;
-				transform.rot.SetEulerAngles(heading, attitude, bank);
-				transform.scale = value[member]["scale"].asFloat();
+				
+				transform.pos.x = ReadFloat(value[member]["x"]);
+				transform.pos.y = ReadFloat(value[member]["y"]);
+				transform.pos.z = ReadFloat(value[member]["z"]);
+				yaw = ReadFloat(value[member]["yaw"]);
+				pitch = ReadFloat(value[member]["pitch"]);
+				roll = ReadFloat(value[member]["roll"]);
+				NiFromDegree(transform.rot, yaw, pitch, roll);
+				transform.scale = ReadFloat(value[member]["scale"]);
 				(*map)[member] = transform;
 			}
 		}
@@ -281,13 +315,98 @@ namespace SAF {
 		return true;
 	}
 
-	bool SavePoseFile(std::string filename, std::shared_ptr<ActorAdjustments> adjustments) {
-		//todo
+	bool SavePoseFile(std::string filename, TransformMap* poseMap) {
+		Json::StyledWriter writer;
+		Json::Value value;
+
+		char buffer[32];
+
+		float yaw, pitch, roll;
+		for (auto& kvp : *poseMap) {
+			Json::Value member;
+			sprintf_s(buffer, "%.06f", kvp.second.pos.x);
+			member["x"] = Json::Value(buffer);
+			sprintf_s(buffer, "%.06f", kvp.second.pos.y);
+			member["y"] = Json::Value(buffer);
+			sprintf_s(buffer, "%.06f", kvp.second.pos.z);
+			member["z"] = Json::Value(buffer);
+			NiToDegree(kvp.second.rot, yaw, pitch, roll);
+			sprintf_s(buffer, "%.02f", yaw);
+			member["yaw"] = Json::Value(buffer);
+			sprintf_s(buffer, "%.02f", pitch);
+			member["pitch"] = Json::Value(buffer);
+			sprintf_s(buffer, "%.02f", roll);
+			member["roll"] = Json::Value(buffer);
+			sprintf_s(buffer, "%.06f", kvp.second.scale);
+			member["scale"] = Json::Value(buffer);
+			value[kvp.first] = member;
+		}
+
+		IFileStream file;
+
+		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
+		path += filename;
+		path += ".json";
+
+		IFileStream::MakeAllDirs(path.c_str());
+		if (!file.Create(path.c_str())) {
+			_LogCat("Failed to create file ", filename);
+			return false;
+		}
+
+		std::string jsonString = writer.write(value);
+		file.WriteString(jsonString.c_str());
+		file.Close();
+
 		return true;
 	}
 
-	bool LoadPoseFile(std::string filename, std::shared_ptr<ActorAdjustments> adjustments) {
-		//todo
+	bool LoadPoseFile(std::string filename, TransformMap* poseMap) {
+		IFileStream file;
+
+		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
+		path += filename;
+		path += ".json";
+
+		if (!file.Open(path.c_str())) {
+			_LogCat(filename, " not found");
+			return false;
+		}
+
+		std::string adjustmentString;
+		ReadAll(&file, &adjustmentString);
+		file.Close();
+
+		Json::Reader reader;
+		Json::Value value;
+
+		if (!reader.parse(adjustmentString, value)) {
+			_LogCat("Failed to parse ", filename);
+			return false;
+		}
+
+		try {
+			Json::Value::Members members = value.getMemberNames();
+
+			float yaw, pitch, roll;
+			for (auto& member : members) {
+				NiTransform transform;
+				transform.pos.x = ReadFloat(value[member]["x"]);
+				transform.pos.y = ReadFloat(value[member]["y"]);
+				transform.pos.z = ReadFloat(value[member]["z"]);
+				yaw = ReadFloat(value[member]["yaw"]);
+				pitch = ReadFloat(value[member]["pitch"]);
+				roll = ReadFloat(value[member]["roll"]);
+				NiFromDegree(transform.rot, yaw, pitch, roll);
+				transform.scale = ReadFloat(value[member]["scale"]);
+				(*poseMap)[member] = transform;
+			}
+		}
+		catch (...) {
+			_LogCat("Failed to read ", filename);
+			return false;
+		}
+
 		return true;
 	}
 

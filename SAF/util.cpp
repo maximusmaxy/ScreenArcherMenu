@@ -1,6 +1,7 @@
 #include "util.h"
 
 #include "f4se/GameData.h"
+#include "conversions.h"
 
 void _Log(std::string msg, UInt64 num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
@@ -35,16 +36,16 @@ UInt32 GetFormID(std::string modName, std::string formId) {
 	return 0;
 }
 
-bool TransormIsDefault(NiTransform* transform) {
-	float heading, attitude, bank;
-	transform->rot.GetEulerAngles(&heading, &attitude, &bank);
-	if (transform->pos.x == 0.0f &&
-		transform->pos.y == 0.0f &&
-		transform->pos.z == 0.0f &&
-		heading == 0.0f &&
-		attitude == 0.0f &&
-		bank == 0.0f &&
-		transform->scale == 1.0f)
+bool TransormIsDefault(NiTransform& transform) {
+	float yaw, pitch, roll;
+	SAF::NiToEuler(transform.rot, yaw, pitch, roll);
+	if (transform.pos.x == 0.0f &&
+		transform.pos.y == 0.0f &&
+		transform.pos.z == 0.0f &&
+		yaw == 0.0f &&
+		pitch == 0.0f &&
+		roll == 0.0f &&
+		transform.scale == 1.0f)
 		return true;
 	return false;
 }

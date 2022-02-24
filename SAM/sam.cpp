@@ -21,6 +21,8 @@ SelectedRefr selected;
 MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
 
+SavedMenuData saveData;
+
 MenuCategoryList* GetMenu(MenuCache* cache)
 {
 	if (!selected.refr) return nullptr;
@@ -86,7 +88,7 @@ void SelectedRefr::Clear() {
 }
 
 void OnMenuOpen() {
-	_DMESSAGE("Menu opened");
+	//_DMESSAGE("Menu opened");
 
 	static BSFixedString samMenu("ScreenArcherMenu");
 	static BSFixedString photoMenu("PhotoMenu");
@@ -110,11 +112,16 @@ void OnMenuOpen() {
 	}
 	data.SetMember("title", &title);
 
+	GFxValue saved;
+	if (saveData.Load(root, &saved)) {
+		data.SetMember("saved", &saved);
+	}
+
 	root->Invoke("root1.Menu_mc.menuOpened", nullptr, &data, 1);
 }
 
 void OnMenuClose() {
-	_DMESSAGE("Menu closed");
+	//_DMESSAGE("Menu closed");
 
 	static BSFixedString photoMenu("PhotoMenu");
 
@@ -126,7 +133,7 @@ void OnMenuClose() {
 void OnConsoleRefUpdate() {
 	static BSFixedString samMenu("ScreenArcherMenu");
 
-	_DMESSAGE("Console ref updated");
+	//_DMESSAGE("Console ref updated");
 
 	TESObjectREFR * refr = GetRefr();
 	if (selected.refr != refr) {
@@ -163,6 +170,11 @@ void OnConsoleRefUpdate() {
 				data.SetMember("hacks", &hacks);
 				break;
 			}
+			case 14:
+			case 15: //idles
+			{
+				break;
+			}
 			default: isReset = true;
 		}
 
@@ -178,6 +190,114 @@ void OnConsoleRefUpdate() {
 
 		root->Invoke("root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
 	}
+}
+
+class SavedDataVisitor : public GFxValue::ObjectInterface::ObjVisitor
+{
+public:
+	Json::Value json;
+
+	void Visit(const char* member, GFxValue* value) {
+		json[member] = GetJsonValue(value);
+	}
+
+private:
+	Json::Value GetJsonValue(GFxValue* value) {
+		switch (value->GetType()) {
+		case GFxValue::kType_Bool:
+			return Json::Value(value->GetBool());
+		case GFxValue::kType_Int:
+			return Json::Value(value->GetInt());
+		case GFxValue::kType_UInt:
+		{
+			UInt64 uint = value->GetUInt();
+			return Json::Value(uint);
+		}
+		case GFxValue::kType_Number:
+			return Json::Value(value->GetNumber());
+		case GFxValue::kType_String:
+			return Json::Value(value->GetString());
+		case GFxValue::kType_Array:
+		{
+			Json::Value arr(Json::ValueType::arrayValue);
+			UInt32 size = value->GetArraySize();
+			for (int i = 0; i < size; ++i) {
+				GFxValue arrValue;
+				value->GetElement(i, &arrValue);
+				arr[i] = GetJsonValue(&arrValue);
+			}
+			return arr;
+		}
+		default:
+			return Json::Value(Json::ValueType::nullValue);
+		}
+	}
+};
+
+void SavedMenuData::Save(GFxValue* saveData) {
+	if (!selected.refr) return;
+
+	//copying to a json for saved menu data instead of trying to understand how GFx managed memory works
+	SavedDataVisitor visitor;
+	saveData->VisitMembers(&visitor);
+	data = visitor.json;
+	refr = selected.refr;
+}
+
+bool SavedMenuData::Load(GFxMovieRoot* root, GFxValue* result) {
+	//if ref updated save data is invalidated so ignore
+	if (!refr || selected.refr != refr) {
+		Clear();
+		return false;
+	}
+
+	root->CreateObject(result);
+	
+	Json::Value::Members memberNames = data.getMemberNames();
+
+	for (auto& name : memberNames) {
+		GFxValue GFxMember;
+		GetGFxValue(root, &GFxMember, data[name]);
+		result->SetMember(name.c_str(), &GFxMember);
+	}
+
+	Clear();
+	return true;
+}
+
+void SavedMenuData::GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value) {
+	switch (value.type()) {
+	case Json::ValueType::booleanValue:
+		result->SetBool(value.asBool());
+		break;
+	case Json::ValueType::intValue:
+		result->SetInt((SInt32)value.asInt());
+		break;
+	case Json::ValueType::uintValue:
+		result->SetUInt((UInt32)value.asUInt());
+		break;
+	case Json::ValueType::realValue:
+		result->SetNumber(value.asDouble());
+		break;
+	case Json::ValueType::stringValue:
+		result->SetString(value.asCString());
+		break;
+	case Json::ValueType::arrayValue:
+	{
+		root->CreateArray(result);
+
+		for (auto& member : value) {
+			GFxValue arrValue;
+			GetGFxValue(root, &arrValue, member);
+			result->PushBack(&arrValue);
+		}
+		break;
+	}
+	}
+}
+
+void SavedMenuData::Clear() {
+	refr = nullptr;
 }
 
 enum {

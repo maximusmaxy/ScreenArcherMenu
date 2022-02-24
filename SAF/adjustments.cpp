@@ -21,15 +21,6 @@ namespace SAF {
 	RelocAddr<GetBaseModelRootNode> getBaseModelRootNode(0x323BB0);
 	RelocAddr<GetRefrModelFilename> getRefrModelFilename(0x408360);
 
-	NiTransform DefaultTransform()
-	{
-		NiTransform transform;
-		transform.pos = NiPoint3(0.0f, 0.0f, 0.0f);
-		transform.rot.SetEulerAngles(0.0f, 0.0f, 0.0f);
-		transform.scale = 1.0f;
-		return transform;
-	}
-
 	NiTransform Adjustment::GetTransform(std::string name)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
@@ -41,7 +32,7 @@ namespace SAF {
 		std::shared_lock<std::shared_mutex> lock(mutex);
 		if (map.count(name))
 			return map[name];
-		return DefaultTransform();
+		return TransformIdentity();
 	}
 
 	void Adjustment::SetTransform(std::string name, NiTransform transform)
@@ -59,7 +50,7 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform def = DefaultTransform();
+		NiTransform def = TransformIdentity();
 		map[name] = def;
 	}
 
@@ -67,7 +58,7 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform transform = map.count(name) ? map[name] : DefaultTransform();
+		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
 
 		transform.pos.x = x;
 		transform.pos.y = y;
@@ -76,13 +67,13 @@ namespace SAF {
 		map[name] = transform;
 	}
 
-	void Adjustment::SetTransformRot(std::string name, float heading, float attitude, float bank)
+	void Adjustment::SetTransformRot(std::string name, float yaw, float pitch, float roll)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform transform = map.count(name) ? map[name] : DefaultTransform();
+		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
 
-		transform.rot.SetEulerAngles(heading, attitude, bank);
+		NiFromDegree(transform.rot, yaw, pitch, roll);
 
 		map[name] = transform;
 	}
@@ -91,7 +82,7 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform transform = map.count(name) ? map[name] : DefaultTransform();
+		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
 
 		transform.scale = scale;
 		map[name] = transform;
@@ -116,7 +107,7 @@ namespace SAF {
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 		for (auto& nodeName : *set) {
-			NiTransform transform = map.count(name) ? map[name] : DefaultTransform();
+			NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
 			functor(nodeName, &transform);
 		}
 	}
@@ -165,14 +156,6 @@ namespace SAF {
 		return true;
 	}
 
-	bool ActorAdjustments::UpdateRoot(NiNode* _root)
-	{
-		if (root == _root)
-			return false;
-		root = _root;
-		return true;
-	}
-
 	void ActorAdjustments::UpdateAdjustments(std::string name)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
@@ -184,10 +167,10 @@ namespace SAF {
 
 		NiTransform transform = baseNode->m_localTransform;
 
-		for (auto& kvp : map) {
-			if (kvp.second->HasTransform(name)) {
-				NiTransform adjust = kvp.second->scale == 1.0f ? kvp.second->GetTransform(name) :
-					kvp.second->GetScaledTransform(name, kvp.second->scale);
+		for (auto& adjustment : list) {
+			if (adjustment->HasTransform(name)) {
+				NiTransform adjust = adjustment->scale == 1.0f ? adjustment->GetTransform(name) :
+					adjustment->GetScaledTransform(name, adjustment->scale);
 				transform = transform * adjust;
 			}
 		}
@@ -219,14 +202,16 @@ namespace SAF {
 		if (persistents) {
 			for (auto& persistent : *persistents) {
 				switch (persistent.type) {
-				case kAdjustmentSerializeAdd: {
+				case kAdjustmentSerializeAdd:
+				{
 					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name);
 					adjustment->mod = persistent.mod;
 					adjustment->map = persistent.map;
 					adjustment->persistent = true;
 					break;
 				}
-				case kAdjustmentSerializeLoad: {
+				case kAdjustmentSerializeLoad:
+				{
 					removeSet.insert(persistent.name);
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.name, true);
 					adjustment->mod = persistent.mod;
@@ -234,7 +219,8 @@ namespace SAF {
 					adjustment->saved = true;
 					break;
 				}
-				case kAdjustmentSerializeRemove: {
+				case kAdjustmentSerializeRemove:
+				{
 					removedAdjustments.insert(persistent.name);
 					removeSet.insert(persistent.name);
 					break;
@@ -305,6 +291,8 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
+		if (!handle) return;
+
 		auto it = list.begin();
 		while (it != list.end()) {
 			if ((*it)->handle == handle)
@@ -320,6 +308,9 @@ namespace SAF {
 		if ((*it)->isDefault) {
 			removedAdjustments.insert((*it)->name);
 		}
+
+		if (handle == poseHandle)
+			poseHandle = 0;
 
 		list.erase(it);
 		map.erase(handle);
@@ -431,23 +422,6 @@ namespace SAF {
 		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, skeletonNode->m_localTransform));
 	}
 
-	//Sets the override node such that it negates the base node back to the a-pose position
-	void ActorAdjustments::NegateTransform2(std::shared_ptr<Adjustment> adjustment, std::string name)
-	{
-		std::lock_guard<std::shared_mutex> lock(mutex);
-
-		if (!nodeSets->baseMap.count(name)) return;
-		std::string baseName = nodeSets->baseMap[name];
-
-		if (!nodeMap.count(baseName)) return;
-		NiAVObject* baseNode = nodeMap[baseName];
-
-		if (!nodeMapBase->count(baseName)) return;
-		NiAVObject* skeletonNode = (*nodeMapBase)[baseName];
-
-		adjustment->SetTransform(name, NegateNiTransform2(baseNode->m_localTransform, skeletonNode->m_localTransform));
-	}
-
 	//Sets the override node such that it negates the base node to the specified transform position
 	void ActorAdjustments::OverrideTransform(std::shared_ptr<Adjustment> adjustment, std::string name, NiTransform transform)
 	{
@@ -460,6 +434,108 @@ namespace SAF {
 		NiAVObject* baseNode = nodeMap[baseName];
 
 		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
+	}
+
+	void ActorAdjustments::NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		if (!nodeSets->groups.count(groupName)) return;
+
+		for (auto& baseName : nodeSets->groups[groupName]) {
+			std::string overrider = baseName + g_adjustmentManager.overridePostfix;
+
+			if (nodeMap.count(baseName)) {
+
+				NiAVObject* baseNode = nodeMap[baseName];
+				if (nodeMapBase->count(baseName)) {
+
+					NiAVObject* skeletonNode = (*nodeMapBase)[baseName];
+					adjustment->SetTransform(overrider, NegateNiTransform(baseNode->m_localTransform, skeletonNode->m_localTransform));
+				}
+			}
+		}
+	}
+
+	void ActorAdjustments::SavePose(std::string filename, std::vector<UInt32> handles) {
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		if (handles.size() == 0) return;
+
+		//Order matters for applying translations so get them from the list in the correct order
+		std::vector<std::shared_ptr<Adjustment>> adjustments;
+		for (auto& adjustment : list) {
+			if (std::find_if(handles.begin(), handles.end(), [adjustment](UInt32 h) { return adjustment->handle == h; }) != handles.end())
+				adjustments.push_back(adjustment);
+		}
+
+		if (adjustments.size() == 0) return;
+
+		TransformMap poseMap;
+		for (auto& overrider : nodeSets->overrides) {
+			if (nodeSets->baseMap.count(overrider)) {
+
+				std::string baseName = nodeSets->baseMap[overrider];
+				if (nodeMap.count(baseName)) {
+					
+					NiTransform transform = nodeMap[baseName]->m_localTransform;
+
+					for (auto& adjustment : adjustments) {
+						if (adjustment->HasTransform(overrider)) {
+							transform = transform * adjustment->GetTransform(overrider);
+						}
+					}
+
+					poseMap[baseName] = transform;
+				}
+			}
+		}
+
+		SavePoseFile(filename, &poseMap);
+	}
+
+	void ActorAdjustments::LoadPose(std::string filename) {
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		TransformMap poseMap;
+		
+		if (LoadPoseFile(filename, &poseMap)) {
+
+			std::shared_ptr<Adjustment> adjustment;
+
+			for (auto& kvp : map) {
+				if (!kvp.second->saved && kvp.second->handle != poseHandle) {
+					kvp.second->Clear();
+				}
+			}
+
+			if (poseHandle && map.count(poseHandle)) {
+				adjustment = map[poseHandle];
+				adjustment->Clear();
+			}
+			else {
+				adjustment = std::make_shared<Adjustment>(nextHandle, filename);
+				map[nextHandle] = adjustment;
+				list.push_back(adjustment);
+				nextHandle++;
+
+				poseHandle = adjustment->handle;
+			}
+
+			for (auto& kvp : poseMap) {
+				std::string base = kvp.first;
+				std::string overrider = base + g_adjustmentManager.overridePostfix;
+				if (nodeMap.count(base)) {
+					adjustment->SetTransform(overrider, NegateNiTransform(nodeMap[base]->m_localTransform, kvp.second));
+				}
+			}
+		}
+	}
+
+	void ActorAdjustments::ResetPose() {
+		if (!poseHandle) return;
+
+		RemoveAdjustment(poseHandle);
 	}
 
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
@@ -577,6 +653,8 @@ namespace SAF {
 	NodeMap AdjustmentManager::CreateNodeMap(NiNode* root, NodeSet* set) {
 		NodeMap boneMap;
 
+		if (!root || !set) return boneMap;
+
 		int counter = set->size();
 		root->Visit([&](NiAVObject* object) {
 			std::string nodeName;
@@ -605,22 +683,17 @@ namespace SAF {
 
 	NodeMap* AdjustmentManager::GetActorBaseMap(std::shared_ptr<ActorAdjustments> adjustments, NodeSet* set)
 	{
-		std::string filename = (*getRefrModelFilename)(adjustments->actor);
 		NiNode* currentRoot = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
-		NiNode* oldRoot = nullptr;
 
-		if (baseNodeMapRoots.count(filename)) {
-			oldRoot = baseNodeMapRoots[filename];
+		if (currentRoot == adjustments->root) {
+			if (baseNodeMapCache.count(currentRoot))
+				return &baseNodeMapCache[currentRoot];
 		}
 
-		if (currentRoot == oldRoot) {
-			if (baseNodeMapCache.count(filename))
-				return &baseNodeMapCache[filename];
-		}
+		adjustments->root = currentRoot;
 
-		baseNodeMapRoots[filename] = currentRoot;
-		baseNodeMapCache[filename] = CreateNodeMap(currentRoot, set);
-		return &baseNodeMapCache[filename];
+		baseNodeMapCache[currentRoot] = CreateNodeMap(currentRoot, set);
+		return &baseNodeMapCache[currentRoot];
 	}
 
 	TransformMap* AdjustmentManager::GetAdjustmentFile(std::string filename)
@@ -722,26 +795,57 @@ namespace SAF {
 
 		switch (message->type) {
 		case kAdjustmentTransformPosition:
-		{
 			adjustment->SetTransformPos(message->key, message->a, message->b, message->c);
 			break;
-		}
 		case kAdjustmentTransformRotation:
-		{
 			adjustment->SetTransformRot(message->key, message->a, message->b, message->c);
 			break;
-		}
 		case kAdjustmentTransformScale:
-		{
 			adjustment->SetTransformSca(message->key, message->a);
 			break;
-		}
 		case kAdjustmentTransformReset:
-		{
 			adjustment->ResetTransform(message->key);
 			break;
+		case kAdjustmentTransformNegate:
+			adjustments->NegateTransform(adjustment, message->key);
+			break;
 		}
-		}
+	}
+
+	void AdjustmentManager::NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName) {
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		if (!actorAdjustmentCache.count(formId)) return;
+
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+		if (!adjustments) return;
+
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) return;
+
+		adjustments->NegateTransformGroup(adjustment, groupName);
+	}
+
+	void AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		if (!actorAdjustmentCache.count(formId)) return;
+
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+		if (!adjustments) return;
+
+		adjustments->LoadPose(filename);
+	}
+
+	void AdjustmentManager::ResetPose(UInt32 formId) {
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		if (!actorAdjustmentCache.count(formId)) return;
+
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+		if (!adjustments) return;
+
+		adjustments->ResetPose();
 	}
 
 	void AdjustmentManager::UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
@@ -781,6 +885,7 @@ namespace SAF {
 		adjustments->map.clear();
 		adjustments->list.clear();
 		adjustments->removedAdjustments.clear();
+		adjustments->poseHandle = 0;
 
 		if (!adjustments->root) return;
 
@@ -820,9 +925,9 @@ namespace SAF {
 	*			x
 	*			y
 	*			z
-	*			heading
-	*			attitude
-	*			bank
+	*			yaw
+	*			pitch
+	*			roll
 	*			scale
 	*/
 
@@ -873,11 +978,11 @@ namespace SAF {
 						WriteData<float>(ifc, &kvp.second.pos.x);
 						WriteData<float>(ifc, &kvp.second.pos.y);
 						WriteData<float>(ifc, &kvp.second.pos.z);
-						float heading, attitude, bank;
-						kvp.second.rot.GetEulerAngles(&heading, &attitude, &bank);
-						WriteData<float>(ifc, &heading);
-						WriteData<float>(ifc, &attitude);
-						WriteData<float>(ifc, &bank);
+						float yaw, pitch, roll;
+						NiToEuler(kvp.second.rot, yaw, pitch, roll);
+						WriteData<float>(ifc, &yaw);
+						WriteData<float>(ifc, &pitch);
+						WriteData<float>(ifc, &roll);
 						WriteData<float>(ifc, &kvp.second.scale);
 					}
 				}
@@ -943,11 +1048,11 @@ namespace SAF {
 									ReadData<float>(ifc, &transform.pos.y);
 									ReadData<float>(ifc, &transform.pos.z);
 
-									float heading, attitude, bank;
-									ReadData<float>(ifc, &heading);
-									ReadData<float>(ifc, &attitude);
-									ReadData<float>(ifc, &bank);
-									transform.rot.SetEulerAngles(heading, attitude, bank);
+									float yaw, pitch, roll;
+									ReadData<float>(ifc, &yaw);
+									ReadData<float>(ifc, &pitch);
+									ReadData<float>(ifc, &roll);
+									NiFromEuler(transform.rot, yaw, pitch, roll);
 
 									ReadData<float>(ifc, &transform.scale);
 

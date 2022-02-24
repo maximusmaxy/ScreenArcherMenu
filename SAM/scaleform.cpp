@@ -22,6 +22,18 @@
 #include "idle.h"
 #include "SAF/util.h"
 
+void SaveState::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Object);
+	saveData.Save(&args->args[0]);
+}
+
+void ClearState::Invoke(Args* args)
+{
+	saveData.Clear();
+}
+
 void ModifyFacegenMorph::Invoke(Args * args)
 {
 	ASSERT(args->numArgs >= 2);
@@ -225,8 +237,8 @@ void SetNodeRotation::Invoke(Args * args)
 	ASSERT(args->args[2].GetType() == GFxValue::kType_Number);
 	ASSERT(args->args[3].GetType() == GFxValue::kType_Number);
 	ASSERT(args->args[4].GetType() == GFxValue::kType_Number);
-	//heading attitude bank, y z x
-	SetAdjustmentRot(args->args[0].GetString(), args->args[1].GetInt(), args->args[3].GetNumber(), args->args[4].GetNumber(), args->args[2].GetNumber());
+
+	SetAdjustmentRot(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber(), args->args[3].GetNumber(), args->args[4].GetNumber());
 }
 
 
@@ -283,6 +295,22 @@ void ResetAdjustment::Invoke(Args* args)
 	ClearAdjustment(args->args[0].GetInt());
 }
 
+void NegateAdjustment::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+	NegateTransform(args->args[0].GetString(), args->args[1].GetInt());
+}
+
+void NegateAdjustmentGroup::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_String);
+	NegateAdjustments(args->args[0].GetInt(), args->args[1].GetString());
+}
+
 void GetIdleCategories::Invoke(Args* args)
 {
 	GetIdleMenuCategoriesGFx(args->movie->movieRoot, args->result);
@@ -307,6 +335,31 @@ void ResetIdle::Invoke(Args* args)
 	ResetIdleAnimation();
 }
 
+void GetPoseList::Invoke(Args* args)
+{
+	GetPoseListGFx(args->movie->movieRoot, args->result);
+}
+
+void SavePose::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Array);
+	SaveJsonPose(args->args[0].GetString(), args->args[1]);
+}
+
+void LoadPose::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+	LoadJsonPose(args->args[0].GetString());
+}
+
+void ResetPose::Invoke(Args* args)
+{
+	ResetJsonPose();
+}
+
 void HideMenu::Invoke(Args * args)
 {
 	ASSERT(args->numArgs >= 4);
@@ -323,40 +376,20 @@ void HideMenu::Invoke(Args * args)
 	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", !hide);
 }
 
-#include "SAF/adjustments.h"
-
 void Test::Invoke(Args * args)
 {
-	if (!selected.refr) return;
-	std::shared_ptr<SAF::ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
-	std::shared_ptr<SAF::Adjustment> adjustment = adjustments->GetAdjustment(1);
-	if (!adjustment) return;
-
-	SAF::NodeSet overrides = adjustments->nodeSets->overrides;
-	for (auto& name : overrides) {
-		adjustments->NegateTransform(adjustment, name);
-	}
-	adjustments->UpdateAllAdjustments(adjustment);
+	//
 }
 
 void Test2::Invoke(Args* args)
 {
-	if (!selected.refr) return;
-	std::shared_ptr<SAF::ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
-	std::shared_ptr<SAF::Adjustment> adjustment = adjustments->GetAdjustment(1);
-	if (!adjustment) return;
-
-	SAF::NodeSet overrides = adjustments->nodeSets->overrides;
-	for (auto& name : overrides) {
-		adjustments->NegateTransform2(adjustment, name);
-	}
-	adjustments->UpdateAllAdjustments(adjustment);
+	//
 }
 
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 { 
+	RegisterFunction<SaveState>(value, view->movieRoot, "SaveState");
+	RegisterFunction<ClearState>(value, view->movieRoot, "ClearState");
 	RegisterFunction<ModifyFacegenMorph>(value, view->movieRoot, "ModifyFacegenMorph");
 	RegisterFunction<GetMorphCategories>(value, view->movieRoot, "GetMorphCategories");
 	RegisterFunction<GetMorphs>(value, view->movieRoot, "GetMorphs");
@@ -385,6 +418,8 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<NewAdjustment>(value, view->movieRoot, "NewAdjustment");
 	RegisterFunction<RemoveAdjustment>(value, view->movieRoot, "RemoveAdjustment");
 	RegisterFunction<ResetAdjustment>(value, view->movieRoot, "ResetAdjustment");
+	RegisterFunction<NegateAdjustment>(value, view->movieRoot, "NegateAdjustment");
+	RegisterFunction<NegateAdjustmentGroup>(value, view->movieRoot, "NegateAdjustmentGroup");
 	RegisterFunction<GetCategoryList>(value, view->movieRoot, "GetCategoryList");
 	RegisterFunction<GetNodeList>(value, view->movieRoot, "GetNodeList");
 	RegisterFunction<GetNodeTransform>(value, view->movieRoot, "GetNodeTransform");
@@ -396,6 +431,10 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<GetIdles>(value, view->movieRoot, "GetIdles");
 	RegisterFunction<PlayIdle>(value, view->movieRoot, "PlayIdle");
 	RegisterFunction<ResetIdle>(value, view->movieRoot, "ResetIdle");
+	RegisterFunction<GetPoseList>(value, view->movieRoot, "GetPoseList");
+	RegisterFunction<SavePose>(value, view->movieRoot, "SavePose");
+	RegisterFunction<LoadPose>(value, view->movieRoot, "LoadPose");
+	RegisterFunction<ResetPose>(value, view->movieRoot, "ResetPose");
 	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
 	RegisterFunction<Test>(value, view->movieRoot, "Test");
 	RegisterFunction<Test2>(value, view->movieRoot, "Test2");

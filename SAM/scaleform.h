@@ -7,6 +7,18 @@
 
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value);
 
+class SaveState : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class ClearState : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class ModifyFacegenMorph : public GFxFunctionHandler
 {
 public:
@@ -217,6 +229,18 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class NegateAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class NegateAdjustmentGroup : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class GetIdleCategories : public GFxFunctionHandler
 {
 public:
@@ -236,6 +260,30 @@ public:
 };
 
 class ResetIdle : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class GetPoseList : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SavePose : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class LoadPose : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class ResetPose : public GFxFunctionHandler
 {
 public:
 	virtual void	Invoke(Args* args);

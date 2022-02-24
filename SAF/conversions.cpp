@@ -95,6 +95,17 @@ namespace SAF {
 		}
 	}
 
+	void NiFromDegree(NiMatrix43& matrix, float x, float y, float z) {
+		NiFromEuler(matrix, x * -DEGREE_TO_RADIAN, y * -DEGREE_TO_RADIAN, z * -DEGREE_TO_RADIAN);
+	}
+
+	void NiToDegree(NiMatrix43& matrix, float& x, float& y, float& z) {
+		NiToEuler(matrix, x, y, z);
+		x *= -RADIAN_TO_DEGREE;
+		y *= -RADIAN_TO_DEGREE;
+		z *= -RADIAN_TO_DEGREE;
+	}
+
 	NiMatrix43 NiMatrix43Invert(NiMatrix43& matrix) {
 		NiMatrix43 i;
 
@@ -254,8 +265,7 @@ namespace SAF {
 		return result;
 	}
 
-
-	NiTransform SlerpNiTransform(NiTransform &transform, float scalar) {
+	NiTransform SlerpNiTransform(NiTransform& transform, float scalar) {
 		NiTransform res;
 
 		res.pos = transform.pos * scalar;
@@ -269,7 +279,7 @@ namespace SAF {
 		return res;
 	}
 
-	NiTransform NegateNiTransform(NiTransform src, NiTransform dst) {
+	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
 		NiTransform res;
 
 		res.pos = dst.pos - src.pos;

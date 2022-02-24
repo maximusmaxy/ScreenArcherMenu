@@ -142,16 +142,12 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	switch (msg->type)
 	{
 		case SAF::kSafAdjustmentManager:
-		{
 			safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
 			LoadMenuFiles();
 			break;
-		}
 		case SAF::kSafAdjustmentActor:
-		{
 			safMessageDispatcher.actorAdjustments = (*(std::shared_ptr<SAF::ActorAdjustments>*)msg->data);
 			break;
-		}
 	}
 }
 
@@ -183,6 +179,21 @@ void SafTransformAdjustment(UInt32 formId, UInt32 handle, const char* key, UInt3
 void SafCreateActorAdjustments(UInt32 formId) {
 	SAF::AdjustmentActorMessage message(formId, "ScreenArcherMenu");
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafNegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
+	SAF::AdjustmentNegateMessage message(formId, handle, group);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentNegate, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafLoadPose(UInt32 formId, const char* filename) {
+	SAF::PoseMessage message(formId, filename);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseLoad, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafResetPose(UInt32 formId) {
+	SAF::PoseMessage message(formId, nullptr);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
 }
 
 extern "C"
@@ -245,6 +256,9 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 		safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;
 		safMessageDispatcher.resetAdjustment = SafResetAdjustment;
 		safMessageDispatcher.transformAdjustment = SafTransformAdjustment;
+		safMessageDispatcher.negateAdjustments = SafNegateAdjustmentGroup;
+		safMessageDispatcher.loadPose = SafLoadPose;
+		safMessageDispatcher.resetPose = SafResetPose;
 	}
 		
 	_DMESSAGE("Screen Archer Menu Loaded");

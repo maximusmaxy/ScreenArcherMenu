@@ -7,7 +7,7 @@
 
 #include "sam.h"
 
-#include "SAF/util.h"
+#include "SAF/conversions.h"
 #include "SAF/adjustments.h"
 using namespace SAF;
 
@@ -38,7 +38,7 @@ void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y
 	adjustments->UpdateAdjustments(key);
 }
 
-void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float heading, float attitude, float bank) {
+void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float yaw, float pitch, float roll) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
@@ -46,7 +46,7 @@ void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float heading, f
 	if (!adjustment) return;
 
 	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformRotation,
-		heading * DEGREE_TO_RADIAN, attitude * DEGREE_TO_RADIAN, bank * DEGREE_TO_RADIAN);
+		yaw, pitch, roll);
 	adjustments->UpdateAdjustments(key);
 }
 
@@ -69,6 +69,17 @@ void ResetAdjustmentTransform(const char* key, int adjustmentHandle) {
 	if (!adjustment) return;
 
 	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformReset, 0, 0, 0);
+	adjustments->UpdateAdjustments(key);
+}
+
+void NegateTransform(const char* key, UInt32 adjustmentHandle) {
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
+	if (!adjustment) return;
+
+	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformNegate, 0, 0, 0);
 	adjustments->UpdateAdjustments(key);
 }
 
@@ -95,7 +106,7 @@ void PushNewAdjustment(const char* name) {
 	safMessageDispatcher.createAdjustment(selected.refr->formID, name);
 }
 
-void EraseAdjustment(int adjustmentHandle) {
+void EraseAdjustment(UInt32 adjustmentHandle) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
@@ -116,49 +127,15 @@ void ClearAdjustment(UInt32 adjustmentHandle)
 	adjustments->UpdateAllAdjustments();
 }
 
-NiMatrix43 RotateMatrixXYZ(NiMatrix43 matrix, float x, float y, float z) {
-	NiMatrix43 rot;
+void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
 
-	float xSin = std::sinf(x);
-	float xCos = std::cosf(x);
-	rot.data[0][0] = 1.0f;
-	rot.data[0][1] = 0.0f;
-	rot.data[0][2] = 0.0f;
-	rot.data[1][0] = 0.0f;
-	rot.data[1][1] = xCos;
-	rot.data[1][2] = xSin;
-	rot.data[2][0] = 0.0f;
-	rot.data[2][1] = -xSin;
-	rot.data[2][2] = xCos;
-	matrix = matrix * rot;
+	safMessageDispatcher.negateAdjustments(selected.refr->formID, adjustmentHandle, adjustmentGroup);
 
-	float ySin = std::sinf(y);
-	float yCos = std::cosf(y);
-	rot.data[0][0] = yCos;
-	rot.data[0][1] = 0.0f;
-	rot.data[0][2] = -ySin;
-	rot.data[1][0] = 0.0f;
-	rot.data[1][1] = 1.0f;
-	rot.data[1][2] = 0.0f;
-	rot.data[2][0] = ySin;
-	rot.data[2][1] = 0.0f;
-	rot.data[2][2] = yCos;
-	matrix = matrix * rot;
-
-	float zSin = std::sinf(z);
-	float zCos = std::cosf(z);
-	rot.data[0][0] = zCos;
-	rot.data[0][1] = zSin;
-	rot.data[0][2] = 0.0f;
-	rot.data[1][0] = -zSin;
-	rot.data[1][1] = zCos;
-	rot.data[1][2] = 0.0f;
-	rot.data[2][0] = 0.0f;
-	rot.data[2][1] = 0.0f;
-	rot.data[2][2] = 1.0f;
-	matrix = matrix * rot;
-
-	return matrix;
+	adjustments->UpdateAllAdjustments();
 }
 
 bool NiAVObjectVisitAll(NiAVObject* root, const std::function<bool(NiAVObject*)>& functor)
@@ -192,23 +169,6 @@ std::vector<NiAVObject*> FindAdjustableChildren(NiAVObject* root, NodeSet* set) 
 	return nodes;
 }
 
-void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle)
-{
-	root->CreateObject(result);
-
-	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
-	if (!adjustment) return;
-
-	GFxValue scale((SInt32)std::round(adjustment->scale * 100));
-	result->SetMember("scale", &scale);
-	
-	GFxValue persistent(adjustment->persistent);
-	result->SetMember("persistent", &persistent);
-}
-
 void SetPersistence(UInt32 adjustmentHandle, bool isPersistent)
 {
 	if (!selected.refr) return;
@@ -230,6 +190,31 @@ void SetScale(UInt32 adjustmentHandle, int scale)
 
 	adjustment->scale = scale * 0.01;
 	adjustments->UpdateAllAdjustments(adjustment);
+}
+
+void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle)
+{
+	root->CreateObject(result);
+
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
+	if (!adjustment) return;
+
+	GFxValue scale((SInt32)std::round(adjustment->scale * 100));
+	result->SetMember("scale", &scale);
+
+	GFxValue persistent(adjustment->persistent);
+	result->SetMember("persistent", &persistent);
+
+	GFxValue groups;
+	root->CreateArray(&groups);
+	for (auto& kvp : adjustments->nodeSets->groups) {
+		GFxValue groupName(kvp.first.c_str());
+		groups.PushBack(&groupName);
+	}
+	result->SetMember("groups", &groups);
 }
 
 MenuCategoryList* GetAdjustmentMenu()
@@ -335,13 +320,12 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 
 	NiTransform transform = adjustment->GetTransformOrDefault(name);
 
-	float heading, attitude, bank;
-	transform.rot.GetEulerAngles(&heading, &attitude, &bank);
+	float yaw, pitch, roll;
+	NiToDegree(transform.rot, yaw, pitch, roll);
 
-	//heading attitude bank, y z x
-	GFxValue rx(bank * RADIAN_TO_DEGREE);
-	GFxValue ry(heading * RADIAN_TO_DEGREE);
-	GFxValue rz(attitude * RADIAN_TO_DEGREE);
+	GFxValue rx(yaw);
+	GFxValue ry(pitch);
+	GFxValue rz(roll);
 	result->PushBack(&rx);
 	result->PushBack(&ry);
 	result->PushBack(&rz);
@@ -358,4 +342,76 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 
 	GFxValue nodeName(name.c_str());
 	result->PushBack(&nodeName);
+}
+
+void GetPoseListGFx(GFxMovieRoot* root, GFxValue* result)
+{
+	root->CreateObject(result);
+
+	GFxValue names;
+	root->CreateArray(&names);
+
+	GFxValue values;
+	root->CreateArray(&values);
+
+	GFxValue handles;
+	root->CreateArray(&handles);
+
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		if (!adjustment->hidden) {
+			GFxValue name(adjustment->name.c_str());
+			names.PushBack(&name);
+
+			GFxValue value(!adjustment->isDefault && !adjustment->saved);
+			values.PushBack(&value);
+
+			GFxValue handle(adjustment->handle);
+			handles.PushBack(&handle);
+		}
+	});
+
+	result->SetMember("names", &names);
+	result->SetMember("values", &values);
+	result->SetMember("handles", &handles);
+}
+
+void SaveJsonPose(const char* filename, GFxValue selectedAdjustments)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	std::vector<UInt32> handles;
+	UInt32 size = selectedAdjustments.GetArraySize();
+	for (int i = 0; i < size; ++i) {
+		GFxValue handle;
+		selectedAdjustments.GetElement(i, &handle);
+		handles.push_back(handle.GetUInt());
+	}
+
+	adjustments->SavePose(filename, handles);
+}
+
+void LoadJsonPose(const char* filename)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	safMessageDispatcher.loadPose(selected.refr->formID, filename);
+	adjustments->UpdateAllAdjustments();
+}
+
+void ResetJsonPose()
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	safMessageDispatcher.resetPose(selected.refr->formID);
+	adjustments->UpdateAllAdjustments();
 }

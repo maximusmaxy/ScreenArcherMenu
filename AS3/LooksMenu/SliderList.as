@@ -103,13 +103,16 @@
 		{
 			this.entrySize = entrySize;
 			this.listSize = listSize;
+			
+			listPosition = Math.max(0,Math.min(entrySize - listSize, listPosition));
+			
 			if (this.entrySize > this.listSize)
 			{
 				stepSize = 100.0 / (this.entrySize - this.listSize);
 				var thumbHeight:Number = listScroll.Track_mc.height *  this.listSize / this.entrySize;
 				listScroll.Thumb_mc.height = Math.max(thumbHeight, 40);
 				listScroll.visible = true;
-				listScroll.position = 0;
+				//listScroll.position = 0;
 				listScroll.updateHeight();
 			}
 			else
@@ -117,26 +120,22 @@
 				listScroll.visible = false;
 			}
 		}
-
-//		internal function floorMod(a:int, b:int):int
-//		{
-//			return (a % b + b) % b;
-//		}
 		
 		public function update(entrySize:int, listSize:int, func:Function, func2 = null, func3 = null)
 		{
-			listPosition = 0;
 			updateScroll(entrySize, listSize);
+
 			var length:int = Math.min(entrySize, listSize);
 			for(var i:int = 0; i < LIST_MAX; i++) 
 			{
 				if (i < length) {
-					entries[i].update(i, func, func2, func3);
+					entries[i].update(i + listPosition, func, func2, func3);
 					updateType(entries[i]);
 				} else {
 					entries[i].disable();
 				}
 			}
+			
 			updateLayout();
 		}
 		
@@ -144,25 +143,38 @@
 		{
 			var xOffset:int;
 			var yOffset:int;
-			switch (entries[i].type) 
+			
+			switch (entries[i].type) //init
 			{
 				case SliderListEntry.DIVIDER:
 				case SliderListEntry.SLIDER:
 					xOffset = 18;
-					yOffset = 20;
+					yOffset = 10;
 					break;
 				default:
 					xOffset = 12;
 					yOffset = 10;
 			}
+			
 			for (var i:int = 0; i < LIST_MAX; i++)
 			{
 				if (entries[i].visible) {
-					entries[i].setPos(xOffset, yOffset);
-					switch (entries[i].type) {
+
+					switch (entries[i].type) { //pre set pos
 						case SliderListEntry.DIVIDER:
 						case SliderListEntry.SLIDER:
-							yOffset += 54;
+							xOffset = 18;
+							break;
+						default:
+							xOffset = 12;
+					}
+					
+					entries[i].setPos(xOffset, yOffset);
+					
+					switch (entries[i].type) { //post set pos
+						case SliderListEntry.DIVIDER:
+						case SliderListEntry.SLIDER:
+							yOffset += 55;
 							break;
 						default:
 							yOffset += 36;
@@ -220,7 +232,7 @@
 		public function updateAdjustmentEdit(func:Function)
 		{
 			this.type = ADJUSTMENTEDIT;
-			update(4, LIST_MAX, func);
+			update(Data.menuValues.length, LIST_MAX, func);
 		}
 		
 		public function updateAdjustmentEditEntry(entry:SliderListEntry)
@@ -240,6 +252,8 @@
 				case 3: //Persistent
 					entry.updateCheckbox("$SAM_Saved", Data.menuValues[entry.id]);
 					break;
+				default:
+					entry.updateList("Negate " + Data.menuValues[entry.id]);
 			}
 		}
 		

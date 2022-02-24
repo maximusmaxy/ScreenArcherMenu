@@ -31,7 +31,10 @@ namespace SAF {
 		kSafAdjustmentErase,
 		kSafAdjustmentReset,
 		kSafAdjustmentTransform,
-		kSafAdjustmentActor
+		kSafAdjustmentActor,
+		kSafAdjustmentNegate,
+		kSafPoseLoad,
+		kSafPoseReset
 	};
 
 	struct AdjustmentMessage {
@@ -64,7 +67,8 @@ namespace SAF {
 		kAdjustmentTransformPosition = 1,
 		kAdjustmentTransformRotation,
 		kAdjustmentTransformScale,
-		kAdjustmentTransformReset
+		kAdjustmentTransformReset,
+		kAdjustmentTransformNegate
 	};
 
 	struct AdjustmentTransformMessage {
@@ -97,6 +101,28 @@ namespace SAF {
 		{}
 	};
 
+	struct AdjustmentNegateMessage {
+		UInt32 formId;
+		UInt32 handle;
+		const char* group;
+
+		AdjustmentNegateMessage(UInt32 formId, UInt32 handle, const char* group) :
+			formId(formId),
+			handle(handle),
+			group(group)
+		{}
+	};
+
+	struct PoseMessage {
+		UInt32 formId;
+		const char* filename;
+
+		PoseMessage(UInt32 formId, const char* filename) :
+			formId(formId),
+			filename(filename)
+		{}
+	};
+
 	class NodeSets
 	{
 	public:
@@ -106,6 +132,7 @@ namespace SAF {
 		NodeSet base;
 		NodeSet allOrBase;
 		std::unordered_map<std::string, std::string> baseMap;
+		std::unordered_map<std::string, std::vector<std::string>> groups;
 	};
 
 	enum {
@@ -172,7 +199,7 @@ namespace SAF {
 		NiTransform GetScaledTransform(std::string name, float scale);
 
 		void SetTransformPos(std::string name, float x, float y, float z);
-		void SetTransformRot(std::string name, float heading, float attitude, float bank);
+		void SetTransformRot(std::string name, float yaw, float pitch, float roll);
 		void SetTransformSca(std::string name, float scale);
 
 		TransformMap GetMap();
@@ -192,6 +219,7 @@ namespace SAF {
 	private:
 		UInt32 nextHandle = 1; //0 handle is null
 		std::shared_mutex mutex;
+		
 
 	public:
 		UInt32 race = 0;
@@ -210,6 +238,8 @@ namespace SAF {
 
 		std::unordered_set<std::string> removedAdjustments;
 
+		UInt32 poseHandle = 0;
+
 		ActorAdjustments() {}
 
 		ActorAdjustments(Actor* actor, TESNPC* npc) :
@@ -224,7 +254,6 @@ namespace SAF {
 		void RemoveAdjustment(UInt32 handle);
 
 		bool ShouldUpdate();
-		bool UpdateRoot(NiNode* root);
 		void UpdatePersistentAdjustments(std::vector<std::string>* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents);
 		void UpdateAdjustments(std::string name);
 		void UpdateAllAdjustments();
@@ -239,10 +268,14 @@ namespace SAF {
 		bool RemoveMod(BSFixedString espName);
 
 		void NegateTransform(std::shared_ptr<Adjustment> adjustment, std::string name);
-		void NegateTransform2(std::shared_ptr<Adjustment> adjustment, std::string name);
 		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, std::string name, NiTransform transform);
+		void NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName);
 
 		void GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments);
+
+		void SavePose(std::string filename, std::vector<UInt32> handles);
+		void LoadPose(std::string filename);
+		void ResetPose();
 	};
 
 	class AdjustmentManager
@@ -255,8 +288,8 @@ namespace SAF {
 		bool loaded = false;
 
 	public:
-		std::string offsetPostfix;
-		std::string overridePostfix;
+		std::string offsetPostfix = "_Offset";
+		std::string overridePostfix = "_Pose";
 
 		std::unordered_map<UInt64, NodeSets> nodeSets;
 
@@ -264,8 +297,8 @@ namespace SAF {
 		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> uniqueAdjustments;
 		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> persistentAdjustments;
 
-		std::unordered_map<std::string, NodeMap> baseNodeMapCache;
-		std::unordered_map<std::string, NiNode*> baseNodeMapRoots;
+		std::unordered_map<NiNode*, NodeMap> baseNodeMapCache;
+		std::unordered_map<NiNode*, NiNode*> baseNodeMapRoots;
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
 		std::unordered_map<std::string, TransformMap> adjustmentFileCache;
 
@@ -280,6 +313,9 @@ namespace SAF {
 		void ResetAdjustment(UInt32 formId, UInt32 handle);
 		void SetTransform(AdjustmentTransformMessage* message);
 		std::shared_ptr<ActorAdjustments> CreateActorAdjustment(UInt32 formId);
+		void NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName);
+		void LoadPose(UInt32 formId, const char* filename);
+		void ResetPose(UInt32 formId);
 
 		void UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
 		void UpdateActor(Actor* actor, TESNPC* npc, bool loaded);
