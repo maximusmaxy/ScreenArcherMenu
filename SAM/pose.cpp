@@ -4,6 +4,7 @@
 
 #include <regex>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "sam.h"
 
@@ -17,6 +18,8 @@ SafMessageDispatcher safMessageDispatcher;
 
 std::shared_ptr<ActorAdjustments> SafMessageDispatcher::GetActorAdjustments(UInt32 formId) {
 	std::lock_guard<std::mutex> lock(mutex);
+
+	if (!safAdjustmentManager) return nullptr;
 
 	std::shared_ptr<ActorAdjustments> adjustments = safAdjustmentManager->GetActorAdjustments(selected.refr->formID);
 
@@ -83,12 +86,12 @@ void NegateTransform(const char* key, UInt32 adjustmentHandle) {
 	adjustments->UpdateAdjustments(key);
 }
 
-void SaveAdjustmentFile(std::string filename, int adjustmentHandle) {
+void SaveAdjustmentFile(const char* filename, int adjustmentHandle) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	adjustments->SaveAdjustment(filename, adjustmentHandle);
+	safMessageDispatcher.saveAdjustment(selected.refr->formID, filename, adjustmentHandle);
 }
 
 void LoadAdjustmentFile(const char* filename) {
@@ -385,12 +388,12 @@ void SaveJsonPose(const char* filename, GFxValue selectedAdjustments)
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	std::vector<UInt32> handles;
+	std::unordered_set<UInt32> handles;
 	UInt32 size = selectedAdjustments.GetArraySize();
 	for (int i = 0; i < size; ++i) {
 		GFxValue handle;
 		selectedAdjustments.GetElement(i, &handle);
-		handles.push_back(handle.GetUInt());
+		handles.insert(handle.GetUInt());
 	}
 
 	adjustments->SavePose(filename, handles);

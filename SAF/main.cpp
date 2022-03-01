@@ -133,6 +133,12 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
 		break;
 	}
+	case SAF::kSafAdjustmentSave:
+	{
+		auto data = (SAF::AdjustmentSaveMessage*)msg->data;
+		SAF::g_adjustmentManager.SaveAdjustment(data->formId, data->filename, data->handle);
+		break;
+	}
 	case SAF::kSafAdjustmentLoad:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;

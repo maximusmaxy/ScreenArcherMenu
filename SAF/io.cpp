@@ -74,19 +74,25 @@ namespace SAF {
 
 			for (auto& node : offsets) {
 				std::string offset = node.asString();
+				std::string offsetFixed = BSFixedString(offset.c_str()).c_str();
 				nodeSet.offsets.insert(offset);
 				nodeSet.all.insert(offset);
-				nodeSet.allOrBase.insert(offset);
+				nodeSet.allOrBase.insert(offsetFixed);
+				nodeSet.fixedConversion[offsetFixed] = offset;
 			}
 
 			for (auto& node : overrides) {
 				std::string base = node.asString();
 				std::string overrider = base + g_adjustmentManager.overridePostfix;
+				std::string baseFixed = BSFixedString(base.c_str()).c_str();
+				std::string overriderFixed = BSFixedString(overrider.c_str()).c_str();
 				nodeSet.base.insert(base);
 				nodeSet.overrides.insert(overrider);
 				nodeSet.all.insert(overrider);
-				nodeSet.allOrBase.insert(base);
-				nodeSet.allOrBase.insert(overrider);
+				nodeSet.allOrBase.insert(baseFixed);
+				nodeSet.allOrBase.insert(overriderFixed);
+				nodeSet.fixedConversion[baseFixed] = base;
+				nodeSet.fixedConversion[overriderFixed] = overrider;
 				nodeSet.baseMap[overrider] = base;
 			}
 

@@ -52,6 +52,8 @@ namespace SAF {
 
 		NiTransform def = TransformIdentity();
 		map[name] = def;
+
+		updated = true;
 	}
 
 	void Adjustment::SetTransformPos(std::string name, float x, float y, float z)
@@ -65,6 +67,8 @@ namespace SAF {
 		transform.pos.z = z;
 
 		map[name] = transform;
+
+		updated = true;
 	}
 
 	void Adjustment::SetTransformRot(std::string name, float yaw, float pitch, float roll)
@@ -76,6 +80,8 @@ namespace SAF {
 		NiFromDegree(transform.rot, yaw, pitch, roll);
 
 		map[name] = transform;
+
+		updated = true;
 	}
 
 	void Adjustment::SetTransformSca(std::string name, float scale)
@@ -86,6 +92,8 @@ namespace SAF {
 
 		transform.scale = scale;
 		map[name] = transform;
+
+		updated = true;
 	}
 
 	NiTransform Adjustment::GetScaledTransform(std::string name, float scalar)
@@ -143,17 +151,24 @@ namespace SAF {
 		map.clear();
 	}
 
-	bool ActorAdjustments::ShouldUpdate()
+	void ActorAdjustments::Update()
 	{
-		UInt32 currentRace = npc->race.race->formID;
-		bool currentIsFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
-		NiNode* currentRoot = actor->GetActorRootNode(false);
-		if (currentRace == race && currentIsFemale == isFemale && currentRoot == root)
-			return false;
-		race = currentRace;
-		isFemale = currentIsFemale;
-		root = currentRoot;
-		return true;
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		map.clear();
+		list.clear();
+		removedAdjustments.clear();
+		poseHandle = 0;
+
+		if (actor) {
+			root = actor->GetActorRootNode(false);
+			if (!root) return;
+		}
+		if (npc) {
+			isFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
+			if (npc->race.race)
+				race = npc->race.race->formID;
+		}
 	}
 
 	void ActorAdjustments::UpdateAdjustments(std::string name)
@@ -180,7 +195,7 @@ namespace SAF {
 
 	void ActorAdjustments::UpdateAllAdjustments()
 	{
-		if (!nodeMapBase) return;
+		if (!nodeMapBase || !nodeSets) return;
 
 		NodeSet set = nodeSets->all;
 		for (auto& name : set) {
@@ -201,6 +216,7 @@ namespace SAF {
 		
 		if (persistents) {
 			for (auto& persistent : *persistents) {
+				removeSet.insert(persistent.name);
 				switch (persistent.type) {
 				case kAdjustmentSerializeAdd:
 				{
@@ -212,7 +228,6 @@ namespace SAF {
 				}
 				case kAdjustmentSerializeLoad:
 				{
-					removeSet.insert(persistent.name);
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.name, true);
 					adjustment->mod = persistent.mod;
 					adjustment->persistent = true;
@@ -222,7 +237,6 @@ namespace SAF {
 				case kAdjustmentSerializeRemove:
 				{
 					removedAdjustments.insert(persistent.name);
-					removeSet.insert(persistent.name);
 					break;
 				}
 				}
@@ -371,7 +385,10 @@ namespace SAF {
 		if (!adjustment) return;
 
 		if (SaveAdjustmentFile(filename, adjustment)) {
+			adjustment->name = filename;
 			adjustment->saved = true;
+			adjustment->persistent = true;
+			adjustment->updated = false;
 		}
 	}
 
@@ -420,6 +437,7 @@ namespace SAF {
 		NiAVObject* skeletonNode = (*nodeMapBase)[baseName];
 
 		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, skeletonNode->m_localTransform));
+		adjustment->updated = true;
 	}
 
 	//Sets the override node such that it negates the base node to the specified transform position
@@ -457,7 +475,7 @@ namespace SAF {
 		}
 	}
 
-	void ActorAdjustments::SavePose(std::string filename, std::vector<UInt32> handles) {
+	void ActorAdjustments::SavePose(std::string filename, std::unordered_set<UInt32> handles) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		if (handles.size() == 0) return;
@@ -465,7 +483,7 @@ namespace SAF {
 		//Order matters for applying translations so get them from the list in the correct order
 		std::vector<std::shared_ptr<Adjustment>> adjustments;
 		for (auto& adjustment : list) {
-			if (std::find_if(handles.begin(), handles.end(), [adjustment](UInt32 h) { return adjustment->handle == h; }) != handles.end())
+			if (handles.count(adjustment->handle))
 				adjustments.push_back(adjustment);
 		}
 
@@ -489,6 +507,9 @@ namespace SAF {
 					poseMap[baseName] = transform;
 				}
 			}
+			else {
+				_DMESSAGE("could not find overrider");
+			}
 		}
 
 		SavePoseFile(filename, &poseMap);
@@ -504,7 +525,7 @@ namespace SAF {
 			std::shared_ptr<Adjustment> adjustment;
 
 			for (auto& kvp : map) {
-				if (!kvp.second->saved && kvp.second->handle != poseHandle) {
+				if (!kvp.second->persistent && kvp.second->handle != poseHandle) {
 					kvp.second->Clear();
 				}
 			}
@@ -512,6 +533,8 @@ namespace SAF {
 			if (poseHandle && map.count(poseHandle)) {
 				adjustment = map[poseHandle];
 				adjustment->Clear();
+				adjustment->name = filename;
+				adjustment->scale = 1.0f;
 			}
 			else {
 				adjustment = std::make_shared<Adjustment>(nextHandle, filename);
@@ -567,8 +590,9 @@ namespace SAF {
 
 			actorAdjustmentCache[actor->formID] = adjustments;
 
-			UpdateActorAdjustments(adjustments);
+			UpdateActorAdjustments(adjustments, true);
 		}
+
 		return adjustments;
 	}
 
@@ -613,7 +637,7 @@ namespace SAF {
 
 		actorAdjustmentCache[actor->formID] = adjustments;
 
-		UpdateActorAdjustments(adjustments);
+		UpdateActorAdjustments(adjustments, true);
 
 		return adjustments;
 	}
@@ -650,50 +674,114 @@ namespace SAF {
 		}
 	}
 
-	NodeMap AdjustmentManager::CreateNodeMap(NiNode* root, NodeSet* set) {
+	RelocAddr<UInt64> bsFlattenedBoneTreeVFTable(0x2E14E38);
+
+	typedef UInt32 (*GetBoneTreeKey)(NiAVObject* node, BSFixedString* name);
+	RelocAddr<GetBoneTreeKey> getBoneTreeKey(0x1BA1860);
+
+	typedef NiAVObject* (*GetBoneTreeNode)(NiAVObject* node, SInt32 key, char* unk);
+	RelocAddr<GetBoneTreeNode> getBoneTreeNode(0x1BA1910);
+
+	NiAVObject* GetNodeFromFlattenedTrees(std::vector<NiAVObject*>& trees, BSFixedString name) {
+		for (auto& tree : trees) {
+			SInt32 key = (*getBoneTreeKey)(tree, &name);
+			if (key >= 0) {
+				char unk = 1;
+				NiAVObject* node = (*getBoneTreeNode)(tree, key, &unk);
+				if (node) return node;
+			}
+		}
+
+		return nullptr;
+	}
+
+	NodeMap AdjustmentManager::CreateNodeMap(NiNode* root, NodeSets* set) {
 		NodeMap boneMap;
 
 		if (!root || !set) return boneMap;
 
-		int counter = set->size();
+		static BSFixedString rootName("Root");
+
+		NiAVObject* rootNode = root->GetObjectByName(&rootName);
+
+		if (!rootNode) return boneMap;
+
+		static BSFixedString safVersion("SAF_Version");
+
+		if (!rootNode->HasExtraData(safVersion)) return boneMap;
+
+		int size = set->allOrBase.size();
+		std::vector<NiAVObject*> boneTrees;
+		std::unordered_set<std::string> remainingNodes(set->allOrBase);
+		UInt64 flattenedBoneTreeVFTableAddr = bsFlattenedBoneTreeVFTable.GetUIntPtr();
+
 		root->Visit([&](NiAVObject* object) {
-			std::string nodeName;
-			if (ContainsBSFixed(set, &object->m_name, &nodeName)) {
-				boneMap[nodeName] = object;
-				--counter;
+			//check for flattend bone tree VFtable and add it to be searched for missing nodes after DFS is complete
+			if (*(UInt64*)object == flattenedBoneTreeVFTableAddr) {
+				boneTrees.push_back(object);
 			}
-			return !counter;
+			std::string nodeName(object->m_name.c_str());
+			if (set->allOrBase.count(object->m_name.c_str())) {
+				if (set->fixedConversion.count(nodeName)) {
+					boneMap[set->fixedConversion[nodeName]] = object;
+					remainingNodes.erase(nodeName);
+				}
+			}
+			return (remainingNodes.size() <= 0);
 		});
 
-		//shouldn't need to do this to find missing bones, need to fix the method above.
-		for (auto& bone : *set) {
-			if (!boneMap.count(bone)) {
-				BSFixedString name(bone.c_str());
-				NiPointer<NiAVObject> findBone = root->GetObjectByName(&name);
-				if (findBone) {
-					boneMap[bone] = findBone;
+		if (remainingNodes.size() <= 0) return boneMap;
+
+		for (auto& nodeName : remainingNodes) {
+			if (set->fixedConversion.count(nodeName)) {
+				BSFixedString name(nodeName.c_str());
+				std::string converted = set->fixedConversion[nodeName];
+
+				//Search flattened bone trees for remaining nodes
+				NiPointer<NiAVObject> flattenedBone = GetNodeFromFlattenedTrees(boneTrees, name);
+				if (flattenedBone) {
+					boneMap[converted] = flattenedBone;
 				}
 				else {
-					_LogCat("Could not find ", bone);
+
+					//Shouldn't need to do this to find missing bones, if this is triggered something is wrong with the method above.
+					NiPointer<NiAVObject> findBone = root->GetObjectByName(&name);
+					if (findBone) {
+						boneMap[converted] = findBone;
+					}
 				}
 			}
 		}
+
 		return boneMap;
 	}
 
-	NodeMap* AdjustmentManager::GetActorBaseMap(std::shared_ptr<ActorAdjustments> adjustments, NodeSet* set)
+	NodeMap* AdjustmentManager::GetCachedNodeMap(std::shared_ptr<ActorAdjustments> adjustments, NodeSets* set)
 	{
-		NiNode* currentRoot = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
+		std::lock_guard<std::shared_mutex> lock(nodeMapMutex);
 
-		if (currentRoot == adjustments->root) {
-			if (baseNodeMapCache.count(currentRoot))
-				return &baseNodeMapCache[currentRoot];
+		NiNode* oldRoot = adjustments->root;
+		adjustments->root = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
+		bool updated = (oldRoot != adjustments->root);
+
+		if (updated) {
+			//deref old map and erase
+			if (nodeMapCache.count(oldRoot)) {
+				if (--nodeMapCache[oldRoot].refs <= 0)
+					nodeMapCache.erase(oldRoot);
+			}
 		}
 
-		adjustments->root = currentRoot;
+		if (nodeMapCache.count(adjustments->root)) {
+			//update ref count if changed
+			if (updated)
+				nodeMapCache[adjustments->root].refs++;
 
-		baseNodeMapCache[currentRoot] = CreateNodeMap(currentRoot, set);
-		return &baseNodeMapCache[currentRoot];
+			return &nodeMapCache[adjustments->root].map;
+		}
+
+		nodeMapCache[adjustments->root] = NodeMapRef(CreateNodeMap(adjustments->root, set));
+		return &nodeMapCache[adjustments->root].map;
 	}
 
 	TransformMap* AdjustmentManager::GetAdjustmentFile(std::string filename)
@@ -723,7 +811,17 @@ namespace SAF {
 
 		if (!loaded) {
 			if (adjustments) {
-				StorePersistentAdjustments(adjustments);
+				if (adjustments->actor->flags & TESForm::kFlag_Persistent) {
+					StorePersistentAdjustments(adjustments);
+				}
+
+				//deref old map and erase
+				if (nodeMapCache.count(adjustments->root)) {
+					if (--nodeMapCache[adjustments->root].refs <= 0)
+						nodeMapCache.erase(adjustments->root);
+				}
+
+				actorUpdates.erase(actor->formID);
 				actorAdjustmentCache.erase(actor->formID);
 			}
 			return;
@@ -734,7 +832,7 @@ namespace SAF {
 			actorAdjustmentCache[actor->formID] = adjustments;
 		}
 
-		UpdateActorAdjustments(adjustments);
+		UpdateActorAdjustments(adjustments, false);
 	}
 
 	void AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden) {
@@ -745,6 +843,16 @@ namespace SAF {
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
 		adjustments->CreateAdjustment(name, mod, persistent, hidden);
+	}
+
+	void  AdjustmentManager::SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle) {
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		if (!actorAdjustmentCache.count(formId)) return;
+
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+
+		adjustments->SaveAdjustment(filename, handle);
 	}
 
 	void AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden) {
@@ -848,20 +956,6 @@ namespace SAF {
 		adjustments->ResetPose();
 	}
 
-	void AdjustmentManager::UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
-		if (!adjustments || !adjustments->npc || !adjustments->actor) return;
-
-		if (adjustments->ShouldUpdate()) {
-			if (adjustments->root) {
-				UpdateAdjustments(adjustments);
-			}
-			else {
-				//couldn't find root node so queue for later
-				actorUpdates.insert(adjustments->actor->formID);
-			}
-		}
-	}
-
 	void AdjustmentManager::UpdateQueue() {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
@@ -869,31 +963,28 @@ namespace SAF {
 			if (actorAdjustmentCache.count(id)) {
 				auto adjustments = actorAdjustmentCache[id];
 
-				//force update
-				adjustments->race = adjustments->npc->race.race->formID;
-				adjustments->isFemale = (CALL_MEMBER_FN(adjustments->npc, GetSex)() == 1 ? true : false);
-				adjustments->root = adjustments->actor->GetActorRootNode(false);
-
-				UpdateAdjustments(adjustments);
+				UpdateActorAdjustments(adjustments, true);
 			}
 		}
 
 		actorUpdates.clear();
 	}
 
-	void AdjustmentManager::UpdateAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
-		adjustments->map.clear();
-		adjustments->list.clear();
-		adjustments->removedAdjustments.clear();
-		adjustments->poseHandle = 0;
+	void AdjustmentManager::UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments, bool loaded) {
+		adjustments->Update();
 
-		if (!adjustments->root) return;
+		if (!adjustments->root) {
+			
+			if (!loaded) {
+				//couldn't find root node so queue until loaded event is triggered
+				actorUpdates.insert(adjustments->actor->formID);
+			}
+			return;
+		}
 
 		adjustments->nodeSets = GetNodeSets(adjustments->race, adjustments->isFemale);
-		if (!adjustments->nodeSets) return;
-
-		adjustments->nodeMap = CreateNodeMap(adjustments->root, &adjustments->nodeSets->allOrBase);
-		adjustments->nodeMapBase = GetActorBaseMap(adjustments, &adjustments->nodeSets->allOrBase);
+		adjustments->nodeMap = CreateNodeMap(adjustments->root, adjustments->nodeSets);
+		adjustments->nodeMapBase = GetCachedNodeMap(adjustments, adjustments->nodeSets);
 
 		adjustments->CreateAdjustment("NewAdjustment");
 
@@ -1091,15 +1182,15 @@ namespace SAF {
 
 		persistentAdjustments.clear();
 		actorUpdates.clear();
-	}
 
-	void ActorAdjustments::GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments) {
-		std::shared_lock<std::shared_mutex> lock(mutex);
-
-		for (auto& adjustment : map) {
-			PersistentAdjustment persistentAdjustment = adjustment.second->GetPersistence(&removedAdjustments);
-			if (persistentAdjustment.type != kAdjustmentSerializeDisabled)
-				(*persistentAdjustments)[actor->formID].push_back(persistentAdjustment);
+		//Revert is called before the actors are unloaded so they need to be cleared beforehand so their persistent adjustments aren't stored
+		//Also their load event isn't triggered again if they are persistent between loads, so they need to be placed into the update queue to update their new adjustments
+		for (auto& adjustments : actorAdjustmentCache) {
+			UInt32 flags = adjustments.second->actor->flags;
+			if (adjustments.second->actor->flags & TESForm::kFlag_Persistent) {
+				adjustments.second->Update();
+				actorUpdates.insert(adjustments.second->actor->formID);
+			}
 		}
 	}
 
@@ -1111,18 +1202,38 @@ namespace SAF {
 		adjustments->GetPersistentAdjustments(&persistentAdjustments);
 	}
 
-	PersistentAdjustment Adjustment::GetPersistence(std::unordered_set<std::string>* removedAdjustments) {
+	void ActorAdjustments::GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments) {
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		for (auto& adjustment : map) {
+			PersistentAdjustment persistentAdjustment = adjustment.second->GetPersistence();
+			if (persistentAdjustment.type != kAdjustmentSerializeDisabled)
+				(*persistentAdjustments)[actor->formID].push_back(persistentAdjustment);
+		}
+
+		for (auto& removed : removedAdjustments) 
+		{
+			(*persistentAdjustments)[actor->formID].push_back(PersistentAdjustment(removed, std::string(), kAdjustmentSerializeRemove));
+		}
+	}
+
+	PersistentAdjustment Adjustment::GetPersistence() {
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
 		UInt8 type = kAdjustmentSerializeDisabled;
-		if (isDefault) {
-			if (removedAdjustments->count(name)) {
-				type = kAdjustmentSerializeRemove;
+		if (persistent) {
+			if (isDefault) {
+				if (updated) {
+					type = kAdjustmentSerializeAdd;
+				}
 			}
-		}
-		else if (persistent) {
-			if (saved) {
-				type = kAdjustmentSerializeLoad;
+			else if (saved) {
+				if (updated) {
+					type = kAdjustmentSerializeAdd;
+				}
+				else {
+					type = kAdjustmentSerializeLoad;
+				}
 			}
 			else {
 				type = kAdjustmentSerializeAdd;
@@ -1132,8 +1243,8 @@ namespace SAF {
 		switch (type) {
 		case kAdjustmentSerializeAdd:
 			return PersistentAdjustment(name, mod, type, map);
-		case kAdjustmentSerializeLoad:
 		case kAdjustmentSerializeRemove:
+		case kAdjustmentSerializeLoad:
 			return PersistentAdjustment(name, mod, type);
 		default:
 			return PersistentAdjustment();

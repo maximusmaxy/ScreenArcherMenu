@@ -271,8 +271,10 @@ namespace SAF {
 		res.pos = transform.pos * scalar;
 		res.scale = 1.0f + ((transform.scale - 1.0f) * scalar);
 
+		static Quat identity = QuaternionIdentity();
+
 		Quat niQuat = NiToQuat(transform.rot);
-		Quat slerpedQuat = SlerpQuat(QuaternionIdentity(), niQuat, scalar);
+		Quat slerpedQuat = SlerpQuat(identity, niQuat, scalar);
 
 		res.rot = NiFromQuat(slerpedQuat);
 

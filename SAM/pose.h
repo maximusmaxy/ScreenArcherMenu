@@ -17,6 +17,7 @@ public:
 
 	std::shared_ptr<SAF::ActorAdjustments> GetActorAdjustments(UInt32 formId);
 	void (*createAdjustment)(UInt32 formId, const char* name);
+	void (*saveAdjustment)(UInt32 formId, const char* filename, UInt32 handle);
 	void (*loadAdjustment)(UInt32 formId, const char* filename);
 	void (*removeAdjustment)(UInt32 formId, UInt32 handle);
 	void (*resetAdjustment)(UInt32 formId, UInt32 handle);
@@ -38,7 +39,7 @@ void NegateTransform(const char* key, UInt32 adjustmentHandle);
 void SetPersistence(UInt32 adjustmentHandle, bool isPersistent);
 void SetScale(UInt32 adjustmentHandle, int scale);
 
-void SaveAdjustmentFile(std::string filename, int adjustmentHandle);
+void SaveAdjustmentFile(const char* filename, int adjustmentHandle);
 void LoadAdjustmentFile(const char* filename);
 void PushNewAdjustment(const char* name);
 void EraseAdjustment(UInt32 adjustmentHandle);

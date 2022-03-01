@@ -44,8 +44,9 @@ void SaveMfg(std::string filename) {
 	path += filename;
 	path += ".txt";
 	IFileStream::MakeAllDirs(path.c_str());
-		_DMESSAGE("Failed to create file");
+		
 	if (!file.Create(path.c_str())) {
+		_DMESSAGE("Failed to create file");
 		return;
 	}
 

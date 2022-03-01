@@ -278,10 +278,10 @@ namespace SAF {
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 
-		std::vector<UInt32> handles;
+		std::unordered_set<UInt32> handles;
 		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
 			if (!adjustment->saved && !adjustment->isDefault) {
-				handles.push_back(adjustment->handle);
+				handles.insert(adjustment->handle);
 			}
 		});
 

@@ -1,15 +1,17 @@
 # ScreenArcherMenu
 
-WIP mod for fallout 4 to help with taking screenshots
+WIP mod for fallout 4 to aid in taking screenshots.
+
+My modding discord for downloads and support https://discord.gg/Wkp8HDM4GP
 
 Current features:
-- Pose adjustments
+- Pose Adjustments
+- Pose Exporter
+- Play Idle
 - Face morph sliders
 - Eye Direction Control
 
 Planned features:
-- Pose select
-- Pose exporter
 - Save camera position
 - Light positioning
 - Mesh swaps

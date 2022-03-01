@@ -70,13 +70,11 @@
 		public var swapped:Boolean = false;
 		public var saved:Boolean = false;
 		
-		public var testButton:TextField;
-		
 		public function ScreenArcherMenu()
 		{
 			super();
 			
-			Util.debug = true;
+			Util.debug = false;
 			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
@@ -96,13 +94,6 @@
 			if (Util.debug) {
 				addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
 			}
-			
-			testButton.addEventListener(MouseEvent.CLICK, onClick);
-		}
-		
-		internal function onClick(event:MouseEvent):void
-		{
-			tryClose();
 		}
 		
 		internal function initButtonHints():void
@@ -310,6 +301,7 @@
 		public function resetState()
 		{
 			this.state = MAIN_STATE;
+			sliderList.listPosition = 0;
 			menuStack.length = 0;
 			sliderPosStack.length = 0;
 			if (filenameInput.visible) {

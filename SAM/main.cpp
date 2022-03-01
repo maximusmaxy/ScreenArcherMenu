@@ -156,6 +156,12 @@ void SafCreateAdjustment(UInt32 formId, const char* name) {
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentCreate, &message, sizeof(uintptr_t), "SAF");
 }
 
+void SafSaveAdjustment(UInt32 formId, const char* filename, UInt32 handle)
+{
+	SAF::AdjustmentSaveMessage message(formId, filename, handle);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentSave, &message, sizeof(uintptr_t), "SAF");
+}
+
 void SafLoadAdjustment(UInt32 formId, const char* filename) {
 	SAF::AdjustmentCreateMessage message(formId, filename, "ScreenArcherMenu.esp", true, false);
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
@@ -252,6 +258,7 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 		g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
 		safMessageDispatcher.createActorAdjustments = SafCreateActorAdjustments;
 		safMessageDispatcher.createAdjustment = SafCreateAdjustment;
+		safMessageDispatcher.saveAdjustment = SafSaveAdjustment;
 		safMessageDispatcher.loadAdjustment = SafLoadAdjustment;
 		safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;
 		safMessageDispatcher.resetAdjustment = SafResetAdjustment;
