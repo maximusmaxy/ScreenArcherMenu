@@ -155,20 +155,37 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
+		Clear();
+
+		//if any of these are false the actor adjustment is invalid and should be marked for deletion
+		if (!actor || !actor->baseForm || !npc || actor->baseForm != npc) {
+			if (actor)
+				g_adjustmentManager.actorDeletions.insert(actor->formID);
+			actor = nullptr;
+			npc = nullptr;
+			return;
+		}
+
+		if (actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled)) return;
+
+		root = actor->GetActorRootNode(false);
+
+		if (!root) return;
+
+		isFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
+
+		if (!npc->race.race) return;
+
+		race = npc->race.race->formID;
+	}
+
+	void ActorAdjustments::Clear()
+	{
 		map.clear();
 		list.clear();
 		removedAdjustments.clear();
 		poseHandle = 0;
-
-		if (actor) {
-			root = actor->GetActorRootNode(false);
-			if (!root) return;
-		}
-		if (npc) {
-			isFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
-			if (npc->race.race)
-				race = npc->race.race->formID;
-		}
+		root = nullptr;
 	}
 
 	void ActorAdjustments::UpdateAdjustments(std::string name)
@@ -335,9 +352,13 @@ namespace SAF {
 		if (cached) {
 			auto adjustmentFile = g_adjustmentManager.GetAdjustmentFile(filename);
 			if (adjustmentFile) {
-				if (removedAdjustments.count(filename))
-					removedAdjustments.erase(filename);
+
 				std::shared_ptr<Adjustment> adjustment = CreateAdjustment(filename);
+
+				if (removedAdjustments.count(filename)) {
+					removedAdjustments.erase(filename);
+					adjustment->isDefault = true;
+				}
 
 				if (nodeSets) {
 					adjustment->CopyMap(adjustmentFile, &nodeSets->all);
@@ -350,12 +371,15 @@ namespace SAF {
 		std::unordered_map<std::string, NiTransform> adjustmentMap;
 
 		if (LoadAdjustmentFile(filename, &adjustmentMap)) {
-			if (removedAdjustments.count(filename))
-				removedAdjustments.erase(filename);
 			if (cached) {
 				g_adjustmentManager.SetAdjustmentFile(filename, adjustmentMap);
 			}
 			std::shared_ptr<Adjustment> adjustment = CreateAdjustment(filename);
+
+			if (removedAdjustments.count(filename)) {
+				removedAdjustments.erase(filename);
+				adjustment->isDefault = true;
+			}
 
 			if (nodeSets) {
 				adjustment->CopyMap(&adjustmentMap, &nodeSets->all);
@@ -385,6 +409,11 @@ namespace SAF {
 		if (!adjustment) return;
 
 		if (SaveAdjustmentFile(filename, adjustment)) {
+			//if saving to a new file from the default it needs to be removed 
+			if (adjustment->isDefault && adjustment->name != filename) {
+				removedAdjustments.insert(adjustment->name);
+				adjustment->isDefault = false;
+			}
 			adjustment->name = filename;
 			adjustment->saved = true;
 			adjustment->persistent = true;
@@ -710,7 +739,6 @@ namespace SAF {
 
 		if (!rootNode->HasExtraData(safVersion)) return boneMap;
 
-		int size = set->allOrBase.size();
 		std::vector<NiAVObject*> boneTrees;
 		std::unordered_set<std::string> remainingNodes(set->allOrBase);
 		UInt64 flattenedBoneTreeVFTableAddr = bsFlattenedBoneTreeVFTable.GetUIntPtr();
@@ -760,9 +788,9 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(nodeMapMutex);
 
-		NiNode* oldRoot = adjustments->root;
-		adjustments->root = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
-		bool updated = (oldRoot != adjustments->root);
+		NiNode* oldRoot = adjustments->baseRoot;
+		adjustments->baseRoot = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
+		bool updated = (oldRoot != adjustments->baseRoot);
 
 		if (updated) {
 			//deref old map and erase
@@ -772,16 +800,25 @@ namespace SAF {
 			}
 		}
 
-		if (nodeMapCache.count(adjustments->root)) {
+		if (nodeMapCache.count(adjustments->baseRoot)) {
 			//update ref count if changed
 			if (updated)
-				nodeMapCache[adjustments->root].refs++;
+				nodeMapCache[adjustments->baseRoot].refs++;
 
-			return &nodeMapCache[adjustments->root].map;
+			return &nodeMapCache[adjustments->baseRoot].map;
 		}
 
-		nodeMapCache[adjustments->root] = NodeMapRef(CreateNodeMap(adjustments->root, set));
-		return &nodeMapCache[adjustments->root].map;
+		nodeMapCache[adjustments->baseRoot] = NodeMapRef(CreateNodeMap(adjustments->baseRoot, set));
+		return &nodeMapCache[adjustments->baseRoot].map;
+	}
+
+	void AdjustmentManager::RemoveNodeMap(NiNode* root) {
+		std::lock_guard<std::shared_mutex> lock(nodeMapMutex);
+
+		if (nodeMapCache.count(root)) {
+			if (--nodeMapCache[root].refs <= 0)
+				nodeMapCache.erase(root);
+		}
 	}
 
 	TransformMap* AdjustmentManager::GetAdjustmentFile(std::string filename)
@@ -815,12 +852,7 @@ namespace SAF {
 					StorePersistentAdjustments(adjustments);
 				}
 
-				//deref old map and erase
-				if (nodeMapCache.count(adjustments->root)) {
-					if (--nodeMapCache[adjustments->root].refs <= 0)
-						nodeMapCache.erase(adjustments->root);
-				}
-
+				RemoveNodeMap(adjustments->baseRoot);
 				actorUpdates.erase(actor->formID);
 				actorAdjustmentCache.erase(actor->formID);
 			}
@@ -967,7 +999,17 @@ namespace SAF {
 			}
 		}
 
+		for (auto& id : actorDeletions) {
+			if (actorAdjustmentCache.count(id)) {
+				auto adjustments = actorAdjustmentCache[id];
+
+				RemoveNodeMap(adjustments->baseRoot);
+				actorAdjustmentCache.erase(id);
+			}
+		}
+
 		actorUpdates.clear();
+		actorDeletions.clear();
 	}
 
 	void AdjustmentManager::UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments, bool loaded) {
@@ -976,8 +1018,11 @@ namespace SAF {
 		if (!adjustments->root) {
 			
 			if (!loaded) {
-				//couldn't find root node so queue until loaded event is triggered
-				actorUpdates.insert(adjustments->actor->formID);
+				//not deleted or disabled
+				if (!(adjustments->actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled))) {
+					//couldn't find root node so queue until loaded event is triggered
+					actorUpdates.insert(adjustments->actor->formID);
+				}
 			}
 			return;
 		}
@@ -1182,14 +1227,15 @@ namespace SAF {
 
 		persistentAdjustments.clear();
 		actorUpdates.clear();
+		actorDeletions.clear();
 
 		//Revert is called before the actors are unloaded so they need to be cleared beforehand so their persistent adjustments aren't stored
 		//Also their load event isn't triggered again if they are persistent between loads, so they need to be placed into the update queue to update their new adjustments
-		for (auto& adjustments : actorAdjustmentCache) {
-			UInt32 flags = adjustments.second->actor->flags;
-			if (adjustments.second->actor->flags & TESForm::kFlag_Persistent) {
-				adjustments.second->Update();
-				actorUpdates.insert(adjustments.second->actor->formID);
+		for (auto& kvp : actorAdjustmentCache) {
+			if (kvp.second->actor->flags & TESForm::kFlag_Persistent &&
+				!(kvp.second->actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled))) {
+				kvp.second->Clear();
+				actorUpdates.insert(kvp.second->actor->formID);
 			}
 		}
 	}

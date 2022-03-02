@@ -251,6 +251,7 @@ namespace SAF {
 		Actor* actor = nullptr;
 		TESNPC* npc = nullptr;
 		NiNode* root = nullptr;
+		NiNode* baseRoot = nullptr;
 
 		std::vector<std::shared_ptr<Adjustment>> list;
 		std::unordered_map<UInt32, std::shared_ptr<Adjustment>> map;
@@ -281,6 +282,7 @@ namespace SAF {
 		void UpdateAdjustments(std::string name);
 		void UpdateAllAdjustments();
 		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);
+		void Clear();
 		
 		std::shared_ptr<Adjustment> LoadAdjustment(std::string filename, bool cached = false);
 		UInt32 LoadAdjustment(std::string filename, std::string espName, bool persistent, bool hidden, bool cached = false);
@@ -326,6 +328,7 @@ namespace SAF {
 		std::unordered_map<std::string, TransformMap> adjustmentFileCache;
 
 		std::unordered_set<UInt32> actorUpdates;
+		std::unordered_set<UInt32> actorDeletions;
 
 		void Load();
 		void RemoveMod(BSFixedString espName);
@@ -358,6 +361,7 @@ namespace SAF {
 		
 		NodeMap CreateNodeMap(NiNode* root, NodeSets* set);
 		NodeMap* GetCachedNodeMap(std::shared_ptr<ActorAdjustments> actorAdjustments, NodeSets* nodeSet);
+		void RemoveNodeMap(NiNode* root);
 		
 		void SerializeSave(const F4SESerializationInterface* ifc);
 		void SerializeLoad(const F4SESerializationInterface* ifc);
