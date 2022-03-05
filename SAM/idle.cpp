@@ -3,8 +3,10 @@
 #include "f4se/GameData.h"
 #include "f4se/GameTypes.h"
 #include "f4se/GameReferences.h"
+#include "f4se/GameRTTI.h"
 
 #include "sam.h"
+#include "SAF/util.h"
 
 #include <map>
 #include <unordered_map>
@@ -49,11 +51,62 @@ public:
 	UInt64 unk28;
 	TESIdleForm** forms;
 	UInt64 capacity;
-	UInt64 unk40;
+	UInt64 count;
 	UInt64 unk48;
 };
 
 RelocAddr<BSTCaseInsensitiveStringMapIdle> idleStringMap(0x58D2EA0);
+
+RelocAddr<UInt64> BSTCaseInsensitiveStringMapIdleVFTable(0x2CB9478);
+
+RelocAddr<UInt64> TESIdleFormVFTable(0x2CB8FA8);
+
+bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt32>>& idles, std::unordered_map<UInt32, std::string>& modNames) {
+	if (!form) {
+		//_DMESSAGE("Form is null");
+
+		//If a null form is found we've probably reached the end of the string map so no need to continue searching
+		return true;
+	}
+
+	if (*(UInt64*)form != TESIdleFormVFTable) {
+//		_DMESSAGE("Idle form VFTable not found");
+		return false;
+	}
+
+	if (!form->formID) {
+//		_DMESSAGE("Form ID not found");
+		return false;
+	}
+
+	if (!form->editorID) {
+//		_Log("Editor ID not found ", form->formID);
+		return false;
+	}
+
+	static BSFixedString behaviourGraph("actors\\Character\\Behaviors\\RaiderRootBehavior.hkx");
+	static BSFixedString animationEvent("dyn_ActivationLoop");
+
+
+	if (!(form->behaviorGraph == behaviourGraph))
+	{
+//		_DMESSAGE("Behaviour graph invalid");
+		return false;
+	}
+
+	if (!(form->animationEvent == animationEvent))
+	{
+//		_DMESSAGE("Animation event invalid");
+		return false;
+	}
+
+	UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
+	if (modNames.count(modIndex)) {
+		idles[modIndex][form->editorID] = form->formID;
+	}
+
+	return false;
+}
 
 IdleMenu LoadIdleMenu() {
 	std::unordered_map<UInt32, std::string> modNames;
@@ -80,28 +133,30 @@ IdleMenu LoadIdleMenu() {
 		}
 	}
 
+	IdleMenu menu;
 	std::map<UInt32, std::map<std::string, UInt32>> idles;
 
 	BSTCaseInsensitiveStringMapIdle* stringMap = (BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr();
 
-	static BSFixedString behaviourGraph("actors\\Character\\Behaviors\\RaiderRootBehavior.hkx");
-	static BSFixedString animationEvent("dyn_ActivationLoop");
+	if (stringMap->VfTable != BSTCaseInsensitiveStringMapIdleVFTable) {
+		_DMESSAGE("Idle string map vftable not found");
+		_Log("VFTable address ", stringMap->VfTable);
+		return menu;
+	}
+	else {
+		_DMESSAGE("Idle string map table found");
+	}
+	
+	//_Log("Idle string map heap addr: ", (UInt64)stringMap->forms);
+	_Log("Idle string map capacity: ", stringMap->capacity);
+	_Log("Idle string map count: ", stringMap->count);
 
 	TESIdleForm** idleCount = stringMap->forms + stringMap->capacity;
 	for (TESIdleForm** idlePtr = stringMap->forms; idlePtr < idleCount; ++idlePtr) {
-		TESIdleForm* form = *idlePtr;
-
-		if (form && form->editorID && form->formID &&
-			form->behaviorGraph == behaviourGraph && form->animationEvent == animationEvent) {
-
-			UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
-			if (modNames.count(modIndex)) {
-				idles[modIndex][form->editorID] = form->formID;
-			}
+		if (AddIdleToMap(*idlePtr, idles, modNames)) {
+			break;
 		}
 	}
-
-	IdleMenu menu;
 
 	for (auto& modKvp : idles) {
 		std::string modName = modNames[modKvp.first];
@@ -131,7 +186,13 @@ bool PlayIdleAnimation(UInt32 formId) {
 
 	Actor* actor = (Actor*)selected.refr;
 
-	TESIdleForm* idleForm = (TESIdleForm*)LookupFormByID(formId);
+	TESForm* form = LookupFormByID(formId);
+
+	if (!form) return false;
+
+	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
+
+	if (!idleForm) return false;
 
 	return (*playIdleAnimation)(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
@@ -146,9 +207,14 @@ void ResetIdleAnimation() {
 
 	if (!modIndex || modIndex == 0xFFFF) return;
 
+	//reset idle form id 0x801
 	UInt32 formId = (0xFE << 24) + ((*g_dataHandler)->GetLoadedLightModIndex("ScreenArcherMenu.esp") << 12) + 0x801;
 
-	TESIdleForm* idleForm = (TESIdleForm*)LookupFormByID(formId);
+	TESForm* form = LookupFormByID(formId);
+
+	if (!form) return;
+
+	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
 
 	if (!idleForm) return;
 

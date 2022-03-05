@@ -12,7 +12,7 @@
 #include "SAF/adjustments.h"
 using namespace SAF;
 
-AdjustmentManager* safAdjustmentManager;
+AdjustmentManager* safAdjustmentManager = nullptr;
 
 SafMessageDispatcher safMessageDispatcher;
 

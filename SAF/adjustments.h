@@ -252,6 +252,7 @@ namespace SAF {
 		TESNPC* npc = nullptr;
 		NiNode* root = nullptr;
 		NiNode* baseRoot = nullptr;
+		UInt32 formId = 0;
 
 		std::vector<std::shared_ptr<Adjustment>> list;
 		std::unordered_map<UInt32, std::shared_ptr<Adjustment>> map;
@@ -268,7 +269,8 @@ namespace SAF {
 
 		ActorAdjustments(Actor* actor, TESNPC* npc) :
 			actor(actor),
-			npc(npc)
+			npc(npc),
+			formId(actor->formID)
 		{}
 
 		std::shared_ptr<Adjustment> CreateAdjustment(std::string name);

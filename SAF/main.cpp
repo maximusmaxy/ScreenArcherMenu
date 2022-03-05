@@ -78,6 +78,10 @@ class SAFEventReciever :
 public:
 	EventResult	ReceiveEvent(TESObjectLoadedEvent* evn, void* dispatcher) 
 	{
+		//Currently lots of bugs with dynamic references so ignore them for the moment
+		if ((evn->formId & 0xFF000000) == 0xFF000000)
+			return kEvent_Continue;
+
 		TESForm* form = LookupFormByID(evn->formId);
 		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
 		if (!actor)

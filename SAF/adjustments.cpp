@@ -159,8 +159,7 @@ namespace SAF {
 
 		//if any of these are false the actor adjustment is invalid and should be marked for deletion
 		if (!actor || !actor->baseForm || !npc || actor->baseForm != npc) {
-			if (actor)
-				g_adjustmentManager.actorDeletions.insert(actor->formID);
+			g_adjustmentManager.actorDeletions.insert(formId);
 			actor = nullptr;
 			npc = nullptr;
 			return;
@@ -169,7 +168,7 @@ namespace SAF {
 		if (actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled)) return;
 
 		root = actor->GetActorRootNode(false);
-
+		
 		if (!root) return;
 
 		isFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
@@ -606,6 +605,10 @@ namespace SAF {
 		if (!adjustments) {
 			std::lock_guard<std::shared_mutex> lock(actorMutex);
 
+			//Currently lots of bugs with dynamic references so ignore them for the moment
+			if ((refr->formID & 0xFF000000) == 0xFF000000)
+				return nullptr;
+
 			TESForm* form = LookupFormByID(refr->formID);
 
 			Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
@@ -617,7 +620,7 @@ namespace SAF {
 
 			adjustments = std::make_shared<ActorAdjustments>(actor, npc);
 
-			actorAdjustmentCache[actor->formID] = adjustments;
+			actorAdjustmentCache[adjustments->formId] = adjustments;
 
 			UpdateActorAdjustments(adjustments, true);
 		}
@@ -654,6 +657,10 @@ namespace SAF {
 
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::CreateActorAdjustment(UInt32 formId)
 	{
+		//Currently lots of bugs with dynamic references so ignore them for the moment
+		if ((formId & 0xFF000000) == 0xFF000000)
+			return nullptr;
+
 		TESForm* form = LookupFormByID(formId);
 
 		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
@@ -664,7 +671,7 @@ namespace SAF {
 
 		std::shared_ptr<ActorAdjustments> adjustments = std::make_shared<ActorAdjustments>(actor, npc);
 
-		actorAdjustmentCache[actor->formID] = adjustments;
+		actorAdjustmentCache[adjustments->formId] = adjustments;
 
 		UpdateActorAdjustments(adjustments, true);
 
@@ -848,7 +855,7 @@ namespace SAF {
 
 		if (!loaded) {
 			if (adjustments) {
-				if (adjustments->actor->flags & TESForm::kFlag_Persistent) {
+				if (adjustments->actor && adjustments->actor->flags & TESForm::kFlag_Persistent) {
 					StorePersistentAdjustments(adjustments);
 				}
 
@@ -861,7 +868,7 @@ namespace SAF {
 
 		if (!adjustments) {
 			adjustments = std::make_shared<ActorAdjustments>(actor, npc);
-			actorAdjustmentCache[actor->formID] = adjustments;
+			actorAdjustmentCache[adjustments->formId] = adjustments;
 		}
 
 		UpdateActorAdjustments(adjustments, false);
@@ -1015,13 +1022,12 @@ namespace SAF {
 	void AdjustmentManager::UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments, bool loaded) {
 		adjustments->Update();
 
+		//couldn't find root node so queue until loaded event is triggered
 		if (!adjustments->root) {
-			
 			if (!loaded) {
-				//not deleted or disabled
-				if (!(adjustments->actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled))) {
-					//couldn't find root node so queue until loaded event is triggered
-					actorUpdates.insert(adjustments->actor->formID);
+				//if not flagged deleted or disabled
+				if (adjustments->actor && !(adjustments->actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled))) {
+					actorUpdates.insert(adjustments->formId);
 				}
 			}
 			return;
@@ -1040,8 +1046,8 @@ namespace SAF {
 		if (uniqueAdjustments.count(adjustments->npc->formID))
 			uniques = &uniqueAdjustments[adjustments->npc->formID];
 
-		if (persistentAdjustments.count(adjustments->actor->formID))
-			persistents = &persistentAdjustments[adjustments->actor->formID];
+		if (persistentAdjustments.count(adjustments->formId))
+			persistents = &persistentAdjustments[adjustments->formId];
 
 		adjustments->UpdatePersistentAdjustments(defaults, uniques, persistents);
 
@@ -1235,7 +1241,7 @@ namespace SAF {
 			if (kvp.second->actor->flags & TESForm::kFlag_Persistent &&
 				!(kvp.second->actor->flags & (TESForm::kFlag_IsDeleted | TESForm::kFlag_IsDisabled))) {
 				kvp.second->Clear();
-				actorUpdates.insert(kvp.second->actor->formID);
+				actorUpdates.insert(kvp.second->formId);
 			}
 		}
 	}
@@ -1243,8 +1249,8 @@ namespace SAF {
 	void AdjustmentManager::StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
 		std::lock_guard<std::shared_mutex> persistenceLock(persistenceMutex);
 
-		if (persistentAdjustments.count(adjustments->actor->formID))
-			persistentAdjustments[adjustments->actor->formID].clear();
+		if (persistentAdjustments.count(adjustments->formId))
+			persistentAdjustments[adjustments->formId].clear();
 		adjustments->GetPersistentAdjustments(&persistentAdjustments);
 	}
 
@@ -1254,12 +1260,12 @@ namespace SAF {
 		for (auto& adjustment : map) {
 			PersistentAdjustment persistentAdjustment = adjustment.second->GetPersistence();
 			if (persistentAdjustment.type != kAdjustmentSerializeDisabled)
-				(*persistentAdjustments)[actor->formID].push_back(persistentAdjustment);
+				(*persistentAdjustments)[formId].push_back(persistentAdjustment);
 		}
 
 		for (auto& removed : removedAdjustments) 
 		{
-			(*persistentAdjustments)[actor->formID].push_back(PersistentAdjustment(removed, std::string(), kAdjustmentSerializeRemove));
+			(*persistentAdjustments)[formId].push_back(PersistentAdjustment(removed, std::string(), kAdjustmentSerializeRemove));
 		}
 	}
 
