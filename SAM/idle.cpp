@@ -8,6 +8,8 @@
 #include "sam.h"
 #include "SAF/util.h"
 
+#include "strnatcmp.h"
+
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
@@ -55,18 +57,35 @@ public:
 	UInt64 unk48;
 };
 
+class NiFormArrayTESIdle
+{
+public:
+	UInt64 Vftable;
+	TESIdleForm** forms;
+	UInt32 capacity;
+	UInt32 count;
+	UInt32 unk18;
+	UInt32 unk1C;
+};
+
 RelocAddr<BSTCaseInsensitiveStringMapIdle> idleStringMap(0x58D2EA0);
 
 RelocAddr<UInt64> BSTCaseInsensitiveStringMapIdleVFTable(0x2CB9478);
 
 RelocAddr<UInt64> TESIdleFormVFTable(0x2CB8FA8);
 
-bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt32>>& idles, std::unordered_map<UInt32, std::string>& modNames) {
-	if (!form) {
-		//_DMESSAGE("Form is null");
+typedef NiFormArrayTESIdle* (*GetFormArrayFromName)(BSTCaseInsensitiveStringMapIdle* idleMap, const char* name);
+RelocAddr<GetFormArrayFromName> getFormArrayFromName(0x5AAC80);
 
-		//If a null form is found we've probably reached the end of the string map so no need to continue searching
-		return true;
+struct naturalSort {
+	bool operator()(const std::string& a, const std::string& b) const {
+		return strnatcasecmp(a.c_str(), b.c_str()) < 0;
+	}
+};
+
+bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt32, naturalSort>>& idles, std::unordered_map<UInt32, std::string>& modNames) {
+	if (!form) {
+		return false;
 	}
 
 	if (*(UInt64*)form != TESIdleFormVFTable) {
@@ -86,7 +105,6 @@ bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt
 
 	static BSFixedString behaviourGraph("actors\\Character\\Behaviors\\RaiderRootBehavior.hkx");
 	static BSFixedString animationEvent("dyn_ActivationLoop");
-
 
 	if (!(form->behaviorGraph == behaviourGraph))
 	{
@@ -134,25 +152,12 @@ IdleMenu LoadIdleMenu() {
 	}
 
 	IdleMenu menu;
-	std::map<UInt32, std::map<std::string, UInt32>> idles;
+	std::map<UInt32, std::map<std::string, UInt32, naturalSort>> idles;
 
-	BSTCaseInsensitiveStringMapIdle* stringMap = (BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr();
+	NiFormArrayTESIdle* idleFormArray = (*getFormArrayFromName)((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), "actors\\Character\\Behaviors\\RaiderRootBehavior.hkx");
+	idleFormArray++;
 
-	if (stringMap->VfTable != BSTCaseInsensitiveStringMapIdleVFTable) {
-		_DMESSAGE("Idle string map vftable not found");
-		_Log("VFTable address ", stringMap->VfTable);
-		return menu;
-	}
-	else {
-		_DMESSAGE("Idle string map table found");
-	}
-	
-	//_Log("Idle string map heap addr: ", (UInt64)stringMap->forms);
-	_Log("Idle string map capacity: ", stringMap->capacity);
-	_Log("Idle string map count: ", stringMap->count);
-
-	TESIdleForm** idleCount = stringMap->forms + stringMap->capacity;
-	for (TESIdleForm** idlePtr = stringMap->forms; idlePtr < idleCount; ++idlePtr) {
+	for (TESIdleForm** idlePtr = idleFormArray->forms; idlePtr < idleFormArray->forms + idleFormArray->count; ++idlePtr) {
 		if (AddIdleToMap(*idlePtr, idles, modNames)) {
 			break;
 		}
@@ -243,7 +248,7 @@ void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategor
 	root->CreateArray(&values);
 
 	IdleMenu* menu = GetIdleMenu();
-	if (!menu) return;
+	if (!menu || selectedCategory >= menu->size()) return;
 
 	for (auto& category : (*menu)[selectedCategory].second) {
 		GFxValue name(category.first.c_str());

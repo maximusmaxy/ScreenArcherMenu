@@ -43,7 +43,8 @@ namespace SAF {
 		kSafAdjustmentActor,
 		kSafAdjustmentNegate,
 		kSafPoseLoad,
-		kSafPoseReset
+		kSafPoseReset,
+		kSafResult
 	};
 
 	struct AdjustmentMessage {
@@ -59,16 +60,18 @@ namespace SAF {
 	struct AdjustmentCreateMessage {
 		UInt32 formId;
 		const char* name;
-		const char* mod;
+		const char* esp;
 		bool persistent;
 		bool hidden;
+		const char* mod;
 
-		AdjustmentCreateMessage(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden) :
+		AdjustmentCreateMessage(UInt32 formId, const char* name, const char* esp, bool persistent, bool hidden, const char* mod) :
 			formId(formId),
 			name(name),
-			mod(mod),
+			esp(esp),
 			persistent(persistent),
-			hidden(hidden)
+			hidden(hidden),
+			mod(mod)
 		{}
 	};
 
@@ -137,10 +140,12 @@ namespace SAF {
 	struct PoseMessage {
 		UInt32 formId;
 		const char* filename;
+		const char* mod;
 
-		PoseMessage(UInt32 formId, const char* filename) :
+		PoseMessage(UInt32 formId, const char* filename, const char* mod) :
 			formId(formId),
-			filename(filename)
+			filename(filename),
+			mod(mod)
 		{}
 	};
 
@@ -301,7 +306,7 @@ namespace SAF {
 		void GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments);
 
 		void SavePose(std::string filename, std::unordered_set<UInt32> handles);
-		void LoadPose(std::string filename);
+		bool LoadPose(std::string filename);
 		void ResetPose();
 	};
 
@@ -337,13 +342,13 @@ namespace SAF {
 
 		void CreateNewAdjustment(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden);
 		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
-		void LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden);
+		bool LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden);
 		void RemoveAdjustment(UInt32 formId, UInt32 handle);
 		void ResetAdjustment(UInt32 formId, UInt32 handle);
 		void SetTransform(AdjustmentTransformMessage* message);
 		std::shared_ptr<ActorAdjustments> CreateActorAdjustment(UInt32 formId);
 		void NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName);
-		void LoadPose(UInt32 formId, const char* filename);
+		bool LoadPose(UInt32 formId, const char* filename);
 		void ResetPose(UInt32 formId);
 
 		void UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments, bool loaded);

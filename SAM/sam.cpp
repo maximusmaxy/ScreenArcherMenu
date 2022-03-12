@@ -13,6 +13,7 @@
 #include "hacks.h"
 #include "eyes.h"
 #include "pose.h"
+#include "mfg.h"
 
 #include <regex>
 
@@ -190,6 +191,25 @@ void OnConsoleRefUpdate() {
 
 		root->Invoke("root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
 	}
+}
+
+void ToggleMenu() {
+	static BSFixedString menuName("ScreenArcherMenu");
+
+	if ((*g_ui)->IsMenuRegistered(menuName)) {
+		UInt32 message = (*g_ui)->IsMenuOpen(menuName) ? kMessage_Close : kMessage_Open;
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, message);
+	}
+}
+
+bool OpenSamFile(std::string filename) {
+	if (!selected.refr) return false;
+
+	if (LoadJsonPose(filename.c_str())) return true;
+	if (LoadMfg(filename)) return true;
+	if (LoadAdjustmentFile(filename.c_str())) return true;
+
+	return false;
 }
 
 class SavedDataVisitor : public GFxValue::ObjectInterface::ObjVisitor

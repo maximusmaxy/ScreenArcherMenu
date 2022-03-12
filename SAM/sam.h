@@ -45,6 +45,8 @@ typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 
+TESObjectREFR* GetRefr();
+
 MenuCategoryList* GetMenu(MenuCache* cache);
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
@@ -52,5 +54,8 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 void OnMenuOpen();
 void OnMenuClose();
 void OnConsoleRefUpdate();
+
+void ToggleMenu();
+bool OpenSamFile(std::string filename);
 
 void LoadMenuFiles();

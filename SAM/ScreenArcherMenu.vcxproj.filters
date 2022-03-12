@@ -11,6 +11,8 @@
     <ClCompile Include="mfg.cpp" />
     <ClCompile Include="eyes.cpp" />
     <ClCompile Include="idle.cpp" />
+    <ClCompile Include="console.cpp" />
+    <ClCompile Include="strnatcmp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -22,6 +24,8 @@
     <ClInclude Include="mfg.h" />
     <ClInclude Include="eyes.h" />
     <ClInclude Include="idle.h" />
+    <ClInclude Include="console.h" />
+    <ClInclude Include="strnatcmp.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

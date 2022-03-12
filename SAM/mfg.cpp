@@ -51,7 +51,7 @@ void SaveMfg(std::string filename) {
 	}
 
 	std::string morphs;
-	for (int i = 0; i < 50; ++i) {
+	for (int i = 0; i < 54; ++i) {
 		UInt32 scale = std::round(ptr[i] * 100);
 		scale = max(0, min(100, scale));
 		if (scale != 0) {
@@ -86,19 +86,19 @@ bool LoadMfg(std::string filename) {
 	char buf[512];
 	std::cmatch match;
 
-	float morphs[50];
+	float morphs[54];
 	std::memset(morphs, 0, sizeof(morphs));
 
 	while (!file.HitEOF()) {
 		file.ReadString(buf, 512, '\n', '\r');
 		if (std::regex_match(buf, match, mfgRegex)) {
-			int id = max(0, min(49, std::stoi(match[1].str())));
+			int id = max(0, min(53, std::stoi(match[1].str())));
 			int scale = max(0, min(100, std::stoi(match[2].str())));
 			morphs[id] = scale * 0.0099999998f; 
 		}
 	}
 
-	for (int i = 0; i < 50; ++i) {
+	for (int i = 0; i < 54; ++i) {
 		ptr[i] = morphs[i];
 	}
 
@@ -111,7 +111,7 @@ void ResetMfg() {
 	float* ptr = GetMorphPointer();
 	if (!ptr) return;
 
-	memset(ptr, 0, sizeof(float) * 50);
+	memset(ptr, 0, sizeof(float) * 54);
 }
 
 void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
@@ -138,7 +138,7 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 	root->CreateArray(&values);
 
 	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
-	if (!menu) return;
+	if (!menu || categoryIndex >= menu->size()) return;
 
 	float* ptr = GetMorphPointer();
 	if (!ptr) return;
@@ -148,7 +148,7 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 		names.PushBack(&name);
 
 		UInt32 key = std::stoul(kvp.second);
-		key = max(0, min(49, key));
+		key = max(0, min(53, key));
 
 		GFxValue value((SInt32)std::round(ptr[key] * 100));
 		values.PushBack(&value);

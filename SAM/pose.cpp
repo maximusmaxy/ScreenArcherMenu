@@ -26,8 +26,16 @@ std::shared_ptr<ActorAdjustments> SafMessageDispatcher::GetActorAdjustments(UInt
 	if (!adjustments) {
 		createActorAdjustments(formId);
 		adjustments = actorAdjustments;
+		actorAdjustments = nullptr;
 	}
+
 	return adjustments;
+}
+
+bool SafMessageDispatcher::GetResult() {
+	bool _result = result;
+	result = false;
+	return _result;
 }
 
 void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y, float z) {
@@ -94,13 +102,19 @@ void SaveAdjustmentFile(const char* filename, int adjustmentHandle) {
 	safMessageDispatcher.saveAdjustment(selected.refr->formID, filename, adjustmentHandle);
 }
 
-void LoadAdjustmentFile(const char* filename) {
-	if (!selected.refr) return;
+bool LoadAdjustmentFile(const char* filename) {
+	if (!selected.refr) return false;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
+	if (!adjustments) return false;
 
 	safMessageDispatcher.loadAdjustment(selected.refr->formID, filename);
-	adjustments->UpdateAllAdjustments();
+
+	if (safMessageDispatcher.GetResult()) {
+		adjustments->UpdateAllAdjustments();
+		return true;
+	}
+
+	return false;
 }
 
 void PushNewAdjustment(const char* name) {
@@ -399,14 +413,20 @@ void SaveJsonPose(const char* filename, GFxValue selectedAdjustments)
 	adjustments->SavePose(filename, handles);
 }
 
-void LoadJsonPose(const char* filename)
+bool LoadJsonPose(const char* filename)
 {
-	if (!selected.refr) return;
+	if (!selected.refr) return false;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
+	if (!adjustments) return false;
 
 	safMessageDispatcher.loadPose(selected.refr->formID, filename);
-	adjustments->UpdateAllAdjustments();
+
+	if (safMessageDispatcher.GetResult()) {
+		adjustments->UpdateAllAdjustments();
+		return true;
+	}
+
+	return false;
 }
 
 void ResetJsonPose()

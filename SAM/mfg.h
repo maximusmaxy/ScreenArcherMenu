@@ -5,12 +5,12 @@
 
 class BSFaceGenAnimationData {
 public:
-	UInt64 vfTable;
-	UInt32 size;
-	UInt32 unk1;
-	UInt64 unk2;
-	float faceAnimMorphs[54];
-	float mfgMorphs[54];
+	UInt64 vfTable;				//0
+	UInt32 size;				//8
+	UInt32 unk1;				//C
+	UInt64 unk2;				//10
+	float faceAnimMorphs[54];	//18
+	float mfgMorphs[54];		//F0
 	//incomplete
 };
 

@@ -245,9 +245,11 @@ namespace SAF {
 				case kAdjustmentSerializeLoad:
 				{
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.name, true);
-					adjustment->mod = persistent.mod;
-					adjustment->persistent = true;
-					adjustment->saved = true;
+					if (adjustment != nullptr) {
+						adjustment->mod = persistent.mod;
+						adjustment->persistent = true;
+						adjustment->saved = true;
+					}
 					break;
 				}
 				case kAdjustmentSerializeRemove:
@@ -264,7 +266,9 @@ namespace SAF {
 				if (!removeSet.count(filename)) {
 					removeSet.insert(filename);
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(filename, true);
-					adjustment->isDefault = true;
+					if (adjustment != nullptr) {
+						adjustment->isDefault = true;
+					}
 				}
 			}
 		}
@@ -273,7 +277,9 @@ namespace SAF {
 			for (auto& kvp : *uniques) {
 				if (!removeSet.count(kvp.first)) {
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(kvp.first, true);
-					adjustment->isDefault = true;
+					if (adjustment != nullptr) {
+						adjustment->isDefault = true;
+					}
 				}
 			}
 		}
@@ -543,7 +549,7 @@ namespace SAF {
 		SavePoseFile(filename, &poseMap);
 	}
 
-	void ActorAdjustments::LoadPose(std::string filename) {
+	bool ActorAdjustments::LoadPose(std::string filename) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		TransformMap poseMap;
@@ -580,7 +586,11 @@ namespace SAF {
 					adjustment->SetTransform(overrider, NegateNiTransform(nodeMap[base]->m_localTransform, kvp.second));
 				}
 			}
+			
+			return true;
 		}
+
+		return false;
 	}
 
 	void ActorAdjustments::ResetPose() {
@@ -894,14 +904,14 @@ namespace SAF {
 		adjustments->SaveAdjustment(filename, handle);
 	}
 
-	void AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden) {
+	bool AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(formId)) return;
+		if (!actorAdjustmentCache.count(formId)) return false;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
-		adjustments->LoadAdjustment(filename, mod, persistent, hidden);
+		return adjustments->LoadAdjustment(filename, mod, persistent, hidden);
 	}
 
 	void AdjustmentManager::RemoveAdjustment(UInt32 formId, UInt32 handle) {
@@ -973,15 +983,15 @@ namespace SAF {
 		adjustments->NegateTransformGroup(adjustment, groupName);
 	}
 
-	void AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
+	bool AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(formId)) return;
+		if (!actorAdjustmentCache.count(formId)) return false;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
-		if (!adjustments) return;
+		if (!adjustments) return false;
 
-		adjustments->LoadPose(filename);
+		return adjustments->LoadPose(filename);
 	}
 
 	void AdjustmentManager::ResetPose(UInt32 formId) {

@@ -13,9 +13,12 @@ class SafMessageDispatcher {
 private:
 	std::mutex mutex;
 public:
-	std::shared_ptr<SAF::ActorAdjustments> actorAdjustments;
+	std::shared_ptr<SAF::ActorAdjustments> actorAdjustments = nullptr;
+	bool result = false;
 
 	std::shared_ptr<SAF::ActorAdjustments> GetActorAdjustments(UInt32 formId);
+	bool GetResult();
+
 	void (*createAdjustment)(UInt32 formId, const char* name);
 	void (*saveAdjustment)(UInt32 formId, const char* filename, UInt32 handle);
 	void (*loadAdjustment)(UInt32 formId, const char* filename);
@@ -40,7 +43,7 @@ void SetPersistence(UInt32 adjustmentHandle, bool isPersistent);
 void SetScale(UInt32 adjustmentHandle, int scale);
 
 void SaveAdjustmentFile(const char* filename, int adjustmentHandle);
-void LoadAdjustmentFile(const char* filename);
+bool LoadAdjustmentFile(const char* filename);
 void PushNewAdjustment(const char* name);
 void EraseAdjustment(UInt32 adjustmentHandle);
 void ClearAdjustment(UInt32 adjustmentHandle);
@@ -54,5 +57,5 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 
 void GetPoseListGFx(GFxMovieRoot* rot, GFxValue* result);
 void SaveJsonPose(const char* filename, GFxValue selectedHandles);
-void LoadJsonPose(const char* filename);
+bool LoadJsonPose(const char* filename);
 void ResetJsonPose();

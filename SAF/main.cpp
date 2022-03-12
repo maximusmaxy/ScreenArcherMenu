@@ -16,6 +16,7 @@
 #include "papyrus.h"
 #include "serialization.h"
 #include "adjustments.h"
+#include "util.h"
 
 #include <shlobj.h>
 #include <string>
@@ -134,7 +135,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentCreate:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
+		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp, data->persistent, data->hidden);
 		break;
 	}
 	case SAF::kSafAdjustmentSave:
@@ -146,7 +147,8 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentLoad:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->mod, data->persistent, data->hidden);
+		bool result = SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp, data->persistent, data->hidden);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), data->mod);
 		break;
 	}
 	case SAF::kSafAdjustmentErase:
@@ -183,7 +185,8 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafPoseLoad:
 	{
 		auto data = (SAF::PoseMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
+		bool result = SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), data->mod);
 		break;
 	}
 	case SAF::kSafPoseReset:
@@ -197,17 +200,17 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 
 
 void SAFSaveCallback(const F4SESerializationInterface* ifc) {
-	_DMESSAGE("Serializing save");
+	//_DMESSAGE("Serializing save");
 	SAF::g_adjustmentManager.SerializeSave(ifc);
 }
 
 void SAFLoadCallback(const F4SESerializationInterface* ifc) {
-	_DMESSAGE("Serializing load");
+	//_DMESSAGE("Serializing load");
 	SAF::g_adjustmentManager.SerializeLoad(ifc);
 }
 
 void SAFRevertCallback(const F4SESerializationInterface* ifc) {
-	_DMESSAGE("Serializing revert");
+	//_DMESSAGE("Serializing revert");
 	SAF::g_adjustmentManager.SerializeRevert(ifc);
 }
 

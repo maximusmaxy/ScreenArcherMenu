@@ -15,6 +15,8 @@
 #include "sam.h"
 #include "scaleform.h"
 #include "pose.h"
+#include "idle.h"
+#include "console.h"
 
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
@@ -148,11 +150,14 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 		case SAF::kSafAdjustmentActor:
 			safMessageDispatcher.actorAdjustments = (*(std::shared_ptr<SAF::ActorAdjustments>*)msg->data);
 			break;
+		case SAF::kSafResult:
+			safMessageDispatcher.result = *(bool*)msg->data;
+			break;
 	}
 }
 
 void SafCreateAdjustment(UInt32 formId, const char* name) {
-	SAF::AdjustmentCreateMessage message(formId, name, "ScreenArcherMenu.esp", false, false);
+	SAF::AdjustmentCreateMessage message(formId, name, "ScreenArcherMenu.esp", false, false, nullptr);
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentCreate, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -163,7 +168,7 @@ void SafSaveAdjustment(UInt32 formId, const char* filename, UInt32 handle)
 }
 
 void SafLoadAdjustment(UInt32 formId, const char* filename) {
-	SAF::AdjustmentCreateMessage message(formId, filename, "ScreenArcherMenu.esp", true, false);
+	SAF::AdjustmentCreateMessage message(formId, filename, "ScreenArcherMenu.esp", true, false, "ScreenArcherMenu");
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -193,12 +198,13 @@ void SafNegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
 }
 
 void SafLoadPose(UInt32 formId, const char* filename) {
-	SAF::PoseMessage message(formId, filename);
+	SAF::PoseMessage message(formId, filename, "ScreenArcherMenu");
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseLoad, &message, sizeof(uintptr_t), "SAF");
+
 }
 
 void SafResetPose(UInt32 formId) {
-	SAF::PoseMessage message(formId, nullptr);
+	SAF::PoseMessage message(formId, nullptr, nullptr);
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -244,6 +250,8 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 		_WARNING("couldn't get papyrus interface");
 	}
 
+	samObScriptInit();
+
 	// supported runtime version
 	return true;
 }
@@ -267,6 +275,8 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 		safMessageDispatcher.loadPose = SafLoadPose;
 		safMessageDispatcher.resetPose = SafResetPose;
 	}
+
+	samObScriptCommit();
 		
 	_DMESSAGE("Screen Archer Menu Loaded");
 
