@@ -32,11 +32,13 @@
 		public static const MORPH_DIRECTORY:String = "Data/F4SE/Plugins/SAM/FaceMorphs";
 		public static const ADJUSTMENT_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Adjustments";
 		public static const POSE_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Poses";
-
+		
         public static const MAIN_MENU:Vector.<String> = new <String>[
             "$SAM_PoseAdjustMenu",
-			"$SAM_PoseExporter",
+			"$SAM_SkeletonAdjustMenu",
+			"$SAM_PoseExportMenu",
 			"$SAM_PlayIdleMenu",
+			//"$SAM_Positioning",
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
             "$SAM_HacksMenu",
@@ -125,6 +127,22 @@
 			{
 				trace("Failed to clear state");
 			}
+		}
+		
+		public static function checkError(id:int):Boolean
+		{
+			try {
+				return sam.CheckError(id);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to check error");
+				if (Util.debug)
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 		
 		public static function loadAdjustmentList()
@@ -750,6 +768,30 @@
 			catch (e:Error)
 			{
 				trace("Reset pose failed");
+			}
+		}
+		
+		public static function loadSkeletonAdjustment(id:int)
+		{
+			try 
+			{
+				sam.LoadSkeletonAdjustment(menuOptions[id]);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load skeleton adjustment");
+			}
+		}
+		
+		public static function resetSkeletonAdjustment()
+		{
+			try 
+			{
+				sam.ResetSkeletonAdjustment();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to reset skeleton adjustment");
 			}
 		}
 	}

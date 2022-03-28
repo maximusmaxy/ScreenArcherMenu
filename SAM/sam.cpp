@@ -7,13 +7,17 @@
 #include "common/IDirectoryIterator.h"
 #include "common/IFileStream.h"
 
+#include "json/json.h"
+
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
+#include "SAF/io.h"
 
 #include "hacks.h"
 #include "eyes.h"
 #include "pose.h"
 #include "mfg.h"
+#include "idle.h"
 
 #include <regex>
 
@@ -21,6 +25,7 @@ SelectedRefr selected;
 
 MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
+MenuCache groupsMenuCache;
 
 SavedMenuData saveData;
 
@@ -62,7 +67,7 @@ TESObjectREFR * GetRefr() {
 		refr = *g_player;
 	} else {
 		LookupREFRByHandle(handle, refr);
-		if (refr->formType != kFormType_ACHR)
+		if (refr->formType != kFormType_ACHR || (refr->flags & TESObjectREFR::kFlag_IsDeleted))
 			return nullptr;
 	}
 	return refr;
@@ -329,10 +334,13 @@ enum {
 
 enum {
 	kMenuTypePose = 1,
-	kMenuTypeMorphs
+	kMenuTypeMorphs,
+	kMenuTypeGroups
 };
 
-std::regex menuCategoryRegex("([^\\t]+)\\t+([^\\t]+)");
+std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
+std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
+
 std::unordered_map<std::string, UInt32> menuHeaderMap = {
 	{"race", kMenuHeaderRace},
 	{"Race", kMenuHeaderRace},
@@ -349,15 +357,11 @@ std::unordered_map<std::string, UInt32> menuTypeMap = {
 	{"Pose", kMenuTypePose},
 	{"morphs", kMenuTypeMorphs},
 	{"Morphs", kMenuTypeMorphs},
+	{"groups", kMenuTypeGroups},
+	{"Groups", kMenuTypeGroups}
 };
 
-bool LoadMenuFile(std::string path) {
-	IFileStream file;
-
-	if (!file.Open(path.c_str())) {
-		_DMESSAGE("File not found");
-		return false;
-	}
+bool ParseMenuFile(std::string path, IFileStream& file) {
 
 	char buf[512];
 	std::cmatch match;
@@ -367,13 +371,12 @@ bool LoadMenuFile(std::string path) {
 	//header
 	for (int i = 0; i < 4; ++i) {
 		file.ReadString(buf, 512, '\n', '\r');
-		bool matched = std::regex_match(buf, match, menuCategoryRegex);
-		if (matched && menuHeaderMap.count(match[1].str())) {
+		bool matched = std::regex_search(buf, match, tabSeperatedRegex);
+		if (matched && match[2].str().size() && menuHeaderMap.count(match[1].str())) {
 			header[menuHeaderMap[match[1].str()]] = match[2].str();
 		}
 		else {
 			_LogCat("Failed to read header ", path);
-			file.Close();
 			return false;
 		}
 	}
@@ -392,31 +395,123 @@ bool LoadMenuFile(std::string path) {
 	switch (menuType) {
 		case kMenuTypePose: cache = &poseMenuCache; break;
 		case kMenuTypeMorphs: cache = &morphsMenuCache; break;
+		case kMenuTypeGroups: cache = &groupsMenuCache; break;
 	}
 
-	//categories
-	while (!file.HitEOF()) {
-		file.ReadString(buf, 512, '\n', '\r');
-		if (std::regex_match(buf, match, menuCategoryRegex)) {
-			if (match[1].str() == categoryIdentifier) {
-				MenuList list;
-				(*cache)[key].push_back(std::make_pair(match[2].str(), list));
-			}
-			else {
-				(*cache)[key].back().second.push_back(std::make_pair(match[2].str(), match[1].str()));
+	UInt32 categoryIndex = 0;
+
+	try {
+		while (!file.HitEOF()) {
+			file.ReadString(buf, 512, '\n', '\r');
+			if (std::regex_search(buf, match, tabOptionalRegex)) {
+				if (match[1].str() == categoryIdentifier) {
+					//Try find existing category
+					UInt32 size = (*cache)[key].size();
+					for (categoryIndex = 0; categoryIndex < size; categoryIndex++) {
+						if ((*cache)[key][categoryIndex].first == match[2].str()) {
+							break;
+						}
+					}
+					//if category not found add it
+					if (categoryIndex >= size) {
+						MenuList list;
+						(*cache)[key].push_back(std::make_pair(match[2].str(), list));
+						categoryIndex = (*cache)[key].size() - 1;
+					}
+				}
+				else {
+					//add to existing category
+					(*cache)[key][categoryIndex].second.push_back(std::make_pair(match[2].str(), match[1].str()));
+				}
 			}
 		}
 	}
+	catch (...) {
+		_LogCat("Failed to read ", path);
+		return false;
+	}
+
+	return true;
+}
+
+bool LoadMenuFile(std::string path) {
+	IFileStream file;
+
+	if (!file.Open(path.c_str())) {
+		_DMESSAGE("File not found");
+		return false;
+	}
+
+	bool result = ParseMenuFile(path, file);
 
 	file.Close();
+
+	return result;
+}
+
+bool LoadIdleFile(std::string path) {
+	IFileStream file;
+
+	if (!file.Open(path.c_str())) {
+		_LogCat(path, " not found");
+		return false;
+	}
+
+	std::string jsonString;
+	SAF::ReadAll(&file, &jsonString);
+	file.Close();
+
+	Json::Reader reader;
+	Json::Value value;
+
+	if (!reader.parse(jsonString, value)) {
+		_LogCat("Failed to parse ", path);
+		return false;
+	}
+
+	try {
+		Json::Value::Members members = value.getMemberNames();
+
+		for (auto& memberStr : members) {
+			
+			Json::Value member = value[memberStr];
+			IdleData data;
+
+			data.raceId = GetFormID(member["mod"].asString(), member["race"].asString());
+			data.resetId = GetFormID(member["reset"]["mod"].asString(), member["reset"]["idle"].asString());
+			data.behavior = BSFixedString(member["filter"]["behavior"].asCString());
+			data.event = BSFixedString(member["filter"]["event"].asCString());
+			
+			raceIdleData[data.raceId] = data;
+		}
+	}
+	catch (...) {
+		_LogCat("Failed to read ", path);
+		return false;
+	}
 
 	return true;
 }
 
 void LoadMenuFiles() {
+	std::unordered_set<std::string> loadedMenus;
+
+	//Load human menu first for ordering purposes
+	const char* humanPoseFile = "Data\\F4SE\\Plugins\\SAM\\Menus\\Human Pose.txt";
+	LoadMenuFile(humanPoseFile);
+	loadedMenus.insert(humanPoseFile);
+
 	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Menus", "*.txt"); !iter.Done(); iter.Next())
 	{
 		std::string	path = iter.GetFullPath();
-		LoadMenuFile(path);
+		if (!loadedMenus.count(path)) {
+			LoadMenuFile(path);
+			loadedMenus.insert(path);
+		}	
+	}
+	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Idles", "*.json"); !iter.Done(); iter.Next())
+	{
+		std::string	path = iter.GetFullPath();
+		LoadIdleFile(path);
 	}
 }

@@ -38,6 +38,14 @@ bool SafMessageDispatcher::GetResult() {
 	return _result;
 }
 
+bool CheckSelectedSkeleton() {
+	if (!selected.refr) return false;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return false;
+
+	return true;
+}
+
 void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y, float z) {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
@@ -150,7 +158,17 @@ void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	safMessageDispatcher.negateAdjustments(selected.refr->formID, adjustmentHandle, adjustmentGroup);
+	MenuCategoryList* groupsMenu = GetMenu(&groupsMenuCache);
+	if (!groupsMenu) return;
+
+	//find the correct adjustment group and negate all transforms
+	for (auto it = groupsMenu->begin(); it < groupsMenu->end(); it++) {
+		if (it->first == adjustmentGroup) {
+			for (auto& kvp : it->second) {
+				safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, kvp.second.c_str(), kAdjustmentTransformNegate, 0, 0, 0);
+			}
+		}
+	}
 
 	adjustments->UpdateAllAdjustments();
 }
@@ -227,10 +245,15 @@ void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle
 
 	GFxValue groups;
 	root->CreateArray(&groups);
-	for (auto& kvp : adjustments->nodeSets->groups) {
-		GFxValue groupName(kvp.first.c_str());
-		groups.PushBack(&groupName);
+
+	MenuCategoryList* groupsMenu = GetMenu(&groupsMenuCache);
+	if (groupsMenu) {
+		for (auto& kvp : *groupsMenu) {
+			GFxValue groupName(kvp.first.c_str());
+			groups.PushBack(&groupName);
+		}
 	}
+
 	result->SetMember("groups", &groups);
 }
 
@@ -286,6 +309,14 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 	result->SetMember("values", &values);
 }
 
+bool CheckMenuHasNode(std::shared_ptr<ActorAdjustments> adjustments, MenuList& list)
+{
+	for (auto& kvp : list) {
+		if (adjustments->HasNode(kvp.first)) return true;
+	}
+	return false;
+}
+
 void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
 	root->CreateArray(result);
@@ -296,9 +327,14 @@ void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 
 	if (!categories) return;
 
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
 	for (auto& kvp : *categories) {
-		GFxValue category(kvp.first.c_str());
-		result->PushBack(&category);
+		if (CheckMenuHasNode(adjustments, kvp.second)) {
+			GFxValue category(kvp.first.c_str());
+			result->PushBack(&category);
+		}
 	}
 }
 
@@ -312,9 +348,14 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 
 	if (!categories) return;
 
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
 	for (auto& kvp : (*categories)[categoryIndex].second) {
-		GFxValue node(kvp.first.c_str());
-		result->PushBack(&node);
+		if (adjustments->HasNode(kvp.first)) {
+			GFxValue node(kvp.first.c_str());
+			result->PushBack(&node);
+		}
 	}
 }
 
@@ -437,4 +478,13 @@ void ResetJsonPose()
 
 	safMessageDispatcher.resetPose(selected.refr->formID);
 	adjustments->UpdateAllAdjustments();
+}
+
+void LoadDefaultAdjustment(const char* filename)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	safMessageDispatcher.loadDefaultAdjustment(selected.race, selected.isFemale, filename);
 }

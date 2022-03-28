@@ -34,9 +34,26 @@ void ClearState::Invoke(Args* args)
 	saveData.Clear();
 }
 
+enum {
+	kSamTargetError = 1,
+	kSamSkeletonError,
+	kSamEyesError
+};
+
+void CheckError::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	switch (args->args[0].GetInt()) {
+		case kSamTargetError: args->result->SetBool(selected.refr); break;
+		case kSamSkeletonError: args->result->SetBool(CheckSelectedSkeleton()); break;
+		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
+	}
+}
+
 void ModifyFacegenMorph::Invoke(Args * args)
 {
-	ASSERT(args->numArgs >= 2);
+	ASSERT(args->numArgs >= 3);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
@@ -360,6 +377,18 @@ void ResetPose::Invoke(Args* args)
 	ResetJsonPose();
 }
 
+void LoadSkeletonAdjustment::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+	LoadDefaultAdjustment(args->args[0].GetString());
+}
+
+void ResetSkeletonAdjustment::Invoke(Args* args)
+{
+	LoadDefaultAdjustment(nullptr);
+}
+
 void HideMenu::Invoke(Args * args)
 {
 	ASSERT(args->numArgs >= 4);
@@ -390,6 +419,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 { 
 	RegisterFunction<SaveState>(value, view->movieRoot, "SaveState");
 	RegisterFunction<ClearState>(value, view->movieRoot, "ClearState");
+	RegisterFunction<CheckError>(value, view->movieRoot, "CheckError");
 	RegisterFunction<ModifyFacegenMorph>(value, view->movieRoot, "ModifyFacegenMorph");
 	RegisterFunction<GetMorphCategories>(value, view->movieRoot, "GetMorphCategories");
 	RegisterFunction<GetMorphs>(value, view->movieRoot, "GetMorphs");
@@ -435,6 +465,8 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SavePose>(value, view->movieRoot, "SavePose");
 	RegisterFunction<LoadPose>(value, view->movieRoot, "LoadPose");
 	RegisterFunction<ResetPose>(value, view->movieRoot, "ResetPose");
+	RegisterFunction<LoadSkeletonAdjustment>(value, view->movieRoot, "LoadSkeletonAdjustment");
+	RegisterFunction<ResetSkeletonAdjustment>(value, view->movieRoot, "ResetSkeletonAdjustment");
 	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
 	RegisterFunction<Test>(value, view->movieRoot, "Test");
 	RegisterFunction<Test2>(value, view->movieRoot, "Test2");

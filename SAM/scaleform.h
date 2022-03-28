@@ -19,6 +19,12 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class CheckError : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class ModifyFacegenMorph : public GFxFunctionHandler
 {
 public:
@@ -288,6 +294,19 @@ class ResetPose : public GFxFunctionHandler
 public:
 	virtual void	Invoke(Args* args);
 };
+
+class LoadSkeletonAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class ResetSkeletonAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 
 class HideMenu : public GFxFunctionHandler
 {

@@ -208,6 +208,11 @@ void SafResetPose(UInt32 formId) {
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
 }
 
+void SafLoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename) {
+	SAF::SkeletonMessage message(raceId, isFemale, filename);
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafDefaultAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
+}
+
 extern "C"
 {
 
@@ -274,6 +279,7 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 		safMessageDispatcher.negateAdjustments = SafNegateAdjustmentGroup;
 		safMessageDispatcher.loadPose = SafLoadPose;
 		safMessageDispatcher.resetPose = SafResetPose;
+		safMessageDispatcher.loadDefaultAdjustment = SafLoadDefaultAdjustment;
 	}
 
 	samObScriptCommit();

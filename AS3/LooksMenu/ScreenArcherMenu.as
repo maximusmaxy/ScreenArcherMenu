@@ -44,11 +44,14 @@
 		public static const POSE_STATE:int = 16;
 		public static const SAVEPOSE_STATE:int = 17;
 		public static const LOADPOSE_STATE:int = 18;
+		public static const SKELETONADJUSTMENT_STATE:int = 19;
+		public static const POSITIONING_STATE:int = 20;
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
 		public var filenameInput:MovieClip;
 		public var border:MovieClip;
+		public var notification:MovieClip;
 		
 		internal var buttonHintData:Vector.<BSButtonHintData > ;
 		internal var buttonHintExit:BSButtonHintData;
@@ -85,6 +88,7 @@
 			ButtonHintBar_mc.bUseShadedBackground = true;
 			ButtonHintBar_mc.BackgroundAlpha = 0.05;
 			ButtonHintBar_mc.ShadedBackgroundMethod = "Flash";
+			notification.visible = false;
 			
 			state = MAIN_STATE;
 			menuStack = new <int>[];
@@ -170,6 +174,7 @@
 			if (data.title) {
 				sliderList.title.text = data.title;
 			}
+			notification.visible = false;
 			Util.playOk();
 		}
 		
@@ -280,8 +285,37 @@
 			Data.scriptHandleLow = data.__handleLow__;
 		}
 		
+		public function checkError(id:int, message:String):Boolean
+		{
+			if (Data.checkError(id)) {
+				notification.visible = false;
+				return true;
+			} else {
+				notification.visible = true;
+				notification.message.text = message;
+				return false;
+			}
+		}
+		
+		public function checkTarget():Boolean
+		{
+			return checkError(1, "$SAM_ConsoleError");
+		}
+		
+		public function checkSkeleton():Boolean
+		{
+			return checkError(2, "$SAM_SkeletonError");
+		}
+		
+		public function checkEyes():Boolean
+		{
+			return checkError(3, "$SAM_EyeError");
+		}
+		
 		public function pushState(state:int)
 		{
+			if (!checkTarget()) return;
+			
 			menuStack.push(this.state);
 			this.state = state;
 			
@@ -389,6 +423,14 @@
 					Data.menuOptions = Data.morphFiles;
 					sliderList.updateList(selectPoseFile);
 					break;
+				case SKELETONADJUSTMENT_STATE:
+					Data.loadAdjustmentFiles();
+					Data.menuOptions = Data.morphFiles;
+					sliderList.updateList(selectSkeletonAdjustment);
+					break;
+				case POSITIONING_STATE:
+					sliderList.updatePositioning();
+					break;
 			}
 			Data.selectedSlider = null;
 			updateButtonHints();
@@ -396,14 +438,17 @@
 		
 		public function selectMenu(id:int):void
 		{
+			if (!checkTarget()) return;
 			switch (id)
 			{
-				case 0: pushState(ADJUSTMENT_STATE); break;
-				case 1: pushState(POSE_STATE); break;
-				case 2: pushState(IDLECATEGORY_STATE); break;
-				case 3:	pushState(MORPHCATEGORY_STATE) ; break;
-				case 4: pushState(EYE_STATE); break;
-				case 5:	pushState(HACK_STATE); break;
+				case 0: if (checkSkeleton()) pushState(ADJUSTMENT_STATE); break;
+				case 1: if (checkSkeleton()) pushState(SKELETONADJUSTMENT_STATE); break;
+				case 2: if (checkSkeleton()) pushState(POSE_STATE); break;
+				case 3: pushState(IDLECATEGORY_STATE); break;
+				//case 4: pushState(POSITIONING_STATE); break;
+				case 4:	pushState(MORPHCATEGORY_STATE); break;
+				case 5: if (checkEyes()) pushState(EYE_STATE); break;
+				case 6:	pushState(HACK_STATE); break;
 			}
 		}
 		
@@ -603,6 +648,11 @@
 		{
 			Data.loadPose(id);
 		}
+		
+		internal function selectSkeletonAdjustment(id:int)
+		{
+			Data.loadSkeletonAdjustment(id);
+		}
 
 		internal function reset():void
 		{
@@ -621,6 +671,10 @@
 					break;
 				case POSE_STATE:
 					Data.resetPose();
+					break;
+				case SKELETONADJUSTMENT_STATE:
+					Data.resetSkeletonAdjustment();
+					break;
 			}
 			sliderList.updateValues();
 			Util.playOk();
@@ -715,6 +769,7 @@
 					break;
 				case IDLECATEGORY_STATE:
 				case IDLE_STATE:
+				case SKELETONADJUSTMENT_STATE:
 					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
@@ -725,7 +780,7 @@
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
 					break;
-				case MORPH_STATE :
+				case MORPH_STATE:
 				case MORPHCATEGORY_STATE:
 				case POSE_STATE:
 					buttonHintExit.ButtonVisible = false;
@@ -738,7 +793,7 @@
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
 					break;
-				case SAVEMFG_STATE :
+				case SAVEMFG_STATE:
 				case SAVEADJUSTMENT_STATE:
 				case SAVEPOSE_STATE:
 					buttonHintExit.ButtonVisible = false;

@@ -44,7 +44,8 @@ namespace SAF {
 		kSafAdjustmentNegate,
 		kSafPoseLoad,
 		kSafPoseReset,
-		kSafResult
+		kSafResult,
+		kSafDefaultAdjustmentLoad,
 	};
 
 	struct AdjustmentMessage {
@@ -149,17 +150,30 @@ namespace SAF {
 		{}
 	};
 
+	struct SkeletonMessage {
+		UInt32 raceId;
+		bool isFemale;
+		const char* filename;
+
+		SkeletonMessage(UInt32 raceId, bool isFemale, const char* filename) :
+			raceId(raceId),
+			isFemale(isFemale),
+			filename(filename)
+		{}
+	};
+
 	class NodeSets
 	{
 	public:
 		NodeSet overrides;
 		NodeSet offsets;
+		NodeSet pose;
 		NodeSet all;
 		NodeSet base;
 		NodeSet allOrBase;
+
 		std::unordered_map<std::string, std::string> baseMap;
 		std::unordered_map<std::string, std::string> fixedConversion;
-		std::unordered_map<std::string, std::vector<std::string>> groups;
 	};
 
 	enum {
@@ -285,7 +299,7 @@ namespace SAF {
 		void RemoveAdjustment(UInt32 handle);
 
 		void Update();
-		void UpdatePersistentAdjustments(std::vector<std::string>* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents);
+		void UpdatePersistentAdjustments(std::string* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents);
 		void UpdateAdjustments(std::string name);
 		void UpdateAllAdjustments();
 		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);
@@ -299,9 +313,13 @@ namespace SAF {
 
 		bool RemoveMod(BSFixedString espName);
 
+		bool HasNode(std::string name);
 		void NegateTransform(std::shared_ptr<Adjustment> adjustment, std::string name);
 		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, std::string name, NiTransform transform);
-		void NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName);
+		//void NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName);
+
+		std::shared_ptr<Adjustment> LoadDefaultAdjustment(std::string filename);
+		void RemoveDefaultAdjustment();
 
 		void GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments);
 
@@ -326,7 +344,7 @@ namespace SAF {
 
 		std::unordered_map<UInt64, NodeSets> nodeSets;
 
-		std::unordered_map<UInt64, std::vector<std::string>> defaultAdjustments;
+		std::unordered_map<UInt64, std::string> defaultAdjustments;
 		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> uniqueAdjustments;
 		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> persistentAdjustments;
 
@@ -347,9 +365,10 @@ namespace SAF {
 		void ResetAdjustment(UInt32 formId, UInt32 handle);
 		void SetTransform(AdjustmentTransformMessage* message);
 		std::shared_ptr<ActorAdjustments> CreateActorAdjustment(UInt32 formId);
-		void NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName);
+		//void NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName);
 		bool LoadPose(UInt32 formId, const char* filename);
 		void ResetPose(UInt32 formId);
+		void LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename);
 
 		void UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments, bool loaded);
 		void UpdateActor(Actor* actor, TESNPC* npc, bool loaded);
@@ -364,7 +383,7 @@ namespace SAF {
 		TransformMap* GetAdjustmentFile(std::string);
 		void SetAdjustmentFile(std::string filename, TransformMap map);
 
-		std::vector<std::string>* GetDefaultAdjustments(UInt32 race, bool isFemale);
+		std::string* GetDefaultAdjustment(UInt32 race, bool isFemale);
 		
 		NodeMap CreateNodeMap(NiNode* root, NodeSets* set);
 		NodeMap* GetCachedNodeMap(std::shared_ptr<ActorAdjustments> actorAdjustments, NodeSets* nodeSet);

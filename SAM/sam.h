@@ -44,6 +44,7 @@ typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
 
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
+extern MenuCache groupsMenuCache;
 
 TESObjectREFR* GetRefr();
 

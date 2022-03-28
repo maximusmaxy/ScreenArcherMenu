@@ -1,7 +1,6 @@
 #include "io.h"
 
 #include "common/IDirectoryIterator.h"
-#include "common/IFileStream.h"
 
 #include "f4se/GameData.h"
 #include "f4se/NiTypes.h"
@@ -31,6 +30,33 @@ namespace SAF {
 			return std::stof(value.asString());
 		}
 		return 0.0f;
+	}
+	
+	void InsertOffsetNode(NodeSets& nodeSet, Json::Value& node) {
+		std::string offset = node.asString();
+		std::string offsetFixed = BSFixedString(offset.c_str()).c_str();
+		nodeSet.offsets.insert(offset);
+		nodeSet.all.insert(offset);
+		nodeSet.allOrBase.insert(offsetFixed);
+		nodeSet.fixedConversion[offsetFixed] = offset;
+	}
+
+	void InsertOverrideNode(NodeSets& nodeSet, Json::Value& node, bool pose) {
+		std::string base = node.asString();
+		std::string overrider = base + g_adjustmentManager.overridePostfix;
+		std::string baseFixed = BSFixedString(base.c_str()).c_str();
+		std::string overriderFixed = BSFixedString(overrider.c_str()).c_str();
+		nodeSet.base.insert(base);
+		nodeSet.overrides.insert(overrider);
+		nodeSet.all.insert(overrider);
+		nodeSet.allOrBase.insert(baseFixed);
+		nodeSet.allOrBase.insert(overriderFixed);
+		nodeSet.fixedConversion[baseFixed] = base;
+		nodeSet.fixedConversion[overriderFixed] = overrider;
+		nodeSet.baseMap[overrider] = base;
+		if (pose) {
+			nodeSet.pose.insert(overrider);
+		}
 	}
 
 	bool LoadNodeSetsFile(std::string path)
@@ -65,46 +91,27 @@ namespace SAF {
 			std::string sex = value["sex"].asString();
 			bool isFemale = (sex == "female" || sex == "Female");
 
+			Json::Value pose = value["pose"];
 			Json::Value offsets = value["offsets"];
 			Json::Value overrides = value["overrides"];
-			Json::Value groups = value["groups"];
-			Json::Value::Members groupMembers = groups.getMemberNames();
 
 			NodeSets nodeSet;
 
-			for (auto& node : offsets) {
-				std::string offset = node.asString();
-				std::string offsetFixed = BSFixedString(offset.c_str()).c_str();
-				nodeSet.offsets.insert(offset);
-				nodeSet.all.insert(offset);
-				nodeSet.allOrBase.insert(offsetFixed);
-				nodeSet.fixedConversion[offsetFixed] = offset;
+			if (!offsets.isNull()) {
+				for (auto& node : offsets) {
+					InsertOffsetNode(nodeSet, node);
+				}
 			}
 
-			for (auto& node : overrides) {
-				std::string base = node.asString();
-				std::string overrider = base + g_adjustmentManager.overridePostfix;
-				std::string baseFixed = BSFixedString(base.c_str()).c_str();
-				std::string overriderFixed = BSFixedString(overrider.c_str()).c_str();
-				nodeSet.base.insert(base);
-				nodeSet.overrides.insert(overrider);
-				nodeSet.all.insert(overrider);
-				nodeSet.allOrBase.insert(baseFixed);
-				nodeSet.allOrBase.insert(overriderFixed);
-				nodeSet.fixedConversion[baseFixed] = base;
-				nodeSet.fixedConversion[overriderFixed] = overrider;
-				nodeSet.baseMap[overrider] = base;
+			if (!pose.isNull()) {
+				for (auto& node : overrides) {
+					InsertOverrideNode(nodeSet, node, true);
+				}
 			}
 
-			for (auto& name : groupMembers) {
-				for (auto& node : groups[name]) {
-					std::string base = node.asString();
-					if (nodeSet.base.count(base)) {
-						nodeSet.groups[name].push_back(base);
-					}
-					else {
-						_LogCat("Could not find node for group: ", base);
-					}
+			if (!overrides.isNull()) {
+				for (auto& node : overrides) {
+					InsertOverrideNode(nodeSet, node, false);
 				}
 			}
 
@@ -124,54 +131,54 @@ namespace SAF {
 
 	bool LoadDefaultAdjustmentFile(std::string path)
 	{
-		IFileStream file;
+		//IFileStream file;
 
-		if (!file.Open(path.c_str())) {
-			_LogCat("Could not open ", path);
-			return false;
-		}
+		//if (!file.Open(path.c_str())) {
+		//	_LogCat("Could not open ", path);
+		//	return false;
+		//}
 
-		std::string defaultAdjustment;
-		ReadAll(&file, &defaultAdjustment);
-		file.Close();
+		//std::string defaultAdjustment;
+		//ReadAll(&file, &defaultAdjustment);
+		//file.Close();
 
-		Json::Reader reader;
-		Json::Value value;
+		//Json::Reader reader;
+		//Json::Value value;
 
-		if (!reader.parse(defaultAdjustment, value))
-		{
-			_LogCat("Failed to parse ", path);
-			return false;
-		}
+		//if (!reader.parse(defaultAdjustment, value))
+		//{
+		//	_LogCat("Failed to parse ", path);
+		//	return false;
+		//}
 
-		std::vector<std::string> adjustmentList;
+		//std::vector<std::string> adjustmentList;
 
-		try {
-			std::string mod = value["mod"].asString();
-			std::string race = value["race"].asString();
+		//try {
+		//	std::string mod = value["mod"].asString();
+		//	std::string race = value["race"].asString();
 
-			UInt32 formId = GetFormID(mod, race);
-			if (!formId) return false;
+		//	UInt32 formId = GetFormID(mod, race);
+		//	if (!formId) return false;
 
-			std::string sex = value["sex"].asString();
-			bool isFemale = (sex == "female" || sex == "Female");
+		//	std::string sex = value["sex"].asString();
+		//	bool isFemale = (sex == "female" || sex == "Female");
 
-			UInt64 key = formId;
-			if (isFemale)
-				key |= 0x100000000;
+		//	UInt64 key = formId;
+		//	if (isFemale)
+		//		key |= 0x100000000;
 
-			Json::Value adjustments = value["adjustments"];
+		//	Json::Value adjustments = value["adjustments"];
 
-			for (auto& adjustment : adjustments) {
-				adjustmentList.push_back(adjustment.asString());
-			}
+		//	for (auto& adjustment : adjustments) {
+		//		adjustmentList.push_back(adjustment.asString());
+		//	}
 
-			g_adjustmentManager.defaultAdjustments[key] =  adjustmentList;
-		}
-		catch (...) {
-			_LogCat("Failed to read ", path);
-			return false;
-		}
+		//	g_adjustmentManager.defaultAdjustments[key] =  adjustmentList;
+		//}
+		//catch (...) {
+		//	_LogCat("Failed to read ", path);
+		//	return false;
+		//}
 
 		return true;
 	}
@@ -422,11 +429,11 @@ namespace SAF {
 			std::string	path = iter.GetFullPath();
 			LoadNodeSetsFile(path);
 		}
-		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\DefaultAdjustments", "*.json"); !iter.Done(); iter.Next())
-		{
-			std::string	path = iter.GetFullPath();
-			LoadDefaultAdjustmentFile(path);
-		}
+		//for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\DefaultAdjustments", "*.json"); !iter.Done(); iter.Next())
+		//{
+		//	std::string	path = iter.GetFullPath();
+		//	LoadDefaultAdjustmentFile(path);
+		//}
 		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Actors", "*.json"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();

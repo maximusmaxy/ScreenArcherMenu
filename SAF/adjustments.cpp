@@ -227,7 +227,7 @@ namespace SAF {
 		}
 	}
 
-	void ActorAdjustments::UpdatePersistentAdjustments(std::vector<std::string>* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents) {
+	void ActorAdjustments::UpdatePersistentAdjustments(std::string* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents) {
 		std::unordered_set<std::string> removeSet;
 		
 		if (persistents) {
@@ -262,13 +262,12 @@ namespace SAF {
 		}
 		
 		if (defaults) {
-			for (auto& filename : *defaults) {
-				if (!removeSet.count(filename)) {
-					removeSet.insert(filename);
-					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(filename, true);
-					if (adjustment != nullptr) {
-						adjustment->isDefault = true;
-					}
+			if (!removeSet.count(*defaults)) {
+				removeSet.insert(*defaults);
+				std::shared_ptr<Adjustment> adjustment = LoadAdjustment(*defaults, true);
+				if (adjustment != nullptr) {
+					adjustment->isDefault = true;
+					adjustment->persistent = true;
 				}
 			}
 		}
@@ -279,6 +278,7 @@ namespace SAF {
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(kvp.first, true);
 					if (adjustment != nullptr) {
 						adjustment->isDefault = true;
+						adjustment->persistent = true;
 					}
 				}
 			}
@@ -363,6 +363,7 @@ namespace SAF {
 				if (removedAdjustments.count(filename)) {
 					removedAdjustments.erase(filename);
 					adjustment->isDefault = true;
+					adjustment->persistent = true;
 				}
 
 				if (nodeSets) {
@@ -384,6 +385,7 @@ namespace SAF {
 			if (removedAdjustments.count(filename)) {
 				removedAdjustments.erase(filename);
 				adjustment->isDefault = true;
+				adjustment->persistent = true;
 			}
 
 			if (nodeSets) {
@@ -456,6 +458,14 @@ namespace SAF {
 		return updated;
 	}
 
+	bool ActorAdjustments::HasNode(std::string name)
+	{
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		if (nodeMap.count(name)) return true;
+		return false;
+	}
+
 	//Sets the override node such that it negates the base node back to the a-pose position
 	void ActorAdjustments::NegateTransform(std::shared_ptr<Adjustment> adjustment, std::string name)
 	{
@@ -488,26 +498,26 @@ namespace SAF {
 		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
 	}
 
-	void ActorAdjustments::NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName)
-	{
-		std::lock_guard<std::shared_mutex> lock(mutex);
+	//void ActorAdjustments::NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName)
+	//{
+	//	std::lock_guard<std::shared_mutex> lock(mutex);
 
-		if (!nodeSets->groups.count(groupName)) return;
+	//	if (!nodeSets->groups.count(groupName)) return;
 
-		for (auto& baseName : nodeSets->groups[groupName]) {
-			std::string overrider = baseName + g_adjustmentManager.overridePostfix;
+	//	for (auto& baseName : nodeSets->groups[groupName]) {
+	//		std::string overrider = baseName + g_adjustmentManager.overridePostfix;
 
-			if (nodeMap.count(baseName)) {
+	//		if (nodeMap.count(baseName)) {
 
-				NiAVObject* baseNode = nodeMap[baseName];
-				if (nodeMapBase->count(baseName)) {
+	//			NiAVObject* baseNode = nodeMap[baseName];
+	//			if (nodeMapBase->count(baseName)) {
 
-					NiAVObject* skeletonNode = (*nodeMapBase)[baseName];
-					adjustment->SetTransform(overrider, NegateNiTransform(baseNode->m_localTransform, skeletonNode->m_localTransform));
-				}
-			}
-		}
-	}
+	//				NiAVObject* skeletonNode = (*nodeMapBase)[baseName];
+	//				adjustment->SetTransform(overrider, NegateNiTransform(baseNode->m_localTransform, skeletonNode->m_localTransform));
+	//			}
+	//		}
+	//	}
+	//}
 
 	void ActorAdjustments::SavePose(std::string filename, std::unordered_set<UInt32> handles) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
@@ -524,7 +534,7 @@ namespace SAF {
 		if (adjustments.size() == 0) return;
 
 		TransformMap poseMap;
-		for (auto& overrider : nodeSets->overrides) {
+		for (auto& overrider : nodeSets->pose) {
 			if (nodeSets->baseMap.count(overrider)) {
 
 				std::string baseName = nodeSets->baseMap[overrider];
@@ -542,7 +552,7 @@ namespace SAF {
 				}
 			}
 			else {
-				_DMESSAGE("could not find overrider");
+				_DMESSAGE("could not find overrider node");
 			}
 		}
 
@@ -597,6 +607,36 @@ namespace SAF {
 		if (!poseHandle) return;
 
 		RemoveAdjustment(poseHandle);
+	}
+
+	std::shared_ptr<Adjustment> ActorAdjustments::LoadDefaultAdjustment(std::string filename) {
+		RemoveDefaultAdjustment();
+
+		if (filename.empty()) return nullptr;
+
+		std::shared_ptr<Adjustment> adjustment = LoadAdjustment(filename, true);
+		if (!adjustment) return nullptr;
+
+		adjustment->persistent = true;
+		adjustment->isDefault = true;
+
+		return adjustment;
+	}
+
+	void ActorAdjustments::RemoveDefaultAdjustment() {
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		auto it = list.begin();
+		while (it != list.end()) {
+			if ((*it)->isDefault)
+				break;
+			++it;
+		}
+
+		if (it != list.end()) {
+			map.erase((*it)->handle);
+			list.erase(it);
+		}
 	}
 
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
@@ -688,7 +728,7 @@ namespace SAF {
 		return adjustments;
 	}
 
-	std::vector<std::string>* AdjustmentManager::GetDefaultAdjustments(UInt32 race, bool isFemale)
+	std::string* AdjustmentManager::GetDefaultAdjustment(UInt32 race, bool isFemale)
 	{
 		UInt64 key = race;
 		if (isFemale)
@@ -696,8 +736,6 @@ namespace SAF {
 
 		if (defaultAdjustments.count(key))
 			return &defaultAdjustments[key];
-		if (isFemale && defaultAdjustments.count(race))
-			return &defaultAdjustments[race];
 
 		return nullptr;
 	}
@@ -747,10 +785,16 @@ namespace SAF {
 		if (!root || !set) return boneMap;
 
 		static BSFixedString rootName("Root");
+		static BSFixedString dogmeatRootName("Dogmeat_Root");
 
 		NiAVObject* rootNode = root->GetObjectByName(&rootName);
 
-		if (!rootNode) return boneMap;
+		if (!rootNode) {
+
+			//Check for dogmeat root as well
+			rootNode = root->GetObjectByName(&dogmeatRootName);
+			if (!rootNode) return boneMap;
+		}
 
 		static BSFixedString safVersion("SAF_Version");
 
@@ -969,19 +1013,19 @@ namespace SAF {
 		}
 	}
 
-	void AdjustmentManager::NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
+	//void AdjustmentManager::NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName) {
+	//	std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(formId)) return;
+	//	if (!actorAdjustmentCache.count(formId)) return;
 
-		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
-		if (!adjustments) return;
+	//	std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+	//	if (!adjustments) return;
 
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+	//	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+	//	if (!adjustment) return;
 
-		adjustments->NegateTransformGroup(adjustment, groupName);
-	}
+	//	adjustments->NegateTransformGroup(adjustment, groupName);
+	//}
 
 	bool AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
@@ -1003,6 +1047,33 @@ namespace SAF {
 		if (!adjustments) return;
 
 		adjustments->ResetPose();
+	}
+
+	void AdjustmentManager::LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename)
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		std::string name(filename ? filename : "");
+
+		UInt64 key = raceId;
+		if (isFemale)
+			key |= 0x100000000;
+
+		if (!filename) {
+			defaultAdjustments.erase(key);
+		}
+		else {
+			defaultAdjustments[key] = name;
+		}
+
+		for (auto kvp : actorAdjustmentCache) {
+			std::shared_ptr<ActorAdjustments> adjustments = kvp.second;
+			if (adjustments->race == raceId && adjustments->isFemale == isFemale) 
+			{
+				std::shared_ptr<Adjustment> adjustment = adjustments->LoadDefaultAdjustment(name);
+				adjustments->UpdateAllAdjustments();
+			}
+		}
 	}
 
 	void AdjustmentManager::UpdateQueue() {
@@ -1049,7 +1120,7 @@ namespace SAF {
 
 		adjustments->CreateAdjustment("NewAdjustment");
 
-		std::vector<std::string>* defaults = GetDefaultAdjustments(adjustments->race, adjustments->isFemale);
+		std::string* defaults = GetDefaultAdjustment(adjustments->race, adjustments->isFemale);
 		std::vector<std::pair<std::string, std::string>>* uniques = nullptr;
 		std::vector<PersistentAdjustment>* persistents = nullptr;
 

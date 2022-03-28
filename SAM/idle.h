@@ -6,6 +6,7 @@
 #include "f4se/ScaleformMovie.h"
 
 #include <vector>
+#include <unordered_map>
 
 class TESIdleForm : public TESForm
 {
@@ -23,6 +24,16 @@ public:
 };
 
 typedef std::vector<std::pair<std::string, std::vector<std::pair<std::string, UInt32>>>> IdleMenu;
+
+struct IdleData
+{
+	UInt32 raceId;
+	UInt32 resetId;
+	BSFixedString behavior;
+	BSFixedString event;
+};
+
+extern std::unordered_map<UInt32, IdleData> raceIdleData;
 
 bool PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();

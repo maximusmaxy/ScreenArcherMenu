@@ -176,12 +176,12 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), data->mod);
 		break;
 	}
-	case SAF::kSafAdjustmentNegate:
-	{
-		auto data = (SAF::AdjustmentNegateMessage*)msg->data;
-		SAF::g_adjustmentManager.NegateAdjustments(data->formId, data->handle, data->group);
-		break;
-	}
+	//case SAF::kSafAdjustmentNegate:
+	//{
+	//	auto data = (SAF::AdjustmentNegateMessage*)msg->data;
+	//	SAF::g_adjustmentManager.NegateAdjustments(data->formId, data->handle, data->group);
+	//	break;
+	//}
 	case SAF::kSafPoseLoad:
 	{
 		auto data = (SAF::PoseMessage*)msg->data;
@@ -193,6 +193,12 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		auto data = (SAF::PoseMessage*)msg->data;
 		SAF::g_adjustmentManager.ResetPose(data->formId);
+		break;
+	}
+	case SAF::kSafDefaultAdjustmentLoad:
+	{
+		auto data = (SAF::SkeletonMessage*)msg->data;
+		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename);
 		break;
 	}
 	}

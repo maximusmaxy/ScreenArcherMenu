@@ -14,7 +14,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
-IdleMenu idleMenu;
+std::unordered_map<UInt32, IdleData> raceIdleData;
+
+std::unordered_map<UInt32, IdleMenu> idleMenus;
 bool idleMenuLoaded = false;
 
 std::unordered_set<std::string> idleExclude = {
@@ -83,40 +85,13 @@ struct naturalSort {
 	}
 };
 
-bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt32, naturalSort>>& idles, std::unordered_map<UInt32, std::string>& modNames) {
-	if (!form) {
-		return false;
-	}
-
-	if (*(UInt64*)form != TESIdleFormVFTable) {
-//		_DMESSAGE("Idle form VFTable not found");
-		return false;
-	}
-
-	if (!form->formID) {
-//		_DMESSAGE("Form ID not found");
-		return false;
-	}
-
-	if (!form->editorID) {
-//		_Log("Editor ID not found ", form->formID);
-		return false;
-	}
-
-	static BSFixedString behaviourGraph("actors\\Character\\Behaviors\\RaiderRootBehavior.hkx");
-	static BSFixedString animationEvent("dyn_ActivationLoop");
-
-	if (!(form->behaviorGraph == behaviourGraph))
-	{
-//		_DMESSAGE("Behaviour graph invalid");
-		return false;
-	}
-
-	if (!(form->animationEvent == animationEvent))
-	{
-//		_DMESSAGE("Animation event invalid");
-		return false;
-	}
+bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt32, naturalSort>>& idles, std::unordered_map<UInt32, std::string>& modNames, IdleData& data) {
+	if (!form) return false;
+	if (*(UInt64*)form != TESIdleFormVFTable) return false;
+	if (!form->formID) return false;
+	if (!form->editorID) return false;
+	if (!(form->behaviorGraph == data.behavior)) return false;
+	if (!(form->animationEvent == data.event)) return false;
 
 	UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
 	if (modNames.count(modIndex)) {
@@ -126,7 +101,7 @@ bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt
 	return false;
 }
 
-IdleMenu LoadIdleMenu() {
+void LoadIdleMenus() {
 	std::unordered_map<UInt32, std::string> modNames;
 
 	tArray<ModInfo*>* loadedMods = &(*g_dataHandler)->modList.loadedMods;
@@ -151,36 +126,47 @@ IdleMenu LoadIdleMenu() {
 		}
 	}
 
-	IdleMenu menu;
-	std::map<UInt32, std::map<std::string, UInt32, naturalSort>> idles;
+	for (auto& dataKvp : raceIdleData) {
+		std::map<UInt32, std::map<std::string, UInt32, naturalSort>> idles;
 
-	NiFormArrayTESIdle* idleFormArray = (*getFormArrayFromName)((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), "actors\\Character\\Behaviors\\RaiderRootBehavior.hkx");
-	idleFormArray++;
+		NiFormArrayTESIdle* idleFormArray = (*getFormArrayFromName)((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), dataKvp.second.behavior.c_str());
+		idleFormArray++;
 
-	for (TESIdleForm** idlePtr = idleFormArray->forms; idlePtr < idleFormArray->forms + idleFormArray->count; ++idlePtr) {
-		if (AddIdleToMap(*idlePtr, idles, modNames)) {
-			break;
+		for (TESIdleForm** idlePtr = idleFormArray->forms; idlePtr < idleFormArray->forms + idleFormArray->count; ++idlePtr) {
+			if (AddIdleToMap(*idlePtr, idles, modNames, dataKvp.second)) {
+				break;
+			}
+		}
+
+		for (auto& modKvp : idles) {
+			std::string modName = modNames[modKvp.first];
+			std::string noExtension = modName.substr(0, modName.find_last_of("."));
+			idleMenus[dataKvp.first].push_back(std::make_pair(noExtension, std::vector<std::pair<std::string, UInt32>>()));
+			for (auto& formKvp : modKvp.second) {
+				idleMenus[dataKvp.first].back().second.push_back(formKvp);
+			}
 		}
 	}
-
-	for (auto& modKvp : idles) {
-		std::string modName = modNames[modKvp.first];
-		std::string noExtension = modName.substr(0, modName.find_last_of("."));
-		menu.push_back(std::make_pair(noExtension, std::vector<std::pair<std::string, UInt32>>()));
-		for (auto& formKvp : modKvp.second) {
-			menu.back().second.push_back(formKvp);
-		}
-	}
-
-	return menu;
 }
 
-IdleMenu* GetIdleMenu() {
+UInt32 GetIdleDataId(UInt32 raceId) {
+	if (raceIdleData.count(raceId)) return raceId;
+	//Default to human if missing
+	if (raceIdleData.count(0x13746)) return 0x13746;
+	//Human really shouldn't be missing
+	return 0;
+}
+
+IdleMenu* GetIdleMenu(UInt32 raceId) {
 	if (!idleMenuLoaded) {
-		idleMenu = LoadIdleMenu();
+		LoadIdleMenus();
 		idleMenuLoaded = true;
 	}
-	return &idleMenu;
+	
+	UInt32 dataId = GetIdleDataId(raceId);
+	if (!dataId) return nullptr;
+
+	return &idleMenus[dataId];
 }
 
 typedef bool (*PlayIdleInternal)(Actor::MiddleProcess* middleProcess, Actor* actor, UInt32 param3, TESIdleForm* idleForm, UInt64 param5, UInt64 param6);
@@ -192,11 +178,9 @@ bool PlayIdleAnimation(UInt32 formId) {
 	Actor* actor = (Actor*)selected.refr;
 
 	TESForm* form = LookupFormByID(formId);
-
 	if (!form) return false;
 
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
-
 	if (!idleForm) return false;
 
 	return (*playIdleAnimation)(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
@@ -206,21 +190,17 @@ void ResetIdleAnimation() {
 	if (!selected.refr) return;
 
 	Actor* actor = (Actor*)selected.refr;
+	
+	UInt32 dataId = GetIdleDataId(selected.race);
+	if (!dataId) return;
 
-	//reset idle formId
-	UInt16 modIndex = ((*g_dataHandler)->GetLoadedLightModIndex("ScreenArcherMenu.esp"));
+	UInt32 resetId = raceIdleData[dataId].resetId;
+	if (!resetId) return;
 
-	if (!modIndex || modIndex == 0xFFFF) return;
-
-	//reset idle form id 0x801
-	UInt32 formId = (0xFE << 24) + ((*g_dataHandler)->GetLoadedLightModIndex("ScreenArcherMenu.esp") << 12) + 0x801;
-
-	TESForm* form = LookupFormByID(formId);
-
+	TESForm* form = LookupFormByID(resetId);
 	if (!form) return;
 
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
-
 	if (!idleForm) return;
 
 	(*playIdleAnimation)(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
@@ -230,7 +210,9 @@ void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
 	root->CreateArray(result);
 
-	IdleMenu* menu = GetIdleMenu();
+	if (!selected.refr) return;
+
+	IdleMenu* menu = GetIdleMenu(selected.race);
 	if (!menu) return;
 
 	for (auto& category : *menu) {
@@ -247,7 +229,7 @@ void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategor
 	root->CreateArray(&names);
 	root->CreateArray(&values);
 
-	IdleMenu* menu = GetIdleMenu();
+	IdleMenu* menu = GetIdleMenu(selected.race);
 	if (!menu || selectedCategory >= menu->size()) return;
 
 	for (auto& category : (*menu)[selectedCategory].second) {

@@ -33,6 +33,7 @@
 		public static const DIVIDER = 2;
 		public static const CHECKBOX = 3;
 		public static const ADJUSTMENT = 4;
+		public static const DRAG = 5;
 		
 		public static const INT = 0;
 		public static const FLOAT = 1;
@@ -68,6 +69,7 @@
 						func.call(null, id); 
 						break;
 					case CHECKBOX:
+					case DRAG:
 						checkbox.onClick(event);
 						break;
 				}
@@ -127,7 +129,6 @@
 				value.maxChars = 10;
 				stage.focus = value;
 				value.setSelection(0, value.text.length);
-
 			}
 		}
 		
