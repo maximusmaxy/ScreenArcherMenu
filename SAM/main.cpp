@@ -200,7 +200,6 @@ void SafNegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
 void SafLoadPose(UInt32 formId, const char* filename) {
 	SAF::PoseMessage message(formId, filename, "ScreenArcherMenu");
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseLoad, &message, sizeof(uintptr_t), "SAF");
-
 }
 
 void SafResetPose(UInt32 formId) {

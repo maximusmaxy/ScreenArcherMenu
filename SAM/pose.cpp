@@ -165,7 +165,8 @@ void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
 	for (auto it = groupsMenu->begin(); it < groupsMenu->end(); it++) {
 		if (it->first == adjustmentGroup) {
 			for (auto& kvp : it->second) {
-				safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, kvp.second.c_str(), kAdjustmentTransformNegate, 0, 0, 0);
+				std::string key = kvp.second + safAdjustmentManager->overridePostfix;
+				safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key.c_str(), kAdjustmentTransformNegate, 0, 0, 0);
 			}
 		}
 	}
@@ -312,7 +313,7 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 bool CheckMenuHasNode(std::shared_ptr<ActorAdjustments> adjustments, MenuList& list)
 {
 	for (auto& kvp : list) {
-		if (adjustments->HasNode(kvp.first)) return true;
+		if (adjustments->HasNode(kvp.second)) return true;
 	}
 	return false;
 }
@@ -345,14 +346,13 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 	if (!selected.refr) return;
 
 	MenuCategoryList* categories = GetAdjustmentMenu();
-
-	if (!categories) return;
+	if (!categories || categoryIndex >= categories->size()) return;
 
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
 	for (auto& kvp : (*categories)[categoryIndex].second) {
-		if (adjustments->HasNode(kvp.first)) {
+		if (adjustments->HasNode(kvp.second)) {
 			GFxValue node(kvp.first.c_str());
 			result->PushBack(&node);
 		}
@@ -367,7 +367,7 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 
 	MenuCategoryList* categories = GetAdjustmentMenu();
 
-	if (!categories) return;
+	if (!categories || categoryIndex >= categories->size() || nodeIndex >= (*categories)[categoryIndex].second.size()) return;
 
 	std::string name = (*categories)[categoryIndex].second[nodeIndex].second;
 

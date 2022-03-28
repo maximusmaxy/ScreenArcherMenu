@@ -111,7 +111,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="console.cpp" />
-    <ClCompile Include="eyes.cpp" />
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="main.cpp" />
@@ -125,7 +124,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="console.h" />
-    <ClInclude Include="eyes.h" />
     <ClInclude Include="idle.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="papyrus.h" />

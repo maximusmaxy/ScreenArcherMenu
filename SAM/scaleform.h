@@ -25,6 +25,18 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class GetOptions : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SetOption : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class ModifyFacegenMorph : public GFxFunctionHandler
 {
 public:

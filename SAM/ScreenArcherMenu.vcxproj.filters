@@ -9,7 +9,6 @@
     <ClCompile Include="papyrus.cpp" />
     <ClCompile Include="pose.cpp" />
     <ClCompile Include="mfg.cpp" />
-    <ClCompile Include="eyes.cpp" />
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
@@ -22,7 +21,6 @@
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="pose.h" />
     <ClInclude Include="mfg.h" />
-    <ClInclude Include="eyes.h" />
     <ClInclude Include="idle.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="strnatcmp.h" />

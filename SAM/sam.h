@@ -5,6 +5,7 @@
 #include "f4se/PluginAPI.h"
 #include "f4se/GameForms.h"
 #include "f4se/ScaleformValue.h"
+#include "f4se/ScaleformMovie.h"
 
 #include "json.h"
 
@@ -42,6 +43,16 @@ typedef std::vector<std::pair<std::string, std::string>> MenuList;
 typedef std::vector<std::pair<std::string, MenuList>> MenuCategoryList;
 typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
 
+struct MenuOptions {
+	bool hotSwapping = false;
+};
+
+extern MenuOptions menuOptions;
+
+enum {
+	kSamOptionHotswap = 1
+};
+
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 extern MenuCache groupsMenuCache;
@@ -49,6 +60,8 @@ extern MenuCache groupsMenuCache;
 TESObjectREFR* GetRefr();
 
 MenuCategoryList* GetMenu(MenuCache* cache);
+
+void GetOptionsGFx(GFxMovieRoot* root, GFxValue* result);
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 

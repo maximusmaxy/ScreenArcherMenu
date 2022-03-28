@@ -42,6 +42,7 @@
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
             "$SAM_HacksMenu",
+			//"$SAM_OptionsMenu"
         ];
 		
 		public static const TRANSFORM_NAMES:Vector.<String> = new <String>[

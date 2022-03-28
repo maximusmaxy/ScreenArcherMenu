@@ -312,6 +312,11 @@
 			return checkError(3, "$SAM_EyeError");
 		}
 		
+		public function checkMorphs():Boolean
+		{
+			return checkError(4, "$SAM_MorphsError");
+		}
+		
 		public function pushState(state:int)
 		{
 			if (!checkTarget()) return;
@@ -446,7 +451,7 @@
 				case 2: if (checkSkeleton()) pushState(POSE_STATE); break;
 				case 3: pushState(IDLECATEGORY_STATE); break;
 				//case 4: pushState(POSITIONING_STATE); break;
-				case 4:	pushState(MORPHCATEGORY_STATE); break;
+				case 4:	if (checkMorphs()) pushState(MORPHCATEGORY_STATE); break;
 				case 5: if (checkEyes()) pushState(EYE_STATE); break;
 				case 6:	pushState(HACK_STATE); break;
 			}

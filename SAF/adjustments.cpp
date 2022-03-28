@@ -1136,7 +1136,7 @@ namespace SAF {
 	}
 
 	/*
-	* ADJU
+	* ADJU (Adjustments)
 	* Actors length
 	*   FormId
 	*	Adjustments length
@@ -1152,6 +1152,13 @@ namespace SAF {
 	*			pitch
 	*			roll
 	*			scale
+	*/
+
+	/*
+	* SKEL (Skeleton Adjustments)
+	* Adjustments Length
+	*   Key
+	*   Name
 	*/
 
 	void AdjustmentManager::SerializeSave(const F4SESerializationInterface* ifc) {
@@ -1211,6 +1218,16 @@ namespace SAF {
 				}
 			}
 		}
+
+		ifc->OpenRecord('SKEL', 0); //skeleton adjustments
+
+		size = defaultAdjustments.size();
+		WriteData<UInt32>(ifc, &size);
+
+		for (auto& kvp : defaultAdjustments) {
+			WriteData<UInt64>(ifc, &kvp.first);
+			WriteData<std::string>(ifc, &kvp.second);
+		}
 	}
 
 	void AdjustmentManager::SerializeLoad(const F4SESerializationInterface* ifc) {
@@ -1221,7 +1238,7 @@ namespace SAF {
 
 		UInt32 type, length, version;
 
-		if (ifc->GetNextRecordInfo(&type, &version, &length))
+		while (ifc->GetNextRecordInfo(&type, &version, &length))
 		{
 			switch (type)
 			{
@@ -1302,6 +1319,22 @@ namespace SAF {
 				}
 				break;
 			}
+			case 'SKEL':
+			{
+				UInt32 adjustmentSize;
+				ReadData<UInt32>(ifc, &adjustmentSize);
+
+				for (UInt32 i = 0; i < adjustmentSize; ++i) {
+					UInt64 adjustmentKey;
+					ReadData<UInt64>(ifc, &adjustmentKey);
+
+					std::string adjustmentName;
+					ReadData<std::string>(ifc, &adjustmentName);
+
+					defaultAdjustments[adjustmentKey] = adjustmentName;
+				}
+				break;
+			}
 			}
 		}
 	}
@@ -1315,6 +1348,7 @@ namespace SAF {
 		persistentAdjustments.clear();
 		actorUpdates.clear();
 		actorDeletions.clear();
+		defaultAdjustments.clear();
 
 		//Revert is called before the actors are unloaded so they need to be cleared beforehand so their persistent adjustments aren't stored
 		//Also their load event isn't triggered again if they are persistent between loads, so they need to be placed into the update queue to update their new adjustments

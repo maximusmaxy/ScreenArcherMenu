@@ -12,16 +12,19 @@
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
 #include "SAF/io.h"
+#include "SAF/hacks.h"
+#include "SAF/eyes.h"
 
-#include "hacks.h"
-#include "eyes.h"
 #include "pose.h"
 #include "mfg.h"
 #include "idle.h"
+#include "hacks.h"
 
 #include <regex>
 
 SelectedRefr selected;
+
+MenuOptions menuOptions;
 
 MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
@@ -161,7 +164,7 @@ void OnConsoleRefUpdate() {
 				GFxValue eyeX(0.0);
 				GFxValue eyeY(0.0);
 				float coords[2];
-				if (GetEyecoords(coords)) {
+				if (GetEyecoords(selected.eyeNode, coords)) {
 					eyeX.SetNumber(coords[0]);
 					eyeY.SetNumber(coords[1]);
 				}
@@ -215,6 +218,14 @@ bool OpenSamFile(std::string filename) {
 	if (LoadAdjustmentFile(filename.c_str())) return true;
 
 	return false;
+}
+
+void GetOptionsGFx(GFxMovieRoot* root, GFxValue* result)
+{
+	root->CreateArray(result);
+
+	GFxValue hotswap(menuOptions.hotSwapping);
+	result->PushBack(&hotswap);
 }
 
 class SavedDataVisitor : public GFxValue::ObjectInterface::ObjVisitor
@@ -494,6 +505,8 @@ bool LoadIdleFile(std::string path) {
 }
 
 void LoadMenuFiles() {
+	//Add menu categories preemptively for ordering purposes
+
 	std::unordered_set<std::string> loadedMenus;
 
 	//Load human menu first for ordering purposes

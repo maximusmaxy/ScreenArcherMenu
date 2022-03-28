@@ -14,6 +14,7 @@ public:
 	//incomplete
 };
 
+float* GetMorphPointer();
 void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale);
 void SaveMfg(std::string filename);
 bool LoadMfg(std::string filename);

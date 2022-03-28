@@ -4,8 +4,6 @@
 #include "f4se/GameReferences.h"
 #include "f4se/NiMaterials.h"
 
-#include "mfg.h"
-
 struct EyeUpdateData
 {
 	float unk1[30];
@@ -20,12 +18,13 @@ struct EyeUpdateData
 	NiPoint2 points[30];
 	NiPoint3 bounds[30];
 	UInt8 pad2[8];
-	BSFaceGenAnimationData* faceAnimData[30];
+	//BSFaceGenAnimationData* faceAnimData[30];
+	UInt64 faceAnimData;
 	UInt64 unk12[30];
 };
 
 NiAVObject* GetEyeNode(TESObjectREFR* refr);
-bool GetEyecoords(float* coords);
-void SetEyecoords(float x, float y);
-BGSHeadPart* GetHeadPartByID(UInt32 id);
-BGSHeadPart* ChangeEyeMesh(TESObjectREFR* refr, BGSHeadPart* eyePart);
+bool GetEyecoords(TESObjectREFR* refr, float* coords);
+bool GetEyecoords(NiAVObject* eyeNode, float* ret);
+void SetEyecoords(TESObjectREFR* refr, float x, float y);
+void SetEyecoords(NiAVObject* eyeNode, float x, float y);

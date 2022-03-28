@@ -16,10 +16,12 @@
 #include "sam.h"
 #include "hacks.h"
 #include "papyrus.h"
-#include "eyes.h"
 #include "pose.h"
 #include "mfg.h"
 #include "idle.h"
+
+#include "SAF/hacks.h"
+#include "SAF/eyes.h"
 #include "SAF/util.h"
 
 void SaveState::Invoke(Args* args)
@@ -37,7 +39,8 @@ void ClearState::Invoke(Args* args)
 enum {
 	kSamTargetError = 1,
 	kSamSkeletonError,
-	kSamEyesError
+	kSamEyesError,
+	kSamMorphsError
 };
 
 void CheckError::Invoke(Args* args)
@@ -48,6 +51,24 @@ void CheckError::Invoke(Args* args)
 		case kSamTargetError: args->result->SetBool(selected.refr); break;
 		case kSamSkeletonError: args->result->SetBool(CheckSelectedSkeleton()); break;
 		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
+		case kSamMorphsError: args->result->SetBool(GetMorphPointer()); break;
+	}
+}
+
+void GetOptions::Invoke(Args* args)
+{
+	GetOptionsGFx(args->movie->movieRoot, args->result);
+}
+
+void SetOption::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	switch (args->args[0].GetInt()) {
+		case kSamOptionHotswap:
+			ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
+			menuOptions.hotSwapping = args->args[1].GetBool();
+			break;
 	}
 }
 
@@ -167,7 +188,7 @@ void GetEyeCoords::Invoke(Args * args)
 {
 	args->movie->movieRoot->CreateArray(args->result);
 	float coords[2];
-	if (GetEyecoords(coords)) {
+	if (GetEyecoords(selected.eyeNode, coords)) {
 		args->result->PushBack(&GFxValue(coords[0] * 4));
 		args->result->PushBack(&GFxValue(coords[1] * 5));
 	} else {
@@ -181,7 +202,7 @@ void SetEyeCoords::Invoke(Args * args)
 	ASSERT(args->numArgs >= 2);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Number);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Number);
-	SetEyecoords(args->args[0].GetNumber() / 4, args->args[1].GetNumber() / 5);
+	SetEyecoords(selected.eyeNode, args->args[0].GetNumber() / 4, args->args[1].GetNumber() / 5);
 }
 
 void GetAdjustment::Invoke(Args* args)
@@ -420,6 +441,8 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SaveState>(value, view->movieRoot, "SaveState");
 	RegisterFunction<ClearState>(value, view->movieRoot, "ClearState");
 	RegisterFunction<CheckError>(value, view->movieRoot, "CheckError");
+	RegisterFunction<GetOptions>(value, view->movieRoot, "GetOptions");
+	RegisterFunction<SetOption>(value, view->movieRoot, "SetOption");
 	RegisterFunction<ModifyFacegenMorph>(value, view->movieRoot, "ModifyFacegenMorph");
 	RegisterFunction<GetMorphCategories>(value, view->movieRoot, "GetMorphCategories");
 	RegisterFunction<GetMorphs>(value, view->movieRoot, "GetMorphs");

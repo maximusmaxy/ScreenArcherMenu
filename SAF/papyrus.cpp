@@ -9,6 +9,8 @@
 
 #include "adjustments.h"
 #include "conversions.h"
+#include "hacks.h"
+#include "eyes.h"
 
 #include "f4se_common/Utilities.h"
 
@@ -297,6 +299,59 @@ namespace SAF {
 		adjustments->UpdateAllAdjustments();
 	}
 
+	VMArray<float> PapyrusGetEyeCoords(StaticFunctionTag*, TESObjectREFR* refr)
+	{
+		VMArray<float> result;
+		float coords[2];
+		if (GetEyecoords(refr, coords)) {
+			result.Push(&coords[0]);
+			result.Push(&coords[1]);
+		}
+		else
+		{
+			float f = 0.0f;
+			result.Push(&f);
+			result.Push(&f);
+		}
+
+		return result;
+	}
+
+	void PapyrusSetEyeCoords(StaticFunctionTag*, TESObjectREFR* refr, float x, float y)
+	{
+		SetEyecoords(refr, x, y);
+	}
+
+	bool PapyrusGetBlinkHack(StaticFunctionTag*, TESObjectREFR* refr)
+	{
+		return GetBlinkState() == 1;
+	}
+
+	void PapyrusSetBlinkHack(StaticFunctionTag*, TESObjectREFR* refr, bool enabled)
+	{
+		SetBlinkState(enabled);
+	}
+
+	bool PapyrusGetEyeTrackingHack(StaticFunctionTag*, TESObjectREFR* refr)
+	{
+		return GetDisableEyecoordUpdate() == 1;
+	}
+
+	void PapyrusSetEyeTrackingHack(StaticFunctionTag*, TESObjectREFR* refr, bool enabled)
+	{
+		SetDisableEyecoordUpdate(enabled);
+	}
+
+	bool PapyrusGetMorphsHack(StaticFunctionTag*, TESObjectREFR* refr)
+	{
+		return GetForceMorphUpdate() == 1;
+	}
+
+	void PapyrusSetMorphsHack(StaticFunctionTag*, TESObjectREFR* refr, bool enabled)
+	{
+		SetForceMorphUpdate(enabled);
+	}
+
 	bool RegisterPapyrus(VirtualMachine* vm)
 	{
 		vm->RegisterFunction(new NativeFunction5 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString, BSFixedString, bool, bool>("CreateAdjustment", "SAF", PapyrusCreateAdjustment, vm));
@@ -326,6 +381,16 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("LoadPose", "SAF", PapyrusLoadPose, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("SavePose", "SAF", PapyrusSavePose, vm));
 		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, TESObjectREFR*>("ResetPose", "SAF", PapyrusResetPose, vm));
+
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, TESObjectREFR*>("GetEyeCoords", "SAF", PapyrusGetEyeCoords, vm));
+		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, float, float>("SetEyeCoords", "SAF", PapyrusSetEyeCoords, vm));
+
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, bool, TESObjectREFR*>("GetBlinkHack", "SAF", PapyrusGetBlinkHack, vm));
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, bool>("SetBlinkHack", "SAF", PapyrusSetBlinkHack, vm));
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, bool, TESObjectREFR*>("GetEyeTrackingHack", "SAF", PapyrusGetEyeTrackingHack, vm));
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, bool>("SetEyeTrackingHack", "SAF", PapyrusSetEyeTrackingHack, vm));
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, bool, TESObjectREFR*>("GetMorphsHack", "SAF", PapyrusGetMorphsHack, vm));
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, bool>("SetMorphsHack", "SAF", PapyrusSetMorphsHack, vm));
 
 		return true;
 	}

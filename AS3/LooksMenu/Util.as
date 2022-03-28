@@ -14,13 +14,13 @@
 
 		public static function playOk() {
 			if (!debug) {
-				//Data.sam.PlaySound(UI_OK);
+				Data.sam.PlaySound(UI_OK);
 			}
 		}
 
 		public static function playFocus() {
 			if (!debug) {
-				//Data.sam.PlaySound(UI_FOCUS);
+				Data.sam.PlaySound(UI_FOCUS);
 			}
 		}
 

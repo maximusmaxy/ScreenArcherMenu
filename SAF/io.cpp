@@ -32,30 +32,30 @@ namespace SAF {
 		return 0.0f;
 	}
 	
-	void InsertOffsetNode(NodeSets& nodeSet, Json::Value& node) {
+	void InsertOffsetNode(NodeSets* nodeSet, Json::Value& node) {
 		std::string offset = node.asString();
 		std::string offsetFixed = BSFixedString(offset.c_str()).c_str();
-		nodeSet.offsets.insert(offset);
-		nodeSet.all.insert(offset);
-		nodeSet.allOrBase.insert(offsetFixed);
-		nodeSet.fixedConversion[offsetFixed] = offset;
+		nodeSet->offsets.insert(offset);
+		nodeSet->all.insert(offset);
+		nodeSet->allOrBase.insert(offsetFixed);
+		nodeSet->fixedConversion[offsetFixed] = offset;
 	}
 
-	void InsertOverrideNode(NodeSets& nodeSet, Json::Value& node, bool pose) {
+	void InsertOverrideNode(NodeSets* nodeSet, Json::Value& node, bool pose) {
 		std::string base = node.asString();
 		std::string overrider = base + g_adjustmentManager.overridePostfix;
 		std::string baseFixed = BSFixedString(base.c_str()).c_str();
 		std::string overriderFixed = BSFixedString(overrider.c_str()).c_str();
-		nodeSet.base.insert(base);
-		nodeSet.overrides.insert(overrider);
-		nodeSet.all.insert(overrider);
-		nodeSet.allOrBase.insert(baseFixed);
-		nodeSet.allOrBase.insert(overriderFixed);
-		nodeSet.fixedConversion[baseFixed] = base;
-		nodeSet.fixedConversion[overriderFixed] = overrider;
-		nodeSet.baseMap[overrider] = base;
+		nodeSet->base.insert(base);
+		nodeSet->overrides.insert(overrider);
+		nodeSet->all.insert(overrider);
+		nodeSet->allOrBase.insert(baseFixed);
+		nodeSet->allOrBase.insert(overriderFixed);
+		nodeSet->fixedConversion[baseFixed] = base;
+		nodeSet->fixedConversion[overriderFixed] = overrider;
+		nodeSet->baseMap[overrider] = base;
 		if (pose) {
-			nodeSet.pose.insert(overrider);
+			nodeSet->pose.insert(overrider);
 		}
 	}
 
@@ -95,7 +95,11 @@ namespace SAF {
 			Json::Value offsets = value["offsets"];
 			Json::Value overrides = value["overrides"];
 
-			NodeSets nodeSet;
+			UInt64 key = formId;
+			if (isFemale)
+				key |= 0x100000000;
+
+			NodeSets* nodeSet = &g_adjustmentManager.nodeSets[key];
 
 			if (!offsets.isNull()) {
 				for (auto& node : offsets) {
@@ -104,7 +108,7 @@ namespace SAF {
 			}
 
 			if (!pose.isNull()) {
-				for (auto& node : overrides) {
+				for (auto& node : pose) {
 					InsertOverrideNode(nodeSet, node, true);
 				}
 			}
@@ -114,12 +118,6 @@ namespace SAF {
 					InsertOverrideNode(nodeSet, node, false);
 				}
 			}
-
-			UInt64 key = formId;
-			if (isFemale)
-				key |= 0x100000000;
-
-			g_adjustmentManager.nodeSets[key] = nodeSet;
 		}
 		catch (...) {
 			_LogCat("Failed to read ", path);
