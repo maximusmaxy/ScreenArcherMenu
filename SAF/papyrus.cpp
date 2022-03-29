@@ -322,32 +322,32 @@ namespace SAF {
 		SetEyecoords(refr, x, y);
 	}
 
-	bool PapyrusGetBlinkHack(StaticFunctionTag*, TESObjectREFR* refr)
+	bool PapyrusGetBlinkHack(StaticFunctionTag*)
 	{
 		return GetBlinkState() == 1;
 	}
 
-	void PapyrusSetBlinkHack(StaticFunctionTag*, TESObjectREFR* refr, bool enabled)
+	void PapyrusSetBlinkHack(StaticFunctionTag*, bool enabled)
 	{
 		SetBlinkState(enabled);
 	}
 
-	bool PapyrusGetEyeTrackingHack(StaticFunctionTag*, TESObjectREFR* refr)
+	bool PapyrusGetEyeTrackingHack(StaticFunctionTag*)
 	{
 		return GetDisableEyecoordUpdate() == 1;
 	}
 
-	void PapyrusSetEyeTrackingHack(StaticFunctionTag*, TESObjectREFR* refr, bool enabled)
+	void PapyrusSetEyeTrackingHack(StaticFunctionTag*, bool enabled)
 	{
 		SetDisableEyecoordUpdate(enabled);
 	}
 
-	bool PapyrusGetMorphsHack(StaticFunctionTag*, TESObjectREFR* refr)
+	bool PapyrusGetMorphsHack(StaticFunctionTag*)
 	{
 		return GetForceMorphUpdate() == 1;
 	}
 
-	void PapyrusSetMorphsHack(StaticFunctionTag*, TESObjectREFR* refr, bool enabled)
+	void PapyrusSetMorphsHack(StaticFunctionTag*, bool enabled)
 	{
 		SetForceMorphUpdate(enabled);
 	}
@@ -385,12 +385,12 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, TESObjectREFR*>("GetEyeCoords", "SAF", PapyrusGetEyeCoords, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, float, float>("SetEyeCoords", "SAF", PapyrusSetEyeCoords, vm));
 
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, bool, TESObjectREFR*>("GetBlinkHack", "SAF", PapyrusGetBlinkHack, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, bool>("SetBlinkHack", "SAF", PapyrusSetBlinkHack, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, bool, TESObjectREFR*>("GetEyeTrackingHack", "SAF", PapyrusGetEyeTrackingHack, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, bool>("SetEyeTrackingHack", "SAF", PapyrusSetEyeTrackingHack, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, bool, TESObjectREFR*>("GetMorphsHack", "SAF", PapyrusGetMorphsHack, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, bool>("SetMorphsHack", "SAF", PapyrusSetMorphsHack, vm));
+		vm->RegisterFunction(new NativeFunction0 <StaticFunctionTag, bool>("GetBlinkHack", "SAF", PapyrusGetBlinkHack, vm));
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, bool>("SetBlinkHack", "SAF", PapyrusSetBlinkHack, vm));
+		vm->RegisterFunction(new NativeFunction0 <StaticFunctionTag, bool>("GetEyeTrackingHack", "SAF", PapyrusGetEyeTrackingHack, vm));
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, bool>("SetEyeTrackingHack", "SAF", PapyrusSetEyeTrackingHack, vm));
+		vm->RegisterFunction(new NativeFunction0 <StaticFunctionTag, bool>("GetMorphsHack", "SAF", PapyrusGetMorphsHack, vm));
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, bool>("SetMorphsHack", "SAF", PapyrusSetMorphsHack, vm));
 
 		return true;
 	}

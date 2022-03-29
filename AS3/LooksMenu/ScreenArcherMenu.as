@@ -46,6 +46,7 @@
 		public static const LOADPOSE_STATE:int = 18;
 		public static const SKELETONADJUSTMENT_STATE:int = 19;
 		public static const POSITIONING_STATE:int = 20;
+		public static const OPTIONS_STATE:int = 21;
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
@@ -72,6 +73,15 @@
 
 		public var swapped:Boolean = false;
 		public var saved:Boolean = false;
+		
+		public var targetIgnore:Array = [
+			HACK_STATE,
+			OPTIONS_STATE
+		]
+		
+		public var mainMenuIgnore:Array = [
+			6   
+	    ]
 		
 		public function ScreenArcherMenu()
 		{
@@ -297,7 +307,7 @@
 			}
 		}
 		
-		public function checkTarget():Boolean
+		public function checkTarget(id:int):Boolean
 		{
 			return checkError(1, "$SAM_ConsoleError");
 		}
@@ -317,12 +327,31 @@
 			return checkError(4, "$SAM_MorphsError");
 		}
 		
-		public function pushState(state:int)
+		public function checkIgnore(id:int, arr:Array):Boolean
 		{
-			if (!checkTarget()) return;
+			if (arr.indexOf(id) >= 0) {
+				notification.visible = false;
+				return true;
+			}
+			return false;
+		}
+		
+		public function checkTargetIgnore(id:int):Boolean
+		{
+			return checkIgnore(id, targetIgnore);
+		}
+		
+		public function checkMainMenuIgnore(id:int):Boolean
+		{
+			return checkIgnore(id, mainMenuIgnore);
+		}
+		
+		public function pushState(id:int)
+		{
+			if (!checkTargetIgnore(id) && !checkTarget(id)) return;
 			
 			menuStack.push(this.state);
-			this.state = state;
+			this.state = id;
 			
 			sliderPosStack.push(sliderList.listPosition);
 			sliderList.listPosition = 0;
@@ -443,7 +472,7 @@
 		
 		public function selectMenu(id:int):void
 		{
-			if (!checkTarget()) return;
+			if (!checkMainMenuIgnore(id) && !checkTarget(id)) return;
 			switch (id)
 			{
 				case 0: if (checkSkeleton()) pushState(ADJUSTMENT_STATE); break;
