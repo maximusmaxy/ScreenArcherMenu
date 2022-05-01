@@ -29,7 +29,7 @@ public:
 	void (*negateAdjustments)(UInt32 formId, UInt32 handle, const char* group);
 	void (*loadPose)(UInt32 formId, const char* filename);
 	void (*resetPose)(UInt32 formId);
-	void (*loadDefaultAdjustment)(UInt32 raceId, bool isFemale, const char* filename);
+	void (*loadDefaultAdjustment)(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable);
 };
 
 extern SafMessageDispatcher safMessageDispatcher;
@@ -63,4 +63,9 @@ void SaveJsonPose(const char* filename, GFxValue selectedHandles);
 bool LoadJsonPose(const char* filename);
 void ResetJsonPose();
 
-void LoadDefaultAdjustment(const char* filename);
+void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);
+void LoadDefaultAdjustment(const char* filename, bool clear, bool enable);
+
+void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, double scalar);
+
+void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result);

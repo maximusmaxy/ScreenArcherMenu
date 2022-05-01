@@ -69,7 +69,6 @@
 						func.call(null, id); 
 						break;
 					case CHECKBOX:
-					case DRAG:
 						checkbox.onClick(event);
 						break;
 				}
@@ -212,8 +211,8 @@
 			slider.visible = false;
 			value.visible = false;
 			divider.visible = false;
-			checkbox.visible = false;
-			checkbox2.visible = false;
+			checkbox.disable();
+			checkbox2.disable();
 			background.x = -2;
 			background.width = 290;
 			selectable = true;
@@ -228,8 +227,8 @@
 			slider.visible = true;
 			value.visible = true;
 			divider.visible = false;
-			checkbox.visible = false;
-			checkbox2.visible = false;
+			checkbox.disable();
+			checkbox2.disable();
 			this.type = SLIDER;
 			this.valueType = valueType;
 			updateValue(true); 
@@ -243,8 +242,8 @@
 			slider.visible = false;
 			value.visible = false;
 			divider.visible = true;
-			checkbox.visible = false;
-			checkbox2.visible = false;
+			checkbox.disable();
+			checkbox2.disable();
 			this.type = DIVIDER;
 		}
 		
@@ -256,7 +255,7 @@
 			value.visible = false;
 			divider.visible = false;
 			checkbox.init(1, this.id, checked, 0, func);
-			checkbox2.visible = false;
+			checkbox2.disable();
 			background.x = 31;
 			background.width = 258;
 			this.type = CHECKBOX;
@@ -274,6 +273,19 @@
 			background.x = -2;
 			background.width = 218;
 			this.type = ADJUSTMENT;
+		}
+		
+		public function updateDrag(name:String)
+		{
+			unselect();
+			selectable = false;
+			setText(31, 0, name, TextFormatAlign.LEFT)
+			slider.visible = false;
+			value.visible = false;
+			divider.visible = false;
+			checkbox.init(1, this.id, false, Checkbox.DRAG, func);
+			checkbox2.disable();
+			this.type = DRAG;
 		}
 		
 		public function updateSliderData(min:Number, max:Number, step:Number, mod:Number, fixed:int = 0)

@@ -32,6 +32,20 @@ namespace SAF {
 	typedef const char* (*GetRefrModelFilename)(TESObjectREFR* refr);
 	extern RelocAddr<GetRefrModelFilename> getRefrModelFilename;
 
+	struct ProcessListsActor {
+		UInt64 unk1;	//0
+		UInt64 unk2;	
+		UInt64 unk3;	//10
+		UInt64 unk4;
+		UInt64 unk5;	//20
+		UInt64 unk6;
+		UInt64 unk7;	//30
+		UInt64 unk8;
+		UInt32* handles;	//40
+		UInt64 unk10;
+		UInt32 count;	//50
+	};
+
 	enum {
 		kSafAdjustmentManager = 1,
 		kSafAdjustmentCreate,
@@ -46,6 +60,7 @@ namespace SAF {
 		kSafPoseReset,
 		kSafResult,
 		kSafDefaultAdjustmentLoad,
+		kSafAdjustmentRotate,
 	};
 
 	struct AdjustmentMessage {
@@ -93,7 +108,8 @@ namespace SAF {
 		kAdjustmentTransformRotation,
 		kAdjustmentTransformScale,
 		kAdjustmentTransformReset,
-		kAdjustmentTransformNegate
+		kAdjustmentTransformNegate,
+		kAdjustmentTransformRotate
 	};
 
 	struct AdjustmentTransformMessage {
@@ -154,11 +170,15 @@ namespace SAF {
 		UInt32 raceId;
 		bool isFemale;
 		const char* filename;
+		bool clear;
+		bool enable;
 
-		SkeletonMessage(UInt32 raceId, bool isFemale, const char* filename) :
+		SkeletonMessage(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable) :
 			raceId(raceId),
 			isFemale(isFemale),
-			filename(filename)
+			filename(filename),
+			clear(clear),
+			enable(enable)
 		{}
 	};
 
@@ -171,6 +191,7 @@ namespace SAF {
 		NodeSet all;
 		NodeSet base;
 		NodeSet allOrBase;
+		BSFixedString rootName;
 
 		std::unordered_map<std::string, std::string> baseMap;
 		std::unordered_map<std::string, std::string> fixedConversion;
@@ -204,6 +225,15 @@ namespace SAF {
 			type(type),
 			map(map)
 		{}
+	};
+
+	struct AdjustmentUpdateData
+	{
+		std::unordered_set<std::string>* defaults;
+		std::vector<std::pair<std::string, std::string>>* uniques;
+		std::vector<PersistentAdjustment>* persistents;
+
+		AdjustmentUpdateData() : defaults(nullptr), uniques(nullptr), persistents(nullptr) {};
 	};
 
 	class Adjustment
@@ -297,13 +327,15 @@ namespace SAF {
 		std::shared_ptr<Adjustment> GetAdjustment(UInt32 handle);
 		std::shared_ptr<Adjustment> GetListAdjustment(UInt32 index);
 		void RemoveAdjustment(UInt32 handle);
+		void RemoveAdjustment(std::string name);
+		bool HasAdjustment(std::string name);
+		std::unordered_set<const char*> GetAdjustmentNames();
 
-		void Update();
-		void UpdatePersistentAdjustments(std::string* defaults, std::vector<std::pair<std::string, std::string>>* uniques, std::vector<PersistentAdjustment>* persistents);
+		bool Update();
+		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
 		void UpdateAdjustments(std::string name);
 		void UpdateAllAdjustments();
 		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);
-		void Clear();
 		
 		std::shared_ptr<Adjustment> LoadAdjustment(std::string filename, bool cached = false);
 		UInt32 LoadAdjustment(std::string filename, std::string espName, bool persistent, bool hidden, bool cached = false);
@@ -316,10 +348,10 @@ namespace SAF {
 		bool HasNode(std::string name);
 		void NegateTransform(std::shared_ptr<Adjustment> adjustment, std::string name);
 		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, std::string name, NiTransform transform);
-		//void NegateTransformGroup(std::shared_ptr<Adjustment> adjustment, std::string groupName);
+		void RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, std::string name, UInt32 type, float scalar);
 
-		std::shared_ptr<Adjustment> LoadDefaultAdjustment(std::string filename);
-		void RemoveDefaultAdjustment();
+		void LoadDefaultAdjustment(std::string filename, bool clear, bool enable);
+		void RemoveDefaultAdjustments();
 
 		void GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments);
 
@@ -336,15 +368,17 @@ namespace SAF {
 		std::shared_mutex persistenceMutex;
 		std::shared_mutex nodeMapMutex;
 
-		bool loaded = false;
+		bool filesLoaded = false;
 
 	public:
+		bool gameLoaded = false;
+
 		std::string offsetPostfix = "_Offset";
 		std::string overridePostfix = "_Pose";
 
 		std::unordered_map<UInt64, NodeSets> nodeSets;
 
-		std::unordered_map<UInt64, std::string> defaultAdjustments;
+		std::unordered_map<UInt64, std::unordered_set<std::string>> defaultAdjustments;
 		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> uniqueAdjustments;
 		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> persistentAdjustments;
 
@@ -352,11 +386,10 @@ namespace SAF {
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
 		std::unordered_map<std::string, TransformMap> adjustmentFileCache;
 
-		std::unordered_set<UInt32> actorUpdates;
-		std::unordered_set<UInt32> actorDeletions;
-
-		void Load();
-		void RemoveMod(BSFixedString espName);
+		void LoadFiles();
+		void GameLoaded();
+		void ActorLoaded(Actor* actor, bool loaded);
+		void UpdateActor(std::shared_ptr<ActorAdjustments> adjustments);
 
 		void CreateNewAdjustment(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden);
 		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
@@ -368,12 +401,7 @@ namespace SAF {
 		//void NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName);
 		bool LoadPose(UInt32 formId, const char* filename);
 		void ResetPose(UInt32 formId);
-		void LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename);
-
-		void UpdateActorAdjustments(std::shared_ptr<ActorAdjustments> adjustments, bool loaded);
-		void UpdateActor(Actor* actor, TESNPC* npc, bool loaded);
-		void UpdateAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
-		void UpdateQueue();
+		void LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable);
 		
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);
@@ -383,11 +411,13 @@ namespace SAF {
 		TransformMap* GetAdjustmentFile(std::string);
 		void SetAdjustmentFile(std::string filename, TransformMap map);
 
-		std::string* GetDefaultAdjustment(UInt32 race, bool isFemale);
+		std::unordered_set<std::string>* GetDefaultAdjustments(UInt32 race, bool isFemale);
 		
 		NodeMap CreateNodeMap(NiNode* root, NodeSets* set);
 		NodeMap* GetCachedNodeMap(std::shared_ptr<ActorAdjustments> actorAdjustments, NodeSets* nodeSet);
 		void RemoveNodeMap(NiNode* root);
+
+		void RemoveMod(BSFixedString espName);
 		
 		void SerializeSave(const F4SESerializationInterface* ifc);
 		void SerializeLoad(const F4SESerializationInterface* ifc);

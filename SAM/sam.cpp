@@ -19,8 +19,10 @@
 #include "mfg.h"
 #include "idle.h"
 #include "hacks.h"
+#include "positioning.h"
 
 #include <regex>
+#include <WinUser.h>
 
 SelectedRefr selected;
 
@@ -61,6 +63,33 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 		GFxMovieRoot * root = (*g_ui)->GetMenu(menuName)->movie->movieRoot;
 		root->SetVariable(visiblePath, &GFxValue(visible));
 	}
+}
+
+bool GetCursor(SInt32* pos) 
+{
+	POINT point;
+	bool result = GetCursorPos(&point);
+	if (result) {
+		pos[0] = point.x;
+		pos[1] = point.y;
+	}
+	return result;
+}
+
+bool SetCursor(SInt32 x, SInt32 y)
+{
+	return SetCursorPos(x, y);
+}
+
+void GetCursorPositionGFx(GFxMovieRoot* root, GFxValue* result) {
+	root->CreateObject(result);
+
+	SInt32 pos[2];
+	bool success = GetCursor(pos);
+
+	result->SetMember("success", &GFxValue(success));
+	result->SetMember("x", &GFxValue(pos[0]));
+	result->SetMember("y", &GFxValue(pos[1]));
 }
 
 TESObjectREFR * GetRefr() {
@@ -104,6 +133,7 @@ void OnMenuOpen() {
 
 	TESObjectREFR* refr = GetRefr();
 	selected.Update(refr);
+	UpdateNonActorRefr();
 
 	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", false);
 
@@ -145,6 +175,8 @@ void OnConsoleRefUpdate() {
 	//_DMESSAGE("Console ref updated");
 
 	TESObjectREFR * refr = GetRefr();
+	UpdateNonActorRefr();
+
 	if (selected.refr != refr) {
 		selected.Update(refr);
 
@@ -181,6 +213,8 @@ void OnConsoleRefUpdate() {
 			}
 			case 14:
 			case 15: //idles
+			case 20: //positioning
+			case 21: //options
 			{
 				break;
 			}
@@ -522,6 +556,7 @@ void LoadMenuFiles() {
 			loadedMenus.insert(path);
 		}	
 	}
+
 	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Idles", "*.json"); !iter.Done(); iter.Next())
 	{
 		std::string	path = iter.GetFullPath();

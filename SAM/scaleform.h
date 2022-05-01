@@ -187,6 +187,12 @@ public:
 	virtual void	Invoke(Args * args);
 };
 
+class AdjustNodeRotation : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class ResetTransform : public GFxFunctionHandler
 {
 public:
@@ -307,6 +313,13 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class GetSkeletonAdjustments : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+
 class LoadSkeletonAdjustment : public GFxFunctionHandler
 {
 public:
@@ -319,6 +332,53 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class AdjustPositioning : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args * args);
+};
+
+class SavePositioning : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SelectPositioning : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class ResetPositioning : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class GetSamPoses : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SetCursorVisible : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class GetCursorPosition : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class SetCursorPosition : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
 
 class HideMenu : public GFxFunctionHandler
 {

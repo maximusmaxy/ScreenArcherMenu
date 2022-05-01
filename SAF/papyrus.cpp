@@ -104,7 +104,7 @@ namespace SAF {
 		result.Set<float>("y", transform.pos.y);
 		result.Set<float>("z", transform.pos.z);
 		float yaw, pitch, roll;
-		NiToEuler(transform.rot, yaw, pitch, roll);
+		MatrixToEulerYPR(transform.rot, yaw, pitch, roll);
 		result.Set<float>("yaw", yaw);
 		result.Set<float>("pitch", pitch);
 		result.Set<float>("roll", roll);
@@ -123,7 +123,7 @@ namespace SAF {
 		transform.Get<float>("yaw", &yaw);
 		transform.Get<float>("pitch", &pitch);
 		transform.Get<float>("roll", &roll);
-		NiFromEuler(result.rot, yaw, pitch, roll);
+		MatrixFromEulerYPR(result.rot, yaw, pitch, roll);
 		transform.Get<float>("scale", &result.scale);
 
 		return result;
@@ -271,7 +271,11 @@ namespace SAF {
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 
-		adjustments->LoadPose(std::string(filename));
+		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
+		path += filename;
+		path += ".json";
+
+		adjustments->LoadPose(path);
 		adjustments->UpdateAllAdjustments();
 	}
 

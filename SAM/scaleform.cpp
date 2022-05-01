@@ -19,10 +19,12 @@
 #include "pose.h"
 #include "mfg.h"
 #include "idle.h"
+#include "positioning.h"
 
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
 #include "SAF/util.h"
+#include "SAF/conversions.h"
 
 void SaveState::Invoke(Args* args)
 {
@@ -34,6 +36,7 @@ void SaveState::Invoke(Args* args)
 void ClearState::Invoke(Args* args)
 {
 	saveData.Clear();
+	int i = 0;
 }
 
 enum {
@@ -289,6 +292,23 @@ void SetNodeScale::Invoke(Args * args)
 	SetAdjustmentSca(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber());
 }
 
+std::unordered_map<UInt32, UInt32> rotationTypeMap = {
+	{7, kRotationX},
+	{8, kRotationY},
+	{9, kRotationZ}
+};
+
+void AdjustNodeRotation::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 4);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[3].GetType() == GFxValue::kType_Number);
+	UInt32 type = rotationTypeMap[args->args[2].GetInt()];
+	RotateAdjustmentXYZ(args->movie->movieRoot, args->result, args->args[0].GetString(), args->args[1].GetInt(), type, args->args[3].GetNumber());
+}
+
 void ResetTransform::Invoke(Args * args)
 {
 	ASSERT(args->numArgs >= 2);
@@ -398,16 +418,73 @@ void ResetPose::Invoke(Args* args)
 	ResetJsonPose();
 }
 
+void GetSkeletonAdjustments::Invoke(Args* args)
+{
+	GetDefaultAdjustmentsGFx(args->movie->movieRoot, args->result);
+}
+
 void LoadSkeletonAdjustment::Invoke(Args* args)
 {
-	ASSERT(args->numArgs >= 1);
+	ASSERT(args->numArgs >= 3);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	LoadDefaultAdjustment(args->args[0].GetString());
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
+	ASSERT(args->args[2].GetType() == GFxValue::kType_Bool);
+	LoadDefaultAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool());
 }
 
 void ResetSkeletonAdjustment::Invoke(Args* args)
 {
-	LoadDefaultAdjustment(nullptr);
+	LoadDefaultAdjustment(nullptr, true, false);
+}
+
+void AdjustPositioning::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 3);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Number);
+	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
+	AdjustObjectPosition(args->args[0].GetInt(), args->args[1].GetNumber(), args->args[2].GetInt());
+}
+
+void SavePositioning::Invoke(Args* args)
+{
+	SaveObjectTranslation();
+}
+
+void SelectPositioning::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	SelectPositioningMenuOption(args->args[0].GetInt());
+}
+
+void ResetPositioning::Invoke(Args* args)
+{
+	SetDefaultObjectTranslation();
+}
+
+void GetSamPoses::Invoke(Args* args)
+{
+	GetSamPosesGFx(args->movie->movieRoot, args->result);
+}
+
+void SetCursorVisible::Invoke(Args* args)
+{
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
+	static BSFixedString cursorMenu("CursorMenu");
+	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", args->args[0].GetBool());
+}
+
+void GetCursorPosition::Invoke(Args* args)
+{
+	GetCursorPositionGFx(args->movie->movieRoot, args->result);
+}
+
+void SetCursorPosition::Invoke(Args* args)
+{
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+	SetCursor(args->args[0].GetInt(), args->args[1].GetInt());
 }
 
 void HideMenu::Invoke(Args * args)
@@ -479,6 +556,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SetNodePosition>(value, view->movieRoot, "SetNodePosition");
 	RegisterFunction<SetNodeRotation>(value, view->movieRoot, "SetNodeRotation");
 	RegisterFunction<SetNodeScale>(value, view->movieRoot, "SetNodeScale");
+	RegisterFunction<AdjustNodeRotation>(value, view->movieRoot, "AdjustNodeRotation");
 	RegisterFunction<ResetTransform>(value, view->movieRoot, "ResetTransform");
 	RegisterFunction<GetIdleCategories>(value, view->movieRoot, "GetIdleCategories");
 	RegisterFunction<GetIdles>(value, view->movieRoot, "GetIdles");
@@ -488,8 +566,17 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SavePose>(value, view->movieRoot, "SavePose");
 	RegisterFunction<LoadPose>(value, view->movieRoot, "LoadPose");
 	RegisterFunction<ResetPose>(value, view->movieRoot, "ResetPose");
+	RegisterFunction<GetSkeletonAdjustments>(value, view->movieRoot, "GetSkeletonAdjustments");
 	RegisterFunction<LoadSkeletonAdjustment>(value, view->movieRoot, "LoadSkeletonAdjustment");
 	RegisterFunction<ResetSkeletonAdjustment>(value, view->movieRoot, "ResetSkeletonAdjustment");
+	RegisterFunction<AdjustPositioning>(value, view->movieRoot, "AdjustPositioning"); 
+	RegisterFunction<SavePositioning>(value, view->movieRoot, "SavePositioning");
+	RegisterFunction<SelectPositioning>(value, view->movieRoot, "SelectPositioning");
+	RegisterFunction<ResetPositioning>(value, view->movieRoot, "ResetPositioning");
+	RegisterFunction<GetSamPoses>(value, view->movieRoot, "GetSamPoses");
+	RegisterFunction<SetCursorVisible>(value, view->movieRoot, "SetCursorVisible");
+	RegisterFunction<GetCursorPosition>(value, view->movieRoot, "GetCursorPosition");
+	RegisterFunction<SetCursorPosition>(value, view->movieRoot, "SetCursorPosition");
 	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
 	RegisterFunction<Test>(value, view->movieRoot, "Test");
 	RegisterFunction<Test2>(value, view->movieRoot, "Test2");

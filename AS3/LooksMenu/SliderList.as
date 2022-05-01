@@ -5,6 +5,7 @@
 	import flash.ui.*;
 	import Shared.AS3.*;
 	import flash.text.*;
+	import flash.sampler.Sample;
 	
 	public class SliderList extends BSUIComponent
 	{
@@ -27,6 +28,7 @@
 		public static const EYES = 4;
 		public static const ADJUSTMENT = 5;
 		public static const ADJUSTMENTEDIT = 6;
+		public static const POSITIONING = 7;
 		
 		public var type:int;
 		
@@ -193,6 +195,7 @@
 				case EYES: updateEyesEntry(entry); break;
 				case ADJUSTMENT: updateAdjustmentEntry(entry); break;
 				case ADJUSTMENTEDIT: updateAdjustmentEditEntry(entry); break;
+				case POSITIONING: updatePositioningEntry(entry); break;
 			}
 		}
 		
@@ -280,6 +283,10 @@
 				entry.updateSliderData(0.0, 2.0, 0.01, 0.0, 4);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
+			else if (entry.id < 10)//rot2
+			{
+				entry.updateDrag(Data.TRANSFORM_NAMES[entry.id])
+			}
 		}
 		
 		public function updateMorphs(func:Function):void
@@ -308,6 +315,26 @@
 			}
 			else {
 				entry.updateCheckbox(Data.EYE_NAMES[entry.id], Data.menuValues[entry.id]);
+			}
+		}
+		
+		public function updatePositioning(func:Function):void
+		{
+			this.type = POSITIONING;
+			update(Data.POSITIONING_NAMES.length, LIST_MAX, func);
+		}
+		
+		public function updatePositioningEntry(entry:SliderListEntry):void
+		{
+			if (entry.id < 1) {
+				entry.updateSliderData(0, 500, 1, 0, 0);
+				entry.updateSlider(Data.POSITIONING_NAMES[entry.id], SliderListEntry.INT);
+			}
+			else if (entry.id < 8) {
+				entry.updateDrag(Data.POSITIONING_NAMES[entry.id]);
+			}
+			else {
+				entry.updateList(Data.POSITIONING_NAMES[entry.id]);
 			}
 		}
 	}

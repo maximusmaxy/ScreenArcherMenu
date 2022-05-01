@@ -32,20 +32,30 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "f4se/NiTypes.h"
 
+enum {
+	kRotationX = 1,
+	kRotationY,
+	kRotationZ
+};
+
 namespace SAF {
 
 	constexpr double DEGREE_TO_RADIAN = MATH_PI / 180;
 	constexpr double RADIAN_TO_DEGREE = 180 / MATH_PI;
+	constexpr double HALF_PI = MATH_PI / 2;
 
 	NiTransform TransformIdentity();
 
-	void NiFromEuler(NiMatrix43& matrix, float x, float y, float z);
-	void NiToEuler(NiMatrix43& matrix, float& x, float& y, float& z);
-	void NiFromDegree(NiMatrix43& matrix, float x, float y, float z);
-	void NiToDegree(NiMatrix43 & matrix, float& x, float& y, float& z);
+	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z);
+	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z);
+	void MatrixFromEulerRPY(NiMatrix43& matrix, float x, float y, float z);
+	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z);
+	void MatrixFromDegree(NiMatrix43& matrix, float x, float y, float z);
+	void MatrixToDegree(NiMatrix43 & matrix, float& x, float& y, float& z);
 
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
+	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar);
 
 	class Quat {
 	public:

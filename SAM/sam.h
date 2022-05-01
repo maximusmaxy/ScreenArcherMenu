@@ -65,6 +65,10 @@ void GetOptionsGFx(GFxMovieRoot* root, GFxValue* result);
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 
+bool GetCursor(SInt32* pos);
+bool SetCursor(SInt32 x, SInt32 y);
+void GetCursorPositionGFx(GFxMovieRoot* root, GFxValue* result);
+
 void OnMenuOpen();
 void OnMenuClose();
 void OnConsoleRefUpdate();

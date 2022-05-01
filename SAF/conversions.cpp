@@ -56,7 +56,7 @@ namespace SAF {
 		return q;
 	}
 
-	void NiFromEuler(NiMatrix43 &matrix, float x, float y, float z) {
+	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z) {
 		float sinX = sin(x);
 		float cosX = cos(x);
 		float sinY = sin(y);
@@ -75,7 +75,7 @@ namespace SAF {
 		matrix.data[2][2] = cosX * cosY;
 	}
 
-	void NiToEuler(NiMatrix43 &matrix, float &x, float &y, float &z) {
+	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[0][2] < 1.0) {
 			if (matrix.data[0][2] > -1.0) {
 				x = atan2(-matrix.data[1][2], matrix.data[2][2]);
@@ -84,23 +84,62 @@ namespace SAF {
 			}
 			else {
 				x = -atan2(-matrix.data[1][0], matrix.data[1][1]);
-				y = -MATH_PI / 2;
+				y = -HALF_PI;
 				z = 0.0;
 			}
 		}
 		else {
 			x = atan2(matrix.data[1][0], matrix.data[1][1]);
-			y = MATH_PI / 2;
+			y = HALF_PI;
 			z = 0.0;
 		}
 	}
 
-	void NiFromDegree(NiMatrix43& matrix, float x, float y, float z) {
-		NiFromEuler(matrix, x * -DEGREE_TO_RADIAN, y * -DEGREE_TO_RADIAN, z * -DEGREE_TO_RADIAN);
+	void MatrixFromEulerRPY(NiMatrix43& matrix, float x, float y, float z) {
+		float sinX = sin(x);
+		float cosX = cos(x);
+		float sinY = sin(y);
+		float cosY = cos(y);
+		float sinZ = sin(z);
+		float cosZ = cos(z);
+
+		matrix.data[0][0] = cosX * cosY;
+		matrix.data[0][1] = cosX * sinY * sinZ - cosZ * sinX;
+		matrix.data[0][2] = sinX * sinZ + cosX * cosZ * sinY;
+		matrix.data[1][0] = cosY * sinX;
+		matrix.data[1][1] = cosX * cosZ + sinX * sinY * sinZ;
+		matrix.data[1][2] = cosZ * sinX * sinY - cosX * sinZ;
+		matrix.data[2][0] = -sinY;
+		matrix.data[2][1] = cosY * sinZ;
+		matrix.data[2][2] = cosY * cosZ;
 	}
 
-	void NiToDegree(NiMatrix43& matrix, float& x, float& y, float& z) {
-		NiToEuler(matrix, x, y, z);
+	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z) {
+		if (matrix.data[0][2] < 1.0) {
+			if (matrix.data[0][2] > -1.0) {
+				x = atan2(matrix.data[1][0], matrix.data[0][0]);
+				y = asin(-matrix.data[2][0]);
+				z = atan2(matrix.data[2][1], matrix.data[2][2]);
+			}
+			else {
+				x = 0.0f; 
+				y = -HALF_PI;
+				z = atan2(-matrix.data[1][2], matrix.data[1][1]);
+			}
+		}
+		else {
+			x = 0.0f;
+			y = HALF_PI;
+			z = -atan2(matrix.data[1][2], matrix.data[1][1]);
+		}
+	}
+
+	void MatrixFromDegree(NiMatrix43& matrix, float x, float y, float z) {
+		MatrixFromEulerYPR(matrix, x * -DEGREE_TO_RADIAN, y * -DEGREE_TO_RADIAN, z * -DEGREE_TO_RADIAN);
+	}
+
+	void MatrixToDegree(NiMatrix43& matrix, float& x, float& y, float& z) {
+		MatrixToEulerYPR(matrix, x, y, z);
 		x *= -RADIAN_TO_DEGREE;
 		y *= -RADIAN_TO_DEGREE;
 		z *= -RADIAN_TO_DEGREE;
@@ -132,7 +171,7 @@ namespace SAF {
 		return i;
 	}
 
-	NiMatrix43 NiFromQuat(Quat & q)
+	NiMatrix43 NiFromQuat(Quat& q)
 	{
 		float fTx = ((float)2.0) * q[1];
 		float fTy = ((float)2.0) * q[2];
@@ -162,7 +201,7 @@ namespace SAF {
 		return m;
 	}
 
-	Quat NiToQuat(NiMatrix43 &m)
+	Quat NiToQuat(NiMatrix43& m)
 	{
 		Quat q;
 
@@ -294,5 +333,50 @@ namespace SAF {
 		res.rot = NiMatrix43Invert(src.rot) * dst.rot;
 
 		return res;
+	}
+
+	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar) {
+		NiMatrix43 rot;
+
+		float sin = std::sinf(scalar);
+		float cos = std::cosf(scalar);
+
+		switch (type) {
+		case kRotationX:
+			rot.data[0][0] = 1.0f;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = sin;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = -sin;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationY:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = -sin;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = 1.0f;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = sin;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationZ:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = sin;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = -sin;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = 1.0f;
+			break;
+		}
+
+		matrix = matrix * rot;
 	}
 }

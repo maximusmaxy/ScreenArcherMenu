@@ -37,14 +37,12 @@ UInt32 GetFormID(std::string modName, std::string formId) {
 }
 
 bool TransormIsDefault(NiTransform& transform) {
-	float yaw, pitch, roll;
-	SAF::NiToEuler(transform.rot, yaw, pitch, roll);
 	if (transform.pos.x == 0.0f &&
 		transform.pos.y == 0.0f &&
 		transform.pos.z == 0.0f &&
-		yaw == 0.0f &&
-		pitch == 0.0f &&
-		roll == 0.0f &&
+		transform.rot.arr[0] == 1.0f &&
+		transform.rot.arr[5] == 1.0f &&
+		transform.rot.arr[10] == 1.0f &&
 		transform.scale == 1.0f)
 		return true;
 	return false;

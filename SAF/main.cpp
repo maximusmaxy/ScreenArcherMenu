@@ -72,34 +72,77 @@ bool GetSafConfigOption_UInt32(const char* section, const char* key, UInt32* dat
 	return (sscanf_s(data.c_str(), "%u", dataOut) == 1);
 }
 
+std::string CellTest()
+{
+	//Actor* player = *g_player;
+	//if (!player) return "Could not find player";
+	//if (!player->unkF0) return "Player not loaded";
+	//if (!player->parentCell) return "Could not find parent cell";
+	//_DMESSAGE("Actors in cell:");
+	//for (int i = 0; i < player->parentCell->objectList.count; ++i) {
+	//	TESObjectREFR* refr = player->parentCell->objectList[i];
+	//	if (refr) {
+	//		Actor* actor = DYNAMIC_CAST(refr, TESObjectREFR, Actor);
+	//		if (actor) {
+	//			_Log("Form ID: ", actor->formID);
+	//		}
+	//	}
+	//	else {
+	//		_DMESSAGE("refr was null?");
+	//	}
+	//}
+	return std::string();
+}
+
 class SAFEventReciever :
 	public BSTEventSink<TESObjectLoadedEvent>,
-	public BSTEventSink<TESLoadGameEvent>
+	public BSTEventSink<TESLoadGameEvent>,
+	public BSTEventSink< TESInitScriptEvent>
 {
 public:
 	EventResult	ReceiveEvent(TESObjectLoadedEvent* evn, void* dispatcher) 
 	{
-		//Currently lots of bugs with dynamic references so ignore them for the moment
-		if ((evn->formId & 0xFF000000) == 0xFF000000)
-			return kEvent_Continue;
+		if (!SAF::g_adjustmentManager.gameLoaded) return kEvent_Continue;
 
 		TESForm* form = LookupFormByID(evn->formId);
 		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
 		if (!actor)
 			return kEvent_Continue;
 
-		TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
-		if (!npc)
+		SAF::g_adjustmentManager.ActorLoaded(actor, evn->loaded);
+
+		//if (evn->loaded) {
+		//	_Log("Object loaded: ", actor->formID);
+		//}
+		//else {
+		//	_Log("Object unloaded: ", actor->formID);
+		//}
+
+		return kEvent_Continue;
+	}
+
+	EventResult	ReceiveEvent(TESInitScriptEvent* evn, void* dispatcher)
+	{
+		Actor* actor = DYNAMIC_CAST(evn->reference, TESForm, Actor);
+		if (!actor)
 			return kEvent_Continue;
 
-		SAF::g_adjustmentManager.UpdateActor(actor, npc, evn->loaded);
+		SAF::g_adjustmentManager.ActorLoaded(actor, true);
+
+		//_Log("Script init for actor: ", actor->formID);
 
 		return kEvent_Continue;
 	}
 
 	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
 	{
-		SAF::g_adjustmentManager.UpdateQueue();
+		SAF::g_adjustmentManager.GameLoaded();
+		
+		//_DMESSAGE("Game loaded");
+
+		//std::string message = CellTest();
+		//if (message.size() > 0)
+		//	_DMESSAGE(message.c_str());
 
 		return kEvent_Continue;
 	}
@@ -115,13 +158,14 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 		{
 			GetEventDispatcher<TESObjectLoadedEvent>()->AddEventSink(&safEventReciever);
 			GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&safEventReciever);
+			//GetEventDispatcher<TESInitScriptEvent>()->AddEventSink(&safEventReciever);
 		}
 		break;
 		case F4SEMessagingInterface::kMessage_GameDataReady:
 		{
 			SAF::g_adjustmentManager.overridePostfix = GetSafConfigOption("skeleton", "override");
 			SAF::g_adjustmentManager.offsetPostfix = GetSafConfigOption("skeleton", "offset");
-			SAF::g_adjustmentManager.Load();
+			SAF::g_adjustmentManager.LoadFiles();
 			g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
 		}
 		break;
@@ -198,7 +242,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafDefaultAdjustmentLoad:
 	{
 		auto data = (SAF::SkeletonMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename);
+		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename, data->clear, data->enable);
 		break;
 	}
 	}

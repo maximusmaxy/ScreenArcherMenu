@@ -12,6 +12,7 @@
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
+    <ClCompile Include="positioning.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -24,6 +25,7 @@
     <ClInclude Include="idle.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="strnatcmp.h" />
+    <ClInclude Include="positioning.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

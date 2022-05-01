@@ -25,6 +25,7 @@
 		public var menuStack:Vector.<int>; 
 		public var sliderPosStack:Vector.<int>;
 		
+		//menu states
 		public static const MAIN_STATE:int = 0;
 		public static const MORPHCATEGORY_STATE:int = 1;
 		public static const MORPH_STATE = 2;
@@ -41,12 +42,20 @@
 		public static const EDITADJUSTMENT_STATE:int = 13;
 		public static const IDLECATEGORY_STATE:int = 14;
 		public static const IDLE_STATE:int = 15;
-		public static const POSE_STATE:int = 16;
+		public static const POSEEXPORT_STATE:int = 16;
 		public static const SAVEPOSE_STATE:int = 17;
 		public static const LOADPOSE_STATE:int = 18;
 		public static const SKELETONADJUSTMENT_STATE:int = 19;
 		public static const POSITIONING_STATE:int = 20;
 		public static const OPTIONS_STATE:int = 21;
+		public static const POSEPLAY_STATE:int = 22;
+		
+		//Error checks
+		public static const NO_CHECK = 0;
+		public static const TARGET_CHECK = 1;
+		public static const SKELETON_CHECK = 2;
+		public static const MORPHS_CHECK = 3;
+		public static const EYE_CHECK = 4;
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
@@ -73,21 +82,64 @@
 
 		public var swapped:Boolean = false;
 		public var saved:Boolean = false;
+		public var multi:Boolean = false;
 		
 		public var targetIgnore:Array = [
 			HACK_STATE,
+			POSITIONING_STATE,
 			OPTIONS_STATE
-		]
+		];
 		
-		public var mainMenuIgnore:Array = [
-			6   
-	    ]
+		public var mainMenuOptions:Array = [
+			{
+				state: ADJUSTMENT_STATE,
+				check: SKELETON_CHECK
+			},
+			{
+				state: SKELETONADJUSTMENT_STATE,
+				check: SKELETON_CHECK
+			},
+			{
+				state: POSEPLAY_STATE,
+				check: SKELETON_CHECK
+			},
+			{
+				state: POSEEXPORT_STATE,
+				check: SKELETON_CHECK
+			},
+			{
+				state: IDLECATEGORY_STATE,
+				check: NO_CHECK
+			},
+			{
+				state: POSITIONING_STATE,
+				check: NO_CHECK,
+				ignore: true
+			},
+			{
+				state: MORPHCATEGORY_STATE,
+				check: MORPHS_CHECK
+			},
+			{
+				state: EYE_STATE,
+				check: EYE_CHECK
+			},
+			{
+				state: HACK_STATE,
+				check: NO_CHECK,
+				ignore: true
+			}
+//			{
+//				state: OPTIONS_STATE,
+//				check: NO_CHECK
+//			}
+		];
 		
 		public function ScreenArcherMenu()
 		{
 			super();
 			
-			Util.debug = false;
+			Util.debug = true;
 			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
@@ -122,6 +174,7 @@
 			buttonHintSwap = new BSButtonHintData("$SAM_Swap","Z","PSN_R2","Xenon_R2",1,swap);
 			buttonHintNew = new BSButtonHintData("$SAM_New","X","PSN_L1","Xenon_L1",1,newButton);
 			buttonHintNegate = new BSButtonHintData("$SAM_Negate","X","PSN_L1","Xenon_L1",1,negate);
+			buttonHintMulti = new BSButtonHintData("$SAM_Multi","X","PSN_L1","Xenon_L1",1,multiselect);
 			buttonHintData.push(buttonHintExit);
 			buttonHintData.push(buttonHintBack);
 			buttonHintData.push(buttonHintSave);
@@ -131,6 +184,7 @@
 			buttonHintData.push(buttonHintNew);
 			buttonHintData.push(buttonHintSwap);
 			buttonHintData.push(buttonHintConfirm);
+			buttonHintData.push(buttonHintMulti);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
 		}
 		
@@ -295,36 +349,16 @@
 			Data.scriptHandleLow = data.__handleLow__;
 		}
 		
-		public function checkError(id:int, message:String):Boolean
+		public function checkError(id:int):Boolean
 		{
 			if (Data.checkError(id)) {
 				notification.visible = false;
 				return true;
 			} else {
 				notification.visible = true;
-				notification.message.text = message;
+				notification.message.text = Data.ERROR_NAMES[id];
 				return false;
 			}
-		}
-		
-		public function checkTarget(id:int):Boolean
-		{
-			return checkError(1, "$SAM_ConsoleError");
-		}
-		
-		public function checkSkeleton():Boolean
-		{
-			return checkError(2, "$SAM_SkeletonError");
-		}
-		
-		public function checkEyes():Boolean
-		{
-			return checkError(3, "$SAM_EyeError");
-		}
-		
-		public function checkMorphs():Boolean
-		{
-			return checkError(4, "$SAM_MorphsError");
 		}
 		
 		public function checkIgnore(id:int, arr:Array):Boolean
@@ -341,14 +375,9 @@
 			return checkIgnore(id, targetIgnore);
 		}
 		
-		public function checkMainMenuIgnore(id:int):Boolean
-		{
-			return checkIgnore(id, mainMenuIgnore);
-		}
-		
 		public function pushState(id:int)
 		{
-			if (!checkTargetIgnore(id) && !checkTarget(id)) return;
+			if (!checkTargetIgnore(id) && !checkError(TARGET_CHECK)) return;
 			
 			menuStack.push(this.state);
 			this.state = id;
@@ -418,12 +447,12 @@
 					break;
 				case LOADADJUSTMENT_STATE:
 					Data.loadAdjustmentFiles();
-					Data.menuOptions = Data.morphFiles;
+					Data.menuOptions = Data.menuFiles;
 					sliderList.updateList(selectAdjustmentFile);
 					break;
 				case LOADMFG_STATE:
 					Data.loadMfgFiles();
-					Data.menuOptions = Data.morphFiles;
+					Data.menuOptions = Data.menuFiles;
 					sliderList.updateList(selectMfgFile);
 					break;
 				case SAVEMFG_STATE:
@@ -448,22 +477,26 @@
 					Data.loadIdles();
 					sliderList.updateList(selectIdle);
 					break;
-				case POSE_STATE:
+				case POSEEXPORT_STATE:
 					Data.getPoseList();
 					sliderList.updateCheckboxes(selectPose);
 					break;
+				case POSEPLAY_STATE:
+					Data.getSamPoses();
+					sliderList.updateList(selectPosePlay);
+					break;
 				case LOADPOSE_STATE:
 					Data.loadPoseFiles();
-					Data.menuOptions = Data.morphFiles;
+					Data.menuOptions = Data.menuFiles;
 					sliderList.updateList(selectPoseFile);
 					break;
 				case SKELETONADJUSTMENT_STATE:
-					Data.loadAdjustmentFiles();
-					Data.menuOptions = Data.morphFiles;
+					Data.getSkeletonAdjustments();
 					sliderList.updateList(selectSkeletonAdjustment);
 					break;
 				case POSITIONING_STATE:
-					sliderList.updatePositioning();
+					Data.loadPositioning();
+					sliderList.updatePositioning(selectPositioning);
 					break;
 			}
 			Data.selectedSlider = null;
@@ -472,18 +505,13 @@
 		
 		public function selectMenu(id:int):void
 		{
-			if (!checkMainMenuIgnore(id) && !checkTarget(id)) return;
-			switch (id)
-			{
-				case 0: if (checkSkeleton()) pushState(ADJUSTMENT_STATE); break;
-				case 1: if (checkSkeleton()) pushState(SKELETONADJUSTMENT_STATE); break;
-				case 2: if (checkSkeleton()) pushState(POSE_STATE); break;
-				case 3: pushState(IDLECATEGORY_STATE); break;
-				//case 4: pushState(POSITIONING_STATE); break;
-				case 4:	if (checkMorphs()) pushState(MORPHCATEGORY_STATE); break;
-				case 5: if (checkEyes()) pushState(EYE_STATE); break;
-				case 6:	pushState(HACK_STATE); break;
-			}
+			var menu:Object = mainMenuOptions[id];
+			
+			if (!menu.ignore && !checkError(TARGET_CHECK)) return;
+			
+			if (menu.check > 0 && !checkError(menu.check)) return;
+			
+			pushState(menu.state);
 		}
 		
 		public function selectAdjustment(id:int):void
@@ -549,6 +577,9 @@
 		public function selectTransform(id:int, value:Number):void
 		{
 			Data.setTransform(id, value);
+			if (id >= 7 || id < 1000) {
+				sliderList.updateValues();
+			}
 		}
 		
 		public function selectMorphCategory(id:int):void
@@ -569,7 +600,12 @@
 		
 		public function selectHack(id:int, enabled:Boolean):void
 		{
-			Data.setHack(id, enabled)
+			Data.setHack(id, enabled);
+		}
+		
+		public function selectPositioning(id:int, value:Number = 0):void
+		{
+			Data.selectPositioning(id, value);
 		}
 
 		internal function confirm():void
@@ -618,7 +654,7 @@
 				case MORPHCATEGORY_STATE:
 					pushState(SAVEMFG_STATE); break;
 				case ADJUSTMENT_STATE: pushState(SAVEADJUSTMENT_STATE); break;
-				case POSE_STATE: pushState(SAVEPOSE_STATE); break;
+				case POSEEXPORT_STATE: pushState(SAVEPOSE_STATE); break;
 			}
 		}
 
@@ -629,7 +665,7 @@
 				case MORPHCATEGORY_STATE:
 					pushState(LOADMFG_STATE); break;
 				case ADJUSTMENT_STATE: pushState(LOADADJUSTMENT_STATE); break;
-				case POSE_STATE: pushState(LOADPOSE_STATE); break;
+				case POSEEXPORT_STATE: pushState(LOADPOSE_STATE); break;
 			}
 		}
 		
@@ -681,11 +717,33 @@
 		internal function selectPoseFile(id:int)
 		{
 			Data.loadPose(id);
+			sliderList.updateList(selectPoseFile);
 		}
 		
-		internal function selectSkeletonAdjustment(id:int)
+		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = false)
 		{
-			Data.loadSkeletonAdjustment(id);
+			Data.loadSkeletonAdjustment(id, !multi, enabled);
+		}
+		
+		internal function selectPosePlay(id:int)
+		{
+			if (Data.selectSamPose(id)) {
+				sliderList.updateList(selectPosePlay);
+			}
+		}
+		
+		internal function multiselect()
+		{
+			multi = !multi;
+			if (multi) {
+				buttonHintMulti.ButtonText = "$SAM_Multi";
+				sliderList.updateCheckboxes(selectSkeletonAdjustment);
+			} 
+			else
+			{
+				buttonHintMulti.ButtonText = "$SAM_Single";
+				sliderList.updateList(selectSkeletonAdjustment);
+			}
 		}
 
 		internal function reset():void
@@ -703,11 +761,14 @@
 				case IDLE_STATE:
 					Data.resetIdle();
 					break;
-				case POSE_STATE:
+				case POSEEXPORT_STATE:
 					Data.resetPose();
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					Data.resetSkeletonAdjustment();
+					break;
+				case POSITIONING_STATE:
+					Data.resetPositioning();
 					break;
 			}
 			sliderList.updateValues();
@@ -723,6 +784,13 @@
 			if (this.state == MAIN_STATE)
 			{
 				exit();
+			}
+			else if (Data.folderStack.length > 0)
+			{
+				Data.popFolder();
+				switch(this.state) {
+					case POSEPLAY_STATE: sliderList.updateList(selectPosePlay); break;
+				}
 			}
 			else
 			{
@@ -778,6 +846,7 @@
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = false;
 					break;
 				case ADJUSTMENT_STATE :
 					buttonHintExit.ButtonVisible = false;
@@ -789,6 +858,7 @@
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = true;
 					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = false;
 					break;
 				case TRANSFORM_STATE :
 					buttonHintExit.ButtonVisible = false;
@@ -800,10 +870,11 @@
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = true;
+					buttonHintMulti.ButtonVisible = false;
 					break;
 				case IDLECATEGORY_STATE:
 				case IDLE_STATE:
-				case SKELETONADJUSTMENT_STATE:
+				case POSITIONING_STATE:
 					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
@@ -813,10 +884,11 @@
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = false;
 					break;
 				case MORPH_STATE:
 				case MORPHCATEGORY_STATE:
-				case POSE_STATE:
+				case POSEEXPORT_STATE:
 					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = true;
 					buttonHintLoad.ButtonVisible = true;
@@ -826,6 +898,7 @@
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = false;
 					break;
 				case SAVEMFG_STATE:
 				case SAVEADJUSTMENT_STATE:
@@ -839,6 +912,20 @@
 					buttonHintSwap.ButtonVisible = false;
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = false;
+					break;
+				case SKELETONADJUSTMENT_STATE:
+					buttonHintExit.ButtonVisible = false;
+					buttonHintBack.ButtonVisible = true;
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = false;
+					buttonHintConfirm.ButtonVisible = true;
+					buttonHintSwap.ButtonVisible = false;
+					buttonHintNew.ButtonVisible = false;
+					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = true;
+					buttonHintMulti.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
 					break;
 				default:
 					buttonHintExit.ButtonVisible = false;
@@ -850,6 +937,7 @@
 					buttonHintSwap.ButtonVisible = true;
 					buttonHintNew.ButtonVisible = false;
 					buttonHintNegate.ButtonVisible = false;
+					buttonHintMulti.ButtonVisible = false;
 			}
 		};
 
@@ -882,7 +970,7 @@
 
 		public function tryClose():void
 		{
-			if (state != SAVEMFG_STATE && state != SAVEADJUSTMENT_STATE && state != SAVEPOSE_STATE)
+			if (!filenameInput.visible)
 			{
 				var stack:Array = [];
 				for (var i:int = 0; i < menuStack.length; i++) {

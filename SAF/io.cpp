@@ -101,6 +101,14 @@ namespace SAF {
 
 			NodeSets* nodeSet = &g_adjustmentManager.nodeSets[key];
 
+			//TODO This probably shouldn't be hard coded
+			if (formId == 0x1D698) { //DogmeatRace
+				nodeSet->rootName = BSFixedString("Dogmeat_Root");
+			}
+			else {
+				nodeSet->rootName = BSFixedString("Root");
+			}
+
 			if (!offsets.isNull()) {
 				for (auto& node : offsets) {
 					InsertOffsetNode(nodeSet, node);
@@ -226,33 +234,49 @@ namespace SAF {
 		return true;
 	}
 
+	void ReadTransformJson(NiTransform& transform, Json::Value& value) {
+		transform.pos.x = ReadFloat(value["x"]);
+		transform.pos.y = ReadFloat(value["y"]);
+		transform.pos.z = ReadFloat(value["z"]);
+
+		float yaw, pitch, roll;
+		yaw = ReadFloat(value["yaw"]);
+		pitch = ReadFloat(value["pitch"]);
+		roll = ReadFloat(value["roll"]);
+		MatrixFromDegree(transform.rot, yaw, pitch, roll);
+
+		transform.scale = ReadFloat(value["scale"]);
+	}
+
+	void WriteTransformJson(NiTransform* transform, Json::Value& value) {
+		char buffer[32];
+		sprintf_s(buffer, "%.06f", transform->pos.x);
+		value["x"] = Json::Value(buffer);
+		sprintf_s(buffer, "%.06f", transform->pos.y);
+		value["y"] = Json::Value(buffer);
+		sprintf_s(buffer, "%.06f", transform->pos.z);
+		value["z"] = Json::Value(buffer);
+		float yaw, pitch, roll;
+		MatrixToDegree(transform->rot, yaw, pitch, roll);
+		sprintf_s(buffer, "%.02f", yaw);
+		value["yaw"] = Json::Value(buffer);
+		sprintf_s(buffer, "%.02f", pitch);
+		value["pitch"] = Json::Value(buffer);
+		sprintf_s(buffer, "%.02f", roll);
+		value["roll"] = Json::Value(buffer);
+		sprintf_s(buffer, "%.06f", transform->scale);
+		value["scale"] = Json::Value(buffer);
+	}
+
 	bool SaveAdjustmentFile(std::string filename, std::shared_ptr<Adjustment> adjustment) {
 		
 		Json::StyledWriter writer;
 		Json::Value value;
 
-		char buffer[32];
-
-		float yaw, pitch, roll;
 		adjustment->ForEachTransform([&](std::string name, NiTransform* transform) {
 			if (!TransormIsDefault(*transform)) {
 				Json::Value member;
-				
-				sprintf_s(buffer, "%.06f", transform->pos.x);
-				member["x"] = Json::Value(buffer);
-				sprintf_s(buffer, "%.06f", transform->pos.y);
-				member["y"] = Json::Value(buffer);
-				sprintf_s(buffer, "%.06f", transform->pos.z);
-				member["z"] = Json::Value(buffer);
-				NiToDegree(transform->rot, yaw, pitch, roll);
-				sprintf_s(buffer, "%.02f", yaw);
-				member["yaw"] = Json::Value(buffer);
-				sprintf_s(buffer, "%.02f", pitch);
-				member["pitch"] = Json::Value(buffer);
-				sprintf_s(buffer, "%.02f", roll);
-				member["roll"] = Json::Value(buffer);
-				sprintf_s(buffer, "%.06f", transform->scale);
-				member["scale"] = Json::Value(buffer);
+				WriteTransformJson(transform, member);
 				value[name] = member;
 			}
 		});
@@ -303,18 +327,9 @@ namespace SAF {
 		try {
 			Json::Value::Members members = value.getMemberNames();
 
-			float yaw, pitch, roll;
 			for (auto& member : members) {
 				NiTransform transform;
-				
-				transform.pos.x = ReadFloat(value[member]["x"]);
-				transform.pos.y = ReadFloat(value[member]["y"]);
-				transform.pos.z = ReadFloat(value[member]["z"]);
-				yaw = ReadFloat(value[member]["yaw"]);
-				pitch = ReadFloat(value[member]["pitch"]);
-				roll = ReadFloat(value[member]["roll"]);
-				NiFromDegree(transform.rot, yaw, pitch, roll);
-				transform.scale = ReadFloat(value[member]["scale"]);
+				ReadTransformJson(transform, value[member]);
 				(*map)[member] = transform;
 			}
 		}
@@ -330,26 +345,9 @@ namespace SAF {
 		Json::StyledWriter writer;
 		Json::Value value;
 
-		char buffer[32];
-
-		float yaw, pitch, roll;
 		for (auto& kvp : *poseMap) {
 			Json::Value member;
-			sprintf_s(buffer, "%.06f", kvp.second.pos.x);
-			member["x"] = Json::Value(buffer);
-			sprintf_s(buffer, "%.06f", kvp.second.pos.y);
-			member["y"] = Json::Value(buffer);
-			sprintf_s(buffer, "%.06f", kvp.second.pos.z);
-			member["z"] = Json::Value(buffer);
-			NiToDegree(kvp.second.rot, yaw, pitch, roll);
-			sprintf_s(buffer, "%.02f", yaw);
-			member["yaw"] = Json::Value(buffer);
-			sprintf_s(buffer, "%.02f", pitch);
-			member["pitch"] = Json::Value(buffer);
-			sprintf_s(buffer, "%.02f", roll);
-			member["roll"] = Json::Value(buffer);
-			sprintf_s(buffer, "%.06f", kvp.second.scale);
-			member["scale"] = Json::Value(buffer);
+			WriteTransformJson(&kvp.second, member);
 			value[kvp.first] = member;
 		}
 
@@ -372,15 +370,12 @@ namespace SAF {
 		return true;
 	}
 
-	bool LoadPoseFile(std::string filename, TransformMap* poseMap) {
+	bool LoadPosePath(std::string path, TransformMap* poseMap) 
+	{
 		IFileStream file;
 
-		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
-		path += filename;
-		path += ".json";
-
 		if (!file.Open(path.c_str())) {
-			_LogCat(filename, " not found");
+			_LogCat(path, " not found");
 			return false;
 		}
 
@@ -392,36 +387,37 @@ namespace SAF {
 		Json::Value value;
 
 		if (!reader.parse(adjustmentString, value)) {
-			_LogCat("Failed to parse ", filename);
+			_LogCat("Failed to parse ", path);
 			return false;
 		}
 
 		try {
 			Json::Value::Members members = value.getMemberNames();
 
-			float yaw, pitch, roll;
 			for (auto& member : members) {
 				NiTransform transform;
-				transform.pos.x = ReadFloat(value[member]["x"]);
-				transform.pos.y = ReadFloat(value[member]["y"]);
-				transform.pos.z = ReadFloat(value[member]["z"]);
-				yaw = ReadFloat(value[member]["yaw"]);
-				pitch = ReadFloat(value[member]["pitch"]);
-				roll = ReadFloat(value[member]["roll"]);
-				NiFromDegree(transform.rot, yaw, pitch, roll);
-				transform.scale = ReadFloat(value[member]["scale"]);
+				ReadTransformJson(transform, value[member]);
 				(*poseMap)[member] = transform;
 			}
 		}
 		catch (...) {
-			_LogCat("Failed to read ", filename);
+			_LogCat("Failed to read ", path);
 			return false;
 		}
 
 		return true;
 	}
 
-	void LoadFiles() {
+	bool LoadPoseFile(std::string filename, TransformMap* poseMap) 
+	{
+		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
+		path += filename;
+		path += ".json";
+
+		return LoadPosePath(filename, poseMap);
+	}
+
+	void LoadAllFiles() {
 		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\NodeMaps", "*.json"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();

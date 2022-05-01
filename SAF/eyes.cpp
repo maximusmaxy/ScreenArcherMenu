@@ -16,6 +16,7 @@ NiAVObject* GetEyeNode(TESObjectREFR* refr)
 	BSFixedString eyeName = eyePart->partName;
 
 	NiNode* rootNode = refr->GetActorRootNode(false);
+	if (!rootNode) return nullptr;
 	NiAVObject* eyeNode = rootNode->GetObjectByName(&eyeName);
 	if (!eyeNode) return nullptr;
 
