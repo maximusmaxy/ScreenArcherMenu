@@ -304,7 +304,7 @@ void AdjustNodeRotation::Invoke(Args* args)
 	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[3].GetType() == GFxValue::kType_Number);
+	ASSERT(args->args[3].GetType() == GFxValue::kType_Int);
 	UInt32 type = rotationTypeMap[args->args[2].GetInt()];
 	RotateAdjustmentXYZ(args->movie->movieRoot, args->result, args->args[0].GetString(), args->args[1].GetInt(), type, args->args[3].GetNumber());
 }
@@ -415,7 +415,19 @@ void LoadPose::Invoke(Args* args)
 
 void ResetPose::Invoke(Args* args)
 {
-	ResetJsonPose();
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	switch (args->args[0].GetInt()) {
+	case kPoseReset:
+		ResetJsonPose();
+		break;
+	case kPoseAPose:
+		//human a-pose, probably shouldn't be hard coded
+		UInt32 formId = GetFormId("ScreenArcherMenu.esp", 0x802);
+		if (formId)
+			PlayIdleAnimation(formId);
+		break;
+	}
 }
 
 void GetSkeletonAdjustments::Invoke(Args* args)
@@ -441,9 +453,9 @@ void AdjustPositioning::Invoke(Args* args)
 {
 	ASSERT(args->numArgs >= 3);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Number);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
-	AdjustObjectPosition(args->args[0].GetInt(), args->args[1].GetNumber(), args->args[2].GetInt());
+	AdjustObjectPosition(args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
 }
 
 void SavePositioning::Invoke(Args* args)
@@ -465,7 +477,9 @@ void ResetPositioning::Invoke(Args* args)
 
 void GetSamPoses::Invoke(Args* args)
 {
-	GetSamPosesGFx(args->movie->movieRoot, args->result);
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+	GetSamPosesGFx(args->movie->movieRoot, args->result, args->args[0].GetString());
 }
 
 void SetCursorVisible::Invoke(Args* args)

@@ -304,6 +304,38 @@ namespace SAF {
 		return result;
 	}
 
+	NiPoint3 NormalizeVector(NiPoint3 &v)
+	{
+		NiPoint3 result;
+
+		float m = std::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+
+		if (m > 0.0)
+			m = 1.0 / m;
+		else
+			m = 0.0F;
+
+		result.x = v.x * m;
+		result.y = v.y * m;
+		result.z = v.z * m;
+
+		return result;
+	}
+
+	Quat QuatFromAxisAngle(NiPoint3 axis, float angle)
+	{
+		Quat result;
+		//NormalizeVector(axis); already normalized
+
+		float s = std::sinf(angle / 2);
+		result.wxyz[0] = std::cosf(angle / 2);
+		result.wxyz[1] = s * axis.x;
+		result.wxyz[2] = s * axis.y;
+		result.wxyz[3] = s * axis.z;
+
+		return result;
+	}
+
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar) {
 		NiTransform res;
 
@@ -377,6 +409,6 @@ namespace SAF {
 			break;
 		}
 
-		matrix = matrix * rot;
+		matrix = rot * matrix;
 	}
 }

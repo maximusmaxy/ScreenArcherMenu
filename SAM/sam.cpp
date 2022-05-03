@@ -3,6 +3,7 @@
 #include "f4se/GameMenus.h"
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
+#include "f4se/GameRTTI.h"
 
 #include "common/IDirectoryIterator.h"
 #include "common/IFileStream.h"
@@ -104,6 +105,14 @@ TESObjectREFR * GetRefr() {
 	}
 	return refr;
 }
+
+//TESObjectREFR* SelectedRefr::Refr() {
+//	TESForm* form = LookupFormByID(formId);
+//	if (!form) return nullptr;
+//
+//	TESObjectREFR* ref = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+//	return ref;
+//}
 
 void SelectedRefr::Update(TESObjectREFR* newRefr) {
 	if (!newRefr) {
@@ -426,7 +435,7 @@ bool ParseMenuFile(std::string path, IFileStream& file) {
 		}
 	}
 
-	UInt64 key = GetFormID(header[kMenuHeaderMod], header[kMenuHeaderRace]);
+	UInt64 key = GetFormId(header[kMenuHeaderMod], header[kMenuHeaderRace]);
 	if (header[kMenuHeaderSex] == "female" || header[kMenuHeaderSex] == "Female")
 		key |= 0x100000000;
 
@@ -518,12 +527,11 @@ bool LoadIdleFile(std::string path) {
 		Json::Value::Members members = value.getMemberNames();
 
 		for (auto& memberStr : members) {
-			
 			Json::Value member = value[memberStr];
 			IdleData data;
 
-			data.raceId = GetFormID(member["mod"].asString(), member["race"].asString());
-			data.resetId = GetFormID(member["reset"]["mod"].asString(), member["reset"]["idle"].asString());
+			data.raceId = GetFormId(member["mod"].asString(), member["race"].asString());
+			data.resetId = GetFormId(member["reset"]["mod"].asString(), member["reset"]["idle"].asString());
 			data.behavior = BSFixedString(member["filter"]["behavior"].asCString());
 			data.event = BSFixedString(member["filter"]["event"].asCString());
 			

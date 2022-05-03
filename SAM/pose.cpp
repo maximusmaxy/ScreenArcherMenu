@@ -366,6 +366,7 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 void PushBackTransformGFx(GFxValue* result, NiTransform& transform) {
 	float yaw, pitch, roll;
 	MatrixToDegree(transform.rot, yaw, pitch, roll);
+	//MatrixToEulerRPY(transform.rot, roll, pitch, yaw);
 
 	GFxValue rx(yaw);
 	GFxValue ry(pitch);
@@ -459,7 +460,9 @@ void SaveJsonPose(const char* filename, GFxValue selectedAdjustments)
 		handles.insert(handle.GetUInt());
 	}
 
-	adjustments->SavePose(filename, handles);
+	std::string exportPath = "Exports\\" + std::string(filename);
+
+	adjustments->SavePose(exportPath, handles);
 }
 
 bool LoadJsonPose(const char* filename)
@@ -490,35 +493,35 @@ void ResetJsonPose()
 
 void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 {
-root->CreateObject(result);
+	root->CreateObject(result);
 
-GFxValue names;
-root->CreateArray(&names);
+	GFxValue names;
+	root->CreateArray(&names);
 
-GFxValue values;
-root->CreateArray(&values);
+	GFxValue values;
+	root->CreateArray(&values);
 
-if (!selected.refr) return;
-std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-if (!adjustments) return;
+	result->SetMember("names", &names);
+	result->SetMember("values", &values);
 
-std::unordered_set<const char*> adjustmentNames = adjustments->GetAdjustmentNames();
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
 
-for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Adjustments", "*.json"); !iter.Done(); iter.Next())
-{
-	std::string filename(iter.Get()->cFileName);
-	const char* noExtension = filename.substr(filename.find_last_of('\\') + 1, filename.length() - 5).c_str();
+	std::unordered_set<std::string> adjustmentNames = adjustments->GetAdjustmentNames();
 
-	GFxValue name(noExtension);
-	names.PushBack(&name);
+	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Adjustments", "*.json"); !iter.Done(); iter.Next())
+	{
+		std::string filename(iter.Get()->cFileName);
+		std::string noExtension = filename.substr(0, filename.length() - 5);
 
-	bool enabled = adjustmentNames.count(noExtension);
-	GFxValue value(enabled);
-	values.PushBack(&values);
-}
+		GFxValue name(noExtension.c_str());
+		names.PushBack(&name);
 
-result->SetMember("names", &names);
-result->SetMember("values", &values);
+		bool enabled = adjustmentNames.count(noExtension.c_str());
+		GFxValue value(enabled);
+		values.PushBack(&value);
+	}
 }
 
 void LoadDefaultAdjustment(const char* filename, bool clear, bool enable)
@@ -533,7 +536,7 @@ void LoadDefaultAdjustment(const char* filename, bool clear, bool enable)
 	safMessageDispatcher.loadDefaultAdjustment(selected.race, selected.isFemale, filename, clear, enable);
 }
 
-void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, double dif) {
+void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int dif) {
 	root->CreateArray(result);
 
 	if (!selected.refr) return;
@@ -559,7 +562,9 @@ bool isDotOrDotDot(const char* cstr) {
 	return (cstr[2] == 0);
 }
 
-void AddFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
+void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
+	root->CreateArray(result);
+
 	for (IDirectoryIterator iter(path, "*"); !iter.Done(); iter.Next())
 	{
 		const char* cFileName = iter.Get()->cFileName;
@@ -575,13 +580,11 @@ void AddFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 				GFxValue name(filename.c_str());
 				folder.SetMember("name", &name);
 
-				GFxValue contents;
-				root->CreateArray(&contents);
-				AddFolderGFx(root, &contents, filepath.c_str());
-				folder.SetMember("contents", &contents);
-
 				GFxValue isFolder(true);
 				folder.SetMember("folder", &isFolder);
+
+				GFxValue pathname(filepath.c_str());
+				folder.SetMember("path", &pathname);
 
 				result->PushBack(&folder);
 			}
@@ -605,10 +608,4 @@ void AddFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 			}
 		}
 	}
-}
-
-void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result) {
-	root->CreateArray(result);
-
-	AddFolderGFx(root, result, "Data\\F4SE\\Plugins\\SAF\\Poses");
 }

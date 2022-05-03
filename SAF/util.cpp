@@ -15,25 +15,28 @@ void _LogCat(std::string c1, std::string c2) {
 	_DMESSAGE((c1 + c2).c_str());
 }
 
-//From MCM https://github.com/reg2k/f4mcm/blob/master/src/Utils.cpp
-UInt32 GetFormID(std::string modName, std::string formId) {
+UInt32 GetFormId(std::string modName, UInt32 formId) {
 	const ModInfo* mod = (*g_dataHandler)->LookupModByName(modName.c_str());
 
 	if (mod && mod->modIndex != 0xFF) {
-		UInt32 formID = std::stoul(formId, nullptr, 16) & 0xFFFFFF;
+		
 		UInt32 flags = mod->recordFlags;
 		if (flags & (1 << 9)) {
-			// ESL
-			formID &= 0xFFF;
-			formID |= 0xFE << 24;
-			formID |= mod->lightIndex << 12;	// ESL load order
+			formId &= 0xFFF;
+			formId |= 0xFE << 24;
+			formId |= mod->lightIndex << 12;
 		}
 		else {
-			formID |= mod->modIndex << 24;
+			formId |= mod->modIndex << 24;
 		}
-		return formID;
+		return formId;
 	}
 	return 0;
+}
+
+UInt32 GetFormId(std::string modName, std::string idString) {
+	UInt32 formId = std::stoul(idString, nullptr, 16) & 0xFFFFFF;
+	return GetFormId(modName, formId);
 }
 
 bool TransormIsDefault(NiTransform& transform) {

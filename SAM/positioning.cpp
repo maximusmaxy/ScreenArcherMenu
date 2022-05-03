@@ -118,7 +118,7 @@ NiPoint3 RotateObjectAxis(NiPoint3& rot, UInt32 axis, float step) {
 	return NiPoint3(x, y, z);
 }
 
-void AdjustObjectPosition(int type, double scalar, int step) {
+void AdjustObjectPosition(int type, int scalar, int step) {
 	if (!selectedNonActor.refr) return;
 
 	TranslationValue result;

@@ -71,8 +71,7 @@
 		internal var buttonHintBack:BSButtonHintData;
 		internal var buttonHintConfirm:BSButtonHintData;
 		internal var buttonHintSwap:BSButtonHintData;
-		internal var buttonHintNew:BSButtonHintData;
-		internal var buttonHintNegate:BSButtonHintData;
+		internal var buttonHintExtra:BSButtonHintData;
 		
 		internal var closeTimer:Timer;
 		private var delayClose:Boolean = false;
@@ -165,26 +164,21 @@
 		internal function initButtonHints():void
 		{
 			buttonHintData = new Vector.<BSButtonHintData>();
-			buttonHintExit = new BSButtonHintData("$SAM_Exit","Tab","PSN_B","Xenon_B",1,back);
 			buttonHintBack = new BSButtonHintData("$SAM_Back","Tab","PSN_B","Xenon_B",1,back);
 			buttonHintSave = new BSButtonHintData("$SAM_Save","X","PSN_L1","Xenon_L1",1,save);
 			buttonHintLoad = new BSButtonHintData("$SAM_Load","E","PSN_R1","Xenon_R1",1,load);
 			buttonHintReset = new BSButtonHintData("$SAM_Reset","R","PSN_Y","Xenon_Y",1,reset);
 			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirm);
 			buttonHintSwap = new BSButtonHintData("$SAM_Swap","Z","PSN_R2","Xenon_R2",1,swap);
-			buttonHintNew = new BSButtonHintData("$SAM_New","X","PSN_L1","Xenon_L1",1,newButton);
-			buttonHintNegate = new BSButtonHintData("$SAM_Negate","X","PSN_L1","Xenon_L1",1,negate);
-			buttonHintMulti = new BSButtonHintData("$SAM_Multi","X","PSN_L1","Xenon_L1",1,multiselect);
+			buttonHintExtra = new BSButtonHintData("","X","PSN_L1","Xenon_L1",1,extra);
 			buttonHintData.push(buttonHintExit);
 			buttonHintData.push(buttonHintBack);
+			buttonHintData.push(buttonHintSwap);
 			buttonHintData.push(buttonHintSave);
 			buttonHintData.push(buttonHintLoad);
+			buttonHintData.push(buttonHintExtra);
 			buttonHintData.push(buttonHintReset);
-			buttonHintData.push(buttonHintNegate);
-			buttonHintData.push(buttonHintNew);
-			buttonHintData.push(buttonHintSwap);
 			buttonHintData.push(buttonHintConfirm);
-			buttonHintData.push(buttonHintMulti);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
 		}
 		
@@ -276,7 +270,7 @@
 			switch (keyCode)
 			{
 				case 9://Tab
-					if (buttonHintBack.ButtonVisible || buttonHintExit.ButtonVisible) {
+					if (buttonHintBack.ButtonVisible) {
 						back();
 					}
 					break;
@@ -315,10 +309,8 @@
 				case 88://X
 					if (buttonHintSave.ButtonVisible) {
 						save();
-					} else if (buttonHintNew.ButtonVisible) {
-						newButton();
-					} else if (buttonHintNegate.ButtonVisible) {
-						negate();
+					} else if (buttonHintExtra.ButtonVisible) {
+						extra();
 					}
 					break;
 				case 90://Z
@@ -434,7 +426,6 @@
 					break;
 				case TRANSFORM_STATE:
 					Data.loadTransforms();
-					Data.menuValues = Data.boneTransform;
 					sliderList.updateTransform(selectTransform);
 					break;
 				case MORPHCATEGORY_STATE:
@@ -482,7 +473,7 @@
 					sliderList.updateCheckboxes(selectPose);
 					break;
 				case POSEPLAY_STATE:
-					Data.getSamPoses();
+					Data.selectSamPose(0);
 					sliderList.updateList(selectPosePlay);
 					break;
 				case LOADPOSE_STATE:
@@ -492,7 +483,11 @@
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					Data.getSkeletonAdjustments();
-					sliderList.updateList(selectSkeletonAdjustment);
+					if (multi) {
+						sliderList.updateCheckboxes(selectSkeletonAdjustment);
+					} else {
+						sliderList.updateList(selectSkeletonAdjustment);
+					}
 					break;
 				case POSITIONING_STATE:
 					Data.loadPositioning();
@@ -577,7 +572,7 @@
 		public function selectTransform(id:int, value:Number):void
 		{
 			Data.setTransform(id, value);
-			if (id >= 7 || id < 1000) {
+			if (id >= 7) {
 				sliderList.updateValues();
 			}
 		}
@@ -669,24 +664,6 @@
 			}
 		}
 		
-		internal function newButton():void
-		{
-			switch (this.state) {
-				case ADJUSTMENT_STATE:
-					Data.newAdjustment();
-					sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
-					break;
-			}
-		}
-		
-		internal function negate():void
-		{
-			Data.negateAdjustment();
-			Data.loadTransforms();
-			Data.menuValues = Data.boneTransform;
-			sliderList.updateValues();
-		}
-		
 		internal function selectMfgFile(id:int)
 		{
 			Data.loadMfg(id);
@@ -720,7 +697,7 @@
 			sliderList.updateList(selectPoseFile);
 		}
 		
-		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = false)
+		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
 		{
 			Data.loadSkeletonAdjustment(id, !multi, enabled);
 		}
@@ -729,20 +706,6 @@
 		{
 			if (Data.selectSamPose(id)) {
 				sliderList.updateList(selectPosePlay);
-			}
-		}
-		
-		internal function multiselect()
-		{
-			multi = !multi;
-			if (multi) {
-				buttonHintMulti.ButtonText = "$SAM_Multi";
-				sliderList.updateCheckboxes(selectSkeletonAdjustment);
-			} 
-			else
-			{
-				buttonHintMulti.ButtonText = "$SAM_Single";
-				sliderList.updateList(selectSkeletonAdjustment);
 			}
 		}
 
@@ -762,7 +725,9 @@
 					Data.resetIdle();
 					break;
 				case POSEEXPORT_STATE:
-					Data.resetPose();
+				case POSEPLAY_STATE:
+					Data.resetIdle();
+					Data.resetPose(1);
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					Data.resetSkeletonAdjustment();
@@ -785,11 +750,17 @@
 			{
 				exit();
 			}
-			else if (Data.folderStack.length > 0)
+			else if (Data.folderStack.length > 0) //folder state
 			{
 				Data.popFolder();
-				switch(this.state) {
-					case POSEPLAY_STATE: sliderList.updateList(selectPosePlay); break;
+				if (Data.folderStack.length > 0) {
+					switch(this.state) {
+						case POSEPLAY_STATE: sliderList.updateList(selectPosePlay); break;
+					}
+				}
+				else
+				{
+					popState();
 				}
 			}
 			else
@@ -820,6 +791,37 @@
 			}
 		}
 		
+		public function extra():void
+		{
+			switch(this.state)
+			{
+				case SKELETONADJUSTMENT_STATE: //multi
+					multi = !multi;
+					if (multi) {
+						buttonHintExtra.ButtonText = "$SAM_Multi";
+						sliderList.updateCheckboxes(selectSkeletonAdjustment);
+					} 
+					else
+					{
+						buttonHintExtra.ButtonText = "$SAM_Single";
+						sliderList.updateList(selectSkeletonAdjustment);
+					}
+					break;
+				case ADJUSTMENT_STATE: //new
+					Data.newAdjustment();
+					sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
+					break;
+				case TRANSFORM_STATE: //negate
+					Data.negateAdjustment();
+					Data.loadTransforms();
+					sliderList.updateValues();
+					break;
+				case POSEPLAY_STATE: //a-pose
+					Data.resetPose(2);
+					break;
+			}
+		}
+		
 		public function allowTextInput(allow:Boolean)
 		{
 			try
@@ -834,110 +836,91 @@
 
 		internal function updateButtonHints():void
 		{
+			buttonHintBack.ButtonText = state == MAIN_STATE ? "$SAM_Exit" : "$SAM_Back";
+			buttonHintBack.ButtonVisible = true;
 			switch (state)
 			{
 				case MAIN_STATE :
-					buttonHintExit.ButtonVisible = true;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
-					buttonHintBack.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = false;
 					break;
 				case ADJUSTMENT_STATE :
-					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = true;
 					buttonHintReset.ButtonVisible = false;
-					buttonHintBack.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
-					buttonHintNew.ButtonVisible = true;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = "$SAM_New";
 					break;
 				case TRANSFORM_STATE :
-					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = true;
-					buttonHintBack.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = true;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = "$SAM_Negate";
 					break;
 				case IDLECATEGORY_STATE:
 				case IDLE_STATE:
 				case POSITIONING_STATE:
-					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = true;
-					buttonHintBack.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = false;
 					break;
 				case MORPH_STATE:
 				case MORPHCATEGORY_STATE:
 				case POSEEXPORT_STATE:
-					buttonHintExit.ButtonVisible = false;
 					buttonHintSave.ButtonVisible = true;
 					buttonHintLoad.ButtonVisible = true;
 					buttonHintReset.ButtonVisible = true;
-					buttonHintBack.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = false;
 					break;
 				case SAVEMFG_STATE:
 				case SAVEADJUSTMENT_STATE:
 				case SAVEPOSE_STATE:
-					buttonHintExit.ButtonVisible = false;
-					buttonHintBack.ButtonVisible = true;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = true;
 					buttonHintSwap.ButtonVisible = false;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = false;
 					break;
 				case SKELETONADJUSTMENT_STATE:
-					buttonHintExit.ButtonVisible = false;
-					buttonHintBack.ButtonVisible = true;
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = true;
-					buttonHintSwap.ButtonVisible = false;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = true;
-					buttonHintMulti.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
-					break;
-				default:
-					buttonHintExit.ButtonVisible = false;
-					buttonHintBack.ButtonVisible = true;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
-					buttonHintNew.ButtonVisible = false;
-					buttonHintNegate.ButtonVisible = false;
-					buttonHintMulti.ButtonVisible = false;
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
+					break;
+				case POSEPLAY_STATE:
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintSwap.ButtonVisible = true;
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = "$SAM_Apose";
+					break;
+				default:
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = false;
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintSwap.ButtonVisible = true;
+					buttonHintExtra.ButtonVisible = false;
 			}
 		};
 

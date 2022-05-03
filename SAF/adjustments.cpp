@@ -13,6 +13,7 @@ using namespace Serialization;
 #include <algorithm>
 #include <mutex>
 #include <shared_mutex>
+#include <filesystem>
 
 namespace SAF {
 
@@ -77,6 +78,7 @@ namespace SAF {
 
 		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
 
+		//MatrixFromEulerRPY(transform.rot, roll * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, yaw * DEGREE_TO_RADIAN);
 		MatrixFromDegree(transform.rot, yaw, pitch, roll);
 
 		map[name] = transform;
@@ -380,14 +382,14 @@ namespace SAF {
 		return false;
 	}
 
-	std::unordered_set<const char*> ActorAdjustments::GetAdjustmentNames()
+	std::unordered_set<std::string> ActorAdjustments::GetAdjustmentNames()
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
-		std::unordered_set<const char*> set;
+		std::unordered_set<std::string> set;
 
 		for (auto& it : list) {
-			set.insert(it->name.c_str());
+			set.insert(std::string(it->name));
 		}
 
 		return set;
@@ -553,6 +555,7 @@ namespace SAF {
 
 		NiTransform transform = baseNode->m_localTransform * adjustment->GetTransformOrDefault(name);
 		RotateMatrixXYZ(transform.rot, type, scalar);
+		//RotateMatrixAxis(transform.rot, type, scalar);
 
 		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
 		adjustment->updated = true;
@@ -598,14 +601,17 @@ namespace SAF {
 		SavePoseFile(filename, &poseMap);
 	}
 
-	bool ActorAdjustments::LoadPose(std::string filename) {
+	bool ActorAdjustments::LoadPose(std::string path) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		TransformMap poseMap;
 		
-		if (LoadPosePath(filename, &poseMap)) {
+		if (LoadPosePath(path, &poseMap)) {
 
 			std::shared_ptr<Adjustment> adjustment;
+
+			int lastOf = path.find_last_of('\\') + 1;
+			std::string filename = path.substr(lastOf, path.size() - lastOf - 5);
 
 			for (auto& kvp : map) {
 				if (!kvp.second->persistent && kvp.second->handle != poseHandle) {
@@ -673,7 +679,7 @@ namespace SAF {
 		while (it != list.end()) {
 			if ((*it)->isDefault) {
 				map.erase((*it)->handle);
-				list.erase(it);
+				it = list.erase(it);
 			}
 			else {
 				++it;

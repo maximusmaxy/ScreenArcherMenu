@@ -14,11 +14,13 @@
 class SelectedRefr {
 public:
 	TESObjectREFR* refr;
+	UInt32 formId;
 	NiAVObject* eyeNode;
 	bool isFemale;
 	UInt32 race;
 	UInt64 key;
 
+	//virtual TESObjectREFR* Refr();
 	virtual void Update(TESObjectREFR* refr);
 	virtual void Clear();
 };

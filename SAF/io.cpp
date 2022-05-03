@@ -85,7 +85,7 @@ namespace SAF {
 			std::string mod = value["mod"].asString();
 			std::string race = value["race"].asString();
 
-			UInt32 formId = GetFormID(mod, race);
+			UInt32 formId = GetFormId(mod, race);
 			if (!formId) return false;
 
 			std::string sex = value["sex"].asString();
@@ -163,7 +163,7 @@ namespace SAF {
 		//	std::string mod = value["mod"].asString();
 		//	std::string race = value["race"].asString();
 
-		//	UInt32 formId = GetFormID(mod, race);
+		//	UInt32 formId = GetFormId(mod, race);
 		//	if (!formId) return false;
 
 		//	std::string sex = value["sex"].asString();
@@ -189,7 +189,6 @@ namespace SAF {
 		return true;
 	}
 
-
 	bool LoadUniqueAdjustmentFile(std::string path) {
 		IFileStream file;
 
@@ -214,7 +213,7 @@ namespace SAF {
 			std::string mod = value["mod"].asString();
 			std::string actor = value["actor"].asString();
 
-			UInt32 formId = GetFormID(mod, actor);
+			UInt32 formId = GetFormId(mod, actor);
 			if (!formId) return false;
 
 			Json::Value members = value["adjustments"];

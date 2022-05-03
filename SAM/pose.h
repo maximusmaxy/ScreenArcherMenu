@@ -34,6 +34,11 @@ public:
 
 extern SafMessageDispatcher safMessageDispatcher;
 
+enum {
+	kPoseReset = 1,
+	kPoseAPose = 2
+};
+
 bool CheckSelectedSkeleton();
 
 void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y, float z);
@@ -66,6 +71,6 @@ void ResetJsonPose();
 void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);
 void LoadDefaultAdjustment(const char* filename, bool clear, bool enable);
 
-void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, double scalar);
+void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int scalar);
 
-void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result);
+void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path);

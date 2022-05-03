@@ -35,7 +35,7 @@ struct IdleData
 
 extern std::unordered_map<UInt32, IdleData> raceIdleData;
 
-bool PlayIdleAnimation(UInt32 formId);
+void PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();
 void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
 void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategory);

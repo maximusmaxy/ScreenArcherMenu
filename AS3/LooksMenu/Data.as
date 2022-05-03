@@ -17,11 +17,12 @@
 		public static var selectedAdjustment:int = 0;
 		public static var selectedCategory:int = 0;
 		public static var selectedBone:int = 0;
-		public static var boneTransform:Array = [];
 		public static var boneName:String = "";
 		
 		public static var lastDragValue:Number = 0;
 		public static var stepValue = 100;
+		
+		public static var cursorStored:Boolean = false;
 		public static var cursorPosX:int = -1;
 		public static var cursorPosY:int = -1;
 		
@@ -55,6 +56,7 @@
         ];
 		
 		public static const ERROR_NAMES:Vector.<String> = new <String>[
+		    "",
 			"$SAM_ConsoleError", 
 			"$SAM_SkeletonError",
 			"$SAM_EyeError",
@@ -120,10 +122,10 @@
 				selectedAdjustment = data.saved.adjustment;
 				selectedCategory = data.saved.category;
 				selectedBone = data.saved.bone;
-				boneTransform = data.saved.transform;
 				boneName = data.saved.boneName;
 				poseHandles = data.saved.handles;
 				stepValue = data.saved.step;
+				folderStack = data.saved.folder;
 			}
 		}
 		
@@ -138,12 +140,12 @@
 				adjustment: selectedAdjustment,
 				category: selectedCategory,
 				bone: selectedBone,
-				transform: boneTransform,
 				boneName: boneName,
 				handles: poseHandles,
 				slider: sliderPos,
 				sliders: sliderPosStack,
-				step: stepValue
+				step: stepValue,
+				folder: folderStack
 			}
 			
 			try 
@@ -183,22 +185,23 @@
 			return false;
 		}
 		
-		public static function getFileListing(dir:String, ext:String)
+		public static function getFileListing(dir:String, ext:String):Boolean
 		{
-			files = [];
+			menuFiles = [];
 			try {
 				var listing:Array = f4seObj.GetDirectoryListing(dir, ext);
 				for (var i:int = 0; i < listing.length; i++) {
 					var filename = listing[i]["nativePath"]; //name is bugged so use nativePath instead
 					var startIndex:int = filename.lastIndexOf("\\") + 1;
-					files[i] = filename.substring(startIndex, filename.length - ext.length);
+					menuFiles[i] = filename.substring(startIndex, filename.length - ext.length + 1);
 				}
+				return true;
 			}
 			catch (e:Error)
 			{
 				trace("Failed to get file listing from directory: " + dir);
-				throw e;
 			}
+			return false;
 		}
 		
 		public static function setCursorVisible(visible:Boolean)
@@ -218,7 +221,8 @@
 			try 
 			{
 				var result:Object = sam.GetCursorPosition();
-				if (result.success) {
+				cursorStored = result.success;
+				if (cursorStored) {
 					cursorPosX = result.x;
 					cursorPosY = result.y;
 				}
@@ -226,23 +230,32 @@
 			catch (e:Error)
 			{
 				trace("Failed to store cursor pos");
-				cursorPosX = -1;
-				cursorPosY = -1;
+				cursorStored = false;
 			}
 		}
 		
-		public static function revertCursorPos()
+		public static function updateCursorDrag():int
 		{
-			if (cursorPosX >= 0 && cursorPosY >= 0) {
-				try
+			if (cursorStored) {
+				try 
 				{
-					sam.SetCursorPosition(cursorPosX, cursorPosY);
+					var result:Object = sam.GetCursorPosition();
+					if (result.success) {
+						sam.SetCursorPosition(cursorPosX, cursorPosY);
+						return result.x - cursorPosX;
+					}
 				}
 				catch (e:Error)
 				{
-					trace("Failed to set cursor position");
+					trace("Failed to update cursor pos");
 				}
 			}
+			return 0;
+		}
+		
+		public static function endCursorDrag()
+		{
+			cursorStored = false;
 		}
 		
 		public static function loadAdjustmentList()
@@ -264,10 +277,8 @@
 		
 		public static function loadAdjustmentFiles()
 		{
-			try {
-				getFileListing(ADJUSTMENT_DIRECTORY, "*.json");
-			}
-			catch (e:Error)
+
+			if (!getFileListing(ADJUSTMENT_DIRECTORY, "*.json"))
 			{
 				if (Util.debug) {
 					for (var y:int = 0; y < 1000; y++) {
@@ -461,11 +472,11 @@
 		public static function loadTransforms() 
 		{
 			try {
-				boneTransform = sam.GetNodeTransform(selectedCategory, selectedBone, selectedAdjustment);
-				if (boneTransform.length != 0) {
-					boneName = boneTransform.pop();
+				menuValues = sam.GetNodeTransform(selectedCategory, selectedBone, selectedAdjustment);
+				if (menuValues.length != 0) {
+					boneName = menuValues.pop();
 				} else {
-					boneTransform = [
+					menuValues = [
 						0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
 					];
 					boneName = "";
@@ -474,7 +485,7 @@
 			catch (e:Error)
 			{
 				trace("Failed to load bone transform");
-				boneTransform = [
+				menuValues = [
 					0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
 				];
 				boneName = "";
@@ -484,7 +495,7 @@
 		public static function setTransform(id:int, value:Number)
 		{
 			if (id < 7) {
-				boneTransform[id] = value;
+				menuValues[id] = value;
 			}
 			if (boneName == ""){
 				return;
@@ -493,23 +504,26 @@
 			{
 				if (id < 3) //rot
 				{ 
-					sam.SetNodeRotation(boneName, selectedAdjustment, boneTransform[0], boneTransform[1], boneTransform[2]);
+					sam.SetNodeRotation(boneName, selectedAdjustment, menuValues[0], menuValues[1], menuValues[2]);
 				} 
 				else if (id < 6) //pos
 				{
-					sam.SetNodePosition(boneName, selectedAdjustment, boneTransform[3], boneTransform[4], boneTransform[5]);
+					sam.SetNodePosition(boneName, selectedAdjustment, menuValues[3], menuValues[4], menuValues[5]);
 				}
 				else if (id < 7)//scale
 				{
-					sam.SetNodeScale(boneName, selectedAdjustment, boneTransform[6]);
+					sam.SetNodeScale(boneName, selectedAdjustment, menuValues[6]);
 				}
 				else
 				{
-					if (id < 1000) {
-						var dragDif = lastDragValue - value;
-						menuValues = sam.AdjustNodeRotation(boneName, selectedAdjustment, id, dragDif);
+					var dif:int = updateCursorDrag();
+					menuValues = sam.AdjustNodeRotation(boneName, selectedAdjustment, id, dif);
+					if (menuValues.length == 0) {
+						menuValues = [
+							0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
+						];
+						boneName = "";
 					}
-					lastDragValue = value;
 				}
 			}
 			catch (e:Error)
@@ -521,9 +535,9 @@
 		public static function resetTransform()
 		{
 			for (var i:int = 0; i < 6; i++) {
-				boneTransform[i] = 0.0;
+				menuValues[i] = 0.0;
 			}
-			boneTransform[6] = 1.0;
+			menuValues[6] = 1.0;
 			if (boneName == "") {
 				return;
 			}
@@ -597,11 +611,7 @@
 		
 		public static function loadMfgFiles()
 		{
-			try
-			{
-				getDirectoryListing(MORPH_DIRECTORY, "*.txt");
-			}
-			catch (e:Error)
+			if (!getFileListing(MORPH_DIRECTORY, "*.txt"))
 			{
 				if (Util.debug){
 					for (var y:int = 0; y < 1000; y++) {
@@ -833,11 +843,7 @@
 		
 		public static function loadPoseFiles()
 		{
-			try
-			{
-				getDirectoryListing(POSE_DIRECTORY, "*.json");
-			}
-			catch (e:Error)
+			if (!getFileListing(POSE_DIRECTORY, "*.json"))
 			{
 				if (Util.debug){
 					for (var y:int = 0; y < 1000; y++) {
@@ -847,11 +853,11 @@
 			}
 		}
 		
-		public static function resetPose()
+		public static function resetPose(id:int)
 		{
 			try
 			{
-				sam.ResetPose();
+				sam.ResetPose(id);
 			}
 			catch (e:Error)
 			{
@@ -881,9 +887,12 @@
 		
 		public static function loadSkeletonAdjustment(id:int, clear:Boolean, enabled:Boolean)
 		{
-			if (!clear) {
-				menuValues[id] = enabled;
+			if (clear) {
+				for (var i:int = 0; i < menuValues.length; i++) {
+					menuValues[i] = false;
+				}
 			}
+			menuValues[id] = enabled;
 			try 
 			{
 				sam.LoadSkeletonAdjustment(menuOptions[id], clear, enabled);
@@ -927,14 +936,11 @@
 					menuValues[id] = step;
 					stepValue = step;
 				} else if (id < 8) {
-					var dragDif = lastDragValue - value;
-					sam.AdjustPositioning(id, dragDif, stepValue);
+					var dif:int = updateCursorDrag();
+					sam.AdjustPositioning(id, dif, stepValue);
 				} else {
-					if (id < 1000) {
-						sam.SelectPositioning(id);
-					}
+					sam.SelectPositioning(id);
 				}
-				lastDragValue = value;
 			}
 			catch (e:Error)
 			{
@@ -954,36 +960,46 @@
 			}
 		}
 		
-		public static function getCurrentFolder():Array
+		public static function updateFolderNames():Array
 		{
-			var folder:Array = menuFolder;
-			for (var i:int = 0; i < folderStack.length; i++) {
-				folder = folder[folderStack[i]].contents;
+			menuOptions = [];
+			for (var i:int = 0; i < menuFolder.length; i++) {
+				menuOptions.push(menuFolder[i].name);
 			}
-			return folder;
-		}
-		
-		public static function getFolderNames(folder:Array):Array
-		{
-			var names:Array = [];
-			for (var i:int = 0; i < folder.length; i++) {
-				names.push(folder[i].name);
-			}
-			return names;
 		}
 		
 		public static function popFolder()
 		{
 			folderStack.pop();
-			menuOptions = getFolderNames(getCurrentFolder());
+			if (folderStack.length > 0) {
+				try {
+					menuFolder = sam.GetSamPoses(folderStack[folderStack.length - 1]);
+					updateFolderNames();
+				}
+				catch (e:Error) {
+					trace("Failed to get sam poses");
+					menuOptions = [];
+					menuFolder = [];
+				}
+			}
 		}
 		
-		public static function getSamPoses()
+		public static function selectSamPose(id:int):Boolean
 		{
-			folderStack = [];
 			try {
-				menuFolder = sam.GetSamPoses();
-				menuOptions = getFolderNames(menuFolder);
+				var path:String;
+				var root:Boolean = (folderStack.length == 0);
+				if (root || menuFolder[id].folder) {
+					path = root ? POSE_DIRECTORY : menuFolder[id].path;
+					menuFolder = sam.GetSamPoses(path);
+					folderStack.push(path);
+					updateFolderNames();
+					return true;
+				} 
+				else 
+				{
+					sam.LoadPose(menuFolder[id].path);
+				}
 			}
 			catch (e:Error)
 			{
@@ -993,42 +1009,17 @@
 						{
 							name: "test",
 							folder: true,
-							contents: [
-								{
-									name: "test",
-									path: "test\\path.json"
-								}
-							]
+							path: "folder\\pose.json"
 						},
 						{
 							name: "pose",
 							path: "pose.json"
 						}
 					];
-					menuOptions = getFolderNames(menuFolder);
+					updateFolderNames();
 				} else {
 					menuOptions = [];
 					menuFolder = [];
-				}
-			}
-		}
-		
-		public static function selectSamPose(id:int):Boolean
-		{
-			var folder:Array = getCurrentFolder();
-			if (folder[id].folder) {
-				folderStack.push(id);
-				menuOptions = getFolderNames(folder[id].contents)
-				return true;
-			}
-			else 
-			{
-				try {
-					sam.LoadPose(folder[id].path);
-				}
-				catch (e:Error)
-				{
-					trace("Failed to select sam pose");
 				}
 			}
 			return false;

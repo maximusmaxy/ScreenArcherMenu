@@ -95,9 +95,6 @@
 			bounds.removeEventListener(MouseEvent.MOUSE_DOWN, onDown);
 			stage.addEventListener(MouseEvent.MOUSE_MOVE, onMove);
 			stage.addEventListener(MouseEvent.MOUSE_UP, onUp);
-			if (func != null) {
-				func.call(null, id + 1000, event.stageX);
-			}
 			dragState = SELECTED;
 			Data.setCursorVisible(false);
 			Data.storeCursorPos();
@@ -106,7 +103,6 @@
 		public function onMove(event:MouseEvent) {
 			if (func != null) {
 				func.call(null, id, event.stageX);
-				Data.revertCursorPos();
 			}
 		}
 		
@@ -116,6 +112,7 @@
 			stage.removeEventListener(MouseEvent.MOUSE_UP, onUp);
 			dragState = UNSELECTED;
 			Data.setCursorVisible(true);
+			Data.endCursorDrag();
 		}
 	}
 }

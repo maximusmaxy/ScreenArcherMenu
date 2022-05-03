@@ -76,8 +76,8 @@ RelocAddr<UInt64> BSTCaseInsensitiveStringMapIdleVFTable(0x2CB9478);
 
 RelocAddr<UInt64> TESIdleFormVFTable(0x2CB8FA8);
 
-typedef NiFormArrayTESIdle* (*GetFormArrayFromName)(BSTCaseInsensitiveStringMapIdle* idleMap, const char* name);
-RelocAddr<GetFormArrayFromName> getFormArrayFromName(0x5AAC80);
+typedef NiFormArrayTESIdle* (*_GetFormArrayFromName)(BSTCaseInsensitiveStringMapIdle* idleMap, const char* name);
+RelocAddr<_GetFormArrayFromName> GetFormArrayFromName(0x5AAC80);
 
 struct naturalSort {
 	bool operator()(const std::string& a, const std::string& b) const {
@@ -129,7 +129,7 @@ void LoadIdleMenus() {
 	for (auto& dataKvp : raceIdleData) {
 		std::map<UInt32, std::map<std::string, UInt32, naturalSort>> idles;
 
-		NiFormArrayTESIdle* idleFormArray = (*getFormArrayFromName)((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), dataKvp.second.behavior.c_str());
+		NiFormArrayTESIdle* idleFormArray = GetFormArrayFromName((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), dataKvp.second.behavior.c_str());
 		idleFormArray++;
 
 		for (TESIdleForm** idlePtr = idleFormArray->forms; idlePtr < idleFormArray->forms + idleFormArray->count; ++idlePtr) {
@@ -169,21 +169,21 @@ IdleMenu* GetIdleMenu(UInt32 raceId) {
 	return &idleMenus[dataId];
 }
 
-typedef bool (*PlayIdleInternal)(Actor::MiddleProcess* middleProcess, Actor* actor, UInt32 param3, TESIdleForm* idleForm, UInt64 param5, UInt64 param6);
-RelocAddr<PlayIdleInternal> playIdleAnimation(0xE35510);
+typedef bool (*_PlayIdleInternal)(Actor::MiddleProcess* middleProcess, Actor* actor, UInt32 param3, TESIdleForm* idleForm, UInt64 param5, UInt64 param6);
+RelocAddr<_PlayIdleInternal> PlayIdleInternal(0xE35510);
 
-bool PlayIdleAnimation(UInt32 formId) {
-	if (!selected.refr) return false;
+void PlayIdleAnimation(UInt32 formId) {
+	if (!selected.refr) return;
 
 	Actor* actor = (Actor*)selected.refr;
 
 	TESForm* form = LookupFormByID(formId);
-	if (!form) return false;
+	if (!form) return;
 
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
-	if (!idleForm) return false;
+	if (!idleForm) return;
 
-	return (*playIdleAnimation)(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
+	bool result = PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
 
 void ResetIdleAnimation() {
@@ -203,7 +203,7 @@ void ResetIdleAnimation() {
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
 	if (!idleForm) return;
 
-	(*playIdleAnimation)(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
+	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
 
 void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result)

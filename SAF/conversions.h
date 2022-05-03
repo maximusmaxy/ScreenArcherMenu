@@ -56,6 +56,7 @@ namespace SAF {
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
 	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar);
+	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar);
 
 	class Quat {
 	public:
@@ -114,6 +115,23 @@ namespace SAF {
 		{
 			Quat q(*this);
 			return (q *= s);
+		}
+
+		Quat operator*(const Quat& q) const
+		{
+			Quat result;
+
+			float a = wxyz[2] * q.wxyz[3] - wxyz[3] * q.wxyz[2];
+			float b = wxyz[3] * q.wxyz[1] - wxyz[1] * q.wxyz[3];
+			float c = wxyz[1] * q.wxyz[2] - wxyz[2] * q.wxyz[1];
+			float d = wxyz[1] * q.wxyz[1] + wxyz[2] * q.wxyz[2] + wxyz[3] * q.wxyz[3];
+
+			result.wxyz[1] = (wxyz[1] * q.wxyz[0] + q.wxyz[1] * wxyz[0]) + a;
+			result.wxyz[2] = (wxyz[2] * q.wxyz[0] + q.wxyz[2] * wxyz[0]) + b;
+			result.wxyz[3] = (wxyz[3] * q.wxyz[0] + q.wxyz[3] * wxyz[0]) + c;
+			result.wxyz[0] = wxyz[0] * q.wxyz[0] - d;
+
+			return result;
 		}
 	};
 }

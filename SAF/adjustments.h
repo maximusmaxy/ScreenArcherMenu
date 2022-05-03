@@ -329,7 +329,7 @@ namespace SAF {
 		void RemoveAdjustment(UInt32 handle);
 		void RemoveAdjustment(std::string name);
 		bool HasAdjustment(std::string name);
-		std::unordered_set<const char*> GetAdjustmentNames();
+		std::unordered_set<std::string> GetAdjustmentNames();
 
 		bool Update();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
