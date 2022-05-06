@@ -101,7 +101,9 @@
 			"$SAM_ResetRot",
 			"$SAM_ResetScale",
 			"$SAM_TGP",
-			"$SAM_TCL"
+			"$SAM_TCL",
+			"$SAM_EnableFootIK",
+			"$SAM_DisableFootIK"
 		];
 		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
@@ -915,15 +917,27 @@
 			}
 		}
 		
+		public static function updatePositioning()
+		{
+			menuValues[0] = stepValue;
+			for (var i:int = 8; i < POSITIONING_NAMES.length; i++) {
+				menuValues[i] = 0;
+			}
+		}
+		
 		public static function loadPositioning()
 		{
-			menuValues = [stepValue, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 			try {
-				sam.SavePositioning();
+				menuValues = sam.GetPositioning();
+				updatePositioning();
 			}
 			catch (e:Error)
 			{
-				trace("Failed to save positioning");
+				trace("Failed to load positioning");
+				if (Util.debug) {
+					menuValues = [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+					updatePositioning();
+				}
 			}
 		}
 		
@@ -937,9 +951,11 @@
 					stepValue = step;
 				} else if (id < 8) {
 					var dif:int = updateCursorDrag();
-					sam.AdjustPositioning(id, dif, stepValue);
+					menuValues = sam.AdjustPositioning(id, dif, stepValue);
+					updatePositioning();
 				} else {
-					sam.SelectPositioning(id);
+					menuValues = sam.SelectPositioning(id);
+					updatePositioning();
 				}
 			}
 			catch (e:Error)
@@ -952,7 +968,8 @@
 		{
 			try
 			{
-				sam.ResetPositioning();
+				menuValues = sam.ResetPositioning();
+				updatePositioning();
 			}
 			catch (e:Error)
 			{

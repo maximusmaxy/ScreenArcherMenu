@@ -322,6 +322,8 @@ namespace SAF {
 			formId(actor->formID)
 		{}
 
+		bool IsValid();
+
 		std::shared_ptr<Adjustment> CreateAdjustment(std::string name);
 		UInt32 CreateAdjustment(std::string name, std::string esp, bool persistent, bool hidden);
 		std::shared_ptr<Adjustment> GetAdjustment(UInt32 handle);

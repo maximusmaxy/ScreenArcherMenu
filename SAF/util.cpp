@@ -50,3 +50,7 @@ bool TransormIsDefault(NiTransform& transform) {
 		return true;
 	return false;
 }
+
+float Modulo(float a, float b) {
+	return fmodf((fmodf(a, b) + b), b);
+}

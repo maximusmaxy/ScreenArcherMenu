@@ -2,6 +2,9 @@
 
 #include "f4se/GameReferences.h"
 
+#include "f4se/ScaleformMovie.h"
+#include "f4se/ScaleformValue.h"
+
 struct ObjectTranslation {
 	NiPoint3 position;
 	NiPoint3 rotation;
@@ -12,6 +15,8 @@ struct NonActorRefr {
 	TESObjectREFR* refr;
 	ObjectTranslation translation;
 };
+
+extern NonActorRefr selectedNonActor;
 
 enum {
 	kAdjustPositionX = 1,
@@ -26,7 +31,8 @@ enum {
 	kResetScale,
 	kTogglePause,
 	kToggleCollision,
-	kToggleFootIK
+	kEnableFootIK,
+	kDisableFootIK
 };
 
 void UpdateNonActorRefr();
@@ -45,3 +51,5 @@ bool GetWorldCollision();
 void ToggleWorldCollision();
 
 void SelectPositioningMenuOption(UInt32 option);
+
+void GetPositioningGFx(GFxMovieRoot* root, GFxValue* result);

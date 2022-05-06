@@ -8,6 +8,7 @@
 #include "f4se/ScaleformMovie.h"
 
 #include "json.h"
+#include "strnatcmp.h"
 
 #include <unordered_map>
 
@@ -58,6 +59,10 @@ enum {
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 extern MenuCache groupsMenuCache;
+
+struct NaturalSort {
+	bool operator()(const std::string& a, const std::string& b) const;
+};
 
 TESObjectREFR* GetRefr();
 

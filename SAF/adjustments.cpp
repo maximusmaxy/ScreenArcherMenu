@@ -153,6 +153,23 @@ namespace SAF {
 		map.clear();
 	}
 
+	bool ActorAdjustments::IsValid()
+	{
+		TESForm* form = LookupFormByID(formId);
+		if (!form) return false;
+
+		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
+		if (!actor) return false;
+
+		//loaded data
+		if (!actor->unkF0) return false;
+
+		//deleted
+		if (actor->flags & TESForm::kFlag_IsDeleted) return false;
+
+		return true;
+	}
+
 	bool ActorAdjustments::Update()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
@@ -163,7 +180,7 @@ namespace SAF {
 		poseHandle = 0;
 		root = nullptr;
 
-		if (!actor || !actor->unkF0 || (actor->flags & TESForm::kFlag_IsDeleted)) return false;
+		if (!IsValid()) return false;
 
 		root = actor->GetActorRootNode(false);
 		
@@ -690,8 +707,19 @@ namespace SAF {
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
 		std::shared_lock<std::shared_mutex> lock(actorMutex);
 
-		if (actorAdjustmentCache.count(formId))
-			return actorAdjustmentCache[formId];
+		if (actorAdjustmentCache.count(formId)) {
+
+			std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+			
+			if (adjustments->IsValid()) {
+				return adjustments;
+			}
+			else {
+				RemoveNodeMap(adjustments->baseRoot);
+				actorAdjustmentCache.erase(formId);
+			}
+		}
+			
 		return nullptr;
 	}
 
@@ -707,7 +735,6 @@ namespace SAF {
 
 			Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
 			if (!actor) return nullptr;
-
 
 			TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
 			if (!npc) return nullptr;
@@ -1233,7 +1260,9 @@ namespace SAF {
 
 		//collect currently loaded actors
 		for (auto& actorAdjustments : actorAdjustmentCache) {
-			actorAdjustments.second->GetPersistentAdjustments(&savedAdjustments);
+			if (actorAdjustments.second->IsValid()) {
+				actorAdjustments.second->GetPersistentAdjustments(&savedAdjustments);
+			}
 		}
 
 		//the persistence store is only updated when an actor is unloaded so only add the missing ones

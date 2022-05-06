@@ -338,7 +338,7 @@ public:
 	virtual void	Invoke(Args * args);
 };
 
-class SavePositioning : public GFxFunctionHandler
+class GetPositioning : public GFxFunctionHandler
 {
 public:
 	virtual void	Invoke(Args* args);

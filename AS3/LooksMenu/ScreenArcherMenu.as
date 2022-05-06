@@ -89,6 +89,16 @@
 			OPTIONS_STATE
 		];
 		
+		public var resetIgnore:Array = [
+			EYE_STATE,
+			HACK_STATE,
+			IDLECATEGORY_STATE,
+			IDLE_STATE,
+			POSITIONING_STATE,
+			OPTIONS_STATE,
+			POSEPLAY_STATE
+		];
+		
 		public var mainMenuOptions:Array = [
 			{
 				state: ADJUSTMENT_STATE,
@@ -138,7 +148,7 @@
 		{
 			super();
 			
-			Util.debug = true;
+			Util.debug = false;
 			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
@@ -215,23 +225,25 @@
 		{
 			switch (this.state) {
 				case EYE_STATE:
-					Data.menuValues[0] = data.eyeX;
-					Data.menuValues[1] = data.eyeY;
+					Data.loadEyes();
 					sliderList.updateValues();
 					break;
 				case HACK_STATE:
-					Data.menuValues[0] = data.hacks[0];
-					Data.menuValues[1] = data.hacks[1];
-					Data.menuValues[2] = data.hacks[2];
+					Data.loadHacks();
+					sliderList.updateValues();
+					break;
+				case POSITIONING_STATE:
+					Data.loadPositioning();
 					sliderList.updateValues();
 					break;
 			}
-			if (data.reset) {
+			
+			if (resetIgnore.indexOf(this.state) < 0) {
 				resetState();
 			}
-			if (data.title) {
-				sliderList.title.text = data.title;
-			}
+
+			sliderList.title.text = data.title;
+			
 			notification.visible = false;
 			Util.playOk();
 		}
@@ -601,6 +613,9 @@
 		public function selectPositioning(id:int, value:Number = 0):void
 		{
 			Data.selectPositioning(id, value);
+			if (id > 0) {
+				sliderList.updateValues();
+			}
 		}
 
 		internal function confirm():void

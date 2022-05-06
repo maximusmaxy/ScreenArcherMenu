@@ -35,6 +35,11 @@ MenuCache groupsMenuCache;
 
 SavedMenuData saveData;
 
+bool NaturalSort::operator() (const std::string& a, const std::string& b) const 
+{
+	return strnatcasecmp(a.c_str(), b.c_str()) < 0;
+}	
+
 MenuCategoryList* GetMenu(MenuCache* cache)
 {
 	if (!selected.refr) return nullptr;
@@ -100,7 +105,7 @@ TESObjectREFR * GetRefr() {
 		refr = *g_player;
 	} else {
 		LookupREFRByHandle(handle, refr);
-		if (refr->formType != kFormType_ACHR || (refr->flags & TESObjectREFR::kFlag_IsDeleted))
+		if (!refr || refr->formType != kFormType_ACHR || (refr->flags & TESObjectREFR::kFlag_IsDeleted))
 			return nullptr;
 	}
 	return refr;
@@ -134,11 +139,33 @@ void SelectedRefr::Clear() {
 	eyeNode = nullptr;
 }
 
+void GetMenuTarget(GFxValue& data) {
+	if (selectedNonActor.refr && selectedNonActor.refr->baseForm) {
+		const char* name = "";
+		switch (selectedNonActor.refr->baseForm->formType) {
+		case kFormType_NPC_:
+			TESNPC* actor = DYNAMIC_CAST(selectedNonActor.refr->baseForm, TESForm, TESNPC);
+			name = actor->fullName.name.c_str();
+			break;
+		}
+		data.SetMember("title", &GFxValue(name));
+	}
+	else {
+		data.SetMember("title", &GFxValue("No Target"));
+	}
+}
+
 void OnMenuOpen() {
 	//_DMESSAGE("Menu opened");
 
 	static BSFixedString samMenu("ScreenArcherMenu");
 	static BSFixedString photoMenu("PhotoMenu");
+
+	IMenu* menu = (*g_ui)->GetMenu(samMenu);
+	if (!menu) {
+		_DMESSAGE("Could not find screen archer menu");
+		return;
+	}
 
 	TESObjectREFR* refr = GetRefr();
 	selected.Update(refr);
@@ -146,19 +173,14 @@ void OnMenuOpen() {
 
 	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", false);
 
-	GFxMovieRoot * root = (*g_ui)->GetMenu(samMenu)->movie->movieRoot;
+	GFxMovieRoot * root = menu->movie->movieRoot;
 	GFxValue data;
 	root->CreateObject(&data);
 
 	GFxValue delayClose((*g_ui)->IsMenuOpen(photoMenu));
 	data.SetMember("delayClose", &delayClose);
 
-	GFxValue title;
-	if (selected.refr) {
-		TESNPC* npc = (TESNPC*)selected.refr->baseForm;
-		title.SetString(npc->fullName.name);
-	}
-	data.SetMember("title", &title);
+	GetMenuTarget(data);
 
 	GFxValue saved;
 	if (saveData.Load(root, &saved)) {
@@ -181,7 +203,11 @@ void OnMenuClose() {
 void OnConsoleRefUpdate() {
 	static BSFixedString samMenu("ScreenArcherMenu");
 
-	//_DMESSAGE("Console ref updated");
+	IMenu* menu = (*g_ui)->GetMenu(samMenu);
+	if (!menu) {
+		_DMESSAGE("Could not find screen archer menu");
+		return;
+	}
 
 	TESObjectREFR * refr = GetRefr();
 	UpdateNonActorRefr();
@@ -189,56 +215,14 @@ void OnConsoleRefUpdate() {
 	if (selected.refr != refr) {
 		selected.Update(refr);
 
-		GFxMovieRoot * root = (*g_ui)->GetMenu(samMenu)->movie->movieRoot;
+		GFxMovieRoot * root = menu->movie->movieRoot;
 		GFxValue data;
 		root->CreateObject(&data);
 
 		GFxValue menuState;
 		root->GetVariable(&menuState, "root1.Menu_mc.state");
 
-		bool isReset = false;
-
-		//todo hotswap pose/morphs
-		switch (menuState.GetInt()) {
-			case 8: //eye
-			{
-				GFxValue eyeX(0.0);
-				GFxValue eyeY(0.0);
-				float coords[2];
-				if (GetEyecoords(selected.eyeNode, coords)) {
-					eyeX.SetNumber(coords[0]);
-					eyeY.SetNumber(coords[1]);
-				}
-				data.SetMember("eyeX", &eyeX);
-				data.SetMember("eyeY", &eyeY);
-				break;
-			}
-			case 9: //hack
-			{
-				GFxValue hacks;
-				GetHacksGFx(root, &hacks);
-				data.SetMember("hacks", &hacks);
-				break;
-			}
-			case 14:
-			case 15: //idles
-			case 20: //positioning
-			case 21: //options
-			{
-				break;
-			}
-			default: isReset = true;
-		}
-
-		GFxValue reset(isReset);
-		data.SetMember("reset", &reset);
-
-		GFxValue title;
-		if (selected.refr) {
-			TESNPC* npc = (TESNPC*)selected.refr->baseForm;
-			title.SetString(npc->fullName.name);
-		}
-		data.SetMember("title", &title);
+		GetMenuTarget(data);
 
 		root->Invoke("root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
 	}

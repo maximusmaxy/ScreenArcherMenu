@@ -565,6 +565,9 @@ bool isDotOrDotDot(const char* cstr) {
 void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 	root->CreateArray(result);
 
+	std::map<std::string, std::string, NaturalSort> folders;
+	std::map<std::string, std::string, NaturalSort> files;
+
 	for (IDirectoryIterator iter(path, "*"); !iter.Done(); iter.Next())
 	{
 		const char* cFileName = iter.Get()->cFileName;
@@ -574,38 +577,48 @@ void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 			std::string filepath = iter.GetFullPath();
 
 			if (std::filesystem::is_directory(filepath)) {
-				GFxValue folder;
-				root->CreateObject(&folder);
-
-				GFxValue name(filename.c_str());
-				folder.SetMember("name", &name);
-
-				GFxValue isFolder(true);
-				folder.SetMember("folder", &isFolder);
-
-				GFxValue pathname(filepath.c_str());
-				folder.SetMember("path", &pathname);
-
-				result->PushBack(&folder);
+				folders[filename] = filepath;
 			}
 			else {
 				UInt32 size = filename.size();
 				if (size >= 5) {
 					if (!_stricmp(&filename.c_str()[size - 5], ".json")) {
-						GFxValue file;
-						root->CreateObject(&file);
-
-						std::string noextension = filename.substr(0, filename.length() - 5);
-						GFxValue name(noextension.c_str());
-						file.SetMember("name", &name);
-
-						GFxValue pathname(filepath.c_str());
-						file.SetMember("path", &pathname);
-
-						result->PushBack(&file);
+						std::string noExtension = filename.substr(0, filename.length() - 5);
+						files[noExtension] = filepath;
 					}
 				}
 			}
 		}
+	}
+
+	for (auto& folder : folders) {
+		GFxValue value;
+		root->CreateObject(&value);
+
+		std::string folderName = "-> " + folder.first;
+		GFxValue name(folderName.c_str());
+		value.SetMember("name", &name);
+
+		GFxValue isFolder(true);
+		value.SetMember("folder", &isFolder);
+
+		GFxValue pathname(folder.second.c_str());
+		value.SetMember("path", &pathname);
+
+		result->PushBack(&value);
+	}
+
+	for (auto& file : files) {
+		GFxValue value;
+		root->CreateObject(&value);
+
+		std::string noextension = file.first.substr(0, file.first.length() - 5);
+		GFxValue name(noextension.c_str());
+		value.SetMember("name", &name);
+
+		GFxValue pathname(file.second.c_str());
+		value.SetMember("path", &pathname);
+
+		result->PushBack(&value);
 	}
 }

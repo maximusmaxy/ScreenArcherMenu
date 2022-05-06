@@ -449,6 +449,12 @@ void ResetSkeletonAdjustment::Invoke(Args* args)
 	LoadDefaultAdjustment(nullptr, true, false);
 }
 
+void GetPositioning::Invoke(Args* args)
+{
+	SaveObjectTranslation();
+	GetPositioningGFx(args->movie->movieRoot, args->result);
+}
+
 void AdjustPositioning::Invoke(Args* args)
 {
 	ASSERT(args->numArgs >= 3);
@@ -456,11 +462,7 @@ void AdjustPositioning::Invoke(Args* args)
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
 	AdjustObjectPosition(args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
-}
-
-void SavePositioning::Invoke(Args* args)
-{
-	SaveObjectTranslation();
+	GetPositioningGFx(args->movie->movieRoot, args->result);
 }
 
 void SelectPositioning::Invoke(Args* args)
@@ -468,11 +470,13 @@ void SelectPositioning::Invoke(Args* args)
 	ASSERT(args->numArgs >= 1);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
 	SelectPositioningMenuOption(args->args[0].GetInt());
+	GetPositioningGFx(args->movie->movieRoot, args->result);
 }
 
 void ResetPositioning::Invoke(Args* args)
 {
 	SetDefaultObjectTranslation();
+	GetPositioningGFx(args->movie->movieRoot, args->result);
 }
 
 void GetSamPoses::Invoke(Args* args)
@@ -520,6 +524,16 @@ void HideMenu::Invoke(Args * args)
 void Test::Invoke(Args * args)
 {
 	//
+	BSFixedString photoMenu("PhotoMenu");
+	IMenu* menu = (*g_ui)->GetMenu(photoMenu);
+	GFxMovieRoot* root = menu->movie->movieRoot;
+
+	GFxValue func;
+	GFxValue ten(10.0);
+	
+	bool hasFunc = root->Invoke("root1.Menu_mc.BGSCodeObj.SetPlayerLeftRight", nullptr, &ten, 1);
+
+	_DMESSAGE("test");
 }
 
 void Test2::Invoke(Args* args)
@@ -584,7 +598,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<LoadSkeletonAdjustment>(value, view->movieRoot, "LoadSkeletonAdjustment");
 	RegisterFunction<ResetSkeletonAdjustment>(value, view->movieRoot, "ResetSkeletonAdjustment");
 	RegisterFunction<AdjustPositioning>(value, view->movieRoot, "AdjustPositioning"); 
-	RegisterFunction<SavePositioning>(value, view->movieRoot, "SavePositioning");
+	RegisterFunction<GetPositioning>(value, view->movieRoot, "GetPositioning");
 	RegisterFunction<SelectPositioning>(value, view->movieRoot, "SelectPositioning");
 	RegisterFunction<ResetPositioning>(value, view->movieRoot, "ResetPositioning");
 	RegisterFunction<GetSamPoses>(value, view->movieRoot, "GetSamPoses");

@@ -331,7 +331,7 @@
 				entry.updateSlider(Data.POSITIONING_NAMES[entry.id], SliderListEntry.INT);
 			}
 			else if (entry.id < 8) {
-				entry.updateDrag(Data.POSITIONING_NAMES[entry.id]);
+				entry.updateDragValue(Data.POSITIONING_NAMES[entry.id]);
 			}
 			else {
 				entry.updateList(Data.POSITIONING_NAMES[entry.id]);

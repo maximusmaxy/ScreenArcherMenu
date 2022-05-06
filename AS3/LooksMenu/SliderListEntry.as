@@ -13,7 +13,6 @@
 		public var text:TextField;
 		public var value:TextField;
 		public var slider:Option_Scrollbar;
-		public var divider:MovieClip;
 		public var checkbox:Checkbox;
 		public var checkbox2:Checkbox;
 		public var background:MovieClip;
@@ -21,12 +20,13 @@
 		internal var id:int = -1;
 		public var selectable:Boolean = false;
 		public var selected:Boolean = false;
+		public var valueSelectable:Boolean = false;
 		public var func:Function;
 		public var func2:Function;
 		public var func3:Function;
 		
-		public var sliderMod:Number = 0.0;
-		public var sliderFixed:int = 0;
+		public var valueMod:Number = 0.0;
+		public var valueFixed:int = 0;
 		
 		public static const LIST = 0;
 		public static const SLIDER = 1;
@@ -47,7 +47,6 @@
 			slider.offsetLeft = 1;
 			slider.offsetRight = 1;
 			
-			divider.visible = false;
 			slider.visible = false;
 			value.visible = false;
 			
@@ -79,7 +78,7 @@
 		public function onValueChange(event:flash.events.Event)
 		{
 			//Util.playFocus();
-			func.call(null, id, event.target.value - sliderMod);
+			func.call(null, id, event.target.value - valueMod);
 			Data.selectedSlider = this;
 			updateValue(false);
 		}
@@ -95,7 +94,7 @@
 					if (!isNaN(menuValue)) {
 						var parsedInt:int = int(menuValue);
 						func.call(null, id, parsedInt);
-						slider.position = parsedInt + sliderMod;
+						slider.position = parsedInt + valueMod;
 					}
 					break;
 				}
@@ -104,7 +103,7 @@
 					menuValue = parseFloat(value.text);
 					if (!isNaN(menuValue)) {
 						func.call(null, id, menuValue);
-						slider.position = menuValue + sliderMod;
+						slider.position = menuValue + valueMod;
 					}
 					break;
 				}
@@ -113,7 +112,7 @@
 		
 		public function onValueClick(event:MouseEvent)
 		{
-			if (value.visible) {
+			if (value.visible && valueSelectable) {
 				if (Data.selectedText == null) {
 					try {
 						Data.f4seObj.AllowTextInput(true);
@@ -175,7 +174,7 @@
 					break;
 				case FLOAT:
 					menuValue = Data.menuValues[id];
-					value.text = menuValue.toFixed(sliderFixed);
+					value.text = menuValue.toFixed(valueFixed);
 					break;
 			}
 			switch (type)
@@ -183,7 +182,7 @@
 				case SLIDER:
 					if (position) 
 					{
-						slider.position = menuValue + sliderMod;
+						slider.position = menuValue + valueMod;
 					}
 					break;
 				case CHECKBOX:
@@ -210,7 +209,6 @@
 			setText(0, 0, name, TextFormatAlign.LEFT);
 			slider.visible = false;
 			value.visible = false;
-			divider.visible = false;
 			checkbox.disable();
 			checkbox2.disable();
 			background.x = -2;
@@ -226,7 +224,9 @@
 			setText(0, 0, name, TextFormatAlign.LEFT);
 			slider.visible = true;
 			value.visible = true;
-			divider.visible = false;
+			value.x = 219.7;
+			value.y = 25.6;
+			valueSelectable = true;
 			checkbox.disable();
 			checkbox2.disable();
 			this.type = SLIDER;
@@ -234,18 +234,18 @@
 			updateValue(true); 
 		}
 		
-		public function updateDivider(name:String)
-		{
-			unselect();
-			selectable = false;
-			setText(0, 7, name, TextFormatAlign.CENTER);
-			slider.visible = false;
-			value.visible = false;
-			divider.visible = true;
-			checkbox.disable();
-			checkbox2.disable();
-			this.type = DIVIDER;
-		}
+//		public function updateDivider(name:String)
+//		{
+//			unselect();
+//			selectable = false;
+//			setText(0, 7, name, TextFormatAlign.CENTER);
+//			slider.visible = false;
+//			value.visible = false;
+//			divider.visible = true;
+//			checkbox.disable();
+//			checkbox2.disable();
+//			this.type = DIVIDER;
+//		}
 		
 		public function updateCheckbox(name:String, checked:Boolean)
 		{
@@ -253,7 +253,6 @@
 			setText(31, 0, name, TextFormatAlign.LEFT);
 			slider.visible = false;
 			value.visible = false;
-			divider.visible = false;
 			checkbox.init(1, this.id, checked, 0, func);
 			checkbox2.disable();
 			background.x = 31;
@@ -267,7 +266,6 @@
 			setText(0, 0, name, TextFormatAlign.LEFT);
 			slider.visible = false;
 			value.visible = false;
-			divider.visible = false;
 			checkbox.init(222, this.id, false, Checkbox.SETTINGS, func2);
 			checkbox2.init(256, this.id, false, Checkbox.RECYCLE, func3);
 			background.x = -2;
@@ -282,10 +280,28 @@
 			setText(31, 0, name, TextFormatAlign.LEFT)
 			slider.visible = false;
 			value.visible = false;
-			divider.visible = false;
 			checkbox.init(1, this.id, false, Checkbox.DRAG, func);
 			checkbox2.disable();
 			this.type = DRAG;
+		}
+		
+		public function updateDragValue(name:String)
+		{
+			unselect();
+			selectable = false;
+			setText(31, 0, name, TextFormatAlign.LEFT)
+			slider.visible = false;
+			value.visible = true;
+			value.x = 219.7;
+			value.y = 1;
+			valueSelectable = false;
+			valueMod = 0;
+			valueFixed = 2;
+			checkbox.init(1, this.id, false, Checkbox.DRAG, func);
+			checkbox2.disable();
+			this.type = DRAG;
+			this.valueType = FLOAT;
+			updateValue(false);
 		}
 		
 		public function updateSliderData(min:Number, max:Number, step:Number, mod:Number, fixed:int = 0)
@@ -293,8 +309,8 @@
 			slider.minimum = min;
 			slider.maximum = max;
 			slider.StepSize = step;
-			this.sliderMod = mod;
-			this.sliderFixed = fixed;
+			this.valueMod = mod;
+			this.valueFixed = fixed;
 		}
 		
 		public function disable()

@@ -79,13 +79,9 @@ RelocAddr<UInt64> TESIdleFormVFTable(0x2CB8FA8);
 typedef NiFormArrayTESIdle* (*_GetFormArrayFromName)(BSTCaseInsensitiveStringMapIdle* idleMap, const char* name);
 RelocAddr<_GetFormArrayFromName> GetFormArrayFromName(0x5AAC80);
 
-struct naturalSort {
-	bool operator()(const std::string& a, const std::string& b) const {
-		return strnatcasecmp(a.c_str(), b.c_str()) < 0;
-	}
-};
+typedef std::map<UInt32, std::map<std::string, UInt32, NaturalSort>> SortedIdles;
 
-bool AddIdleToMap(TESIdleForm* form, std::map<UInt32, std::map<std::string, UInt32, naturalSort>>& idles, std::unordered_map<UInt32, std::string>& modNames, IdleData& data) {
+bool AddIdleToMap(TESIdleForm* form, SortedIdles& idles, std::unordered_map<UInt32, std::string>& modNames, IdleData& data) {
 	if (!form) return false;
 	if (*(UInt64*)form != TESIdleFormVFTable) return false;
 	if (!form->formID) return false;
@@ -127,7 +123,7 @@ void LoadIdleMenus() {
 	}
 
 	for (auto& dataKvp : raceIdleData) {
-		std::map<UInt32, std::map<std::string, UInt32, naturalSort>> idles;
+		SortedIdles idles;
 
 		NiFormArrayTESIdle* idleFormArray = GetFormArrayFromName((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), dataKvp.second.behavior.c_str());
 		idleFormArray++;
@@ -154,6 +150,7 @@ UInt32 GetIdleDataId(UInt32 raceId) {
 	//Default to human if missing
 	if (raceIdleData.count(0x13746)) return 0x13746;
 	//Human really shouldn't be missing
+	_DMESSAGE("Human idle data not found");
 	return 0;
 }
 

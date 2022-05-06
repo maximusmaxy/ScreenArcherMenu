@@ -1,32 +1,39 @@
 #include "positioning.h"
 
 #include "SAF/conversions.h"
+#include "SAF/util.h"
+
+#include <math.h>
 
 NonActorRefr selectedNonActor;
 
-union TranslationValue
+union TranslationParam
 {
+	UInt64 axis;
 	double value;
 };
 
-typedef UInt32(*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationValue value);
+//typedef UInt32 (*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationValue value);
+//RelocAddr<_UpdateTranslationInternal> UpdateTranslationInternal(0xD583F0);
+
+typedef UInt32 (*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationParam param1, TranslationParam param2);
 RelocAddr<_UpdateTranslationInternal> UpdateTranslationInternal(0xD583F0);
 
 typedef float (*_GetScaleInternal)(TESObjectREFR* refr, float mod);
 RelocAddr<_GetScaleInternal> GetScaleInternal(0x3F8540);
 
-typedef UInt64(*_SetScaleInternal)(TESObjectREFR* refr, float scale);
+typedef UInt64 (*_SetScaleInternal)(TESObjectREFR* refr, float scale);
 RelocAddr<_SetScaleInternal> SetScaleInternal(0x3F85B0);
 
-typedef UInt64(*_TESObjectREFRUnk29)(TESObjectREFR* refr, UInt8 result);
+typedef UInt64 (*_TESObjectREFRUnk29)(TESObjectREFR* refr, UInt8 result);
 RelocAddr<_TESObjectREFRUnk29> TesObjectREFRUnk29(0x40B4B0);
 
 RelocPtr<UInt64> unkTranslation(0x5AC64F0);
 
-typedef void(*_ToggleWorldCollisionInternal)();
+typedef void (*_ToggleWorldCollisionInternal)();
 RelocAddr<_ToggleWorldCollisionInternal> ToggleWorldCollisionInternal(0xFBF80);
 
-typedef void(*_ToggleGamePauseInternal)();
+typedef void (*_ToggleGamePauseInternal)();
 RelocAddr<_ToggleGamePauseInternal> ToggleGamePauseInternal(0x520530);
 
 RelocPtr<UInt8> gamePaused(0x5AA4278);
@@ -40,7 +47,7 @@ TESObjectREFR* GetNonActorRefr() {
 	}
 	else {
 		LookupREFRByHandle(handle, refr);
-		if (refr->flags & TESObjectREFR::kFlag_IsDeleted)
+		if (!refr || (refr->flags & TESObjectREFR::kFlag_IsDeleted))
 			return nullptr;
 	}
 	return refr;
@@ -80,8 +87,57 @@ void ToggleWorldCollision() {
 	ToggleWorldCollisionInternal();
 }
 
-void ToggleFootIK() {
-	static BSFixedString footIKString("bGraphWantsFootIK");
+struct GraphParams
+{
+	BSFixedString str;
+	const char* param1;
+	const char* param2;
+	const char* param3;
+	UInt32 unk;
+};
+
+struct GraphParamsPtr
+{
+	GraphParams* params;
+	UInt64 unk;
+};
+
+class BSAnimationGraphManager : public NiRefObject {};
+
+typedef bool (*_GetBSAnimationGraphInternal)(UInt64* holder, NiPointer<BSAnimationGraphManager>& result);
+
+typedef void (*_SetAnimGraphVarInternal)(BSAnimationGraphManager* graphManager, GraphParamsPtr* params);
+RelocAddr<_SetAnimGraphVarInternal> SetAnimGraphVarInternal(0x514320);
+
+typedef bool(*_LookupREFRByHandle)(const UInt32& handleIn, NiPointer<TESObjectREFR>& ref);
+extern RelocAddr <_LookupREFRByHandle> LookupREFRByHandle;
+
+void SetFootIK(const char* enabled) {
+	if (!selectedNonActor.refr || selectedNonActor.refr->formType != kFormType_ACHR) return;
+
+	UInt64* animGraphHolder = (UInt64*)selectedNonActor.refr + 9;
+	NiPointer<BSAnimationGraphManager> graphManager;
+	auto func = (_GetBSAnimationGraphInternal)*(UInt64*)(*animGraphHolder + 0x20);
+	UInt8 result = func(animGraphHolder, graphManager);
+
+	if (result && graphManager) {
+		BSFixedString footIKString("bGraphWantsFootIK");
+
+		const char* zero = "0";
+
+		GraphParams params;
+		params.str = footIKString;
+		params.param1 = enabled;
+		params.param2 = zero;
+		params.param3 = zero;
+		params.unk = 0;
+
+		GraphParamsPtr paramsPtr;
+		paramsPtr.params = &params;
+		paramsPtr.unk = 0;
+
+		SetAnimGraphVarInternal(graphManager, &paramsPtr);
+	}
 }
 
 bool GetRefrCollision(TESObjectREFR* refr) {
@@ -118,134 +174,194 @@ NiPoint3 RotateObjectAxis(NiPoint3& rot, UInt32 axis, float step) {
 	return NiPoint3(x, y, z);
 }
 
-void AdjustObjectPosition(int type, int scalar, int step) {
-	if (!selectedNonActor.refr) return;
+NiPoint3 RadianToPositiveDegree(NiPoint3& rot) {
+	NiPoint3 result;
 
-	TranslationValue result;
-	UInt32 flags;
-	bool isActor = selectedNonActor.refr->formType == kFormType_ACHR;
-	float mod = step * 0.01;
+	result.x = Modulo(rot.x * SAF::RADIAN_TO_DEGREE, 360);
+	result.y = Modulo(rot.y * SAF::RADIAN_TO_DEGREE, 360);
+	result.z = Modulo(rot.z * SAF::RADIAN_TO_DEGREE, 360);
 
-	switch (type) {
-	case kAdjustPositionX:
-		selectedNonActor.refr->pos.x += scalar * 0.1 * mod;
-		result.value = selectedNonActor.refr->pos.x;
-		flags = 0x1007;
-		break;
-	case kAdjustPositionY:
-		selectedNonActor.refr->pos.y += scalar * 0.1 * mod;
-		result.value = selectedNonActor.refr->pos.y;
-		flags = 0x1007;
-		break;
-	case kAdjustPositionZ:
-		selectedNonActor.refr->pos.z += scalar * 0.1 * mod;
-		result.value = selectedNonActor.refr->pos.z;
-		flags = 0x1007;
-		break;
-	case kAdjustRotationX:
-		selectedNonActor.refr->rot = RotateObjectAxis(selectedNonActor.refr->rot, type, scalar * 0.01 * mod);
-		result.value = selectedNonActor.refr->rot.x;
-		flags = 0x1009;
-		break;
-	case kAdjustRotationY:
-		selectedNonActor.refr->rot = RotateObjectAxis(selectedNonActor.refr->rot, type, scalar * 0.01 * mod);
-		result.value = selectedNonActor.refr->rot.y;
-		flags = 0x1009;
-		break;
-	case kAdjustRotationZ:
-		selectedNonActor.refr->rot = RotateObjectAxis(selectedNonActor.refr->rot, type, scalar * 0.01 * mod);
-		result.value = selectedNonActor.refr->rot.z;
-		flags = 0x1009;
-		break;
-	}
+	return result;
+}
 
-	if (type != kAdjustScale) {
-		//If actor collision is enabled, disable temporarily before moving
-		bool collision = false;
-		if (isActor) {
-			collision = GetRefrCollision(selectedNonActor.refr);
-			if (collision) {
-				SetRefrCollision(selectedNonActor.refr, false);
-			}
-		}
-		UpdateTranslationInternal(*unkTranslation, flags, selectedNonActor.refr, result);
-		if (isActor && collision) {
-			SetRefrCollision(selectedNonActor.refr, true);
-		}
+//void SetRefrPosRot(TESObjectREFR* refr, NiPoint3& pos, NiPoint3& rot)
+//{
+//	UInt32 nullHandle = *g_invalidRefHandle;
+//	TESObjectCELL* parentCell = refr->parentCell;
+//	TESWorldSpace* worldspace = CALL_MEMBER_FN(refr, GetWorldspace)();
+//
+//	MoveRefrToPosition(refr, &nullHandle, parentCell, worldspace, &pos, &rot);
+//}
+
+void SetRefrTranslation(UInt32 flags, char axis, double value)
+{
+	TranslationParam p1;
+	p1.axis = axis;
+	TranslationParam p2;
+	p2.value = value;
+
+	UpdateTranslationInternal(*unkTranslation, flags, selectedNonActor.refr, p1, p2);
+}
+
+void UpdateRefrTranslation(UInt32 flags, char axis, float& prop, float mod)
+{
+	float value = prop + mod;
+	
+	//if rot, convert radian to degree
+	if (flags == 0x1009)
+		SetRefrTranslation(flags, axis, value * SAF::RADIAN_TO_DEGREE);
+	else
+		SetRefrTranslation(flags, axis, value);
+
+	prop = value;
+}
+
+void UpdateRefrScale(bool isActor, double value)
+{
+	if (isActor) {
+		SetScaleInternal(selectedNonActor.refr, value);
+		TesObjectREFRUnk29(selectedNonActor.refr, 1);
 	}
 	else {
+		TranslationParam p1;
+		p1.value = value;
+
+		UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, p1, p1);
+		UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, p1, p1);
+	}
+}
+
+void AdjustObjectPosition(int type, int scalar, int step) {
+	if (!selectedNonActor.refr) return;
+	
+	float mod = step * 0.01;
+	bool isActor = selectedNonActor.refr->formType == kFormType_ACHR;
+
+	//handle scale seperately
+	if (type == kAdjustScale) {
 		float scale = GetScaleInternal(selectedNonActor.refr, 0.0) + scalar * 0.01 * mod;
 		if (scale < 0.01)
 			scale = 0.01;
 		else if (scale > 10.0)
 			scale = 10.0;
-		result.value = scale;
 
-		//if npc call mod scale instead
-		if (isActor) {
-			SetScaleInternal(selectedNonActor.refr, result.value);
-			TesObjectREFRUnk29(selectedNonActor.refr, 1);
-		}
-		else {
-			result.value = scale;
-			UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, result);
-			UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, result);
-		}
+		UpdateRefrScale(isActor, scale);
+		return;
 	}
 
-	//call a random setpos to prevent the vibrating bug
-	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, result);
+	switch (type) {
+	case kAdjustPositionX:
+		UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, scalar * 0.1 * mod);
+		break;
+	case kAdjustPositionY:
+		UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, scalar * 0.1 * mod);
+		break;
+	case kAdjustPositionZ:
+		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, scalar * 0.1 * mod);
+		break;
+	case kAdjustRotationX:
+		if (isActor) return; //Use pose adjustments instead
+		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, scalar * 0.01 * mod);
+		break;
+	case kAdjustRotationY:
+		if (isActor) return; //Use pose adjustments instead
+		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, scalar * 0.01 * mod);
+		break;
+	case kAdjustRotationZ:
+		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, scalar * 0.01 * mod);
+		break;
+	}
+
+	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectPosition() {
 	if (!selectedNonActor.refr) return;
 
+	SetRefrTranslation(0x1007, 0x58, selectedNonActor.translation.position.x);
+	SetRefrTranslation(0x1007, 0x59, selectedNonActor.translation.position.y);
+	SetRefrTranslation(0x1007, 0x6A, selectedNonActor.translation.position.z);
+	
 	selectedNonActor.refr->pos = selectedNonActor.translation.position;
 
-	TranslationValue zero { 0.0 };
-
-	//call twice to prevent vibrating bug
-	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
-	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
+	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectRotation() {
 	if (!selectedNonActor.refr) return;
 
-	selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
+	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.translation.rotation);
 
-	TranslationValue zero { 0.0 };
+	SetRefrTranslation(0x1009, 0x6A, rot.z);
 
-	//call twice to prevent vibrating bug
-	UpdateTranslationInternal(*unkTranslation, 0x1009, selectedNonActor.refr, zero);
-	UpdateTranslationInternal(*unkTranslation, 0x1009, selectedNonActor.refr, zero);
+	//don't update xy rot of actors
+	if (selectedNonActor.refr->formType != kFormType_ACHR) {
+		SetRefrTranslation(0x1009, 0x58, rot.x);
+		SetRefrTranslation(0x1009, 0x59, rot.y);
+
+		selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
+	}
+	else {
+		selectedNonActor.refr->rot.z = selectedNonActor.translation.rotation.z;
+	}
+
+	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectScale() {
 	if (!selectedNonActor.refr) return;
 
-	SetScaleInternal(selectedNonActor.refr, selectedNonActor.translation.scale);
+	UpdateRefrScale(selectedNonActor.refr->formType == kFormType_ACHR, selectedNonActor.translation.scale);
 
-	TranslationValue scale { selectedNonActor.translation.scale };
-	UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, scale);
-
-	//random set pos to force update and prevent vibrating bug
-	TranslationValue zero { 0.0 };
-	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
+	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void SetDefaultObjectTranslation() {
 	if (!selectedNonActor.refr) return;
 
-	selectedNonActor.refr->rot = NiPoint3(0.0f, 0.0f, 0.0f);
-	SetScaleInternal(selectedNonActor.refr, 1.0f);
+	//pos
+	SetRefrTranslation(0x1007, 0x58, selectedNonActor.translation.position.x);
+	SetRefrTranslation(0x1007, 0x59, selectedNonActor.translation.position.y);
+	SetRefrTranslation(0x1007, 0x6A, selectedNonActor.translation.position.z);
 
-	TranslationValue zero { 0.0f };
+	selectedNonActor.refr->pos = selectedNonActor.translation.position;
 
-	//call twice to prevent vibrating bug
-	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
-	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
+	//rot
+	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.translation.rotation);
+
+	SetRefrTranslation(0x1009, 0x6A, rot.z);
+
+	//don't update xy rot of actors
+	if (selectedNonActor.refr->formType != kFormType_ACHR) {
+		SetRefrTranslation(0x1009, 0x58, rot.x);
+		SetRefrTranslation(0x1009, 0x59, rot.y);
+
+		selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
+	}
+	else {
+		selectedNonActor.refr->rot.z = selectedNonActor.translation.rotation.z;
+	}
+	
+	//sca
+	UpdateRefrScale(selectedNonActor.refr->formType == kFormType_ACHR, selectedNonActor.translation.scale);
+	
+	selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
+
+	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
+
+//void SetDefaultObjectTranslation() {
+//	if (!selectedNonActor.refr) return;
+//
+//	selectedNonActor.refr->rot = NiPoint3(0.0f, 0.0f, 0.0f);
+//	SetScaleInternal(selectedNonActor.refr, 1.0f);
+//
+//	TranslationValue zero { 0.0f };
+//
+//	//call twice to prevent vibrating bug
+//	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
+//	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
+//}
 
 void SelectPositioningMenuOption(UInt32 option) {
 	switch (option)
@@ -255,6 +371,26 @@ void SelectPositioningMenuOption(UInt32 option) {
 	case kResetScale: ResetObjectScale(); break;
 	case kTogglePause: ToggleGamePaused(); break;
 	case kToggleCollision: ToggleWorldCollision(); break;
-	case kToggleFootIK:	ToggleFootIK(); break;
+	case kEnableFootIK:	SetFootIK("1"); break;
+	case kDisableFootIK: SetFootIK("0"); break;
 	}
+}
+
+void GetPositioningGFx(GFxMovieRoot* root, GFxValue* result) {
+	root->CreateArray(result);
+
+	if (!selectedNonActor.refr) return;
+
+	result->PushBack(&GFxValue(100));
+	result->PushBack(&GFxValue(selectedNonActor.refr->pos.x));
+	result->PushBack(&GFxValue(selectedNonActor.refr->pos.y));
+	result->PushBack(&GFxValue(selectedNonActor.refr->pos.z));
+
+	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.refr->rot);
+	result->PushBack(&GFxValue(rot.x));
+	result->PushBack(&GFxValue(rot.y));
+	result->PushBack(&GFxValue(rot.z));
+
+	float scale = GetScaleInternal(selectedNonActor.refr, 0.0);
+	result->PushBack(&GFxValue(scale));
 }
