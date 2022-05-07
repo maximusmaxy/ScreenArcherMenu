@@ -524,7 +524,7 @@ void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 	}
 }
 
-void LoadDefaultAdjustment(const char* filename, bool clear, bool enable)
+void LoadDefaultAdjustment(const char* filename, bool npc, bool clear, bool enable)
 {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
@@ -533,7 +533,13 @@ void LoadDefaultAdjustment(const char* filename, bool clear, bool enable)
 	//If clearing they are in single select so forcing enable makes more sense
 	if (clear) enable = true;
 
-	safMessageDispatcher.loadDefaultAdjustment(selected.race, selected.isFemale, filename, clear, enable);
+	//if single target npc is true, send the formId instead of race
+	//UInt32 formId = npc ? adjustments->formId : selected.race;
+	
+	//single target npc disabled for now
+	UInt32 formId = selected.race;
+
+	safMessageDispatcher.loadDefaultAdjustment(formId, selected.isFemale, filename, npc, clear, enable);
 }
 
 void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int dif) {
@@ -612,8 +618,7 @@ void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 		GFxValue value;
 		root->CreateObject(&value);
 
-		std::string noextension = file.first.substr(0, file.first.length() - 5);
-		GFxValue name(noextension.c_str());
+		GFxValue name(file.first.c_str());
 		value.SetMember("name", &name);
 
 		GFxValue pathname(file.second.c_str());

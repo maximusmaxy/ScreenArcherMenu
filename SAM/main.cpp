@@ -207,8 +207,8 @@ void SafResetPose(UInt32 formId) {
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
 }
 
-void SafLoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable) {
-	SAF::SkeletonMessage message(raceId, isFemale, filename, clear, enable);
+void SafLoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable) {
+	SAF::SkeletonMessage message(raceId, isFemale, filename, npc, clear, enable);
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafDefaultAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
 }
 

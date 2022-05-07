@@ -422,7 +422,7 @@ void ResetPose::Invoke(Args* args)
 		ResetJsonPose();
 		break;
 	case kPoseAPose:
-		//human a-pose, probably shouldn't be hard coded
+		//TODO human a-pose, probably shouldn't be hard coded
 		UInt32 formId = GetFormId("ScreenArcherMenu.esp", 0x802);
 		if (formId)
 			PlayIdleAnimation(formId);
@@ -441,12 +441,13 @@ void LoadSkeletonAdjustment::Invoke(Args* args)
 	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
 	ASSERT(args->args[2].GetType() == GFxValue::kType_Bool);
-	LoadDefaultAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool());
+	ASSERT(args->args[3].GetType() == GFxValue::kType_Bool);
+	LoadDefaultAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool(), args->args[3].GetBool());
 }
 
 void ResetSkeletonAdjustment::Invoke(Args* args)
 {
-	LoadDefaultAdjustment(nullptr, true, false);
+	LoadDefaultAdjustment(nullptr, false, true, false);
 }
 
 void GetPositioning::Invoke(Args* args)

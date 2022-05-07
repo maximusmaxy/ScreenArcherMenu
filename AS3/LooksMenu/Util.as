@@ -13,21 +13,21 @@
 		public static const UI_CANCEL:String = "UIMenuCancel";
 
 		public static function playOk() {
-			if (!debug) {
+			try {
 				Data.sam.PlaySound(UI_OK);
-			}
+			} catch (e:Error) {}
 		}
 
 		public static function playFocus() {
-			if (!debug) {
+			try {
 				Data.sam.PlaySound(UI_FOCUS);
-			}
+			} catch (e:Error) {}
 		}
 
 		public static function playCancel() {
-			if (!debug) {
+			try {
 				Data.sam.PlaySound(UI_CANCEL);
-			}
+			} catch (e:Error) {}
 		}
 		
 		public static function unselectText() {

@@ -72,6 +72,7 @@
 		internal var buttonHintConfirm:BSButtonHintData;
 		internal var buttonHintSwap:BSButtonHintData;
 		internal var buttonHintExtra:BSButtonHintData;
+		//internal var buttonHintTarget:BSButtonHintData;
 		
 		internal var closeTimer:Timer;
 		private var delayClose:Boolean = false;
@@ -82,6 +83,7 @@
 		public var swapped:Boolean = false;
 		public var saved:Boolean = false;
 		public var multi:Boolean = false;
+		public var targetRace:Boolean = false;
 		
 		public var targetIgnore:Array = [
 			HACK_STATE,
@@ -174,19 +176,21 @@
 		internal function initButtonHints():void
 		{
 			buttonHintData = new Vector.<BSButtonHintData>();
-			buttonHintBack = new BSButtonHintData("$SAM_Back","Tab","PSN_B","Xenon_B",1,back);
-			buttonHintSave = new BSButtonHintData("$SAM_Save","X","PSN_L1","Xenon_L1",1,save);
-			buttonHintLoad = new BSButtonHintData("$SAM_Load","E","PSN_R1","Xenon_R1",1,load);
-			buttonHintReset = new BSButtonHintData("$SAM_Reset","R","PSN_Y","Xenon_Y",1,reset);
-			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirm);
-			buttonHintSwap = new BSButtonHintData("$SAM_Swap","Z","PSN_R2","Xenon_R2",1,swap);
-			buttonHintExtra = new BSButtonHintData("","X","PSN_L1","Xenon_L1",1,extra);
+			buttonHintBack = new BSButtonHintData("$SAM_Back","Tab","PSN_B","Xenon_B",1,backButton);
+			buttonHintSave = new BSButtonHintData("$SAM_Save","X","PSN_L1","Xenon_L1",1,saveButton);
+			buttonHintLoad = new BSButtonHintData("$SAM_Load","E","PSN_R1","Xenon_R1",1,loadButton);
+			buttonHintReset = new BSButtonHintData("$SAM_Reset","R","PSN_Y","Xenon_Y",1,resetButton);
+			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirmButton);
+			buttonHintSwap = new BSButtonHintData("$SAM_Swap","Z","PSN_R2","Xenon_R2",1,swapButton);
+			buttonHintExtra = new BSButtonHintData("","X","PSN_L1","Xenon_L1",1,extraButton);
+			//buttonHintTarget = new BSButtonHintData("","E","PSN_R1","Xenon_R1",1,targetButton);
 			buttonHintData.push(buttonHintExit);
 			buttonHintData.push(buttonHintBack);
 			buttonHintData.push(buttonHintSwap);
 			buttonHintData.push(buttonHintSave);
 			buttonHintData.push(buttonHintLoad);
 			buttonHintData.push(buttonHintExtra);
+			//buttonHintData.push(buttonHintTarget);
 			buttonHintData.push(buttonHintReset);
 			buttonHintData.push(buttonHintConfirm);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
@@ -283,12 +287,12 @@
 			{
 				case 9://Tab
 					if (buttonHintBack.ButtonVisible) {
-						back();
+						backButton();
 					}
 					break;
 				case 13://Enter
 					if (buttonHintConfirm.ButtonVisible) {
-						confirm();
+						confirmButton();
 					}
 					Util.unselectText();
 					break;
@@ -310,24 +314,27 @@
 //					break;
 				case 69://E
 					if (buttonHintLoad.ButtonVisible) {
-						load();
-					}
+						loadButton();
+					} 
+//					else if (buttonHintTarget.ButtonVisible) {
+//						targetButton();
+//					}
 					break;
 				case 82://R
 					if (buttonHintReset.ButtonVisible) {
-						reset();
+						resetButton();
 					}
 					break;
 				case 88://X
 					if (buttonHintSave.ButtonVisible) {
-						save();
+						saveButton();
 					} else if (buttonHintExtra.ButtonVisible) {
-						extra();
+						extraButton();
 					}
 					break;
 				case 90://Z
 					if (buttonHintSwap.ButtonVisible) {
-						swap();
+						swapButton();
 					}
 					break;
 				case 257://Mouse2
@@ -485,7 +492,7 @@
 					sliderList.updateCheckboxes(selectPose);
 					break;
 				case POSEPLAY_STATE:
-					Data.selectSamPose(0);
+					Data.loadSamPoses();
 					sliderList.updateList(selectPosePlay);
 					break;
 				case LOADPOSE_STATE:
@@ -618,7 +625,7 @@
 			}
 		}
 
-		internal function confirm():void
+		internal function confirmButton():void
 		{
 			switch (this.state) {
 				case SAVEMFG_STATE: Data.saveMfg(filenameInput.Input_tf.text); break;
@@ -657,7 +664,7 @@
 			}
 		}
 
-		internal function save():void
+		internal function saveButton():void
 		{
 			switch (this.state) {
 				case MORPH_STATE:
@@ -668,7 +675,7 @@
 			}
 		}
 
-		internal function load():void
+		internal function loadButton():void
 		{
 			switch (this.state) {
 				case MORPH_STATE: 
@@ -714,7 +721,7 @@
 		
 		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
 		{
-			Data.loadSkeletonAdjustment(id, !multi, enabled);
+			Data.loadSkeletonAdjustment(id, false, !multi, enabled);
 		}
 		
 		internal function selectPosePlay(id:int)
@@ -724,7 +731,7 @@
 			}
 		}
 
-		internal function reset():void
+		internal function resetButton():void
 		{
 			switch (this.state) {
 				case TRANSFORM_STATE:
@@ -755,7 +762,7 @@
 			Util.playOk();
 		}
 
-		internal function back():void
+		internal function backButton():void
 		{
 			if (this.filenameInput.visible)
 			{
@@ -768,14 +775,8 @@
 			else if (Data.folderStack.length > 0) //folder state
 			{
 				Data.popFolder();
-				if (Data.folderStack.length > 0) {
-					switch(this.state) {
-						case POSEPLAY_STATE: sliderList.updateList(selectPosePlay); break;
-					}
-				}
-				else
-				{
-					popState();
+				switch(this.state) {
+					case POSEPLAY_STATE: sliderList.updateList(selectPosePlay); break;
 				}
 			}
 			else
@@ -806,7 +807,7 @@
 			}
 		}
 		
-		public function extra():void
+		public function extraButton():void
 		{
 			switch(this.state)
 			{
@@ -837,6 +838,12 @@
 			}
 		}
 		
+		public function targetButton()
+		{
+			targetRace = !targetRace;
+			buttonHintTarget.ButtonText = targetRace ? "$SAM_NPC" : "$SAM_Race";
+		}
+		
 		public function allowTextInput(allow:Boolean)
 		{
 			try
@@ -861,6 +868,7 @@
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
 					break;
 				case ADJUSTMENT_STATE :
@@ -869,6 +877,7 @@
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = "$SAM_New";
 					break;
@@ -878,6 +887,7 @@
 					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = "$SAM_Negate";
 					break;
@@ -889,6 +899,7 @@
 					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
 					break;
 				case MORPH_STATE:
@@ -899,6 +910,7 @@
 					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
 					break;
 				case SAVEMFG_STATE:
@@ -909,14 +921,17 @@
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = true;
 					buttonHintSwap.ButtonVisible = false;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = true;
+					//buttonHintTarget.ButtonText = targetRace ? "$SAM_NPC" : "$SAM_Race";
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
 					break;
@@ -926,6 +941,7 @@
 					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = "$SAM_Apose";
 					break;
@@ -935,11 +951,12 @@
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintSwap.ButtonVisible = true;
+					//buttonHintTarget.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
 			}
 		};
 
-		internal function swap():void
+		internal function swapButton():void
 		{
 			swapped = ! swapped;
 			sliderList.x = swapped ? -623:278;

@@ -8,7 +8,7 @@
 struct ObjectTranslation {
 	NiPoint3 position;
 	NiPoint3 rotation;
-	double scale;
+	UInt16 scale;
 };
 
 struct NonActorRefr {

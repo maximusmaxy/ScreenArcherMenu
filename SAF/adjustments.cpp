@@ -376,10 +376,6 @@ namespace SAF {
 			return;
 		}
 
-		if ((*it)->isDefault) {
-			removedAdjustments.insert((*it)->name);
-		}
-
 		UInt32 handle = (*it)->handle;
 		if (handle == poseHandle)
 			poseHandle = 0;
@@ -627,7 +623,11 @@ namespace SAF {
 
 			std::shared_ptr<Adjustment> adjustment;
 
+			//try both slashes
 			int lastOf = path.find_last_of('\\') + 1;
+			if (!lastOf)
+				lastOf = path.find_last_of('/') + 1;
+
 			std::string filename = path.substr(lastOf, path.size() - lastOf - 5);
 
 			for (auto& kvp : map) {
@@ -702,6 +702,8 @@ namespace SAF {
 				++it;
 			}
 		}
+
+		removedAdjustments.clear();
 	}
 
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
@@ -747,6 +749,16 @@ namespace SAF {
 		}
 
 		return adjustments;
+	}
+
+	void AdjustmentManager::ForEachActorAdjustments(const std::function<void(std::shared_ptr<ActorAdjustments> adjustments)>& functor) 
+	{
+		for (auto& kvp : actorAdjustmentCache)
+		{
+			if (kvp.second->IsValid()) {
+				functor(kvp.second);
+			}
+		}
 	}
 
 	NodeSets* AdjustmentManager::GetNodeSets(UInt32 race, bool isFemale) {
@@ -1163,42 +1175,59 @@ namespace SAF {
 		adjustments->ResetPose();
 	}
 
-	void AdjustmentManager::LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable)
+	void AdjustmentManager::LoadDefaultAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
 		std::string name(filename ? filename : "");
 
-		UInt64 key = raceId;
-		if (isFemale)
-			key |= 0x100000000;
+		//if single npc target just use the regular adjustment functions
+		if (npc) { 
+			//single targeting is currently disabled
+			
+			//std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(formId);
+			//if (!adjustments) return;
 
-		if (!filename) {
-			defaultAdjustments.erase(key);
+			//if (!filename) {
+			//	adjustments->RemoveDefaultAdjustments();
+			//}
+			//else {
+			//	
+			//}
 		}
-		else {
-			if (enable) {
-				defaultAdjustments[key].insert(name);
-			}
-			else {
-				defaultAdjustments[key].erase(name);
-			}
-		}
+		//target all race/gender
+		else { 
+			UInt64 key = formId;
+			if (isFemale)
+				key |= 0x100000000;
 
-		//recache the adjustment file before loading
-		std::unordered_map<std::string, NiTransform> adjustmentMap;
-
-		if (LoadAdjustmentFile(filename, &adjustmentMap)) {
-			SetAdjustmentFile(filename, adjustmentMap);
-		}
-
-		for (auto kvp : actorAdjustmentCache) {
-			std::shared_ptr<ActorAdjustments> adjustments = kvp.second;
-			if (adjustments->race == raceId && adjustments->isFemale == isFemale) 
-			{
-				adjustments->LoadDefaultAdjustment(name, clear, enable);
-				adjustments->UpdateAllAdjustments();
+			if (clear) {
+				defaultAdjustments.erase(key);
 			}
+
+			if (!name.empty()) {
+				if (enable) {
+					defaultAdjustments[key].insert(name);
+
+					//recache the adjustment file before loading
+					std::unordered_map<std::string, NiTransform> adjustmentMap;
+					if (LoadAdjustmentFile(filename, &adjustmentMap)) {
+						SetAdjustmentFile(filename, adjustmentMap);
+					}
+				}
+				else {
+					defaultAdjustments[key].erase(name);
+				}
+			}
+
+			//load default adjustments
+			ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+				if (adjustments->race == formId && adjustments->isFemale == isFemale)
+				{
+					adjustments->LoadDefaultAdjustment(name, clear, enable);
+					adjustments->UpdateAllAdjustments();
+				}
+			});
 		}
 	}
 
@@ -1206,10 +1235,10 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		for (auto& adjustments : actorAdjustmentCache) {
-			bool removed = adjustments.second->RemoveMod(modName);
-			if (removed) adjustments.second->UpdateAllAdjustments();
-		}
+		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+			bool removed = adjustments->RemoveMod(modName);
+			if (removed) adjustments->UpdateAllAdjustments();
+		});
 	}
 
 	/*
@@ -1259,11 +1288,9 @@ namespace SAF {
 		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> savedAdjustments;
 
 		//collect currently loaded actors
-		for (auto& actorAdjustments : actorAdjustmentCache) {
-			if (actorAdjustments.second->IsValid()) {
-				actorAdjustments.second->GetPersistentAdjustments(&savedAdjustments);
-			}
-		}
+		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+			adjustments->GetPersistentAdjustments(&savedAdjustments);
+		});
 
 		//the persistence store is only updated when an actor is unloaded so only add the missing ones
 		for (auto& persistent : persistentAdjustments) {

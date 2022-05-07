@@ -72,28 +72,6 @@ bool GetSafConfigOption_UInt32(const char* section, const char* key, UInt32* dat
 	return (sscanf_s(data.c_str(), "%u", dataOut) == 1);
 }
 
-std::string CellTest()
-{
-	//Actor* player = *g_player;
-	//if (!player) return "Could not find player";
-	//if (!player->unkF0) return "Player not loaded";
-	//if (!player->parentCell) return "Could not find parent cell";
-	//_DMESSAGE("Actors in cell:");
-	//for (int i = 0; i < player->parentCell->objectList.count; ++i) {
-	//	TESObjectREFR* refr = player->parentCell->objectList[i];
-	//	if (refr) {
-	//		Actor* actor = DYNAMIC_CAST(refr, TESObjectREFR, Actor);
-	//		if (actor) {
-	//			_Log("Form ID: ", actor->formID);
-	//		}
-	//	}
-	//	else {
-	//		_DMESSAGE("refr was null?");
-	//	}
-	//}
-	return std::string();
-}
-
 class SAFEventReciever :
 	public BSTEventSink<TESObjectLoadedEvent>,
 	public BSTEventSink<TESLoadGameEvent>,
@@ -111,13 +89,6 @@ public:
 
 		SAF::g_adjustmentManager.ActorLoaded(actor, evn->loaded);
 
-		//if (evn->loaded) {
-		//	_Log("Object loaded: ", actor->formID);
-		//}
-		//else {
-		//	_Log("Object unloaded: ", actor->formID);
-		//}
-
 		return kEvent_Continue;
 	}
 
@@ -129,8 +100,6 @@ public:
 
 		SAF::g_adjustmentManager.ActorLoaded(actor, true);
 
-		//_Log("Script init for actor: ", actor->formID);
-
 		return kEvent_Continue;
 	}
 
@@ -139,10 +108,6 @@ public:
 		SAF::g_adjustmentManager.GameLoaded();
 		
 		//_DMESSAGE("Game loaded");
-
-		//std::string message = CellTest();
-		//if (message.size() > 0)
-		//	_DMESSAGE(message.c_str());
 
 		return kEvent_Continue;
 	}
@@ -242,7 +207,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafDefaultAdjustmentLoad:
 	{
 		auto data = (SAF::SkeletonMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename, data->clear, data->enable);
+		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename, data->npc, data->clear, data->enable);
 		break;
 	}
 	}

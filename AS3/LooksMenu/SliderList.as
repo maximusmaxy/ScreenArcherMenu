@@ -92,7 +92,6 @@
 
 		public function updateValues():void
 		{
-			if (type == LIST) return;
 			for(var i:int = 0; i < listSize; i++) 
 			{
 				if (entries[i].visible) {

@@ -170,13 +170,15 @@ namespace SAF {
 		UInt32 raceId;
 		bool isFemale;
 		const char* filename;
+		bool npc;
 		bool clear;
 		bool enable;
 
-		SkeletonMessage(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable) :
+		SkeletonMessage(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable) :
 			raceId(raceId),
 			isFemale(isFemale),
 			filename(filename),
+			npc(npc),
 			clear(clear),
 			enable(enable)
 		{}
@@ -403,10 +405,11 @@ namespace SAF {
 		//void NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName);
 		bool LoadPose(UInt32 formId, const char* filename);
 		void ResetPose(UInt32 formId);
-		void LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool clear, bool enable);
+		void LoadDefaultAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
 		
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);
+		void ForEachActorAdjustments(const std::function<void(std::shared_ptr<ActorAdjustments> adjustments)>& functor);
 
 		NodeSets* GetNodeSets(UInt32 race, bool isFemale);
 

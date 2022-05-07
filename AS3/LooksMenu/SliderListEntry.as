@@ -165,6 +165,14 @@
 
 		public function updateValue(position:Boolean)
 		{
+			switch (type)
+			{
+				case LIST:
+				case ADJUSTMENT:
+					return;
+				case DRAG:
+					if (!value.visible) return;
+			}
 			var menuValue;
 			switch (valueType)
 			{

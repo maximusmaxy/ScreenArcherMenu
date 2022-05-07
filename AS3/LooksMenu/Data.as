@@ -835,7 +835,7 @@
 		{
 			try 
 			{
-				sam.LoadPose(menuFiles[id]);
+				sam.LoadPose(POSE_DIRECTORY + "/Exports/" + menuFiles[id] + ".json");
 			}
 			catch (e:Error)
 			{
@@ -845,7 +845,7 @@
 		
 		public static function loadPoseFiles()
 		{
-			if (!getFileListing(POSE_DIRECTORY, "*.json"))
+			if (!getFileListing(POSE_DIRECTORY + "/Exports", "*.json"))
 			{
 				if (Util.debug){
 					for (var y:int = 0; y < 1000; y++) {
@@ -887,17 +887,19 @@
 			}
 		}
 		
-		public static function loadSkeletonAdjustment(id:int, clear:Boolean, enabled:Boolean)
+		public static function loadSkeletonAdjustment(id:int, npc:Boolean, clear:Boolean, enabled:Boolean)
 		{
 			if (clear) {
 				for (var i:int = 0; i < menuValues.length; i++) {
 					menuValues[i] = false;
 				}
 			}
+			
 			menuValues[id] = enabled;
+			
 			try 
 			{
-				sam.LoadSkeletonAdjustment(menuOptions[id], clear, enabled);
+				sam.LoadSkeletonAdjustment(menuOptions[id], npc, clear, enabled);
 			}
 			catch (e:Error)
 			{
@@ -988,26 +990,36 @@
 		public static function popFolder()
 		{
 			folderStack.pop();
-			if (folderStack.length > 0) {
-				try {
-					menuFolder = sam.GetSamPoses(folderStack[folderStack.length - 1]);
-					updateFolderNames();
-				}
-				catch (e:Error) {
-					trace("Failed to get sam poses");
-					menuOptions = [];
-					menuFolder = [];
-				}
+			var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length[-1]];
+			try {
+				menuFolder = sam.GetSamPoses(path);
+				updateFolderNames();
+			}
+			catch (e:Error) {
+				trace("Failed to get sam poses");
+				menuOptions = [];
+				menuFolder = [];
+			}
+		}
+		
+		public static function loadSamPoses()
+		{
+			var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length[-1]];
+			try {
+				menuFolder = sam.GetSamPoses(path);
+				updateFolderNames();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load sam poses");
 			}
 		}
 		
 		public static function selectSamPose(id:int):Boolean
 		{
 			try {
-				var path:String;
-				var root:Boolean = (folderStack.length == 0);
-				if (root || menuFolder[id].folder) {
-					path = root ? POSE_DIRECTORY : menuFolder[id].path;
+				if (menuFolder[id].folder) {
+					var path:String = menuFolder[id].path;
 					menuFolder = sam.GetSamPoses(path);
 					folderStack.push(path);
 					updateFolderNames();
@@ -1020,24 +1032,9 @@
 			}
 			catch (e:Error)
 			{
-				trace("Failed to get sam poses");
-				if (Util.debug) {
-					menuFolder = [
-						{
-							name: "test",
-							folder: true,
-							path: "folder\\pose.json"
-						},
-						{
-							name: "pose",
-							path: "pose.json"
-						}
-					];
-					updateFolderNames();
-				} else {
-					menuOptions = [];
-					menuFolder = [];
-				}
+				trace("Failed to select sam pose");
+				menuOptions = [];
+				menuFolder = [];
 			}
 			return false;
 		}

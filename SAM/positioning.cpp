@@ -58,7 +58,8 @@ void SaveObjectTranslation() {
 
 	selectedNonActor.translation.position = selectedNonActor.refr->pos;
 	selectedNonActor.translation.rotation = selectedNonActor.refr->rot;
-	selectedNonActor.translation.scale = GetScaleInternal(selectedNonActor.refr, 0.0);
+	//selectedNonActor.translation.scale = GetScaleInternal(selectedNonActor.refr, 0.0);
+	selectedNonActor.translation.scale = (UInt16)selectedNonActor.refr->unk104;
 }
 
 void UpdateNonActorRefr() {
@@ -216,38 +217,24 @@ void UpdateRefrTranslation(UInt32 flags, char axis, float& prop, float mod)
 	prop = value;
 }
 
-void UpdateRefrScale(bool isActor, double value)
+void SetRefrScale(double value)
 {
-	if (isActor) {
-		SetScaleInternal(selectedNonActor.refr, value);
-		TesObjectREFRUnk29(selectedNonActor.refr, 1);
-	}
-	else {
-		TranslationParam p1;
-		p1.value = value;
+	TranslationParam p1;
+	p1.value = value;
+	TranslationParam p2;
+	p2.axis = 0;
 
-		UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, p1, p1);
-		UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, p1, p1);
-	}
+	UpdateTranslationInternal(*unkTranslation, 0x113C, selectedNonActor.refr, p1, p2);
+	//selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(value);
+
+	//force scale update
+	SetRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x);
 }
 
 void AdjustObjectPosition(int type, int scalar, int step) {
 	if (!selectedNonActor.refr) return;
-	
+
 	float mod = step * 0.01;
-	bool isActor = selectedNonActor.refr->formType == kFormType_ACHR;
-
-	//handle scale seperately
-	if (type == kAdjustScale) {
-		float scale = GetScaleInternal(selectedNonActor.refr, 0.0) + scalar * 0.01 * mod;
-		if (scale < 0.01)
-			scale = 0.01;
-		else if (scale > 10.0)
-			scale = 10.0;
-
-		UpdateRefrScale(isActor, scale);
-		return;
-	}
 
 	switch (type) {
 	case kAdjustPositionX:
@@ -260,19 +247,27 @@ void AdjustObjectPosition(int type, int scalar, int step) {
 		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, scalar * 0.1 * mod);
 		break;
 	case kAdjustRotationX:
-		if (isActor) return; //Use pose adjustments instead
+		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
 		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, scalar * 0.01 * mod);
 		break;
 	case kAdjustRotationY:
-		if (isActor) return; //Use pose adjustments instead
+		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
 		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, scalar * 0.01 * mod);
 		break;
 	case kAdjustRotationZ:
 		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, scalar * 0.01 * mod);
 		break;
+	case kAdjustScale:
+		float scale = (UInt16)selectedNonActor.refr->unk104 * 0.01 + scalar * 0.01 * mod;
+		if (scale < 0.01) {
+			scale = 0.01;
+		}
+		else if (scale > 10.0) {
+			scale = 10.0;
+		}
+		SetRefrScale(scale);
+		return;
 	}
-
-	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectPosition() {
@@ -283,8 +278,6 @@ void ResetObjectPosition() {
 	SetRefrTranslation(0x1007, 0x6A, selectedNonActor.translation.position.z);
 	
 	selectedNonActor.refr->pos = selectedNonActor.translation.position;
-
-	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectRotation() {
@@ -305,19 +298,23 @@ void ResetObjectRotation() {
 		selectedNonActor.refr->rot.z = selectedNonActor.translation.rotation.z;
 	}
 
-	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
+	//force update
+	SetRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectScale() {
 	if (!selectedNonActor.refr) return;
 
-	UpdateRefrScale(selectedNonActor.refr->formType == kFormType_ACHR, selectedNonActor.translation.scale);
-
-	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
+	SetRefrScale(selectedNonActor.translation.scale * 0.01);
+	selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(selectedNonActor.translation.scale);
 }
 
 void SetDefaultObjectTranslation() {
 	if (!selectedNonActor.refr) return;
+
+	//sca
+	SetRefrScale(selectedNonActor.translation.scale * 0.01);
+	selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(selectedNonActor.translation.scale);
 
 	//pos
 	SetRefrTranslation(0x1007, 0x58, selectedNonActor.translation.position.x);
@@ -341,27 +338,7 @@ void SetDefaultObjectTranslation() {
 	else {
 		selectedNonActor.refr->rot.z = selectedNonActor.translation.rotation.z;
 	}
-	
-	//sca
-	UpdateRefrScale(selectedNonActor.refr->formType == kFormType_ACHR, selectedNonActor.translation.scale);
-	
-	selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
-
-	//UpdateRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
-
-//void SetDefaultObjectTranslation() {
-//	if (!selectedNonActor.refr) return;
-//
-//	selectedNonActor.refr->rot = NiPoint3(0.0f, 0.0f, 0.0f);
-//	SetScaleInternal(selectedNonActor.refr, 1.0f);
-//
-//	TranslationValue zero { 0.0f };
-//
-//	//call twice to prevent vibrating bug
-//	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
-//	UpdateTranslationInternal(*unkTranslation, 0x1007, selectedNonActor.refr, zero);
-//}
 
 void SelectPositioningMenuOption(UInt32 option) {
 	switch (option)
@@ -391,6 +368,5 @@ void GetPositioningGFx(GFxMovieRoot* root, GFxValue* result) {
 	result->PushBack(&GFxValue(rot.y));
 	result->PushBack(&GFxValue(rot.z));
 
-	float scale = GetScaleInternal(selectedNonActor.refr, 0.0);
-	result->PushBack(&GFxValue(scale));
+	result->PushBack(&GFxValue((UInt16)selectedNonActor.refr->unk104 * 0.01));
 }
