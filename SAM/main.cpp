@@ -31,56 +31,52 @@ F4SEScaleformInterface* g_scaleform = nullptr;
 F4SEMessagingInterface* g_messaging = nullptr;
 F4SEPapyrusInterface* g_papyrus = nullptr;
 
-GFxMovieRoot* samRoot = nullptr;
-
 class SamInputHandler : public BSInputEventUser
 {
 public:
-	SamInputHandler() : BSInputEventUser(true) { }
+	SamInputHandler() : BSInputEventUser(false) { }
 
 	virtual void OnButtonEvent(ButtonEvent * inputEvent)
 	{
-		UInt32	keyCode;
-		UInt32	deviceType = inputEvent->deviceType;
-		UInt32	keyMask = inputEvent->keyMask;
+		BSFixedString samMenu("ScreenArcherMenu");
 
-		// Mouse
-		if (deviceType == InputEvent::kDeviceType_Mouse)
-			keyCode = InputMap::kMacro_MouseButtonOffset + keyMask; 
-		// Gamepad
-		else if (deviceType == InputEvent::kDeviceType_Gamepad)
-			keyCode = InputMap::GamepadMaskToKeycode(keyMask);
-		// Keyboard
-		else
-			keyCode = keyMask;
+		IMenu* menu = (*g_ui)->GetMenu(samMenu);
+		if (menu) {
 
-		// Valid scancode?
-		if (keyCode >= InputMap::kMaxMacros)
-			return;
+			UInt32	keyCode;
+			UInt32	deviceType = inputEvent->deviceType;
+			UInt32	keyMask = inputEvent->keyMask;
 
-		//BSFixedString	control	= *inputEvent->GetControlID();
-		float timer	= inputEvent->timer;
+			// Mouse
+			if (deviceType == InputEvent::kDeviceType_Mouse)
+				keyCode = InputMap::kMacro_MouseButtonOffset + keyMask;
+			// Gamepad
+			else if (deviceType == InputEvent::kDeviceType_Gamepad)
+				keyCode = InputMap::GamepadMaskToKeycode(keyMask);
+			// Keyboard
+			else
+				keyCode = keyMask;
 
-		if (inputEvent->isDown == 1.0f && timer == 0.0f) {
-			GFxValue arg(keyCode);
-			samRoot->Invoke("root1.Menu_mc.processKeyDown", nullptr, &arg, 1);
-		} else if (inputEvent->isDown == 0.0f && timer != 0.0f) {
-			GFxValue arg(keyCode);
-			samRoot->Invoke("root1.Menu_mc.processKeyUp", nullptr, &arg, 1);
+			// Valid scancode?
+			if (keyCode >= InputMap::kMaxMacros)
+				return;
+
+			//BSFixedString	control	= *inputEvent->GetControlID();
+			float timer = inputEvent->timer;
+
+			if (inputEvent->isDown == 1.0f && timer == 0.0f) {
+				GFxValue arg(keyCode);
+				menu->movie->movieRoot->Invoke("root1.Menu_mc.processKeyDown", nullptr, &arg, 1);
+			}
+			else if (inputEvent->isDown == 0.0f && timer != 0.0f) {
+				GFxValue arg(keyCode);
+				menu->movie->movieRoot->Invoke("root1.Menu_mc.processKeyUp", nullptr, &arg, 1);
+			}
 		}
 	}
 };
 
 SamInputHandler samInputHandler;
-
-void SetInput(bool enable) {
-	BSFixedString samMenu("ScreenArcherMenu");
-	samInputHandler.enabled = enable;
-	//_LogCat("input ", enable ? "enabled" : "disabled");
-	if (enable) {
-		samRoot = (*g_ui)->GetMenu(samMenu)->movie->movieRoot;
-	}
-}
 
 class SamOpenCloseHandler : public BSTEventSink<MenuOpenCloseEvent>
 {
@@ -94,27 +90,26 @@ public:
 
 		if (evn->menuName == samMenu) {
 			if (evn->isOpen) {
-				SetInput(true);
-				tArray<BSInputEventUser*>* inputEvents = &((*g_menuControls)->inputEvents);
+				samInputHandler.enabled = true;
 				BSInputEventUser* inputHandler = &samInputHandler;
-				int idx = inputEvents->GetItemIndex(inputHandler);
+				int idx = (*g_menuControls)->inputEvents.GetItemIndex(inputHandler);
 				if (idx == -1) {
 					_DMESSAGE("ScreenArcherMenu Registered for input");
-					inputEvents->Push(inputHandler);
+					(*g_menuControls)->inputEvents.Push(inputHandler);
 				}
 				OnMenuOpen();
 			} else {
 				OnMenuClose();
-				SetInput(false);
+				samInputHandler.enabled = false;
 			}
 		} else {
 			if ((*g_ui)->IsMenuOpen(samMenu)) {
 				if (evn->menuName == consoleMenu) {
 					if (evn->isOpen) {
-						SetInput(false);
+						samInputHandler.enabled = false;
 					} else {
 						OnConsoleRefUpdate();
-						SetInput(true);
+						samInputHandler.enabled = true;
 					}
 				}
 			}
@@ -148,7 +143,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 			LoadMenuFiles();
 			break;
 		case SAF::kSafAdjustmentActor:
-			safMessageDispatcher.actorAdjustments = (*(std::shared_ptr<SAF::ActorAdjustments>*)msg->data);
+			safMessageDispatcher.actorAdjustments = *(std::shared_ptr<SAF::ActorAdjustments>*)msg->data;
 			break;
 		case SAF::kSafResult:
 			safMessageDispatcher.result = *(bool*)msg->data;

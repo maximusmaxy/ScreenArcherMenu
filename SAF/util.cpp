@@ -3,6 +3,8 @@
 #include "f4se/GameData.h"
 #include "conversions.h"
 
+#include <algorithm>
+
 void _Log(std::string msg, UInt64 num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
 }
@@ -53,4 +55,10 @@ bool TransormIsDefault(NiTransform& transform) {
 
 float Modulo(float a, float b) {
 	return fmodf((fmodf(a, b) + b), b);
+}
+
+std::string toLower(std::string& str) {
+	std::string result(str.size(), '\0');
+	std::transform(str.begin(), str.end(), result.begin(), std::tolower);
+	return result;
 }

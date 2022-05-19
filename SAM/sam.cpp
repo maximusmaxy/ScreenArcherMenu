@@ -35,6 +35,8 @@ MenuCache groupsMenuCache;
 
 SavedMenuData saveData;
 
+bool menuOpened = false;
+
 bool NaturalSort::operator() (const std::string& a, const std::string& b) const 
 {
 	return strnatcasecmp(a.c_str(), b.c_str()) < 0;
@@ -161,6 +163,13 @@ void OnMenuOpen() {
 	static BSFixedString samMenu("ScreenArcherMenu");
 	static BSFixedString photoMenu("PhotoMenu");
 
+	if (menuOpened) {
+		_DMESSAGE("Tried to open an already open menu");
+		return;
+	}
+
+	menuOpened = true;
+
 	IMenu* menu = (*g_ui)->GetMenu(samMenu);
 	if (!menu) {
 		_DMESSAGE("Could not find screen archer menu");
@@ -195,9 +204,16 @@ void OnMenuClose() {
 
 	static BSFixedString photoMenu("PhotoMenu");
 
+	if (!menuOpened) {
+		_DMESSAGE("Tried to close an unopened menu");
+		return;
+	}
+
 	selected.Clear();
 
 	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
+
+	menuOpened = false;
 }
 
 void OnConsoleRefUpdate() {
@@ -381,22 +397,15 @@ std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)
 
 std::unordered_map<std::string, UInt32> menuHeaderMap = {
 	{"race", kMenuHeaderRace},
-	{"Race", kMenuHeaderRace},
 	{"mod", kMenuHeaderMod},
-	{"Mod", kMenuHeaderMod},
 	{"sex", kMenuHeaderSex},
-	{"Sex", kMenuHeaderSex},
 	{"type", kMenuHeaderType},
-	{"Type", kMenuHeaderType}
 };
 
 std::unordered_map<std::string, UInt32> menuTypeMap = {
 	{"pose", kMenuTypePose},
-	{"Pose", kMenuTypePose},
 	{"morphs", kMenuTypeMorphs},
-	{"Morphs", kMenuTypeMorphs},
 	{"groups", kMenuTypeGroups},
-	{"Groups", kMenuTypeGroups}
 };
 
 bool ParseMenuFile(std::string path, IFileStream& file) {
@@ -410,8 +419,9 @@ bool ParseMenuFile(std::string path, IFileStream& file) {
 	for (int i = 0; i < 4; ++i) {
 		file.ReadString(buf, 512, '\n', '\r');
 		bool matched = std::regex_search(buf, match, tabSeperatedRegex);
-		if (matched && match[2].str().size() && menuHeaderMap.count(match[1].str())) {
-			header[menuHeaderMap[match[1].str()]] = match[2].str();
+		std::string lower = toLower(match[1].str());
+		if (matched && match[2].str().size() && menuHeaderMap.count(lower)) {
+			header[menuHeaderMap[lower]] = match[2].str();
 		}
 		else {
 			_LogCat("Failed to read header ", path);

@@ -59,8 +59,8 @@
 		    "",
 			"$SAM_ConsoleError", 
 			"$SAM_SkeletonError",
-			"$SAM_EyeError",
-			"$SAM_MorphsError"
+			"$SAM_MorphsError",
+			"$SAM_EyeError"
 		];
 		
 		public static const TRANSFORM_NAMES:Vector.<String> = new <String>[

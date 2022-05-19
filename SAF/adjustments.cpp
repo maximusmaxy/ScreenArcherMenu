@@ -153,24 +153,59 @@ namespace SAF {
 		map.clear();
 	}
 
-	bool ActorAdjustments::IsValid()
+	ActorAdjustmentState ActorAdjustments::IsValid()
 	{
 		TESForm* form = LookupFormByID(formId);
-		if (!form) return false;
+		if (!form) 
+			return kActorInvalid;
 
-		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
-		if (!actor) return false;
+		Actor* formActor = DYNAMIC_CAST(form, TESForm, Actor);
+		if (!formActor)
+			return kActorInvalid;
 
 		//loaded data
-		if (!actor->unkF0) return false;
+		if (!formActor->unkF0)
+			return kActorInvalid;
 
 		//deleted
-		if (actor->flags & TESForm::kFlag_IsDeleted) return false;
+		if (formActor->flags & TESForm::kFlag_IsDeleted)
+			return kActorInvalid;
 
-		return true;
+		auto result = kActorValid;
+
+		//updated actor
+		if (formActor != actor) {
+			result = kActorUpdated;
+		}
+
+		TESNPC* formNpc = DYNAMIC_CAST(formActor->baseForm, TESForm, TESNPC);
+		if (!formNpc)
+			return kActorInvalid;
+
+		//updated npc
+		if (formNpc != npc) {
+			result = kActorUpdated;
+		}
+
+		//updated gender
+		bool newFemale = (CALL_MEMBER_FN(formNpc, GetSex)() == 1 ? true : false);
+		if (isFemale != newFemale) {
+			result = kActorUpdated;
+		}
+
+		//updated race
+		if (!npc->race.race)
+			return kActorInvalid;
+
+		UInt32 newRace = npc->race.race->formID;
+		if (race != newRace) {
+			result = kActorUpdated;
+		}
+
+		return result;
 	}
 
-	bool ActorAdjustments::Update()
+	void ActorAdjustments::Clear()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
@@ -178,21 +213,6 @@ namespace SAF {
 		list.clear();
 		removedAdjustments.clear();
 		poseHandle = 0;
-		root = nullptr;
-
-		if (!IsValid()) return false;
-
-		root = actor->GetActorRootNode(false);
-		
-		if (!root) return false;
-
-		isFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
-
-		if (!npc->race.race) return false;
-
-		race = npc->race.race->formID;
-
-		return true;
 	}
 
 	void ActorAdjustments::UpdateAdjustments(std::string name)
@@ -713,15 +733,22 @@ namespace SAF {
 
 			std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 			
-			if (adjustments->IsValid()) {
+			auto valid = adjustments->IsValid();
+
+			if (valid == kActorValid) {
 				return adjustments;
+			} else if (valid == kActorUpdated) {
+				//attempt update
+				if (!UpdateActorCache(adjustments)) {
+					return nullptr;
+				}
 			}
-			else {
+			else if (valid == kActorInvalid) {
 				RemoveNodeMap(adjustments->baseRoot);
-				actorAdjustmentCache.erase(formId);
+				actorAdjustmentCache.erase(adjustments->formId);
 			}
 		}
-			
+		
 		return nullptr;
 	}
 
@@ -743,9 +770,8 @@ namespace SAF {
 
 			adjustments = std::make_shared<ActorAdjustments>(actor, npc);
 
-			actorAdjustmentCache[adjustments->formId] = adjustments;
-
-			UpdateActor(adjustments);
+			if (!UpdateActorCache(adjustments))
+				return nullptr;
 		}
 
 		return adjustments;
@@ -755,7 +781,7 @@ namespace SAF {
 	{
 		for (auto& kvp : actorAdjustmentCache)
 		{
-			if (kvp.second->IsValid()) {
+			if (kvp.second->IsValid() == kActorValid) {
 				functor(kvp.second);
 			}
 		}
@@ -793,16 +819,17 @@ namespace SAF {
 		TESForm* form = LookupFormByID(formId);
 
 		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
-		if (!actor) return nullptr;
+		if (!actor) 
+			return nullptr;
 
 		TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
-		if (!npc) return nullptr;
+		if (!npc) 
+			return nullptr;
 
 		std::shared_ptr<ActorAdjustments> adjustments = std::make_shared<ActorAdjustments>(actor, npc);
-
-		actorAdjustmentCache[adjustments->formId] = adjustments;
-
-		UpdateActor(adjustments);
+		
+		if (!UpdateActorCache(adjustments))
+			return nullptr;
 
 		return adjustments;
 	}
@@ -868,15 +895,14 @@ namespace SAF {
 
 		if (actorAdjustmentCache.count(actor->formID))
 			adjustments = actorAdjustmentCache[actor->formID];
-
+		
 		if (!loaded) {
 			if (adjustments) {
 				if (adjustments->actor && adjustments->actor->flags & TESForm::kFlag_Persistent) {
 					StorePersistentAdjustments(adjustments);
 				}
-
 				RemoveNodeMap(adjustments->baseRoot);
-				actorAdjustmentCache.erase(actor->formID);
+				actorAdjustmentCache.erase(adjustments->formId);
 			}
 			return;
 		}
@@ -890,20 +916,96 @@ namespace SAF {
 			}
 
 			adjustments = std::make_shared<ActorAdjustments>(actor, npc);
-			actorAdjustmentCache[adjustments->formId] = adjustments;
 		}
 
-		UpdateActor(adjustments);
+		UpdateActorCache(adjustments);
 	}
 
-	void AdjustmentManager::UpdateActor(std::shared_ptr<ActorAdjustments> adjustments) {
-		if (!adjustments->Update()) return;
+	bool AdjustmentManager::UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments) {
+		if (UpdateActor(adjustments)) {
+			if (!actorAdjustmentCache.count(adjustments->formId)) {
+				actorAdjustmentCache.emplace(adjustments->formId, adjustments);
+			}
+		}
+		else {
+			if (actorAdjustmentCache.count(adjustments->formId)) {
+				actorAdjustmentCache.erase(adjustments->formId);
+			}
+			return false;
+		}
+		
+		return true;
+	}
+
+	bool IsRootValid(NiNode* root, NodeSets* set) {
+		if (!root)
+			return false;
+
+		NiAVObject* rootNode = root->GetObjectByName(&set->rootName);
+
+		if (!rootNode)
+			return false;
+
+		static BSFixedString safVersion("SAF_Version");
+
+		if (!rootNode->HasExtraData(safVersion))
+			return false;
+
+		return true;
+	}
+
+	bool AdjustmentManager::UpdateActor(std::shared_ptr<ActorAdjustments> adjustments) {
+		adjustments->Clear();
+		if (adjustments->baseRoot)
+			RemoveNodeMap(adjustments->baseRoot);
+
+		auto valid = adjustments->IsValid();
+		if (!valid)
+			return false;
+
+		adjustments->root = adjustments->actor->GetActorRootNode(false);
+		if (!adjustments->root)
+			return false;
+
+		if (valid == kActorUpdated) {
+			TESForm* actorForm = LookupFormByID(adjustments->formId);
+			if (!actorForm)
+				return false;
+
+			adjustments->actor = DYNAMIC_CAST(actorForm, TESForm, Actor);
+			if (!adjustments->actor)
+				return false;
+
+			adjustments->npc = DYNAMIC_CAST(adjustments->actor->baseForm, TESForm, TESNPC);
+			if (!adjustments->npc)
+				return false;
+
+			adjustments->isFemale = (CALL_MEMBER_FN(adjustments->npc, GetSex)() == 1 ? true : false);
+
+			if (!adjustments->npc->race.race)
+				return false;
+			adjustments->race = adjustments->npc->race.race->formID;
+		}
 
 		adjustments->nodeSets = GetNodeSets(adjustments->race, adjustments->isFemale);
-		adjustments->nodeMap = CreateNodeMap(adjustments->root, adjustments->nodeSets);
-		adjustments->nodeMapBase = GetCachedNodeMap(adjustments, adjustments->nodeSets);
+		if (!adjustments->nodeSets) 
+			return false;
 
-		adjustments->CreateAdjustment("NewAdjustment");
+		if (!IsRootValid(adjustments->root, adjustments->nodeSets)) 
+			return false;
+
+		adjustments->nodeMap = CreateNodeMap(adjustments->root, adjustments->nodeSets);
+
+		adjustments->baseRoot = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
+
+		if (!IsRootValid(adjustments->baseRoot, adjustments->nodeSets))
+			return false;
+
+		adjustments->nodeMapBase = GetCachedNodeMap(adjustments->baseRoot, adjustments->nodeSets);
+		if (!adjustments->nodeMapBase)
+			return false;
+
+		adjustments->CreateAdjustment("New Adjustment");
 
 		AdjustmentUpdateData data;
 		data.defaults = GetDefaultAdjustments(adjustments->race, adjustments->isFemale);
@@ -917,6 +1019,8 @@ namespace SAF {
 		adjustments->UpdatePersistentAdjustments(data);
 
 		adjustments->UpdateAllAdjustments();
+
+		return true;
 	}
 
 	RelocAddr<UInt64> bsFlattenedBoneTreeVFTable(0x2E14E38);
@@ -933,7 +1037,8 @@ namespace SAF {
 			if (key >= 0) {
 				char unk = 1;
 				NiAVObject* node = GetBoneTreeNode(tree, key, &unk);
-				if (node) return node;
+				if (node) 
+					return node;
 			}
 		}
 
@@ -942,16 +1047,6 @@ namespace SAF {
 
 	NodeMap AdjustmentManager::CreateNodeMap(NiNode* root, NodeSets* set) {
 		NodeMap boneMap;
-
-		if (!root || !set) return boneMap;
-
-		NiAVObject* rootNode = root->GetObjectByName(&set->rootName);
-
-		if (!rootNode) return boneMap;
-
-		static BSFixedString safVersion("SAF_Version");
-
-		if (!rootNode->HasExtraData(safVersion)) return boneMap;
 
 		std::vector<NiAVObject*> boneTrees;
 		std::unordered_set<std::string> remainingNodes(set->allOrBase);
@@ -998,32 +1093,20 @@ namespace SAF {
 		return boneMap;
 	}
 
-	NodeMap* AdjustmentManager::GetCachedNodeMap(std::shared_ptr<ActorAdjustments> adjustments, NodeSets* set)
+	NodeMap* AdjustmentManager::GetCachedNodeMap(NiNode* root, NodeSets* set)
 	{
 		std::lock_guard<std::shared_mutex> lock(nodeMapMutex);
 
-		NiNode* oldRoot = adjustments->baseRoot;
-		adjustments->baseRoot = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
-		bool updated = (oldRoot != adjustments->baseRoot);
+		if (nodeMapCache.count(root)) {
+			//update ref count
+			nodeMapCache[root].refs++;
 
-		if (updated) {
-			//deref old map and erase
-			if (nodeMapCache.count(oldRoot)) {
-				if (--nodeMapCache[oldRoot].refs <= 0)
-					nodeMapCache.erase(oldRoot);
-			}
+			return &nodeMapCache[root].map;
 		}
 
-		if (nodeMapCache.count(adjustments->baseRoot)) {
-			//update ref count if changed
-			if (updated)
-				nodeMapCache[adjustments->baseRoot].refs++;
+		nodeMapCache[root] = NodeMapRef(CreateNodeMap(root, set));
 
-			return &nodeMapCache[adjustments->baseRoot].map;
-		}
-
-		nodeMapCache[adjustments->baseRoot] = NodeMapRef(CreateNodeMap(adjustments->baseRoot, set));
-		return &nodeMapCache[adjustments->baseRoot].map;
+		return &nodeMapCache[root].map;
 	}
 
 	void AdjustmentManager::RemoveNodeMap(NiNode* root) {

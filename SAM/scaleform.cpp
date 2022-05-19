@@ -42,8 +42,8 @@ void ClearState::Invoke(Args* args)
 enum {
 	kSamTargetError = 1,
 	kSamSkeletonError,
+	kSamMorphsError,
 	kSamEyesError,
-	kSamMorphsError
 };
 
 void CheckError::Invoke(Args* args)
@@ -53,8 +53,8 @@ void CheckError::Invoke(Args* args)
 	switch (args->args[0].GetInt()) {
 		case kSamTargetError: args->result->SetBool(selected.refr); break;
 		case kSamSkeletonError: args->result->SetBool(CheckSelectedSkeleton()); break;
-		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
 		case kSamMorphsError: args->result->SetBool(GetMorphPointer()); break;
+		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
 	}
 }
 

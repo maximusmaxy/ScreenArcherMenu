@@ -288,6 +288,12 @@ namespace SAF {
 		PersistentAdjustment GetPersistence();
 	};
 
+	enum ActorAdjustmentState {
+		kActorInvalid = 0,
+		kActorValid,
+		kActorUpdated,
+	};
+
 	class ActorAdjustments
 	{
 	private:
@@ -324,7 +330,7 @@ namespace SAF {
 			formId(actor->formID)
 		{}
 
-		bool IsValid();
+		ActorAdjustmentState IsValid();
 
 		std::shared_ptr<Adjustment> CreateAdjustment(std::string name);
 		UInt32 CreateAdjustment(std::string name, std::string esp, bool persistent, bool hidden);
@@ -335,7 +341,7 @@ namespace SAF {
 		bool HasAdjustment(std::string name);
 		std::unordered_set<std::string> GetAdjustmentNames();
 
-		bool Update();
+		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
 		void UpdateAdjustments(std::string name);
 		void UpdateAllAdjustments();
@@ -393,7 +399,8 @@ namespace SAF {
 		void LoadFiles();
 		void GameLoaded();
 		void ActorLoaded(Actor* actor, bool loaded);
-		void UpdateActor(std::shared_ptr<ActorAdjustments> adjustments);
+		bool UpdateActor(std::shared_ptr<ActorAdjustments> adjustments);
+		bool UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments);
 
 		void CreateNewAdjustment(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden);
 		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
@@ -407,6 +414,7 @@ namespace SAF {
 		void ResetPose(UInt32 formId);
 		void LoadDefaultAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
 		
+		
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);
 		void ForEachActorAdjustments(const std::function<void(std::shared_ptr<ActorAdjustments> adjustments)>& functor);
@@ -419,7 +427,7 @@ namespace SAF {
 		std::unordered_set<std::string>* GetDefaultAdjustments(UInt32 race, bool isFemale);
 		
 		NodeMap CreateNodeMap(NiNode* root, NodeSets* set);
-		NodeMap* GetCachedNodeMap(std::shared_ptr<ActorAdjustments> actorAdjustments, NodeSets* nodeSet);
+		NodeMap* GetCachedNodeMap(NiNode* root, NodeSets* set);
 		void RemoveNodeMap(NiNode* root);
 
 		void RemoveMod(BSFixedString espName);
