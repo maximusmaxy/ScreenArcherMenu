@@ -120,34 +120,20 @@ public:
 
 SamOpenCloseHandler openCloseHandler;
 
-void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
-{
-	switch(msg->type)
-	{
-		case F4SEMessagingInterface::kMessage_GameDataReady:
-		{
-			if (msg->data) {
-				(*g_ui)->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
-			}
-		}
-		break;
-	}
-}
-
 void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
 	{
-		case SAF::kSafAdjustmentManager:
-			safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
-			LoadMenuFiles();
-			break;
-		case SAF::kSafAdjustmentActor:
-			safMessageDispatcher.actorAdjustments = *(std::shared_ptr<SAF::ActorAdjustments>*)msg->data;
-			break;
-		case SAF::kSafResult:
-			safMessageDispatcher.result = *(bool*)msg->data;
-			break;
+	case SAF::kSafAdjustmentManager:
+		safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
+		LoadMenuFiles();
+		break;
+	case SAF::kSafAdjustmentActor:
+		safMessageDispatcher.actorAdjustments = *(std::shared_ptr<SAF::ActorAdjustments>*)msg->data;
+		break;
+	case SAF::kSafResult:
+		safMessageDispatcher.result = *(bool*)msg->data;
+		break;
 	}
 }
 
@@ -207,6 +193,37 @@ void SafLoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafDefaultAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
 }
 
+void RegisterSafMessageDispatcher()
+{
+	g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
+	safMessageDispatcher.createActorAdjustments = SafCreateActorAdjustments;
+	safMessageDispatcher.createAdjustment = SafCreateAdjustment;
+	safMessageDispatcher.saveAdjustment = SafSaveAdjustment;
+	safMessageDispatcher.loadAdjustment = SafLoadAdjustment;
+	safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;
+	safMessageDispatcher.resetAdjustment = SafResetAdjustment;
+	safMessageDispatcher.transformAdjustment = SafTransformAdjustment;
+	safMessageDispatcher.negateAdjustments = SafNegateAdjustmentGroup;
+	safMessageDispatcher.loadPose = SafLoadPose;
+	safMessageDispatcher.resetPose = SafResetPose;
+	safMessageDispatcher.loadDefaultAdjustment = SafLoadDefaultAdjustment;
+}
+
+void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
+{
+	switch (msg->type)
+	{
+	case F4SEMessagingInterface::kMessage_PostLoad:
+		if (g_messaging) 
+			RegisterSafMessageDispatcher();
+		break;
+	case F4SEMessagingInterface::kMessage_GameDataReady:
+		if (msg->data) 
+			(*g_ui)->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
+		break;
+	}
+}
+
 extern "C"
 {
 
@@ -260,21 +277,8 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 	if (g_scaleform) 
 		g_scaleform->Register("ScreenArcherMenu", RegisterScaleform);
 
-	if (g_messaging) {
+	if (g_messaging)
 		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
-		g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
-		safMessageDispatcher.createActorAdjustments = SafCreateActorAdjustments;
-		safMessageDispatcher.createAdjustment = SafCreateAdjustment;
-		safMessageDispatcher.saveAdjustment = SafSaveAdjustment;
-		safMessageDispatcher.loadAdjustment = SafLoadAdjustment;
-		safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;
-		safMessageDispatcher.resetAdjustment = SafResetAdjustment;
-		safMessageDispatcher.transformAdjustment = SafTransformAdjustment;
-		safMessageDispatcher.negateAdjustments = SafNegateAdjustmentGroup;
-		safMessageDispatcher.loadPose = SafLoadPose;
-		safMessageDispatcher.resetPose = SafResetPose;
-		safMessageDispatcher.loadDefaultAdjustment = SafLoadDefaultAdjustment;
-	}
 
 	samObScriptCommit();
 		

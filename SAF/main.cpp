@@ -115,28 +115,6 @@ public:
 
 SAFEventReciever safEventReciever;
 
-void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
-{
-	switch(msg->type)
-	{
-		case F4SEMessagingInterface::kMessage_GameLoaded:
-		{
-			GetEventDispatcher<TESObjectLoadedEvent>()->AddEventSink(&safEventReciever);
-			GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&safEventReciever);
-			//GetEventDispatcher<TESInitScriptEvent>()->AddEventSink(&safEventReciever);
-		}
-		break;
-		case F4SEMessagingInterface::kMessage_GameDataReady:
-		{
-			SAF::g_adjustmentManager.overridePostfix = GetSafConfigOption("skeleton", "override");
-			SAF::g_adjustmentManager.offsetPostfix = GetSafConfigOption("skeleton", "offset");
-			SAF::g_adjustmentManager.LoadFiles();
-			g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
-		}
-		break;
-	}
-}
-
 void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
@@ -213,6 +191,28 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	}
 }
 
+void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
+{
+	switch (msg->type)
+	{
+	case F4SEMessagingInterface::kMessage_PostLoad:
+		if (g_messaging)
+			g_messaging->RegisterListener(g_pluginHandle, nullptr, SAFMessageHandler);
+		break;
+	case F4SEMessagingInterface::kMessage_GameLoaded:
+		GetEventDispatcher<TESObjectLoadedEvent>()->AddEventSink(&safEventReciever);
+		GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&safEventReciever);
+		//GetEventDispatcher<TESInitScriptEvent>()->AddEventSink(&safEventReciever);
+		break;
+	case F4SEMessagingInterface::kMessage_GameDataReady:
+		SAF::g_adjustmentManager.overridePostfix = GetSafConfigOption("skeleton", "override");
+		SAF::g_adjustmentManager.offsetPostfix = GetSafConfigOption("skeleton", "offset");
+		SAF::g_adjustmentManager.LoadFiles();
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
+		break;
+	}
+}
+
 
 void SAFSaveCallback(const F4SESerializationInterface* ifc) {
 	//_DMESSAGE("Serializing save");
@@ -277,10 +277,8 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 
 bool F4SEPlugin_Load(const F4SEInterface* f4se)
 {
-	if (g_messaging) {
+	if (g_messaging)
 		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
-		g_messaging->RegisterListener(g_pluginHandle, nullptr, SAFMessageHandler);
-	}
 	
 	if (g_papyrus)
 		g_papyrus->Register(SAF::RegisterPapyrus);
