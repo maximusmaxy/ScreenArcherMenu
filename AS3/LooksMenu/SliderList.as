@@ -6,6 +6,9 @@
 	import Shared.AS3.*;
 	import flash.text.*;
 	import flash.sampler.Sample;
+	import flash.utils.*;
+	import Shared.EntryEvent;
+	import utils.Translator;
 	
 	public class SliderList extends BSUIComponent
 	{
@@ -15,6 +18,7 @@
 		
 		public var entrySize:int = 57;
 		public var listSize:int = 10;
+		public var length:int;
 		public var stepSize:Number;
 		public var listPosition: int = 0;
 		
@@ -28,9 +32,25 @@
 		public static const EYES = 4;
 		public static const ADJUSTMENT = 5;
 		public static const ADJUSTMENTEDIT = 6;
-		public static const POSITIONING = 7;
+		public static const ADJUSTMENTORDER = 7;
+		public static const POSITIONING = 8;
+		public static const FOLDER = 9;
 		
+		public static const LEFT = 1;
+		public static const UP = 2;
+		public static const RIGHT = 3;
+		public static const DOWN = 4;
+		public static const A = 5;
+
 		public var type:int;
+		
+		public var focused:Boolean = false;
+		public var selectedX:int = 0;
+		public var selectedY:int = -1;
+		
+		public var storeX:int = 0;
+		public var storeY:int = -1;
+		public var storePos:int = 0;
 		
 		public function SliderList() {
 			super();
@@ -42,34 +62,282 @@
 			listScroll.addEventListener(Option_Scrollbar.VALUE_CHANGE, onValueChange);
 			updateScroll(Data.MAIN_MENU.length, LIST_MAX);
 			
-			this.addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
+			addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
+			addEventListener(EntryEvent.SELECTED, onEntry);
 		}
 
 		public function addSliders() {
 			var entry:SliderListEntry;
-			for(var i:int = 0; i < LIST_MAX; i++) 
+			for(var i:int = 0; i < LIST_MAX; i++)
 			{
 				entry = new SliderListEntry();
+				entry.checkbox.checkId = 0;
+				entry.checkbox2.checkId = 1;
 				this.addChild(entry);
-				entries[i] = entry;
+				entries[i] = entry;			
 			}
 		}
 
 		public function onValueChange(event:flash.events.Event)
 		{
+			if (focused) {
+				unselect();
+				selectedY = -1;
+			}
 			var newPosition:int = int(event.target.value / stepSize);
 			newPosition = Math.max(0,Math.min(entrySize - listSize, newPosition));
 			updatePosition(newPosition);
 		}
 		
-		public function onMouseWheel(event:flash.events.Event)
+		public function scrollList(delta:int)
 		{
 			if (listScroll.visible) {
-				var newPosition:int = listPosition - int(event.delta);
+				var newPosition:int = listPosition - delta;
 				newPosition = Math.max(0,Math.min(entrySize - listSize, newPosition));
+				var dif:int = newPosition - listPosition;
 				if (updatePosition(newPosition)) {
 					listScroll.position = stepSize * newPosition;
+					selectedY += dif;
+					return true;
 				}
+			}
+			return;
+		}
+
+		public function onMouseWheel(event:MouseEvent)
+		{
+//			var value:int = int(event.delta);
+//			if (scrollList(value) && selectedY != -1) {
+//				selectedY -= value;
+//			}
+			scrollList(int(event.delta));
+		}
+		
+		public function confirm()
+		{
+			var entry:SliderListEntry = getEntry(selectedY);
+			if (entry) {
+				switch (selectedX) {
+					case 0: entry.confirm(); break;
+					case 1: entry.checkbox.confirm(); break;
+					case 2: entry.checkbox2.confirm(); break;
+				}
+			}
+		}
+		
+		public function select()
+		{
+			var entry:SliderListEntry = getEntry(selectedY);
+			if (entry) {
+				switch (selectedX) {
+					case 0: entry.select(); break;
+					case 1: entry.checkbox.setCheck(true); break;
+					case 2: entry.checkbox2.setCheck(true); break;
+				}
+			}
+		}
+		
+		public function unselect()
+		{
+			var entry:SliderListEntry = getEntry(selectedY);
+			if (entry) {
+				switch (selectedX) {
+					case 0: entry.unselect(); break;
+					case 1: entry.checkbox.setCheck(false); break;
+					case 2: entry.checkbox2.setCheck(false); break;
+				}
+			}
+		}
+		
+		public function getEntry(id:int):SliderListEntry
+		{
+			var entry:SliderListEntry;
+			var index:int = id - listPosition;
+			if (index >= 0 && index < entries.length) {
+				entry = entries[index];
+				if (entry.id == id) {
+					return entry;
+				}
+				//if for some reason the entry is incorrect we should just search the entire list
+				for (var i:int = 0; i < listSize; i++) {
+					entry = entries[i];
+					if (!entry.visible) {
+						return null;
+					}
+					if (entry.id == id) {
+						return entry;
+					}
+				}
+			}
+			return null;
+		}
+		
+		public function onEntry(event:EntryEvent)
+		{
+			switch (event._type) {
+				case EntryEvent.OVER:
+					if (event.id != selectedY || event.horizontal != selectedX) {
+						trace("over");
+						if (selectedY != -1) {
+							unselect();
+						}
+						var entry:SliderListEntry = getEntry(event.id);
+						if (event.horizontal == 0) {
+							entry.selected = true;
+						}
+						selectedX = event.horizontal;
+						selectedY = event.id;
+						if (entry.selectable) {
+							select();
+						}
+						focused = false;
+					}
+					break;
+				case EntryEvent.OUT:
+					if (event.id == selectedY && event.horizontal == selectedX) {
+						unselect();
+						selectedY = -1;
+						focused = false;
+					}
+					break;
+			}
+		}
+		
+		public function processInput(input:int)
+		{
+			focused = true;
+			
+			if (selectedY == -1) {
+				selectedX = 0;
+				selectedY = listPosition;
+				select();
+				return;
+			}
+			
+			switch (input) {
+				case LEFT:
+					processDirection(false);
+					break;
+				case UP:
+					if (selectedY > listPosition) {
+						unselect();
+						selectedY--;
+						select();
+					} else {
+						if (listPosition > 0) {
+							unselect();
+							scrollList(1);
+							select();
+						} else {
+							scrollList(-(entrySize - listSize));
+							unselect();
+							selectedY = entrySize - 1;
+							select();
+						}
+					}
+					select();
+					break;
+				case RIGHT:
+					processDirection(true);
+					break;
+				case DOWN:
+					if (selectedY < (listPosition + length - 1)) {
+						unselect();
+						selectedY++;
+						select();
+					} else {
+						if (listPosition < (entrySize - listSize)) {
+							unselect();
+							scrollList(-1);
+							select();
+						} else {
+							scrollList(listPosition);
+							unselect();
+							selectedY = 0;
+							select();
+						}
+					}
+					break;
+				case A:
+					confirm();
+					break;
+			}
+		}
+		
+		public function processDirection(inc:Boolean)
+		{
+			var entry:SliderListEntry = getEntry(selectedY);
+			if (!entry) return;
+			
+			switch (entry.type) {
+				case SliderListEntry.SLIDER:
+					if (inc)
+						entry.slider.Increment();
+					else
+						entry.slider.Decrement();
+					break;
+				case SliderListEntry.ADJUSTMENT:
+					if (selectedY != -1)
+						unselect();
+					if (inc) {
+						selectedX++;
+						if (selectedX > 2) 
+							selectedX = 0;
+					} else {
+						selectedX--;
+						if (selectedX < 0)
+							selectedX = 2;
+					}
+					select();
+					break;
+				case SliderListEntry.DRAG:
+					entry.checkbox.forceDrag(inc ? 1.0 : -1.0);
+					break;
+			}
+		}
+		
+		public function updateState(pos:int)
+		{
+			if (focused) {
+				if (selectedY != -1) {
+					unselect();
+				}
+			} else {
+				selectedY += (pos - listPosition);
+			}
+			listPosition = pos;
+		}
+		
+		public function updateSelected(x:int, y:int)
+		{
+			if (focused) {
+				selectedX = x;
+				selectedY = y;
+				select();
+			}
+		}
+		
+		public function storeSelected()
+		{
+			storeX = selectedX;
+			storeY = selectedY;
+			storePos = listPosition;
+		}
+		
+		public function restoreSelected()
+		{
+			if (selectedY != -1) {
+				storeY += (listPosition - storePos);
+				if (storeY >= entrySize) {
+					if (focused) {
+						storeY = entrySize - 1;
+					} else {
+						return;
+					}
+				}
+				selectedX = storeX;
+				selectedY = storeY;
+				select();
 			}
 		}
 		
@@ -104,6 +372,7 @@
 		{
 			this.entrySize = entrySize;
 			this.listSize = listSize;
+			this.length = Math.min(entrySize, listSize);
 			
 			listPosition = Math.max(0,Math.min(entrySize - listSize, listPosition));
 			
@@ -113,7 +382,7 @@
 				var thumbHeight:Number = listScroll.Track_mc.height *  this.listSize / this.entrySize;
 				listScroll.Thumb_mc.height = Math.max(thumbHeight, 40);
 				listScroll.visible = true;
-				//listScroll.position = 0;
+				listScroll.position = stepSize * listPosition;
 				listScroll.updateHeight();
 			}
 			else
@@ -126,13 +395,13 @@
 		{
 			updateScroll(entrySize, listSize);
 
-			var length:int = Math.min(entrySize, listSize);
 			for(var i:int = 0; i < LIST_MAX; i++) 
 			{
 				if (i < length) {
 					entries[i].update(i + listPosition, func, func2, func3);
 					updateType(entries[i]);
 				} else {
+					entries[i].id = i + listPosition;
 					entries[i].disable();
 				}
 			}
@@ -193,8 +462,10 @@
 				case CHECKBOX: updateCheckboxEntry(entry); break;
 				case EYES: updateEyesEntry(entry); break;
 				case ADJUSTMENT: updateAdjustmentEntry(entry); break;
+				case ADJUSTMENTORDER: updateAdjustmentOrderEntry(entry); break;
 				case ADJUSTMENTEDIT: updateAdjustmentEditEntry(entry); break;
 				case POSITIONING: updatePositioningEntry(entry); break;
+				case FOLDER: updateFolderEntry(entry); break;
 			}
 		}
 		
@@ -231,6 +502,17 @@
 			entry.updateAdjustment(Data.menuOptions[entry.id]);
 		}
 		
+		public function updateAdjustmentOrder(func:Function, func2:Function, func3:Function)
+		{
+			this.type = ADJUSTMENTORDER;
+			update(Data.menuOptions.length, LIST_MAX, func, func2, func3);
+		}
+		
+		public function updateAdjustmentOrderEntry(entry:SliderListEntry)
+		{
+			entry.updateAdjustmentOrder(Data.menuOptions[entry.id]);
+		}
+		
 		public function updateAdjustmentEdit(func:Function)
 		{
 			this.type = ADJUSTMENTEDIT;
@@ -245,17 +527,20 @@
 					entry.updateSliderData(0, 100, 1, 0)
 					entry.updateSlider("$SAM_Scale", SliderListEntry.INT);
 					break;
-				case 1: //Reset
-					entry.updateList("$SAM_ResetAdjustment");
-					break;
-				case 2: //Save
+				case 1: //Save
 					entry.updateList("$SAM_SaveAdjustment");
 					break;
-				case 3: //Persistent
+				case 2: //Rename
+					entry.updateList("$SAM_RenameAdjustment");
+					break;
+				case 3: //Reset
+					entry.updateList("$SAM_ResetAdjustment");
+					break;
+				case 4: //Persistent
 					entry.updateCheckbox("$SAM_Saved", Data.menuValues[entry.id]);
 					break;
 				default:
-					entry.updateList("Negate " + Data.menuValues[entry.id]);
+					entry.updateList("Negate " + Translator.translate(Data.menuValues[entry.id]));
 			}
 		}
 		
@@ -334,6 +619,21 @@
 			}
 			else {
 				entry.updateList(Data.POSITIONING_NAMES[entry.id]);
+			}
+		}
+		
+		public function updateFolder(func:Function):void
+		{
+			this.type = FOLDER;
+			update(Data.menuOptions.length, LIST_MAX, func);
+		}
+		
+		public function updateFolderEntry(entry:SliderListEntry):void
+		{
+			if (Data.menuFolder[entry.id].folder) {
+				entry.updateFolder(Data.menuOptions[entry.id]);
+			} else {
+				entry.updateList(Data.menuOptions[entry.id]);
 			}
 		}
 	}

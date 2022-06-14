@@ -265,6 +265,18 @@ public:
 	virtual void	Invoke(Args* args);
 };
 
+class MoveAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class RenameAdjustment : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
 class GetIdleCategories : public GFxFunctionHandler
 {
 public:
@@ -375,6 +387,12 @@ public:
 };
 
 class SetCursorPosition : public GFxFunctionHandler
+{
+public:
+	virtual void	Invoke(Args* args);
+};
+
+class GetLock : public GFxFunctionHandler
 {
 public:
 	virtual void	Invoke(Args* args);

@@ -13,6 +13,8 @@
     <ClCompile Include="console.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
     <ClCompile Include="positioning.cpp" />
+    <ClCompile Include="compatibility.cpp" />
+    <ClCompile Include="options.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -26,6 +28,8 @@
     <ClInclude Include="console.h" />
     <ClInclude Include="strnatcmp.h" />
     <ClInclude Include="positioning.h" />
+    <ClInclude Include="compatibility.h" />
+    <ClInclude Include="options.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

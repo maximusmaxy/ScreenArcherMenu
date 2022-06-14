@@ -3,23 +3,29 @@
 	import flash.display.*;
 	import flash.events.*;
 	import flash.text.TextField;
+	import flash.utils.*;
 	
 	public class Checkbox extends MovieClip {
 		
+		public var icon:MovieClip;
 		public var bounds:MovieClip;
-		public var check:MovieClip;
-		public var settings:MovieClip;
-		public var recycle:MovieClip;
-		public var position:MovieClip;
+		public var background:MovieClip;
 		
 		public var id:int;
+		public var checkId:int;
 		public var func:Function;
-		public var value:Boolean;
+		public var check:Boolean;
+		public var type:int;
 		public var dragState:int = 0;
+		public var selectable:Boolean = false;
 
+		public static const CHECK = 0;
 		public static const SETTINGS = 1;
 		public static const RECYCLE = 2;
 		public static const DRAG = 3;
+		public static const FOLDER = 4;
+		public static const DOWN = 5;
+		public static const UP = 6;
 		
 		public static const DISABLED = 0;
 		public static const UNSELECTED = 1;
@@ -28,48 +34,90 @@
 		public function Checkbox() {
 			super();
 			bounds.addEventListener(MouseEvent.CLICK, onClick);
+			bounds.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
 		}
 		
-		public function init(x:int, id:int, checked:Boolean, type:int, func:Function)
+		public function init(x:int, id:int, type:int, selectable:Boolean, func:Function)
 		{
-			settings.visible = false;
-			recycle.visible = false;
-			position.visible = false;
 			this.visible = true;
 			this.x = x;
 			this.id = id;
-			setCheck(checked);
-			switch (type) {
-				case SETTINGS: settings.visible = true; break;
-				case RECYCLE: recycle.visible = true; break;
-				case DRAG: enableDrag(); break;
-			}
+			this.type = type;
 			this.func = func;
-		}
-		
-		public function setColor(color:uint)
-		{
-			bounds.transform.colorTransform.color = color;
-			check.transform.colorTransform.color = color;
-		}
-		
-		public function setCheck(checked:Boolean) {
-			value = checked;
-			check.visible = value;
-		}
-		
-		public function onClick(event:MouseEvent) {
-			if (settings.visible || recycle.visible) { //button
-				if (func != null) {
-					func.call(null, id);
-				}
-			} else { //checkbox
-				value = !value;
-				check.visible = value;
-				if (func != null) {
-					func.call(null, id, value);
-				}
+			this.check = false;
+			this.selectable = selectable;
+			if (type == DRAG) {
+				enableDrag();
 			}
+			update();
+		}
+		
+		public function update()
+		{
+			gotoAndStop(type * 2 + (check ? 1 : 0) + 1);
+		}
+		
+		public function setCheck(checked:Boolean)
+		{
+			check = checked;
+			update();
+		}
+		
+		public function select()
+		{
+			switch (type) {
+				case FOLDER:
+					setCheck(true);
+					break;
+			}
+		}
+		
+		public function unselect()
+		{
+			switch (type) {
+				case FOLDER:
+					setCheck(false);
+					break;
+			}
+		}
+		
+		public function confirm()
+		{
+			switch(type) {
+				case SETTINGS:
+				case RECYCLE:
+				case FOLDER:
+					if (func != null) {
+						func.call(null, id);
+					}
+					break;
+				case CHECK:
+					check = !check;
+					if (func != null) {
+						func.call(null, id, check);
+					}
+					update();
+					break;
+			}
+		}
+		
+		public function onClick(event:MouseEvent) 
+		{
+			confirm();
+		}
+		
+		public function onMouseOver(event:MouseEvent) {
+			if (selectable) {
+				bounds.removeEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+				bounds.addEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
+				dispatchEvent(new EntryEvent(id, EntryEvent.OVER, (checkId == 0 ? 1 : 2)));
+			}
+		}
+		
+		public function onMouseOut(event:MouseEvent) {
+			bounds.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+			bounds.removeEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
+			dispatchEvent(new EntryEvent(id, EntryEvent.OUT, (checkId == 0 ? 1 : 2)));
 		}
 		
 		public function disable() {
@@ -87,7 +135,6 @@
 		public function enableDrag() {			
 			bounds.removeEventListener(MouseEvent.CLICK, onClick);
 			bounds.addEventListener(MouseEvent.MOUSE_DOWN, onDown);
-			position.visible = true;
 			dragState = UNSELECTED;
 		}
 		
@@ -102,7 +149,7 @@
 		
 		public function onMove(event:MouseEvent) {
 			if (func != null) {
-				func.call(null, id, event.stageX);
+				func.call(null, id, NaN);
 			}
 		}
 		
@@ -113,6 +160,13 @@
 			dragState = UNSELECTED;
 			Data.setCursorVisible(true);
 			Data.endCursorDrag();
+		}
+		
+		public function forceDrag(value:Number)
+		{
+			if (func != null) {
+				func.call(null, id, value);
+			}
 		}
 	}
 }

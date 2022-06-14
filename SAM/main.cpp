@@ -6,17 +6,19 @@
 #include "f4se/GameReferences.h"
 #include "f4se/GameTypes.h"
 #include "f4se/GameMenus.h"
-
 #include "f4se/NiNodes.h"
 #include "f4se/NiTypes.h"
 #include "f4se/NiObjects.h"
 #include "f4se/InputMap.h"
+#include "f4se/PluginManager.h"
+#include "f4se_common/f4se_version.h"
 
 #include "sam.h"
 #include "scaleform.h"
 #include "pose.h"
 #include "idle.h"
 #include "console.h"
+#include "compatibility.h"
 
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
@@ -30,11 +32,12 @@ PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 F4SEScaleformInterface* g_scaleform = nullptr;
 F4SEMessagingInterface* g_messaging = nullptr;
 F4SEPapyrusInterface* g_papyrus = nullptr;
+F4SEInterface* g_f4se = nullptr;
 
 class SamInputHandler : public BSInputEventUser
 {
 public:
-	SamInputHandler() : BSInputEventUser(false) { }
+	SamInputHandler() : BSInputEventUser() { }
 
 	virtual void OnButtonEvent(ButtonEvent * inputEvent)
 	{
@@ -48,8 +51,16 @@ public:
 			UInt32	keyMask = inputEvent->keyMask;
 
 			// Mouse
-			if (deviceType == InputEvent::kDeviceType_Mouse)
-				keyCode = InputMap::kMacro_MouseButtonOffset + keyMask;
+			if (deviceType == InputEvent::kDeviceType_Mouse) 
+			{
+				//Need to capture mouse scroll 0x800 = up, 0x900 = down
+				if (keyMask == 0x800)
+					keyCode = InputMap::kMaxMacros;
+				else if (keyMask == 0x900)
+					keyCode = InputMap::kMaxMacros + 1;
+				else 
+					keyCode = InputMap::kMacro_MouseButtonOffset + keyMask;
+			}
 			// Gamepad
 			else if (deviceType == InputEvent::kDeviceType_Gamepad)
 				keyCode = InputMap::GamepadMaskToKeycode(keyMask);
@@ -57,8 +68,8 @@ public:
 			else
 				keyCode = keyMask;
 
-			// Valid scancode?
-			if (keyCode >= InputMap::kMaxMacros)
+			// Valid scancode? Add two for mouse scroll
+			if (keyCode >= InputMap::kMaxMacros + 2)
 				return;
 
 			//BSFixedString	control	= *inputEvent->GetControlID();
@@ -120,6 +131,19 @@ public:
 
 SamOpenCloseHandler openCloseHandler;
 
+class SAMEventReciever :
+	public BSTEventSink<TESLoadGameEvent>
+{
+public:
+	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
+	{
+		RegisterSam();
+		return kEvent_Continue;
+	}
+};
+
+SAMEventReciever samEventReciever;
+
 void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
@@ -138,59 +162,69 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 }
 
 void SafCreateAdjustment(UInt32 formId, const char* name) {
-	SAF::AdjustmentCreateMessage message(formId, name, "ScreenArcherMenu.esp", false, false, nullptr);
+	SAF::AdjustmentCreateMessage message{ formId, name, "ScreenArcherMenu.esp", false, false, nullptr };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentCreate, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafSaveAdjustment(UInt32 formId, const char* filename, UInt32 handle)
 {
-	SAF::AdjustmentSaveMessage message(formId, filename, handle);
+	SAF::AdjustmentSaveMessage message{ formId, filename, handle };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentSave, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafLoadAdjustment(UInt32 formId, const char* filename) {
-	SAF::AdjustmentCreateMessage message(formId, filename, "ScreenArcherMenu.esp", true, false, "ScreenArcherMenu");
+	SAF::AdjustmentCreateMessage message{ formId, filename, "ScreenArcherMenu.esp", true, false, "ScreenArcherMenu" };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafRemoveAdjustment(UInt32 formId, UInt32 handle) {
-	SAF::AdjustmentMessage message(formId, handle);
+	SAF::AdjustmentMessage message{ formId, handle };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentErase, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafResetAdjustment(UInt32 formId, UInt32 handle) {
-	SAF::AdjustmentMessage message(formId, handle);
+	SAF::AdjustmentMessage message{ formId, handle };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentReset, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafTransformAdjustment(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c) {
-	SAF::AdjustmentTransformMessage message(formId, handle, key, type, a, b, c);
+	SAF::AdjustmentTransformMessage message{ formId, handle, key, type, a, b, c };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTransform, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafCreateActorAdjustments(UInt32 formId) {
-	SAF::AdjustmentActorMessage message(formId, "ScreenArcherMenu");
+	SAF::AdjustmentActorMessage message{ formId, "ScreenArcherMenu" };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafNegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
-	SAF::AdjustmentNegateMessage message(formId, handle, group);
+	SAF::AdjustmentNegateMessage message{ formId, handle, group };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentNegate, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafLoadPose(UInt32 formId, const char* filename) {
-	SAF::PoseMessage message(formId, filename, "ScreenArcherMenu");
+	SAF::PoseMessage message{ formId, filename, "ScreenArcherMenu" };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseLoad, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafResetPose(UInt32 formId) {
-	SAF::PoseMessage message(formId, nullptr, nullptr);
+	SAF::PoseMessage message{ formId, nullptr, nullptr };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafLoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable) {
-	SAF::SkeletonMessage message(raceId, isFemale, filename, npc, clear, enable);
+	SAF::SkeletonMessage message { raceId, isFemale, filename, npc, clear, enable };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafDefaultAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafMoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) {
+	SAF::MoveMessage message { formId, fromIndex, toIndex };
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentMove, &message, sizeof(uintptr_t), "SAF");
+}
+
+void SafRenameAdjustment(UInt32 formId, UInt32 handle, const char* name) {
+	SAF::AdjustmentSaveMessage message{ formId, name, handle };
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentRename, &message, sizeof(uintptr_t), "SAF");
 }
 
 void RegisterSafMessageDispatcher()
@@ -207,6 +241,8 @@ void RegisterSafMessageDispatcher()
 	safMessageDispatcher.loadPose = SafLoadPose;
 	safMessageDispatcher.resetPose = SafResetPose;
 	safMessageDispatcher.loadDefaultAdjustment = SafLoadDefaultAdjustment;
+	safMessageDispatcher.moveAdjustment = SafMoveAdjustment;
+	safMessageDispatcher.renameAdjustment = SafRenameAdjustment;
 }
 
 void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
@@ -214,13 +250,28 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 	switch (msg->type)
 	{
 	case F4SEMessagingInterface::kMessage_PostLoad:
-		if (g_messaging) 
+	{
+		if (g_messaging)
 			RegisterSafMessageDispatcher();
+
+		if (g_f4se) {	
+			//Try register ffc if RUNTIME_VERSION_1_10_163
+			//if (g_f4se->runtimeVersion == RUNTIME_VERSION_1_10_163)
+			//	RegisterFfcCompatiblity();
+		}
+
 		break;
+	}
 	case F4SEMessagingInterface::kMessage_GameDataReady:
-		if (msg->data) 
+	{
+		if (msg->data)
 			(*g_ui)->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
 		break;
+	}
+	case F4SEMessagingInterface::kMessage_GameLoaded:
+	{
+		GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&samEventReciever);
+	}
 	}
 }
 
@@ -245,6 +296,8 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 		_FATALERROR("loaded in editor, marking as incompatible");
 		return false;
 	}
+
+	g_f4se = (F4SEInterface*)f4se;
 
 	g_scaleform = (F4SEScaleformInterface *)f4se->QueryInterface(kInterface_Scaleform);
 	if (!g_scaleform)

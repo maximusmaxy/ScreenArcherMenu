@@ -46,16 +46,6 @@ typedef std::vector<std::pair<std::string, std::string>> MenuList;
 typedef std::vector<std::pair<std::string, MenuList>> MenuCategoryList;
 typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
 
-struct MenuOptions {
-	bool hotSwapping = false;
-};
-
-extern MenuOptions menuOptions;
-
-enum {
-	kSamOptionHotswap = 1
-};
-
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 extern MenuCache groupsMenuCache;
@@ -68,7 +58,7 @@ TESObjectREFR* GetRefr();
 
 MenuCategoryList* GetMenu(MenuCache* cache);
 
-void GetOptionsGFx(GFxMovieRoot* root, GFxValue* result);
+void RegisterSam();
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 

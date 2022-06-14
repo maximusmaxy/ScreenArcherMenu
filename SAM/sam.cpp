@@ -4,6 +4,8 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 #include "f4se/GameRTTI.h"
+#include "f4se/PluginManager.h"
+#include "f4se/CustomMenu.h"
 
 #include "common/IDirectoryIterator.h"
 #include "common/IFileStream.h"
@@ -21,13 +23,14 @@
 #include "idle.h"
 #include "hacks.h"
 #include "positioning.h"
+#include "compatibility.h"
+#include "options.h"
 
 #include <regex>
 #include <WinUser.h>
+#include <libloaderapi.h>
 
 SelectedRefr selected;
-
-MenuOptions menuOptions;
 
 MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
@@ -63,6 +66,25 @@ MenuCategoryList* GetMenu(MenuCache* cache)
 		return &(*cache)[race];
 
 	return nullptr;
+}
+
+void RegisterSam() 
+{
+	//u(StaticFunctionTag *, BSFixedString menuName, BSFixedString menuPath, BSFixedString rootPath, MenuData menuData)
+	static BSFixedString menuName("ScreenArcherMenu");
+	static BSFixedString menuRoot("root1.Menu_mc");
+
+	if (!(*g_ui)->IsMenuRegistered(menuName))
+	{
+		BSWriteLocker locker(&g_customMenuLock);
+		g_customMenuData[menuName.c_str()].menuPath = menuName;
+		g_customMenuData[menuName.c_str()].rootPath = menuRoot;
+		g_customMenuData[menuName.c_str()].menuFlags = 0x8018494;
+		g_customMenuData[menuName.c_str()].movieFlags = 3;
+		g_customMenuData[menuName.c_str()].extFlags = 3;
+		g_customMenuData[menuName.c_str()].depth = 6;
+		(*g_ui)->Register(menuName.c_str(), CreateCustomMenu);
+	}
 }
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
@@ -176,6 +198,12 @@ void OnMenuOpen() {
 		return;
 	}
 
+	//Store ffc lock state and lock screen
+	LockFfc(true);
+
+	//Load options
+	LoadOptionsFile();
+
 	TESObjectREFR* refr = GetRefr();
 	selected.Update(refr);
 	UpdateNonActorRefr();
@@ -196,6 +224,9 @@ void OnMenuOpen() {
 		data.SetMember("saved", &saved);
 	}
 
+	GFxValue widescreen(GetMenuOption(kOptionWidescreen));
+	data.SetMember("widescreen", &widescreen);
+
 	root->Invoke("root1.Menu_mc.menuOpened", nullptr, &data, 1);
 }
 
@@ -209,6 +240,12 @@ void OnMenuClose() {
 		return;
 	}
 
+	//Restore ffc lock
+	LockFfc(false);
+
+	//Update options file
+	SaveOptionsFile();
+
 	selected.Clear();
 
 	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
@@ -218,6 +255,10 @@ void OnMenuClose() {
 
 void OnConsoleRefUpdate() {
 	static BSFixedString samMenu("ScreenArcherMenu");
+
+	//check if hot swapping is enabled
+	if (!GetMenuOption(kOptionHotswap))
+		return;
 
 	IMenu* menu = (*g_ui)->GetMenu(samMenu);
 	if (!menu) {
@@ -261,14 +302,6 @@ bool OpenSamFile(std::string filename) {
 	if (LoadAdjustmentFile(filename.c_str())) return true;
 
 	return false;
-}
-
-void GetOptionsGFx(GFxMovieRoot* root, GFxValue* result)
-{
-	root->CreateArray(result);
-
-	GFxValue hotswap(menuOptions.hotSwapping);
-	result->PushBack(&hotswap);
 }
 
 class SavedDataVisitor : public GFxValue::ObjectInterface::ObjVisitor

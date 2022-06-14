@@ -61,16 +61,13 @@ namespace SAF {
 		kSafResult,
 		kSafDefaultAdjustmentLoad,
 		kSafAdjustmentRotate,
+		kSafAdjustmentMove,
+		kSafAdjustmentRename,
 	};
 
 	struct AdjustmentMessage {
 		UInt32 formId;
 		UInt32 handle;
-
-		AdjustmentMessage(UInt32 formId, UInt32 handle) :
-			formId(formId),
-			handle(handle)
-		{}
 	};
 
 	struct AdjustmentCreateMessage {
@@ -80,27 +77,12 @@ namespace SAF {
 		bool persistent;
 		bool hidden;
 		const char* mod;
-
-		AdjustmentCreateMessage(UInt32 formId, const char* name, const char* esp, bool persistent, bool hidden, const char* mod) :
-			formId(formId),
-			name(name),
-			esp(esp),
-			persistent(persistent),
-			hidden(hidden),
-			mod(mod)
-		{}
 	};
 
 	struct AdjustmentSaveMessage {
 		UInt32 formId;
 		const char* filename;
 		UInt32 handle;
-
-		AdjustmentSaveMessage(UInt32 formId, const char* filename, UInt32 handle) :
-			formId(formId),
-			filename(filename),
-			handle(handle)
-		{}
 	};
 
 	enum {
@@ -120,50 +102,23 @@ namespace SAF {
 		float a;
 		float b;
 		float c;
-
-		AdjustmentTransformMessage(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c) :
-			formId(formId),
-			handle(handle),
-			key(key),
-			type(type),
-			a(a),
-			b(b),
-			c(c)
-		{}
 	};
 
 	struct AdjustmentActorMessage {
 		UInt32 formId;
 		const char* mod;
-
-		AdjustmentActorMessage(UInt32 formId, const char* mod) :
-			formId(formId),
-			mod(mod)
-		{}
 	};
 
 	struct AdjustmentNegateMessage {
 		UInt32 formId;
 		UInt32 handle;
 		const char* group;
-
-		AdjustmentNegateMessage(UInt32 formId, UInt32 handle, const char* group) :
-			formId(formId),
-			handle(handle),
-			group(group)
-		{}
 	};
 
 	struct PoseMessage {
 		UInt32 formId;
 		const char* filename;
 		const char* mod;
-
-		PoseMessage(UInt32 formId, const char* filename, const char* mod) :
-			formId(formId),
-			filename(filename),
-			mod(mod)
-		{}
 	};
 
 	struct SkeletonMessage {
@@ -173,15 +128,12 @@ namespace SAF {
 		bool npc;
 		bool clear;
 		bool enable;
+	};
 
-		SkeletonMessage(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable) :
-			raceId(raceId),
-			isFemale(isFemale),
-			filename(filename),
-			npc(npc),
-			clear(clear),
-			enable(enable)
-		{}
+	struct MoveMessage {
+		UInt32 formId;
+		UInt32 from;
+		UInt32 to;
 	};
 
 	class NodeSets
@@ -283,6 +235,8 @@ namespace SAF {
 		void ForEachTransform(const std::function<void(std::string, NiTransform*)>& functor);
 		void ForEachTransformOrDefault(const std::function<void(std::string, NiTransform*)>& functor, NodeSet* nodeset);
 
+		void Rename(std::string name);
+
 		void Clear();
 
 		PersistentAdjustment GetPersistence();
@@ -340,6 +294,8 @@ namespace SAF {
 		void RemoveAdjustment(std::string name);
 		bool HasAdjustment(std::string name);
 		std::unordered_set<std::string> GetAdjustmentNames();
+		UInt32 GetAdjustmentIndex(UInt32 handle);
+		void MoveAdjustment(UInt32 fromIndex, UInt32 toIndex);
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
@@ -413,7 +369,8 @@ namespace SAF {
 		bool LoadPose(UInt32 formId, const char* filename);
 		void ResetPose(UInt32 formId);
 		void LoadDefaultAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
-		
+		void MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex);
+		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
 		
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);

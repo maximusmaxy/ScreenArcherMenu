@@ -1,7 +1,6 @@
 #pragma once
 
 #include "f4se/GameForms.h"
-
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformMovie.h"
 

@@ -12,22 +12,22 @@
 		public static const UI_FOCUS:String = "UIMenuFocus";
 		public static const UI_CANCEL:String = "UIMenuCancel";
 
-		public static function playOk() {
+		public static function playSound(sound:String) {
 			try {
-				Data.sam.PlaySound(UI_OK);
+				Data.sam.PlaySound(sound);
 			} catch (e:Error) {}
+		}
+		
+		public static function playOk() {
+			playSound(UI_OK);
 		}
 
 		public static function playFocus() {
-			try {
-				Data.sam.PlaySound(UI_FOCUS);
-			} catch (e:Error) {}
+			playSound(UI_FOCUS);
 		}
 
 		public static function playCancel() {
-			try {
-				Data.sam.PlaySound(UI_CANCEL);
-			} catch (e:Error) {}
+			playSound(UI_CANCEL);
 		}
 		
 		public static function unselectText() {
@@ -46,6 +46,34 @@
 				}
 				Data.selectedText = null;
 			}
+		}
+		
+		public static function packObjectArray(obj:Array, str:String, arr:Array)
+		{
+			//fill missing objects
+			for (var i:int = obj.length; i < arr.length; i++) {
+				obj[i] = {};
+			}
+			for (var y:int = 0; y < arr.length; y++) {
+				obj[i][str] = arr[i];
+			}
+		}
+		
+		public static function unpackObjectArray(obj:Array, str:String):Array
+		{
+			var arr:Array = [];
+			for (var i:int = 0; i < obj.length; i++) {
+				arr[i] = obj[i][str];
+			}
+			return arr;
+		}
+		
+		public static function setRect(clip:MovieClip, x:Number, y:Number, width:Number, height:Number)
+		{
+			clip.x = x;
+			clip.y = y;
+			clip.width = width;
+			clip.height = height;
 		}
 		
 		public static function traceObj(obj:Object):void

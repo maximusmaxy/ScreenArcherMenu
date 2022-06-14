@@ -11,8 +11,6 @@
 #include "f4se/GameObjects.h"
 #include "f4se/NiNodes.h"
 
-#include "f4se_common/SafeWrite.h"
-
 #include "sam.h"
 #include "hacks.h"
 #include "papyrus.h"
@@ -20,6 +18,8 @@
 #include "mfg.h"
 #include "idle.h"
 #include "positioning.h"
+#include "compatibility.h"
+#include "options.h"
 
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
@@ -60,19 +60,15 @@ void CheckError::Invoke(Args* args)
 
 void GetOptions::Invoke(Args* args)
 {
-	GetOptionsGFx(args->movie->movieRoot, args->result);
+	GetMenuOptionsGFx(args->movie->movieRoot, args->result);
 }
 
 void SetOption::Invoke(Args* args)
 {
 	ASSERT(args->numArgs >= 2);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	switch (args->args[0].GetInt()) {
-		case kSamOptionHotswap:
-			ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
-			menuOptions.hotSwapping = args->args[1].GetBool();
-			break;
-	}
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
+	SetMenuOption(args->args[0].GetInt(), args->args[1].GetBool());
 }
 
 void ModifyFacegenMorph::Invoke(Args * args)
@@ -369,6 +365,22 @@ void NegateAdjustmentGroup::Invoke(Args* args)
 	NegateAdjustments(args->args[0].GetInt(), args->args[1].GetString());
 }
 
+void MoveAdjustment::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
+	ShiftAdjustment(args->args[0].GetInt(), args->args[1].GetBool());
+}
+
+void RenameAdjustment::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 2);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	ASSERT(args->args[1].GetType() == GFxValue::kType_String);
+	SetAdjustmentName(args->args[0].GetInt(), args->args[1].GetString());
+}
+
 void GetIdleCategories::Invoke(Args* args)
 {
 	GetIdleMenuCategoriesGFx(args->movie->movieRoot, args->result);
@@ -489,6 +501,7 @@ void GetSamPoses::Invoke(Args* args)
 
 void SetCursorVisible::Invoke(Args* args)
 {
+	ASSERT(args->numArgs >= 1);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
 	static BSFixedString cursorMenu("CursorMenu");
 	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", args->args[0].GetBool());
@@ -501,9 +514,17 @@ void GetCursorPosition::Invoke(Args* args)
 
 void SetCursorPosition::Invoke(Args* args)
 {
+	ASSERT(args->numArgs >= 2);
 	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
 	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
 	SetCursor(args->args[0].GetInt(), args->args[1].GetInt());
+}
+
+void GetLock::Invoke(Args* args)
+{
+	ASSERT(args->numArgs >= 1);
+	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+	args->result->SetBool(GetFfcLock((FfcType)args->args[0].GetInt()));
 }
 
 void HideMenu::Invoke(Args * args)
@@ -579,6 +600,8 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<ResetAdjustment>(value, view->movieRoot, "ResetAdjustment");
 	RegisterFunction<NegateAdjustment>(value, view->movieRoot, "NegateAdjustment");
 	RegisterFunction<NegateAdjustmentGroup>(value, view->movieRoot, "NegateAdjustmentGroup");
+	RegisterFunction<MoveAdjustment>(value, view->movieRoot, "MoveAdjustment");
+	RegisterFunction<RenameAdjustment>(value, view->movieRoot, "RenameAdjustment");
 	RegisterFunction<GetCategoryList>(value, view->movieRoot, "GetCategoryList");
 	RegisterFunction<GetNodeList>(value, view->movieRoot, "GetNodeList");
 	RegisterFunction<GetNodeTransform>(value, view->movieRoot, "GetNodeTransform");
@@ -606,6 +629,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<SetCursorVisible>(value, view->movieRoot, "SetCursorVisible");
 	RegisterFunction<GetCursorPosition>(value, view->movieRoot, "GetCursorPosition");
 	RegisterFunction<SetCursorPosition>(value, view->movieRoot, "SetCursorPosition");
+	RegisterFunction<GetLock>(value, view->movieRoot, "GetLock");
 	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
 	RegisterFunction<Test>(value, view->movieRoot, "Test");
 	RegisterFunction<Test2>(value, view->movieRoot, "Test2");

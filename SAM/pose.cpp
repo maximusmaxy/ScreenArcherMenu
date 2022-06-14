@@ -178,6 +178,30 @@ void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
 	adjustments->UpdateAllAdjustments();
 }
 
+void ShiftAdjustment(UInt32 adjustmentHandle, bool increment)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	UInt32 fromIndex = adjustments->GetAdjustmentIndex(adjustmentHandle);
+	if (fromIndex == -1) return;
+	UInt32 toIndex = fromIndex + (increment ? 1 : -1);
+
+	safMessageDispatcher.moveAdjustment(selected.refr->formID, fromIndex, toIndex);
+
+	adjustments->UpdateAllAdjustments();
+}
+
+void SetAdjustmentName(UInt32 adjustmentHandle, const char* name)
+{
+	if (!selected.refr) return;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return;
+
+	safMessageDispatcher.renameAdjustment(selected.refr->formID, adjustmentHandle, name);
+}
+
 bool NiAVObjectVisitAll(NiAVObject* root, const std::function<bool(NiAVObject*)>& functor)
 {
 	if (functor(root))
@@ -601,7 +625,7 @@ void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 		GFxValue value;
 		root->CreateObject(&value);
 
-		std::string folderName = "-> " + folder.first;
+		std::string folderName = folder.first;
 		GFxValue name(folderName.c_str());
 		value.SetMember("name", &name);
 

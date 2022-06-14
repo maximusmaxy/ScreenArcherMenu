@@ -18,8 +18,8 @@
 		public var background:MovieClip;
 		
 		internal var id:int = -1;
-		public var selectable:Boolean = false;
 		public var selected:Boolean = false;
+		public var selectable:Boolean = true;
 		public var valueSelectable:Boolean = false;
 		public var func:Function;
 		public var func2:Function;
@@ -30,10 +30,10 @@
 		
 		public static const LIST = 0;
 		public static const SLIDER = 1;
-		public static const DIVIDER = 2;
-		public static const CHECKBOX = 3;
-		public static const ADJUSTMENT = 4;
-		public static const DRAG = 5;
+		public static const CHECKBOX = 2;
+		public static const ADJUSTMENT = 3;
+		public static const DRAG = 4;
+		public static const FOLDER = 5;
 		
 		public static const INT = 0;
 		public static const FLOAT = 1;
@@ -58,28 +58,36 @@
 			value.addEventListener(Event.CHANGE, onValueInput);
 		}
 
-		public function onMouseClick(event:flash.events.Event)
+		public function onMouseClick(event:MouseEvent)
 		{
-			if (selectable) {
+			if (event.type == MouseEvent.CLICK) //left click
+			{
+				confirm();
+			}
+		}
+		
+		public function confirm()
+		{
+			if (visible) {
 				switch (this.type)
 				{
 					case LIST: 
 					case ADJUSTMENT:
+					case FOLDER:
 						func.call(null, id); 
 						break;
 					case CHECKBOX:
-						checkbox.onClick(event);
+						checkbox.confirm();
 						break;
 				}
 				Util.playOk();
 			}
 		}
 		
-		public function onValueChange(event:flash.events.Event)
+		public function onValueChange(event:Event)
 		{
 			//Util.playFocus();
 			func.call(null, id, event.target.value - valueMod);
-			Data.selectedSlider = this;
 			updateValue(false);
 		}
 		
@@ -120,7 +128,6 @@
 						trace("Failed to allow text input");
 					}
 				}
-				Data.selectedSlider = null;
 				Data.selectedText = this;
 				value.type = TextFieldType.INPUT;
 				value.selectable = true;
@@ -132,14 +139,16 @@
 		
 		public function onMouseOver(event:MouseEvent)
 		{
-			if (selectable) {
-				select();
-			}
+			text.addEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
+			text.removeEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+			dispatchEvent(new EntryEvent(id, EntryEvent.OVER));
 		}
 		
 		public function onMouseOut(event:MouseEvent)
 		{
-			unselect();
+			text.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+			text.removeEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
+			dispatchEvent(new EntryEvent(id, EntryEvent.OUT));
 		}
 		
 		public function update(id:int, func:Function, func2:Function, func3:Function)
@@ -198,38 +207,45 @@
 					break;
 			}
 		}
-		
-		public function setText(x:int, y:int, name:String, align:String)
+
+		public function setText(x:int, y:int, name:String)
 		{
 			text.visible = true;
 			text.x = x;
 			text.y = y;
 			text.text = name;
 			var format:TextFormat = text.getTextFormat();
-			if (format.align != align) {
-				format.align = align;
+			if (format.align != TextFormatAlign.LEFT) {
+				format.align = TextFormatAlign.LEFT;
 				text.setTextFormat(format);
+			}
+		}
+		
+		public function setSelectable(enabled:Boolean)
+		{
+			selectable = enabled;
+			if (selected)
+			{
+				setBackground(selectable);
 			}
 		}
 		
 		public function updateList(name:String)
 		{
-			setText(0, 0, name, TextFormatAlign.LEFT);
+			setSelectable(true);
+			setText(0, 0, name);
 			slider.visible = false;
 			value.visible = false;
 			checkbox.disable();
 			checkbox2.disable();
-			background.x = -2;
-			background.width = 290;
-			selectable = true;
+			Util.setRect(background, -2, -3.25, 290, 32);
 			this.type = LIST;
 		}
 		
 		public function updateSlider(name:String, valueType:int)
 		{
-			unselect();
-			selectable = false;
-			setText(0, 0, name, TextFormatAlign.LEFT);
+			setSelectable(false);
+			setText(0, 0, name);
 			slider.visible = true;
 			value.visible = true;
 			value.x = 219.7;
@@ -237,67 +253,65 @@
 			valueSelectable = true;
 			checkbox.disable();
 			checkbox2.disable();
+			Util.setRect(background, -2, -2, 223, 29);
 			this.type = SLIDER;
 			this.valueType = valueType;
 			updateValue(true); 
 		}
 		
-//		public function updateDivider(name:String)
-//		{
-//			unselect();
-//			selectable = false;
-//			setText(0, 7, name, TextFormatAlign.CENTER);
-//			slider.visible = false;
-//			value.visible = false;
-//			divider.visible = true;
-//			checkbox.disable();
-//			checkbox2.disable();
-//			this.type = DIVIDER;
-//		}
-		
 		public function updateCheckbox(name:String, checked:Boolean)
 		{
-			selectable = true;
-			setText(31, 0, name, TextFormatAlign.LEFT);
+			setSelectable(true);
+			setText(31, 0, name);
 			slider.visible = false;
 			value.visible = false;
-			checkbox.init(1, this.id, checked, 0, func);
+			checkbox.init(1, this.id, Checkbox.CHECK, false, func);
+			checkbox.setCheck(checked);
 			checkbox2.disable();
-			background.x = 31;
-			background.width = 258;
+			Util.setRect(background, 31, -3.25, 258, 32);
 			this.type = CHECKBOX;
 		}
 		
 		public function updateAdjustment(name:String) 
 		{
-			selectable = true;
-			setText(0, 0, name, TextFormatAlign.LEFT);
+			setSelectable(true);
+			setText(0, 0, name);
 			slider.visible = false;
 			value.visible = false;
-			checkbox.init(222, this.id, false, Checkbox.SETTINGS, func2);
-			checkbox2.init(256, this.id, false, Checkbox.RECYCLE, func3);
-			background.x = -2;
-			background.width = 218;
+			checkbox.init(222, this.id, Checkbox.SETTINGS, true, func2);
+			checkbox2.init(256, this.id, Checkbox.RECYCLE, true, func3);
+			Util.setRect(background, -2, -3.25, 218, 32);
+			this.type = ADJUSTMENT;
+		}
+		
+		public function updateAdjustmentOrder(name:String) 
+		{
+			setSelectable(true);
+			setText(0, 0, name);
+			slider.visible = false;
+			value.visible = false;
+			checkbox.init(222, this.id, Checkbox.DOWN, true, func2);
+			checkbox2.init(256, this.id, Checkbox.UP, true, func3);
+			Util.setRect(background, -2, -3.25, 218, 32);
 			this.type = ADJUSTMENT;
 		}
 		
 		public function updateDrag(name:String)
 		{
-			unselect();
-			selectable = false;
-			setText(31, 0, name, TextFormatAlign.LEFT)
+			setSelectable(false);
+			setText(31, 0, name)
 			slider.visible = false;
 			value.visible = false;
-			checkbox.init(1, this.id, false, Checkbox.DRAG, func);
+			checkbox.init(1, this.id, Checkbox.DRAG, false, func);
 			checkbox2.disable();
+			Util.setRect(background, 31, -3.25, 188, 32);
 			this.type = DRAG;
 		}
 		
 		public function updateDragValue(name:String)
 		{
-			unselect();
-			selectable = false;
-			setText(31, 0, name, TextFormatAlign.LEFT)
+			setSelectable(false);
+			setText(31, 0, name)
 			slider.visible = false;
 			value.visible = true;
 			value.x = 219.7;
@@ -305,11 +319,24 @@
 			valueSelectable = false;
 			valueMod = 0;
 			valueFixed = 2;
-			checkbox.init(1, this.id, false, Checkbox.DRAG, func);
+			checkbox.init(1, this.id, Checkbox.DRAG, false, func);
 			checkbox2.disable();
+			Util.setRect(background, 31, -3.25, 188, 32);
 			this.type = DRAG;
 			this.valueType = FLOAT;
 			updateValue(false);
+		}
+		
+		public function updateFolder(name:String)
+		{
+			setSelectable(true);
+			setText(33, 0, name);
+			slider.visible = false;
+			value.visible = false;
+			checkbox.init(3, this.id, Checkbox.FOLDER, false, func);
+			checkbox2.disable();
+			Util.setRect(background, -2, -3.25, 290, 32);
+			this.type = FOLDER;
 		}
 		
 		public function updateSliderData(min:Number, max:Number, step:Number, mod:Number, fixed:int = 0)
@@ -326,37 +353,37 @@
 			this.visible = false;
 			this.func = null;
 			this.selectable = false;
+			//move to force mouse out
+			this.y = -100;
 		}
 		
 		public function select()
 		{
-			if (!selected) {
-				selected = true;
-				//text.background = true;
-				//text.backgroundColor = 0xFFFFFF;
-				text.textColor = 0x000000;
-				background.alpha = 1.0;
-				if (type == CHECKBOX) {
-					checkbox.setColor(0x000000);
-				}
-				text.addEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
-				text.removeEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
-				Util.playFocus();
-			}
+			selected = true;
+			setBackground(true);
 		}
 		
 		public function unselect()
 		{
-			if (selected) {
-				text.textColor = 0xFFFFFF;
-				//text.background = false;
-				background.alpha = 0.0;
-				if (type == CHECKBOX) {
-					checkbox.setColor(0xFFFFFF);
+			selected = false;
+			setBackground(false);
+		}
+		
+		public function setBackground(select:Boolean)
+		{
+			if (select) {
+				text.textColor = 0x000000;
+				background.alpha = 1.0;
+				if (checkbox.visible) {
+					checkbox.select();
 				}
-				text.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
-				text.removeEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
-				selected = false;
+				Util.playFocus();
+			} else {
+				text.textColor = 0xFFFFFF;
+				background.alpha = 0.0;
+				if (checkbox.visible) {
+					checkbox.unselect();
+				}
 			}
 		}
 	}

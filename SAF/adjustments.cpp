@@ -112,7 +112,7 @@ namespace SAF {
 			functor(transform.first, &transform.second);
 		}
 	}
-
+	
 	void Adjustment::ForEachTransformOrDefault(const std::function<void(std::string, NiTransform*)>& functor, NodeSet* set)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
@@ -145,6 +145,15 @@ namespace SAF {
 				map[kvp.first] = kvp.second;
 			}
 		}
+	}
+
+	void Adjustment::Rename(std::string newName) 
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		name = newName;
+
+		updated = true;
 	}
 
 	void Adjustment::Clear()
@@ -194,10 +203,10 @@ namespace SAF {
 		}
 
 		//updated race
-		if (!npc->race.race)
+		if (!formNpc->race.race)
 			return kActorInvalid;
 
-		UInt32 newRace = npc->race.race->formID;
+		UInt32 newRace = formNpc->race.race->formID;
 		if (race != newRace) {
 			result = kActorUpdated;
 		}
@@ -404,7 +413,7 @@ namespace SAF {
 		map.erase(handle);
 	}
 
-	bool ActorAdjustments::HasAdjustment(std::string name) 
+	bool ActorAdjustments::HasAdjustment(std::string name)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -426,6 +435,41 @@ namespace SAF {
 		}
 
 		return set;
+	}
+
+	UInt32 ActorAdjustments::GetAdjustmentIndex(UInt32 handle)
+	{
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		for (int i = 0; i < list.size(); ++i) {
+			if (list[i]->handle == handle) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	void ActorAdjustments::MoveAdjustment(UInt32 fromIndex, UInt32 toIndex)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.size() || toIndex >= list.size()) return;
+
+		std::shared_ptr<Adjustment> adjustment = list[fromIndex];
+
+		if (fromIndex < toIndex) {
+			for (int i = fromIndex; i < toIndex; ++i) {
+				list[i] = list[i + 1];
+			}
+		}
+		else {
+			for (int i = fromIndex; i > toIndex; --i) {
+				list[i] = list[i - 1];
+			}
+		}
+
+		list[toIndex] = adjustment;
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(std::string filename, bool cached)
@@ -1312,6 +1356,31 @@ namespace SAF {
 				}
 			});
 		}
+	}
+
+	void AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+		
+		if (!actorAdjustmentCache.count(formId)) return;
+
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+
+		adjustments->MoveAdjustment(fromIndex, toIndex);
+	}
+
+	void AdjustmentManager::RenameAdjustment(UInt32 formId, UInt32 handle, const char* name)
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		if (!actorAdjustmentCache.count(formId)) return;
+
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) return;
+
+		adjustment->Rename(name);
 	}
 
 	void AdjustmentManager::RemoveMod(BSFixedString modName)

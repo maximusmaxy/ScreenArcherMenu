@@ -188,6 +188,18 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename, data->npc, data->clear, data->enable);
 		break;
 	}
+	case SAF::kSafAdjustmentMove:
+	{
+		auto data = (SAF::MoveMessage*)msg->data;
+		SAF::g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
+		break;
+	}
+	case SAF::kSafAdjustmentRename:
+	{
+		auto data = (SAF::AdjustmentSaveMessage*)msg->data;
+		SAF::g_adjustmentManager.RenameAdjustment(data->formId, data->handle, data->filename);
+		break;
+	}
 	}
 }
 

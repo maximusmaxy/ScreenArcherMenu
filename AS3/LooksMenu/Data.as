@@ -30,17 +30,20 @@
 
 		public static var delayClose:Boolean;
 		public static var hideMenu:Boolean;
+		public static var autoPlay:Boolean;
 		
 		public static var scriptType:String;
 		public static var scriptHandleHigh:uint;
 		public static var scriptHandleLow:uint;
 		
-		public static var selectedSlider:SliderListEntry = null;
 		public static var selectedText:SliderListEntry = null;
 		
 		public static const MORPH_DIRECTORY:String = "Data/F4SE/Plugins/SAM/FaceMorphs";
 		public static const ADJUSTMENT_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Adjustments";
 		public static const POSE_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Poses";
+		
+		public static const KEYBOARD = 1;
+		public static const PAD = 2;
 		
         public static const MAIN_MENU:Vector.<String> = new <String>[
             "$SAM_PoseAdjustMenu",
@@ -52,7 +55,7 @@
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
             "$SAM_HacksMenu",
-			//"$SAM_OptionsMenu"
+			"$SAM_OptionsMenu"
         ];
 		
 		public static const ERROR_NAMES:Vector.<String> = new <String>[
@@ -106,6 +109,13 @@
 			"$SAM_DisableFootIK"
 		];
 		
+		public static const OPTION_NAMES:Vector.<String> = new <String>[
+			"$SAM_Hotswap",
+			"$SAM_Alignment",
+			"$SAM_Widescreen",
+			"$SAM_Autoplay"
+		];
+		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
 		{
 			sam = root.f4se.plugins.ScreenArcherMenu;
@@ -131,11 +141,9 @@
 			}
 		}
 		
-		public static function saveState(menuState:int, menuStack:Array, sliderPos:int, sliderPosStack:Array)
+		public static function saveState(menuState:int, sliderPos:int, stack:Array)
 		{
 			var data:Object = {
-				state: menuState,
-				stack: menuStack,
 				options: menuOptions,
 				values: menuValues,
 				files: menuFiles,
@@ -144,8 +152,6 @@
 				bone: selectedBone,
 				boneName: boneName,
 				handles: poseHandles,
-				slider: sliderPos,
-				sliders: sliderPosStack,
 				step: stepValue,
 				folder: folderStack
 			}
@@ -236,8 +242,11 @@
 			}
 		}
 		
-		public static function updateCursorDrag():int
+		public static function updateCursorDrag(value:Number):int
 		{
+			if (!isNaN(value)) {
+				return int(value);
+			}
 			if (cursorStored) {
 				try 
 				{
@@ -260,6 +269,19 @@
 			cursorStored = false;
 		}
 		
+		public static function isLocked(type:int):Boolean
+		{
+			try 
+			{
+				return sam.GetLock(type);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get scroll lock");
+			}
+			return false;
+		}
+		
 		public static function loadAdjustmentList()
 		{
 			try {
@@ -271,8 +293,13 @@
 			{
 				trace("Failed to load adjustment list");
 				if (Util.debug) {
-					menuOptions = ["New Adjustment"];
-					menuValues = [0];
+					menuOptions = [
+						"New Adjustment 1",
+						"New Adjustment 2",
+						"New Adjustment 3",
+						"New Adjustment 4"
+					];
+					menuValues = [0, 1, 2, 3];
 				}
 			}
 		}
@@ -318,13 +345,13 @@
 		{
 			try
 			{
-				menuValues = [0, 0, 0, false];
+				menuValues = [0, 0, 0, 0, false];
 				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
 				if (adjustment.scale) {
 					menuValues[0] = adjustment.scale;
 				}
 				if (adjustment.persistent) {
-					menuValues[3] = adjustment.persistent;				
+					menuValues[4] = adjustment.persistent;				
 				}
 				if (adjustment.groups) {
 					for (var i:int = 0; i < adjustment.groups.length; i++) {
@@ -336,7 +363,7 @@
 			{
 				trace("Failed to get adjustment");
 				if (Util.debug) {
-					menuValues = [50, 0, 0, true, "Head", "Left Arm", "Left Leg"]
+					menuValues = [50, 0, 0, 0, true, "Head", "Left Arm", "Left Leg"]
 				}
 			}
 		}
@@ -430,6 +457,29 @@
 			}
 		}
 		
+		public static function moveAdjustment(id:int, inc:Boolean)
+		{
+			try
+			{
+				sam.MoveAdjustment(menuValues[id], inc);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to move adjustment");
+			}
+		}
+		
+		public static function renameAdjustment(name:String)
+		{
+			try {
+				sam.RenameAdjustment(selectedAdjustment, name);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to rename adjustment");
+			}
+		}
+		
 		public static function loadCategories()
 		{
 			try {
@@ -518,7 +568,7 @@
 				}
 				else
 				{
-					var dif:int = updateCursorDrag();
+					var dif:int = updateCursorDrag(value);
 					menuValues = sam.AdjustNodeRotation(boneName, selectedAdjustment, id, dif);
 					if (menuValues.length == 0) {
 						menuValues = [
@@ -711,7 +761,7 @@
 			catch (e:Error)
 			{
 				trace("Failed to load hacks");
-				menuValues = [false, false, false];
+				menuValues = [false, true, false];
 			}
 		}
 		
@@ -952,7 +1002,8 @@
 					menuValues[id] = step;
 					stepValue = step;
 				} else if (id < 8) {
-					var dif:int = updateCursorDrag();
+					var dif:int = updateCursorDrag(value);
+					trace(dif);
 					menuValues = sam.AdjustPositioning(id, dif, stepValue);
 					updatePositioning();
 				} else {
@@ -1012,6 +1063,21 @@
 			catch (e:Error)
 			{
 				trace("Failed to load sam poses");
+				if (Util.debug)
+				{
+					menuFolder = [
+						{
+							"name": "Folder",
+							"folder": true,
+							"path": "test"
+						},
+						{
+							"name": "File",
+							"path": "test"
+						}
+					];
+					updateFolderNames();
+				}
 			}
 		}
 		
@@ -1037,6 +1103,35 @@
 				menuFolder = [];
 			}
 			return false;
+		}
+		
+		public static function loadOptions()
+		{
+			menuOptions = OPTION_NAMES;
+			try {
+				menuValues = sam.getOptions();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load options");
+				menuValues = [
+					false,
+					false,
+					false,
+					false
+				];
+			}
+		}
+		
+		public static function setOption(id:int, enabled:Boolean)
+		{
+			try {
+				sam.SetOption(id, enabled);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to set option");
+			}
 		}
 	}
 }

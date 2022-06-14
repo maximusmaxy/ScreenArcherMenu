@@ -30,6 +30,8 @@ public:
 	void (*loadPose)(UInt32 formId, const char* filename);
 	void (*resetPose)(UInt32 formId);
 	void (*loadDefaultAdjustment)(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
+	void (*moveAdjustment)(UInt32 formId, UInt32 from, UInt32 to);
+	void (*renameAdjustment)(UInt32 formId, UInt32 handle, const char* name);
 };
 
 extern SafMessageDispatcher safMessageDispatcher;
@@ -56,6 +58,8 @@ void PushNewAdjustment(const char* name);
 void EraseAdjustment(UInt32 adjustmentHandle);
 void ClearAdjustment(UInt32 adjustmentHandle);
 void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup);
+void ShiftAdjustment(UInt32 adjustmentHandle, bool increment);
+void SetAdjustmentName(UInt32 adjustmentHandle, const char* name);
 
 void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle);
 void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);

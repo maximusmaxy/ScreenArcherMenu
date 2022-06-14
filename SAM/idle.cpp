@@ -79,48 +79,38 @@ RelocAddr<UInt64> TESIdleFormVFTable(0x2CB8FA8);
 typedef NiFormArrayTESIdle* (*_GetFormArrayFromName)(BSTCaseInsensitiveStringMapIdle* idleMap, const char* name);
 RelocAddr<_GetFormArrayFromName> GetFormArrayFromName(0x5AAC80);
 
-typedef std::map<UInt32, std::map<std::string, UInt32, NaturalSort>> SortedIdles;
+typedef std::map<std::string, std::map<std::string, UInt32, NaturalSort>, NaturalSort> SortedIdles;
 
-bool AddIdleToMap(TESIdleForm* form, SortedIdles& idles, std::unordered_map<UInt32, std::string>& modNames, IdleData& data) {
+
+bool IdleValid(TESIdleForm* form, IdleData& data) {
 	if (!form) return false;
 	if (*(UInt64*)form != TESIdleFormVFTable) return false;
 	if (!form->formID) return false;
 	if (!form->editorID) return false;
 	if (!(form->behaviorGraph == data.behavior)) return false;
 	if (!(form->animationEvent == data.event)) return false;
+	return true;
+}
 
-	UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
-	if (modNames.count(modIndex)) {
-		idles[modIndex][form->editorID] = form->formID;
+void GetLoadedModNames(std::unordered_map<UInt32, std::string>& modNames, tArray<ModInfo*>& modList, bool light)
+{
+	ModInfo** loadedCount = modList.entries + modList.count;
+	for (ModInfo** loaded = modList.entries; loaded < loadedCount; ++loaded)
+	{
+		ModInfo* modInfo = *loaded;
+		if (modInfo && modInfo->name && modInfo->modIndex && !idleExclude.count(modInfo->name)) {
+			UInt32 modIndex = light ? (0xFE << 24) + (modInfo->lightIndex << 12) : (modInfo->modIndex << 24);
+			std::string modName = modInfo->name;
+			modNames[modIndex] = modName.substr(0, modName.find_last_of("."));
+		}
 	}
-
-	return false;
 }
 
 void LoadIdleMenus() {
 	std::unordered_map<UInt32, std::string> modNames;
 
-	tArray<ModInfo*>* loadedMods = &(*g_dataHandler)->modList.loadedMods;
-	ModInfo** loadedCount = loadedMods->entries + loadedMods->count;
-	for (ModInfo** loaded = loadedMods->entries; loaded < loadedCount; ++loaded)
-	{
-		ModInfo* modInfo = *loaded;
-		if (modInfo && modInfo->name && modInfo->modIndex && !idleExclude.count(modInfo->name)) {
-			UInt32 modIndex = (modInfo->modIndex << 24);
-			modNames[modIndex] = modInfo->name;
-		}
-	}
-
-	tArray<ModInfo*>* lightMods = &(*g_dataHandler)->modList.lightMods;
-	ModInfo** lightCount = lightMods->entries + lightMods->count;
-	for (ModInfo** light = lightMods->entries; light < lightCount; ++light)
-	{
-		ModInfo* modInfo = *light;
-		if (modInfo && modInfo->name && modInfo->lightIndex) {
-			UInt32 modIndex = (0xFE << 24) + (modInfo->lightIndex << 12);
-			modNames[modIndex] = modInfo->name;
-		}
-	}
+	GetLoadedModNames(modNames, (*g_dataHandler)->modList.loadedMods, false);
+	GetLoadedModNames(modNames, (*g_dataHandler)->modList.lightMods, true);
 
 	for (auto& dataKvp : raceIdleData) {
 		SortedIdles idles;
@@ -129,15 +119,18 @@ void LoadIdleMenus() {
 		idleFormArray++;
 
 		for (TESIdleForm** idlePtr = idleFormArray->forms; idlePtr < idleFormArray->forms + idleFormArray->count; ++idlePtr) {
-			if (AddIdleToMap(*idlePtr, idles, modNames, dataKvp.second)) {
-				break;
+			TESIdleForm* form = *idlePtr;
+
+			if (IdleValid(form, dataKvp.second)) {
+				UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
+				if (modNames.count(modIndex)) {
+					idles[modNames[modIndex]][form->editorID] = form->formID;
+				}
 			}
 		}
 
 		for (auto& modKvp : idles) {
-			std::string modName = modNames[modKvp.first];
-			std::string noExtension = modName.substr(0, modName.find_last_of("."));
-			idleMenus[dataKvp.first].push_back(std::make_pair(noExtension, std::vector<std::pair<std::string, UInt32>>()));
+			idleMenus[dataKvp.first].push_back(std::make_pair(modKvp.first, std::vector<std::pair<std::string, UInt32>>()));
 			for (auto& formKvp : modKvp.second) {
 				idleMenus[dataKvp.first].back().second.push_back(formKvp);
 			}
