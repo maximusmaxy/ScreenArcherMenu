@@ -3,8 +3,6 @@
 #include "f4se/GameData.h"
 #include "f4se/GameRTTI.h"
 #include "f4se/GameTypes.h"
-#include "f4se/Serialization.h"
-using namespace Serialization;
 
 #include "io.h"
 #include "util.h"
@@ -156,6 +154,15 @@ namespace SAF {
 		updated = true;
 	}
 
+	void Adjustment::SetScale(float newScale)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		scale = newScale;
+
+		updated = true;
+	}
+
 	void Adjustment::Clear()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
@@ -203,10 +210,11 @@ namespace SAF {
 		}
 
 		//updated race
-		if (!formNpc->race.race)
-			return kActorInvalid;
+		TESRace* actorRace = formActor->GetActorRace();
+		if (!actorRace)
+			return kActorInvalid;	
 
-		UInt32 newRace = formNpc->race.race->formID;
+		UInt32 newRace = actorRace->formID;
 		if (race != newRace) {
 			result = kActorUpdated;
 		}
@@ -268,29 +276,42 @@ namespace SAF {
 		
 		if (data.persistents) {
 			for (auto& persistent : *data.persistents) {
-				removeSet.insert(persistent.name);
+				if (!persistent.file.empty()) {
+					removeSet.insert(persistent.file);
+				}
 				switch (persistent.type) {
 				case kAdjustmentSerializeAdd:
 				{
 					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name);
+					adjustment->file = persistent.file;
 					adjustment->mod = persistent.mod;
 					adjustment->map = persistent.map;
-					adjustment->persistent = true;
+					adjustment->scale = persistent.scale;
 					break;
 				}
 				case kAdjustmentSerializeLoad:
 				{
-					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.name, true);
+					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.file, true);
 					if (adjustment != nullptr) {
+						adjustment->name = persistent.name;
 						adjustment->mod = persistent.mod;
-						adjustment->persistent = true;
-						adjustment->saved = true;
+						adjustment->scale = persistent.scale;
 					}
 					break;
 				}
 				case kAdjustmentSerializeRemove:
 				{
-					removedAdjustments.insert(persistent.name);
+					removedAdjustments.insert(persistent.file);
+					break;
+				}
+				case kAdjustmentSerializeDefault:
+				{
+					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.file, true);
+					if (adjustment != nullptr) {
+						adjustment->name = persistent.file;
+						adjustment->isDefault = true;
+						adjustment->mod = persistent.mod;
+					}
 					break;
 				}
 				}
@@ -304,19 +325,18 @@ namespace SAF {
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(def, true);
 					if (adjustment != nullptr) {
 						adjustment->isDefault = true;
-						adjustment->persistent = true;
 					}
 				}
 			}
 		}
 		
-		if (data.uniques) {
+		//Only load uniques if there are no persistents, add the unique into the persistents then ignore it
+		if (data.uniques && !data.persistents) {
 			for (auto& kvp : *data.uniques) {
 				if (!removeSet.count(kvp.first)) {
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(kvp.first, true);
 					if (adjustment != nullptr) {
-						adjustment->isDefault = true;
-						adjustment->persistent = true;
+						adjustment->file.clear();
 					}
 				}
 			}
@@ -334,12 +354,10 @@ namespace SAF {
 		return adjustment;
 	}
 
-	UInt32 ActorAdjustments::CreateAdjustment(std::string name, std::string modName, bool persistent, bool hidden)
+	UInt32 ActorAdjustments::CreateAdjustment(std::string name, std::string modName)
 	{
 		std::shared_ptr<Adjustment> adjustment = CreateAdjustment(name);
 		adjustment->mod = modName;
-		adjustment->persistent = persistent;
-		adjustment->hidden = hidden;
 		return adjustment->handle;
 	}
 
@@ -450,11 +468,11 @@ namespace SAF {
 		return -1;
 	}
 
-	void ActorAdjustments::MoveAdjustment(UInt32 fromIndex, UInt32 toIndex)
+	bool ActorAdjustments::MoveAdjustment(UInt32 fromIndex, UInt32 toIndex)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.size() || toIndex >= list.size()) return;
+		if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.size() || toIndex >= list.size()) return false;
 
 		std::shared_ptr<Adjustment> adjustment = list[fromIndex];
 
@@ -470,6 +488,8 @@ namespace SAF {
 		}
 
 		list[toIndex] = adjustment;
+
+		return true;
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(std::string filename, bool cached)
@@ -483,13 +503,13 @@ namespace SAF {
 				if (removedAdjustments.count(filename)) {
 					removedAdjustments.erase(filename);
 					adjustment->isDefault = true;
-					adjustment->persistent = true;
 				}
 
 				if (nodeSets) {
 					adjustment->CopyMap(adjustmentFile, &nodeSets->all);
 				}
 				
+				adjustment->file = filename;
 				return adjustment;
 			}
 		}
@@ -505,28 +525,25 @@ namespace SAF {
 			if (removedAdjustments.count(filename)) {
 				removedAdjustments.erase(filename);
 				adjustment->isDefault = true;
-				adjustment->persistent = true;
 			}
 			
 			if (nodeSets) {
 				adjustment->CopyMap(&adjustmentMap, &nodeSets->all);
 			}
 			
+			adjustment->file = filename;
 			return adjustment;
 		}
 
 		return nullptr;
 	}
 
-	UInt32 ActorAdjustments::LoadAdjustment(std::string filename, std::string modName, bool persistent, bool hidden, bool cached)
+	UInt32 ActorAdjustments::LoadAdjustmentHandle(std::string filename, std::string modName, bool cached)
 	{
 		std::shared_ptr<Adjustment> adjustment = LoadAdjustment(filename, cached);
 		if (!adjustment) return 0;
 
 		adjustment->mod = modName;
-		adjustment->persistent = persistent;
-		adjustment->hidden = hidden;
-		adjustment->saved = true;
 		return adjustment->handle;
 	}
 
@@ -542,8 +559,7 @@ namespace SAF {
 				adjustment->isDefault = false;
 			}
 			adjustment->name = filename;
-			adjustment->saved = true;
-			adjustment->persistent = true;
+			adjustment->file = filename;
 			adjustment->updated = false;
 		}
 	}
@@ -618,6 +634,7 @@ namespace SAF {
 		NiAVObject* baseNode = nodeMap[baseName];
 
 		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
+		adjustment->updated = true;
 	}
 
 	void ActorAdjustments::RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, std::string name, UInt32 type, float scalar)
@@ -671,7 +688,7 @@ namespace SAF {
 				}
 			}
 			else {
-				_DMESSAGE("could not find overrider node");
+				_DMESSAGE("could not find overrider node", overrider.c_str());
 			}
 		}
 
@@ -695,7 +712,10 @@ namespace SAF {
 			std::string filename = path.substr(lastOf, path.size() - lastOf - 5);
 
 			for (auto& kvp : map) {
-				if (!kvp.second->persistent && kvp.second->handle != poseHandle) {
+				//if (!kvp.second->persistent && kvp.second->handle != poseHandle) {
+				//	kvp.second->Clear();
+				//}
+				if (!kvp.second->isDefault && kvp.second->handle != poseHandle) {
 					kvp.second->Clear();
 				}
 			}
@@ -730,21 +750,24 @@ namespace SAF {
 	}
 
 	void ActorAdjustments::ResetPose() {
-		if (!poseHandle) return;
+		if (!poseHandle) 
+			return;
 
 		RemoveAdjustment(poseHandle);
 	}
 
 	void ActorAdjustments::LoadDefaultAdjustment(std::string filename, bool clear, bool enable) {
-		if (clear) RemoveDefaultAdjustments();
+		if (clear) 
+			RemoveDefaultAdjustments();
 
-		if (filename.empty()) return;
+		if (filename.empty()) 
+			return;
 
 		if (enable) {
 			std::shared_ptr<Adjustment> adjustment = LoadAdjustment(filename, true);
-			if (!adjustment) return;
+			if (!adjustment) 
+				return;
 
-			adjustment->persistent = true;
 			adjustment->isDefault = true;
 		} 
 		else {
@@ -1000,18 +1023,15 @@ namespace SAF {
 
 	bool AdjustmentManager::UpdateActor(std::shared_ptr<ActorAdjustments> adjustments) {
 		adjustments->Clear();
+
 		if (adjustments->baseRoot)
 			RemoveNodeMap(adjustments->baseRoot);
 
 		auto valid = adjustments->IsValid();
-		if (!valid)
-			return false;
 
-		adjustments->root = adjustments->actor->GetActorRootNode(false);
-		if (!adjustments->root)
+		if (valid == kActorInvalid)
 			return false;
-
-		if (valid == kActorUpdated) {
+		else if (valid == kActorUpdated) {
 			TESForm* actorForm = LookupFormByID(adjustments->formId);
 			if (!actorForm)
 				return false;
@@ -1026,10 +1046,16 @@ namespace SAF {
 
 			adjustments->isFemale = (CALL_MEMBER_FN(adjustments->npc, GetSex)() == 1 ? true : false);
 
-			if (!adjustments->npc->race.race)
+			TESRace* actorRace = adjustments->actor->GetActorRace();
+			if (!actorRace)
 				return false;
-			adjustments->race = adjustments->npc->race.race->formID;
+
+			adjustments->race = actorRace->formID;
 		}
+
+		adjustments->root = adjustments->actor->GetActorRootNode(false);
+		if (!adjustments->root)
+			return false;
 
 		adjustments->nodeSets = GetNodeSets(adjustments->race, adjustments->isFemale);
 		if (!adjustments->nodeSets) 
@@ -1178,14 +1204,14 @@ namespace SAF {
 		adjustmentFileCache[filename] = map;
 	}
 
-	void AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden) {
+	void AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
 		if (!actorAdjustmentCache.count(formId)) return;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
-		adjustments->CreateAdjustment(name, mod, persistent, hidden);
+		adjustments->CreateAdjustment(name, mod);
 	}
 
 	void  AdjustmentManager::SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle) {
@@ -1198,14 +1224,14 @@ namespace SAF {
 		adjustments->SaveAdjustment(filename, handle);
 	}
 
-	bool AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden) {
+	bool AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
 		if (!actorAdjustmentCache.count(formId)) return false;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
-		return adjustments->LoadAdjustment(filename, mod, persistent, hidden);
+		return adjustments->LoadAdjustmentHandle(filename, mod);
 	}
 
 	void AdjustmentManager::RemoveAdjustment(UInt32 formId, UInt32 handle) {
@@ -1358,15 +1384,15 @@ namespace SAF {
 		}
 	}
 
-	void AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
+	bool AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 		
-		if (!actorAdjustmentCache.count(formId)) return;
+		if (!actorAdjustmentCache.count(formId)) return false;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
-		adjustments->MoveAdjustment(fromIndex, toIndex);
+		return adjustments->MoveAdjustment(fromIndex, toIndex);
 	}
 
 	void AdjustmentManager::RenameAdjustment(UInt32 formId, UInt32 handle, const char* name)
@@ -1391,329 +1417,5 @@ namespace SAF {
 			bool removed = adjustments->RemoveMod(modName);
 			if (removed) adjustments->UpdateAllAdjustments();
 		});
-	}
-
-	/*
-	* ADJU (Adjustments)
-	* 
-	* Actors length
-	*   FormId
-	*	Adjustments length
-	*		Name
-	*		Mod
-	*		Type
-	*		Transforms length (Only if add type)
-	*			key
-	*			x
-	*			y
-	*			z
-	*			yaw
-	*			pitch
-	*			roll
-	*			scale
-	*/
-
-	/*
-	* SKEL (Skeleton Adjustments)
-	* 
-	* Version 0
-	* 
-	* Adjustments Length
-	*   Key
-	*   Name
-	* 
-	* Version 1
-	* 
-	* Keys Length
-	*   Key
-	*   Adjustments Length
-	*	  Name
-	*/
-
-	void AdjustmentManager::SerializeSave(const F4SESerializationInterface* ifc) {
-
-		std::unique_lock<std::shared_mutex> persistenceLock(persistenceMutex, std::defer_lock);
-		std::unique_lock<std::shared_mutex> actorLock(actorMutex, std::defer_lock);
-
-		std::lock(actorLock, persistenceLock);
-
-		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> savedAdjustments;
-
-		//collect currently loaded actors
-		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
-			adjustments->GetPersistentAdjustments(&savedAdjustments);
-		});
-
-		//the persistence store is only updated when an actor is unloaded so only add the missing ones
-		for (auto& persistent : persistentAdjustments) {
-			if (!savedAdjustments.count(persistent.first)) {
-				savedAdjustments[persistent.first] = persistent.second;
-			}
-		}
-
-		ifc->OpenRecord('ADJU', 0); //adjustments
-
-		UInt32 size = savedAdjustments.size();
-		WriteData<UInt32>(ifc, &size);
-		for (auto& adjustmentKvp : savedAdjustments) {
-
-			WriteData<UInt32>(ifc, &adjustmentKvp.first);
-			UInt32 adjustmentsSize = adjustmentKvp.second.size();
-
-			WriteData<UInt32>(ifc, &adjustmentsSize);
-			for (auto& adjustment : adjustmentKvp.second) {
-
-				WriteData<std::string>(ifc, &adjustment.name);
-				WriteData<std::string>(ifc, &adjustment.mod);
-				WriteData<UInt8>(ifc, &adjustment.type);
-
-				if (adjustment.type == kAdjustmentSerializeAdd) {
-
-					UInt32 mapSize = adjustment.map.size();
-					WriteData<UInt32>(ifc, &mapSize);
-
-					for (auto& kvp : adjustment.map) {
-						WriteData<std::string>(ifc, &kvp.first);
-						WriteData<float>(ifc, &kvp.second.pos.x);
-						WriteData<float>(ifc, &kvp.second.pos.y);
-						WriteData<float>(ifc, &kvp.second.pos.z);
-						float yaw, pitch, roll;
-						MatrixToEulerYPR(kvp.second.rot, yaw, pitch, roll);
-						WriteData<float>(ifc, &yaw);
-						WriteData<float>(ifc, &pitch);
-						WriteData<float>(ifc, &roll);
-						WriteData<float>(ifc, &kvp.second.scale);
-					}
-				}
-			}
-		}
-
-		//ifc->OpenRecord('SKEL', 0); //skeleton adjustments
-
-		//size = defaultAdjustments.size();
-		//WriteData<UInt32>(ifc, &size);
-
-		//for (auto& kvp : defaultAdjustments) {
-		//	WriteData<UInt64>(ifc, &kvp.first);
-		//	WriteData<std::string>(ifc, &kvp.second);
-		//}
-
-		ifc->OpenRecord('SKEL', 1); //skeleton adjustments
-
-		size = defaultAdjustments.size();
-		WriteData<UInt32>(ifc, &size);
-
-		for (auto& keyKvp : defaultAdjustments) {
-			WriteData<UInt64>(ifc, &keyKvp.first);
-
-			UInt32 adjustmentsSize = keyKvp.second.size();
-			WriteData<UInt32>(ifc, &adjustmentsSize);
-
-			for (auto& adjustment : keyKvp.second)
-			{
-				WriteData<std::string>(ifc, &adjustment);
-			}
-		}
-	}
-
-	void AdjustmentManager::SerializeLoad(const F4SESerializationInterface* ifc) {
-		std::unique_lock<std::shared_mutex> persistenceLock(persistenceMutex, std::defer_lock);
-		std::unique_lock<std::shared_mutex> actorLock(actorMutex, std::defer_lock);
-
-		std::lock(actorLock, persistenceLock);
-
-		UInt32 type, length, version;
-
-		while (ifc->GetNextRecordInfo(&type, &version, &length))
-		{
-			switch (type)
-			{
-			case 'ADJU': //adjustment
-			{
-				UInt32 actorSize;
-				ReadData<UInt32>(ifc, &actorSize);
-
-				for (UInt32 i = 0; i < actorSize; ++i) {
-
-					UInt32 oldId, formId;
-					ReadData<UInt32>(ifc, &oldId);
-					ifc->ResolveFormId(oldId, &formId);
-
-					UInt32 adjustmentsSize;
-					ReadData<UInt32>(ifc, &adjustmentsSize);
-
-					for (UInt32 j = 0; j < adjustmentsSize; ++j) {
-						std::string name;
-						ReadData<std::string>(ifc, &name);
-						std::string mod;
-						ReadData<std::string>(ifc, &mod);
-						UInt8 adjustmentType;
-						ReadData<UInt8>(ifc, &adjustmentType);
-
-						//Accept loaded mods and adjustments that don't have a mod specified
-						bool modLoaded = mod.empty();
-						if (!modLoaded) {
-							const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(mod.c_str());
-							modLoaded = modInfo && modInfo->modIndex != 0xFF;
-						}
-						
-						if (adjustmentType == kAdjustmentSerializeAdd) {
-
-							UInt32 transformSize;
-							ReadData<UInt32>(ifc, &transformSize);
-							if (transformSize > 0) {
-
-								TransformMap map;
-								for (UInt32 k = 0; k < transformSize; ++k) {
-
-									std::string key;
-									ReadData<std::string>(ifc, &key);
-
-									NiTransform transform;
-									ReadData<float>(ifc, &transform.pos.x);
-									ReadData<float>(ifc, &transform.pos.y);
-									ReadData<float>(ifc, &transform.pos.z);
-
-									float yaw, pitch, roll;
-									ReadData<float>(ifc, &yaw);
-									ReadData<float>(ifc, &pitch);
-									ReadData<float>(ifc, &roll);
-									MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
-
-									ReadData<float>(ifc, &transform.scale);
-
-									map[key] = transform;
-								}
-								if (modLoaded) {
-									persistentAdjustments[formId].push_back(PersistentAdjustment(name, mod, adjustmentType, map));
-								}
-							}
-						}
-						else
-						{
-							if (modLoaded) {
-								persistentAdjustments[formId].push_back(PersistentAdjustment(name, mod, adjustmentType));
-							}
-						}
-					}
-				}
-				break;
-			}
-			case 'SKEL':
-			{
-				switch (version) {
-				case 0:
-				{
-					UInt32 adjustmentSize;
-					ReadData<UInt32>(ifc, &adjustmentSize);
-
-					for (UInt32 i = 0; i < adjustmentSize; ++i) {
-						UInt64 adjustmentKey;
-						ReadData<UInt64>(ifc, &adjustmentKey);
-
-						std::string adjustmentName;
-						ReadData<std::string>(ifc, &adjustmentName);
-
-						defaultAdjustments[adjustmentKey].insert(adjustmentName);
-					}
-					break;
-				}
-				case 1:
-				{
-					UInt32 adjustmentSize;
-					ReadData<UInt32>(ifc, &adjustmentSize);
-
-					for (UInt32 i = 0; i < adjustmentSize; ++i) {
-						UInt64 adjustmentKey;
-						ReadData<UInt64>(ifc, &adjustmentKey);
-
-						UInt32 namesSize;
-						ReadData<UInt32>(ifc, &namesSize);
-
-						for (UInt32 k = 0; k < namesSize; ++k) {
-
-							std::string adjustmentName;
-							ReadData<std::string>(ifc, &adjustmentName);
-
-							defaultAdjustments[adjustmentKey].insert(adjustmentName);
-						}
-					}
-					break;
-				}
-				}
-			}
-			}
-		}
-	}
-
-	void AdjustmentManager::SerializeRevert(const F4SESerializationInterface* ifc) {
-		std::unique_lock<std::shared_mutex> persistenceLock(persistenceMutex, std::defer_lock);
-		std::unique_lock<std::shared_mutex> actorLock(actorMutex, std::defer_lock);
-
-		std::lock(actorLock, persistenceLock);
-
-		persistentAdjustments.clear();
-		defaultAdjustments.clear();
-		actorAdjustmentCache.clear();
-		nodeMapCache.clear();
-
-		gameLoaded = false;
-	}
-
-	void AdjustmentManager::StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
-		std::lock_guard<std::shared_mutex> persistenceLock(persistenceMutex);
-
-		if (persistentAdjustments.count(adjustments->formId))
-			persistentAdjustments[adjustments->formId].clear();
-		adjustments->GetPersistentAdjustments(&persistentAdjustments);
-	}
-
-	void ActorAdjustments::GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments) {
-		std::shared_lock<std::shared_mutex> lock(mutex);
-
-		for (auto& adjustment : map) {
-			PersistentAdjustment persistentAdjustment = adjustment.second->GetPersistence();
-			if (persistentAdjustment.type != kAdjustmentSerializeDisabled)
-				(*persistentAdjustments)[formId].push_back(persistentAdjustment);
-		}
-
-		for (auto& removed : removedAdjustments) 
-		{
-			(*persistentAdjustments)[formId].push_back(PersistentAdjustment(removed, std::string(), kAdjustmentSerializeRemove));
-		}
-	}
-
-	PersistentAdjustment Adjustment::GetPersistence() {
-		std::shared_lock<std::shared_mutex> lock(mutex);
-
-		UInt8 type = kAdjustmentSerializeDisabled;
-		if (persistent) {
-			if (isDefault) {
-				if (updated) {
-					type = kAdjustmentSerializeAdd;
-				}
-			}
-			else if (saved) {
-				if (updated) {
-					type = kAdjustmentSerializeAdd;
-				}
-				else {
-					type = kAdjustmentSerializeLoad;
-				}
-			}
-			else {
-				type = kAdjustmentSerializeAdd;
-			}
-		}
-
-		switch (type) {
-		case kAdjustmentSerializeAdd:
-			return PersistentAdjustment(name, mod, type, map);
-		case kAdjustmentSerializeRemove:
-		case kAdjustmentSerializeLoad:
-			return PersistentAdjustment(name, mod, type);
-		default:
-			return PersistentAdjustment();
-		}
 	}
 }

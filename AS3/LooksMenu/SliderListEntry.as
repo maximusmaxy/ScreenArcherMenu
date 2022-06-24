@@ -208,11 +208,12 @@
 			}
 		}
 
-		public function setText(x:int, y:int, name:String)
+		public function setText(x:int, y:int, width:int, name:String)
 		{
 			text.visible = true;
 			text.x = x;
 			text.y = y;
+			text.width = width;
 			text.text = name;
 			var format:TextFormat = text.getTextFormat();
 			if (format.align != TextFormatAlign.LEFT) {
@@ -233,7 +234,7 @@
 		public function updateList(name:String)
 		{
 			setSelectable(true);
-			setText(0, 0, name);
+			setText(0, 0, 254, name);
 			slider.visible = false;
 			value.visible = false;
 			checkbox.disable();
@@ -245,7 +246,7 @@
 		public function updateSlider(name:String, valueType:int)
 		{
 			setSelectable(false);
-			setText(0, 0, name);
+			setText(0, 0, 254, name);
 			slider.visible = true;
 			value.visible = true;
 			value.x = 219.7;
@@ -262,7 +263,7 @@
 		public function updateCheckbox(name:String, checked:Boolean)
 		{
 			setSelectable(true);
-			setText(31, 0, name);
+			setText(31, 0, 254, name);
 			slider.visible = false;
 			value.visible = false;
 			checkbox.init(1, this.id, Checkbox.CHECK, false, func);
@@ -275,7 +276,7 @@
 		public function updateAdjustment(name:String) 
 		{
 			setSelectable(true);
-			setText(0, 0, name);
+			setText(0, 0, 218, name);
 			slider.visible = false;
 			value.visible = false;
 			checkbox.init(222, this.id, Checkbox.SETTINGS, true, func2);
@@ -287,7 +288,7 @@
 		public function updateAdjustmentOrder(name:String) 
 		{
 			setSelectable(true);
-			setText(0, 0, name);
+			setText(0, 0, 218, name);
 			slider.visible = false;
 			value.visible = false;
 			checkbox.init(222, this.id, Checkbox.DOWN, true, func2);
@@ -299,7 +300,7 @@
 		public function updateDrag(name:String)
 		{
 			setSelectable(false);
-			setText(31, 0, name)
+			setText(31, 0, 254, name)
 			slider.visible = false;
 			value.visible = false;
 			checkbox.init(1, this.id, Checkbox.DRAG, false, func);
@@ -311,7 +312,7 @@
 		public function updateDragValue(name:String)
 		{
 			setSelectable(false);
-			setText(31, 0, name)
+			setText(31, 0, 254, name)
 			slider.visible = false;
 			value.visible = true;
 			value.x = 219.7;
@@ -330,20 +331,22 @@
 		public function updateFolder(name:String)
 		{
 			setSelectable(true);
-			setText(33, 0, name);
+			setText(33, 0, 254, name);
 			slider.visible = false;
 			value.visible = false;
 			checkbox.init(3, this.id, Checkbox.FOLDER, false, func);
+			checkbox.setCheck(selected);
 			checkbox2.disable();
 			Util.setRect(background, -2, -3.25, 290, 32);
 			this.type = FOLDER;
 		}
 		
-		public function updateSliderData(min:Number, max:Number, step:Number, mod:Number, fixed:int = 0)
+		public function updateSliderData(min:Number, max:Number, step:Number, stepPad:Number, mod:Number, fixed:int = 0)
 		{
 			slider.minimum = min;
 			slider.maximum = max;
 			slider.StepSize = step;
+			slider.StepSizePad = stepPad;
 			this.valueMod = mod;
 			this.valueFixed = fixed;
 		}

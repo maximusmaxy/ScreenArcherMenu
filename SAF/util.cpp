@@ -13,10 +13,6 @@ void _Logf(std::string msg, float num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
 }
 
-void _LogCat(std::string c1, std::string c2) {
-	_DMESSAGE((c1 + c2).c_str());
-}
-
 UInt32 GetFormId(std::string modName, UInt32 formId) {
 	const ModInfo* mod = (*g_dataHandler)->LookupModByName(modName.c_str());
 

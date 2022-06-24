@@ -7,6 +7,8 @@
 #include "f4se/GameTypes.h"
 #include "f4se/PluginAPI.h"
 
+#include "serialization.h"
+
 #include <memory>
 #include <unordered_set>
 #include <unordered_map>
@@ -17,6 +19,53 @@ namespace SAF {
 	typedef std::unordered_set<std::string> NodeSet;
 	typedef std::unordered_map<std::string, NiAVObject*> NodeMap;
 	typedef std::unordered_map<std::string, NiTransform> TransformMap;
+
+	enum {
+		kAdjustmentSerializeDisabled = 0,
+		kAdjustmentSerializeAdd,		//Adjustments that are not saved in a json file
+		kAdjustmentSerializeLoad,		//Adjustments saved in a json file
+		kAdjustmentSerializeRemove,		//Default/Unique adjustments that are removed
+		kAdjustmentSerializeDefault,	//v0.5 Need to store default adjustments for ordering purposes
+	};
+
+	class PersistentAdjustment {
+	public:
+		std::string name;
+		std::string file;
+		std::string mod;
+		float scale;
+		UInt8 type;
+		TransformMap map;
+
+		PersistentAdjustment() : type(kAdjustmentSerializeDisabled) {}
+
+		PersistentAdjustment(std::string file, UInt8 type) :
+			name(file),
+			file(file),
+			mod(std::string()),
+			scale(1.0),
+			type(type)
+		{}
+
+		PersistentAdjustment(std::string name, std::string file, std::string mod, float scale, UInt8 type) :
+			name(name),
+			file(file),
+			mod(mod),
+			scale(scale),
+			type(type)
+		{}
+
+		PersistentAdjustment(std::string name, std::string file, std::string mod, float scale, UInt8 type, TransformMap map) :
+			name(name),
+			file(file),
+			mod(mod),
+			scale(scale),
+			type(type),
+			map(map)
+		{}
+	};
+
+	typedef std::unordered_map<UInt32, std::vector<PersistentAdjustment>> PersistentMap;
 
 	struct NodeMapRef {
 		NodeMap map;
@@ -74,9 +123,6 @@ namespace SAF {
 		UInt32 formId;
 		const char* name;
 		const char* esp;
-		bool persistent;
-		bool hidden;
-		const char* mod;
 	};
 
 	struct AdjustmentSaveMessage {
@@ -106,7 +152,6 @@ namespace SAF {
 
 	struct AdjustmentActorMessage {
 		UInt32 formId;
-		const char* mod;
 	};
 
 	struct AdjustmentNegateMessage {
@@ -118,7 +163,6 @@ namespace SAF {
 	struct PoseMessage {
 		UInt32 formId;
 		const char* filename;
-		const char* mod;
 	};
 
 	struct SkeletonMessage {
@@ -151,36 +195,6 @@ namespace SAF {
 		std::unordered_map<std::string, std::string> fixedConversion;
 	};
 
-	enum {
-		kAdjustmentSerializeDisabled = 0,
-		kAdjustmentSerializeAdd,		//Adjustments that are not saved in a json file
-		kAdjustmentSerializeLoad,		//Adjustments saved in a json file
-		kAdjustmentSerializeRemove,		//Default/Unique adjustments that are removed
-	};
-
-	struct PersistentAdjustment {
-	public:
-		std::string name;
-		std::string mod;
-		UInt8 type;
-		TransformMap map;
-
-		PersistentAdjustment() : type(kAdjustmentSerializeDisabled) {}
-
-		PersistentAdjustment(std::string name, std::string mod, UInt8 type) :
-			name(name),
-			mod(mod),
-			type(type)
-		{}
-
-		PersistentAdjustment(std::string name, std::string mod, UInt8 type, TransformMap map) :
-			name(name),
-			mod(mod),
-			type(type),
-			map(map)
-		{}
-	};
-
 	struct AdjustmentUpdateData
 	{
 		std::unordered_set<std::string>* defaults;
@@ -200,11 +214,9 @@ namespace SAF {
 		UInt32 handle = -1;
 
 		std::string name;
+		std::string file;
 		std::string mod;
-		bool hidden = false;
 		bool isDefault = false;
-		bool persistent = false;
-		bool saved = false;
 		bool updated = false;
 		float scale = 1.0f;
 		
@@ -236,6 +248,7 @@ namespace SAF {
 		void ForEachTransformOrDefault(const std::function<void(std::string, NiTransform*)>& functor, NodeSet* nodeset);
 
 		void Rename(std::string name);
+		void SetScale(float scale);
 
 		void Clear();
 
@@ -253,7 +266,6 @@ namespace SAF {
 	private:
 		UInt32 nextHandle = 1; //0 handle is null
 		std::shared_mutex mutex;
-		
 
 	public:
 		UInt32 race = 0;
@@ -287,7 +299,7 @@ namespace SAF {
 		ActorAdjustmentState IsValid();
 
 		std::shared_ptr<Adjustment> CreateAdjustment(std::string name);
-		UInt32 CreateAdjustment(std::string name, std::string esp, bool persistent, bool hidden);
+		UInt32 CreateAdjustment(std::string name, std::string esp);
 		std::shared_ptr<Adjustment> GetAdjustment(UInt32 handle);
 		std::shared_ptr<Adjustment> GetListAdjustment(UInt32 index);
 		void RemoveAdjustment(UInt32 handle);
@@ -295,7 +307,7 @@ namespace SAF {
 		bool HasAdjustment(std::string name);
 		std::unordered_set<std::string> GetAdjustmentNames();
 		UInt32 GetAdjustmentIndex(UInt32 handle);
-		void MoveAdjustment(UInt32 fromIndex, UInt32 toIndex);
+		bool MoveAdjustment(UInt32 fromIndex, UInt32 toIndex);
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
@@ -304,7 +316,7 @@ namespace SAF {
 		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);
 		
 		std::shared_ptr<Adjustment> LoadAdjustment(std::string filename, bool cached = false);
-		UInt32 LoadAdjustment(std::string filename, std::string espName, bool persistent, bool hidden, bool cached = false);
+		UInt32 LoadAdjustmentHandle(std::string filename, std::string espName, bool cached = false);
 		void SaveAdjustment(std::string filename, UInt32 handle);
 
 		void ForEachAdjustment(const std::function<void(std::shared_ptr<Adjustment>)>& functor);
@@ -319,11 +331,11 @@ namespace SAF {
 		void LoadDefaultAdjustment(std::string filename, bool clear, bool enable);
 		void RemoveDefaultAdjustments();
 
-		void GetPersistentAdjustments(std::unordered_map<UInt32, std::vector<PersistentAdjustment>>* persistentAdjustments);
-
 		void SavePose(std::string filename, std::unordered_set<UInt32> handles);
 		bool LoadPose(std::string filename);
 		void ResetPose();
+
+		void GetPersistentAdjustments(std::vector<PersistentAdjustment>& persistentAdjustments);
 	};
 
 	class AdjustmentManager
@@ -346,7 +358,7 @@ namespace SAF {
 
 		std::unordered_map<UInt64, std::unordered_set<std::string>> defaultAdjustments;
 		std::unordered_map<UInt32, std::vector<std::pair<std::string, std::string>>> uniqueAdjustments;
-		std::unordered_map<UInt32, std::vector<PersistentAdjustment>> persistentAdjustments;
+		PersistentMap persistentAdjustments;
 
 		std::unordered_map<NiNode*, NodeMapRef> nodeMapCache;
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
@@ -358,9 +370,9 @@ namespace SAF {
 		bool UpdateActor(std::shared_ptr<ActorAdjustments> adjustments);
 		bool UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments);
 
-		void CreateNewAdjustment(UInt32 formId, const char* name, const char* mod, bool persistent, bool hidden);
+		void CreateNewAdjustment(UInt32 formId, const char* name, const char* mod);
 		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
-		bool LoadAdjustment(UInt32 formId, const char* filename, const char* mod, bool persistent, bool hidden);
+		bool LoadAdjustment(UInt32 formId, const char* filename, const char* mod);
 		void RemoveAdjustment(UInt32 formId, UInt32 handle);
 		void ResetAdjustment(UInt32 formId, UInt32 handle);
 		void SetTransform(AdjustmentTransformMessage* message);
@@ -369,7 +381,7 @@ namespace SAF {
 		bool LoadPose(UInt32 formId, const char* filename);
 		void ResetPose(UInt32 formId);
 		void LoadDefaultAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
-		void MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex);
+		bool MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex);
 		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
 		
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
@@ -394,6 +406,8 @@ namespace SAF {
 		void SerializeRevert(const F4SESerializationInterface* ifc);
 
 		void StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
+		void StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
+		bool IsPersistentValid(PersistentAdjustment& persistent);
 	};
 
 	extern AdjustmentManager g_adjustmentManager;

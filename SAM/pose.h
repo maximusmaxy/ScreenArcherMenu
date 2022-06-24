@@ -48,8 +48,6 @@ void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float yaw, float
 void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale);
 void ResetAdjustmentTransform(const char* key, int adjustmentHandle);
 void NegateTransform(const char* key, UInt32 adjustmentHandle);
-
-void SetPersistence(UInt32 adjustmentHandle, bool isPersistent);
 void SetScale(UInt32 adjustmentHandle, int scale);
 
 void SaveAdjustmentFile(const char* filename, int adjustmentHandle);
@@ -58,7 +56,7 @@ void PushNewAdjustment(const char* name);
 void EraseAdjustment(UInt32 adjustmentHandle);
 void ClearAdjustment(UInt32 adjustmentHandle);
 void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup);
-void ShiftAdjustment(UInt32 adjustmentHandle, bool increment);
+bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment);
 void SetAdjustmentName(UInt32 adjustmentHandle, const char* name);
 
 void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle);

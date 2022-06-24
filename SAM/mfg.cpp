@@ -8,6 +8,8 @@
 
 #include <regex>
 
+#include "SAF/hacks.h"
+
 #include "sam.h"
 
 RelocAddr<UInt64> faceGenAnimDataVfTable(0x2CE9C58);
@@ -32,7 +34,14 @@ void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale)
 	if (!ptr) return;
 
 	UInt32 key = std::stoul((*menu)[categoryIndex].second[morphIndex].second);
+
 	ptr[key] = scale * 0.0099999998f;
+
+	//update blink hack if left/right upper eyelid morph
+	if (key == 18 || key == 41) {
+		if (GetBlinkState() != kHackEnabled)
+			SetBlinkState(true);
+	}
 }
 
 void SaveMfg(std::string filename) {
@@ -89,12 +98,22 @@ bool LoadMfg(std::string filename) {
 	float morphs[54];
 	std::memset(morphs, 0, sizeof(morphs));
 
+	bool blinkHack = false;
+	bool morphHack = false;
+
 	while (!file.HitEOF()) {
 		file.ReadString(buf, 512, '\n', '\r');
 		if (std::regex_match(buf, match, mfgRegex)) {
 			int id = max(0, min(53, std::stoi(match[1].str())));
 			int scale = max(0, min(100, std::stoi(match[2].str())));
 			morphs[id] = scale * 0.0099999998f; 
+			
+			//check if blink hack needs to be applied to left/right upper eye lid morph
+			if (id == 18 || id == 41)
+				blinkHack = true;
+
+			//aways update morph hack
+			morphHack = true;
 		}
 	}
 
@@ -103,6 +122,12 @@ bool LoadMfg(std::string filename) {
 	}
 
 	file.Close();
+
+	if (blinkHack && GetBlinkState() != kHackEnabled)
+		SetBlinkState(true);
+
+	if (morphHack && GetForceMorphUpdate() != kHackEnabled)
+		SetForceMorphUpdate(true);
 
 	return true;
 }

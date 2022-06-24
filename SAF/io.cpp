@@ -64,7 +64,7 @@ namespace SAF {
 		IFileStream file;
 
 		if (!file.Open(path.c_str())) {
-			_LogCat("Could not open ", path);
+			_DMESSAGE("Could not open ", path);
 			return false;
 		}
 
@@ -77,7 +77,7 @@ namespace SAF {
 
 		if (!reader.parse(nodeMap, value))
 		{
-			_LogCat("Failed to parse ", path);
+			_DMESSAGE("Failed to parse ", path);
 			return false;
 		}
 
@@ -88,8 +88,8 @@ namespace SAF {
 			UInt32 formId = GetFormId(mod, race);
 			if (!formId) return false;
 
-			std::string sex = value["sex"].asString();
-			bool isFemale = (sex == "female" || sex == "Female");
+			const char* sex = value["sex"].asCString();
+			bool isFemale = !_stricmp(sex, "female");
 
 			Json::Value pose = value["pose"];
 			Json::Value offsets = value["offsets"];
@@ -128,7 +128,7 @@ namespace SAF {
 			}
 		}
 		catch (...) {
-			_LogCat("Failed to read ", path);
+			_DMESSAGE("Failed to read ", path);
 			return false;
 		}
 
@@ -140,7 +140,7 @@ namespace SAF {
 		//IFileStream file;
 
 		//if (!file.Open(path.c_str())) {
-		//	_LogCat("Could not open ", path);
+		//	_DMESSAGE("Could not open ", path);
 		//	return false;
 		//}
 
@@ -153,7 +153,7 @@ namespace SAF {
 
 		//if (!reader.parse(defaultAdjustment, value))
 		//{
-		//	_LogCat("Failed to parse ", path);
+		//	_DMESSAGE("Failed to parse ", path);
 		//	return false;
 		//}
 
@@ -182,7 +182,7 @@ namespace SAF {
 		//	g_adjustmentManager.defaultAdjustments[key] =  adjustmentList;
 		//}
 		//catch (...) {
-		//	_LogCat("Failed to read ", path);
+		//	_DMESSAGE("Failed to read ", path);
 		//	return false;
 		//}
 
@@ -193,7 +193,7 @@ namespace SAF {
 		IFileStream file;
 
 		if (!file.Open(path.c_str())) {
-			_LogCat(path, " not found");
+			_DMESSAGE(path.c_str(), " not found");
 			return false;
 		}
 
@@ -205,7 +205,7 @@ namespace SAF {
 		Json::Value value;
 
 		if (!reader.parse(actorString, value)) {
-			_LogCat("Failed to parse ", path);
+			_DMESSAGE("Failed to parse ", path);
 			return false;
 		}
 
@@ -226,14 +226,14 @@ namespace SAF {
 			g_adjustmentManager.uniqueAdjustments[formId] = adjustments;
 		}
 		catch (...) {
-			_LogCat("Failed to read ", path);
+			_DMESSAGE("Failed to read ", path);
 			return false;
 		}
 
 		return true;
 	}
 
-	void ReadTransformJson(NiTransform& transform, Json::Value& value) {
+	void ReadTransformJson(NiTransform& transform, Json::Value& value, UInt32 version) {
 		transform.pos.x = ReadFloat(value["x"]);
 		transform.pos.y = ReadFloat(value["y"]);
 		transform.pos.z = ReadFloat(value["z"]);
@@ -242,12 +242,20 @@ namespace SAF {
 		yaw = ReadFloat(value["yaw"]);
 		pitch = ReadFloat(value["pitch"]);
 		roll = ReadFloat(value["roll"]);
-		MatrixFromDegree(transform.rot, yaw, pitch, roll);
+
+		switch (version) {
+		case 0:
+			MatrixFromDegree(transform.rot, yaw, pitch, roll);
+			break;
+		case 1:
+			MatrixFromPose(transform.rot, yaw, pitch, roll);
+			break;
+		}
 
 		transform.scale = ReadFloat(value["scale"]);
 	}
 
-	void WriteTransformJson(NiTransform* transform, Json::Value& value) {
+	void WriteTransformJson(NiTransform* transform, Json::Value& value, UInt32 version) {
 		char buffer[32];
 		sprintf_s(buffer, "%.06f", transform->pos.x);
 		value["x"] = Json::Value(buffer);
@@ -255,8 +263,17 @@ namespace SAF {
 		value["y"] = Json::Value(buffer);
 		sprintf_s(buffer, "%.06f", transform->pos.z);
 		value["z"] = Json::Value(buffer);
+
 		float yaw, pitch, roll;
-		MatrixToDegree(transform->rot, yaw, pitch, roll);
+		switch (version) {
+		case 0:
+			MatrixToDegree(transform->rot, yaw, pitch, roll);
+			break;
+		case 1:
+			MatrixToPose(transform->rot, yaw, pitch, roll);
+			break;
+		}
+
 		sprintf_s(buffer, "%.02f", yaw);
 		value["yaw"] = Json::Value(buffer);
 		sprintf_s(buffer, "%.02f", pitch);
@@ -268,14 +285,13 @@ namespace SAF {
 	}
 
 	bool SaveAdjustmentFile(std::string filename, std::shared_ptr<Adjustment> adjustment) {
-		
 		Json::StyledWriter writer;
 		Json::Value value;
 
 		adjustment->ForEachTransform([&](std::string name, NiTransform* transform) {
 			if (!TransormIsDefault(*transform)) {
 				Json::Value member;
-				WriteTransformJson(transform, member);
+				WriteTransformJson(transform, member, 0);
 				value[name] = member;
 			}
 		});
@@ -288,7 +304,7 @@ namespace SAF {
 
 		IFileStream::MakeAllDirs(path.c_str());
 		if (!file.Create(path.c_str())) {
-			_LogCat("Failed to create file ", filename);
+			_DMESSAGE("Failed to create file ", filename);
 			return false;
 		}
 
@@ -307,7 +323,7 @@ namespace SAF {
 		path += ".json";
 
 		if (!file.Open(path.c_str())) {
-			_LogCat(filename, " not found");
+			_DMESSAGE(filename.c_str(), " not found");
 			return false;
 		}
 
@@ -319,7 +335,7 @@ namespace SAF {
 		Json::Value value;
 
 		if (!reader.parse(adjustmentString, value)) {
-			_LogCat("Failed to parse ", filename);
+			_DMESSAGE("Failed to parse ", filename);
 			return false;
 		}
 
@@ -328,26 +344,39 @@ namespace SAF {
 
 			for (auto& member : members) {
 				NiTransform transform;
-				ReadTransformJson(transform, value[member]);
+				ReadTransformJson(transform, value[member], 0);
 				(*map)[member] = transform;
 			}
 		}
 		catch (...) {
-			_LogCat("Failed to read ", filename);
+			_DMESSAGE("Failed to read ", filename);
 			return false;
 		}
 
 		return true;
 	}
 
+	/*
+	* Pre V0.5 was just a simple key->transform map
+	* There was also a bug causing the output rotations to be transposed, this is fixed in future versions
+	* 
+	* Post 0.5 will now have a header with version numbers in case of updates
+	*/
+
 	bool SavePoseFile(std::string filename, TransformMap* poseMap) {
 		Json::StyledWriter writer;
 		Json::Value value;
 
+		value["version"] = Json::Value(1);
+		value["name"] = Json::Value(filename);
+
+		Json::Value transforms(Json::ValueType::objectValue);
+		value["transforms"] = transforms;
+
 		for (auto& kvp : *poseMap) {
 			Json::Value member;
-			WriteTransformJson(&kvp.second, member);
-			value[kvp.first] = member;
+			WriteTransformJson(&kvp.second, member, 1);
+			transforms[kvp.first] = member;
 		}
 
 		IFileStream file;
@@ -358,7 +387,7 @@ namespace SAF {
 
 		IFileStream::MakeAllDirs(path.c_str());
 		if (!file.Create(path.c_str())) {
-			_LogCat("Failed to create file ", filename);
+			_DMESSAGE("Failed to create file ", filename);
 			return false;
 		}
 
@@ -374,7 +403,7 @@ namespace SAF {
 		IFileStream file;
 
 		if (!file.Open(path.c_str())) {
-			_LogCat(path, " not found");
+			_DMESSAGE(path.c_str(), " not found");
 			return false;
 		}
 
@@ -386,21 +415,29 @@ namespace SAF {
 		Json::Value value;
 
 		if (!reader.parse(adjustmentString, value)) {
-			_LogCat("Failed to parse ", path);
+			_DMESSAGE("Failed to parse ", path);
 			return false;
 		}
 
 		try {
-			Json::Value::Members members = value.getMemberNames();
+			//If no version treat as simple key->transform map, else get map from transforms property
+			Json::Value versionValue = value["version"];
+			UInt32 version = versionValue.isNull() ? 0 : versionValue.asInt();
+
+			Json::Value transforms = value["transforms"];
+			if (version == 0 || transforms.isNull())
+				transforms = value;
+
+			Json::Value::Members members = transforms.getMemberNames();
 
 			for (auto& member : members) {
 				NiTransform transform;
-				ReadTransformJson(transform, value[member]);
+				ReadTransformJson(transform, transforms[member], version);
 				(*poseMap)[member] = transform;
 			}
 		}
 		catch (...) {
-			_LogCat("Failed to read ", path);
+			_DMESSAGE("Failed to read ", path);
 			return false;
 		}
 

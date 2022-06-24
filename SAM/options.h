@@ -13,7 +13,6 @@ enum {
 	kOptionHotswap = 0,
 	kOptionAlignment,
 	kOptionWidescreen,
-	kOptionAutoplay,
 
 	kOptionMax
 };

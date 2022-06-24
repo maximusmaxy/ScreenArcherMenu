@@ -29,12 +29,12 @@ UInt64 rightBlinkUpdateSkip = 0x0000441F0F66C128;
 int GetBlinkState()
 {
 	//0 false, 1 true, 2 unknown
-	int state = 2;
+	int state = kHackUnknown;
 	if (*leftBlinkUpdateAddress == leftBlinkUpdateSkip && *rightBlinkUpdateAddress == rightBlinkUpdateSkip) {
-		state = 1;
+		state = kHackEnabled;
 	}
 	else if (*leftBlinkUpdateAddress == leftBlinkUpdateInstruction && *rightBlinkUpdateAddress == rightBlinkUpdateInstruction) {
-		state = 0;
+		state = kHackDisabled;
 	}
 	return state;
 }
@@ -60,13 +60,12 @@ UInt16 skipMorphUpdateInstruction = 0x03EB;
 
 int GetForceMorphUpdate()
 {
-	//0 false, 1 true, 2 unknown
-	int state = 2;
+	int state = kHackUnknown;
 	if (*morphUpdateAddress == morphUpdateInstruction) {
-		state = 0;
+		state = kHackDisabled;
 	}
 	else if (*morphUpdateAddress == skipMorphUpdateInstruction) {
-		state = 1;
+		state = kHackEnabled;
 	}
 	return state;
 }
@@ -89,12 +88,12 @@ UInt32 skipUpdateEyecoordInstruction = 0x0002ACE9;
 int GetDisableEyecoordUpdate()
 {
 	//0 false, 1 true, 2 unknown
-	int state = 2;
+	int state = kHackUnknown;
 	if (*eyecoordUpdateAddress == updateEyecoordInstruction) {
-		state = 0;
+		state = kHackDisabled;
 	}
 	else if (*eyecoordUpdateAddress == skipUpdateEyecoordInstruction) {
-		state = 1;
+		state = kHackEnabled;
 	}
 	return state;
 }

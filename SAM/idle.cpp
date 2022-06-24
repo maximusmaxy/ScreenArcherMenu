@@ -19,6 +19,8 @@ std::unordered_map<UInt32, IdleData> raceIdleData;
 std::unordered_map<UInt32, IdleMenu> idleMenus;
 bool idleMenuLoaded = false;
 
+std::unordered_map<const char*, const char*> idlePathToEditorIdMap;
+
 std::unordered_set<std::string> idleExclude = {
 	"Fallout4.esm",
 	"DLCRobot.esm",
@@ -81,7 +83,6 @@ RelocAddr<_GetFormArrayFromName> GetFormArrayFromName(0x5AAC80);
 
 typedef std::map<std::string, std::map<std::string, UInt32, NaturalSort>, NaturalSort> SortedIdles;
 
-
 bool IdleValid(TESIdleForm* form, IdleData& data) {
 	if (!form) return false;
 	if (*(UInt64*)form != TESIdleFormVFTable) return false;
@@ -125,6 +126,7 @@ void LoadIdleMenus() {
 				UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
 				if (modNames.count(modIndex)) {
 					idles[modNames[modIndex]][form->editorID] = form->formID;
+					idlePathToEditorIdMap.emplace(form->animationFile.c_str(), form->editorID);
 				}
 			}
 		}
@@ -232,4 +234,130 @@ void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategor
 
 	result->SetMember("names", &names);
 	result->SetMember("values", &values);
+}
+
+class BSTAnimationGraphDataChannel
+{
+public:
+	UInt64 vfTable;
+	UInt64 unk2;
+	UInt64 unk3;
+	UInt64 unk4;
+	UInt64 unk5;
+	Actor* actor;
+};
+
+class BSAnimationGraphManager
+{
+public:
+	UInt64 vfTable;
+	UInt64 unk2;
+	BSTAnimationGraphDataChannel* dataChannels[12];
+};
+
+class BShkbAnimationGraphData
+{
+public:
+	UInt64 actorMediator;
+	BSAnimationGraphManager* animationGraphManager;
+};
+
+class BShkbAnimationGraph
+{
+public:
+	UInt64 vfTable;
+	UInt64 unk2;
+	UInt64 unk3;
+	UInt64 unk4;
+	UInt64 unk5;
+	UInt64 unk6;
+	UInt64 unk7;
+	UInt64 unk8;
+	UInt64 unk9;
+	UInt64 unk10;
+	UInt64 unk11;
+	UInt64 unk12;
+	UInt64 unk13;
+	UInt64 unk14;
+	BShkbAnimationGraphData* animationGraphData;
+};
+
+class BShkbAnimationGraphHolder
+{
+public:
+	UInt64 unk1;
+	UInt64 unk2;
+	UInt64 unk3;
+	UInt64 unk4;
+	UInt64 unk5;
+	UInt64 unk6;
+	UInt64 unk7;
+	BShkbAnimationGraph* animGraph;
+};
+
+struct CachedIdleData
+{
+	BSFixedString animationFile;
+	UInt64 unk2;
+	UInt64 hkbAnimationBindingWithTriggers;
+	UInt64 hkbClipGenerator;
+	BShkbAnimationGraph* animationGraph;
+};
+
+RelocAddr<tMutexArray<CachedIdleData>> cachedIdles(0x5B02F38);
+
+Actor* GetActorFromCachedIdleData(CachedIdleData& data) {
+	if (!data.animationGraph || !data.animationFile) 
+		return nullptr;
+
+	auto graphData = data.animationGraph->animationGraphData;
+	if (!graphData) 
+		return nullptr;
+
+	auto graphManager = graphData->animationGraphManager;
+	if (!graphManager) 
+		return nullptr;
+
+	auto dataChannel = graphManager->dataChannels[0];
+	if (!dataChannel) 
+		return nullptr;
+
+	return dataChannel->actor;
+}
+
+/*
+* To find the current idle name i'm looking at what idles are cached, finding the animation graph for each idle,
+* backtracing to see which actor is managed by that animation graph and checking to see if that's the currently selected actor
+* Then once that cached idle is found i'm using a map of file->editor ids, created at the same time the idle menus are cached, 
+* to find the name. This is extremely convoluted but i could not find a better solution as it seems the currently playing idle 
+* form isn't stored anywhere I could find
+* 
+* From tracing the IsLastIdlePlayed console command (unimplemented) it seems like it was at one point located at 
+* actor->middleprocess->data->(0x3F8) but it is never actually used at runtime
+*/
+const char* GetCurrentIdleName() {
+	if (!selected.refr) 
+		return nullptr;
+	
+	Actor* actor = (Actor*)selected.refr;
+
+	auto animGraphHolder = (BShkbAnimationGraphHolder*)actor->middleProcess->unk08->unk00[0x260 >> 3];
+	if (!animGraphHolder)
+		return nullptr;
+
+	BShkbAnimationGraph* animGraph = animGraphHolder->animGraph;
+	if (!animGraph)
+		return nullptr;
+
+	auto idles = (tMutexArray<CachedIdleData>*)cachedIdles.GetUIntPtr();
+
+	SimpleLocker locker(&idles->lock);
+
+	for (int i = 0; i < idles->count; ++i) {
+		if (idles->entries[i].animationGraph == animGraph) {
+			return idles->entries[i].animationFile ? idlePathToEditorIdMap[idles->entries[i].animationFile.c_str()] : nullptr;
+		}
+	}
+
+	return nullptr;
 }

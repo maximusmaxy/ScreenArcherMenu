@@ -11,7 +11,7 @@ public:
 	UInt64 unk2;				//10
 	float faceAnimMorphs[54];	//18
 	float mfgMorphs[54];		//F0
-	//incomplete
+	//ect...
 };
 
 float* GetMorphPointer();

@@ -178,19 +178,24 @@ void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
 	adjustments->UpdateAllAdjustments();
 }
 
-void ShiftAdjustment(UInt32 adjustmentHandle, bool increment)
+bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment)
 {
-	if (!selected.refr) return;
+	if (!selected.refr) return false;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
+	if (!adjustments) return false;
 
 	UInt32 fromIndex = adjustments->GetAdjustmentIndex(adjustmentHandle);
-	if (fromIndex == -1) return;
+	if (fromIndex == -1) return false;
 	UInt32 toIndex = fromIndex + (increment ? 1 : -1);
 
 	safMessageDispatcher.moveAdjustment(selected.refr->formID, fromIndex, toIndex);
 
-	adjustments->UpdateAllAdjustments();
+	if (safMessageDispatcher.GetResult()) {
+		adjustments->UpdateAllAdjustments();
+		return true;
+	}
+
+	return false;
 }
 
 void SetAdjustmentName(UInt32 adjustmentHandle, const char* name)
@@ -233,17 +238,6 @@ std::vector<NiAVObject*> FindAdjustableChildren(NiAVObject* root, NodeSet* set) 
 	return nodes;
 }
 
-void SetPersistence(UInt32 adjustmentHandle, bool isPersistent)
-{
-	if (!selected.refr) return;
-	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) return;
-	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
-	if (!adjustment) return;
-
-	adjustment->persistent = isPersistent;
-}
-
 void SetScale(UInt32 adjustmentHandle, int scale)
 {
 	if (!selected.refr) return;
@@ -252,7 +246,7 @@ void SetScale(UInt32 adjustmentHandle, int scale)
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	adjustment->scale = scale * 0.01;
+	adjustment->SetScale(scale * 0.01);
 	adjustments->UpdateAllAdjustments(adjustment);
 }
 
@@ -268,9 +262,6 @@ void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle
 
 	GFxValue scale((SInt32)std::round(adjustment->scale * 100));
 	result->SetMember("scale", &scale);
-
-	GFxValue persistent(adjustment->persistent);
-	result->SetMember("persistent", &persistent);
 
 	GFxValue groups;
 	root->CreateArray(&groups);
@@ -325,13 +316,11 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 	if (!adjustments) return;
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-		if (!adjustment->hidden) {
-			GFxValue name(adjustment->name.c_str());
-			names.PushBack(&name);
+		GFxValue name(adjustment->name.c_str());
+		names.PushBack(&name);
 
-			GFxValue value(adjustment->handle);
-			values.PushBack(&value);
-		}
+		GFxValue value(adjustment->handle);
+		values.PushBack(&value);
 	});
 
 	result->SetMember("names", &names);
@@ -453,16 +442,14 @@ void GetPoseListGFx(GFxMovieRoot* root, GFxValue* result)
 	if (!adjustments) return;
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-		if (!adjustment->hidden) {
-			GFxValue name(adjustment->name.c_str());
-			names.PushBack(&name);
+		GFxValue name(adjustment->name.c_str());
+		names.PushBack(&name);
 
-			GFxValue value(!adjustment->isDefault && !adjustment->saved);
-			values.PushBack(&value);
+		GFxValue value(!adjustment->isDefault);
+		values.PushBack(&value);
 
-			GFxValue handle(adjustment->handle);
-			handles.PushBack(&handle);
-		}
+		GFxValue handle(adjustment->handle);
+		handles.PushBack(&handle);
 	});
 
 	result->SetMember("names", &names);

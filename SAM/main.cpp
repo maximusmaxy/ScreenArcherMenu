@@ -19,6 +19,8 @@
 #include "idle.h"
 #include "console.h"
 #include "compatibility.h"
+#include "papyrus.h"
+#include "input.h"
 
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
@@ -34,61 +36,6 @@ F4SEMessagingInterface* g_messaging = nullptr;
 F4SEPapyrusInterface* g_papyrus = nullptr;
 F4SEInterface* g_f4se = nullptr;
 
-class SamInputHandler : public BSInputEventUser
-{
-public:
-	SamInputHandler() : BSInputEventUser() { }
-
-	virtual void OnButtonEvent(ButtonEvent * inputEvent)
-	{
-		BSFixedString samMenu("ScreenArcherMenu");
-
-		IMenu* menu = (*g_ui)->GetMenu(samMenu);
-		if (menu) {
-
-			UInt32	keyCode;
-			UInt32	deviceType = inputEvent->deviceType;
-			UInt32	keyMask = inputEvent->keyMask;
-
-			// Mouse
-			if (deviceType == InputEvent::kDeviceType_Mouse) 
-			{
-				//Need to capture mouse scroll 0x800 = up, 0x900 = down
-				if (keyMask == 0x800)
-					keyCode = InputMap::kMaxMacros;
-				else if (keyMask == 0x900)
-					keyCode = InputMap::kMaxMacros + 1;
-				else 
-					keyCode = InputMap::kMacro_MouseButtonOffset + keyMask;
-			}
-			// Gamepad
-			else if (deviceType == InputEvent::kDeviceType_Gamepad)
-				keyCode = InputMap::GamepadMaskToKeycode(keyMask);
-			// Keyboard
-			else
-				keyCode = keyMask;
-
-			// Valid scancode? Add two for mouse scroll
-			if (keyCode >= InputMap::kMaxMacros + 2)
-				return;
-
-			//BSFixedString	control	= *inputEvent->GetControlID();
-			float timer = inputEvent->timer;
-
-			if (inputEvent->isDown == 1.0f && timer == 0.0f) {
-				GFxValue arg(keyCode);
-				menu->movie->movieRoot->Invoke("root1.Menu_mc.processKeyDown", nullptr, &arg, 1);
-			}
-			else if (inputEvent->isDown == 0.0f && timer != 0.0f) {
-				GFxValue arg(keyCode);
-				menu->movie->movieRoot->Invoke("root1.Menu_mc.processKeyUp", nullptr, &arg, 1);
-			}
-		}
-	}
-};
-
-SamInputHandler samInputHandler;
-
 class SamOpenCloseHandler : public BSTEventSink<MenuOpenCloseEvent>
 {
 public:
@@ -101,26 +48,26 @@ public:
 
 		if (evn->menuName == samMenu) {
 			if (evn->isOpen) {
-				samInputHandler.enabled = true;
-				BSInputEventUser* inputHandler = &samInputHandler;
-				int idx = (*g_menuControls)->inputEvents.GetItemIndex(inputHandler);
+				inputHandler.enabled = true;
+				BSInputEventUser* handlerPtr = &inputHandler;
+				int idx = (*g_menuControls)->inputEvents.GetItemIndex(handlerPtr);
 				if (idx == -1) {
 					_DMESSAGE("ScreenArcherMenu Registered for input");
-					(*g_menuControls)->inputEvents.Push(inputHandler);
+					(*g_menuControls)->inputEvents.Push(handlerPtr);
 				}
 				OnMenuOpen();
 			} else {
 				OnMenuClose();
-				samInputHandler.enabled = false;
+				inputHandler.enabled = false;
 			}
 		} else {
 			if ((*g_ui)->IsMenuOpen(samMenu)) {
 				if (evn->menuName == consoleMenu) {
 					if (evn->isOpen) {
-						samInputHandler.enabled = false;
+						inputHandler.enabled = false;
 					} else {
-						OnConsoleRefUpdate();
-						samInputHandler.enabled = true;
+						OnConsoleUpdate();
+						inputHandler.enabled = true;
 					}
 				}
 			}
@@ -137,7 +84,7 @@ class SAMEventReciever :
 public:
 	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
 	{
-		RegisterSam();
+		//RegisterSam();
 		return kEvent_Continue;
 	}
 };
@@ -162,7 +109,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 }
 
 void SafCreateAdjustment(UInt32 formId, const char* name) {
-	SAF::AdjustmentCreateMessage message{ formId, name, "ScreenArcherMenu.esp", false, false, nullptr };
+	SAF::AdjustmentCreateMessage message{ formId, name, "ScreenArcherMenu.esp" };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentCreate, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -173,7 +120,7 @@ void SafSaveAdjustment(UInt32 formId, const char* filename, UInt32 handle)
 }
 
 void SafLoadAdjustment(UInt32 formId, const char* filename) {
-	SAF::AdjustmentCreateMessage message{ formId, filename, "ScreenArcherMenu.esp", true, false, "ScreenArcherMenu" };
+	SAF::AdjustmentCreateMessage message{ formId, filename, "ScreenArcherMenu.esp" };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -193,7 +140,7 @@ void SafTransformAdjustment(UInt32 formId, UInt32 handle, const char* key, UInt3
 }
 
 void SafCreateActorAdjustments(UInt32 formId) {
-	SAF::AdjustmentActorMessage message{ formId, "ScreenArcherMenu" };
+	SAF::AdjustmentActorMessage message{ formId };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -203,12 +150,12 @@ void SafNegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
 }
 
 void SafLoadPose(UInt32 formId, const char* filename) {
-	SAF::PoseMessage message{ formId, filename, "ScreenArcherMenu" };
+	SAF::PoseMessage message{ formId, filename };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseLoad, &message, sizeof(uintptr_t), "SAF");
 }
 
 void SafResetPose(UInt32 formId) {
-	SAF::PoseMessage message{ formId, nullptr, nullptr };
+	SAF::PoseMessage message{ formId, nullptr };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -254,12 +201,14 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 		if (g_messaging)
 			RegisterSafMessageDispatcher();
 
-		if (g_f4se) {	
-			//Try register ffc if RUNTIME_VERSION_1_10_163
-			//if (g_f4se->runtimeVersion == RUNTIME_VERSION_1_10_163)
-			//	RegisterFfcCompatiblity();
+		if (g_f4se) {
+			//Try register ffc if f4se version 0.6.23 or greater and FFC version EXACTLY V12
+			if (g_f4se->f4seVersion >= MAKE_EXE_VERSION(0, 6, 23)) {
+				const PluginInfo* info = g_f4se->GetPluginInfo("Free Fly Cam");
+				if (info && info->version == 12)
+					RegisterFfcCompatiblity();
+			}
 		}
-
 		break;
 	}
 	case F4SEMessagingInterface::kMessage_GameDataReady:
@@ -294,6 +243,11 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 	if(f4se->isEditor)
 	{
 		_FATALERROR("loaded in editor, marking as incompatible");
+		return false;
+	}
+	else if (f4se->runtimeVersion != RUNTIME_VERSION_1_10_163)
+	{
+		_FATALERROR("unsupported runtime version %08X", f4se->runtimeVersion);
 		return false;
 	}
 
@@ -332,6 +286,9 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 
 	if (g_messaging)
 		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
+
+	if (g_papyrus)
+		g_papyrus->Register(RegisterPapyrus);
 
 	samObScriptCommit();
 		

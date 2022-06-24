@@ -29,7 +29,6 @@
 		public static var poseHandles:Array = [];
 
 		public static var delayClose:Boolean;
-		public static var hideMenu:Boolean;
 		public static var autoPlay:Boolean;
 		
 		public static var scriptType:String;
@@ -81,8 +80,7 @@
 		
 		public static const EYE_NAMES:Vector.<String> = new <String>[
 			"$SAM_EyeX",
-			"$SAM_EyeY",
-			"$SAM_EyeTrackingHack",
+			"$SAM_EyeY"
 		];
 		
 		public static const HACK_NAMES:Vector.<String> = new <String>[
@@ -112,8 +110,7 @@
 		public static const OPTION_NAMES:Vector.<String> = new <String>[
 			"$SAM_Hotswap",
 			"$SAM_Alignment",
-			"$SAM_Widescreen",
-			"$SAM_Autoplay"
+			"$SAM_Widescreen"
 		];
 		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
@@ -124,9 +121,7 @@
 			delayClose = data.delayClose;
 			
 			stage = stageObj;
-			
-			hideMenu = true;
-			
+
 			if (data.saved) {
 				menuOptions = data.saved.options;
 				menuValues = data.saved.values;
@@ -141,20 +136,18 @@
 			}
 		}
 		
-		public static function saveState(menuState:int, sliderPos:int, stack:Array)
+		public static function saveState(data:Object)
 		{
-			var data:Object = {
-				options: menuOptions,
-				values: menuValues,
-				files: menuFiles,
-				adjustment: selectedAdjustment,
-				category: selectedCategory,
-				bone: selectedBone,
-				boneName: boneName,
-				handles: poseHandles,
-				step: stepValue,
-				folder: folderStack
-			}
+			data.options = menuOptions,
+			data.values = menuValues,
+			data.files = menuFiles,
+			data.adjustment = selectedAdjustment,
+			data.category = selectedCategory,
+			data.bone = selectedBone,
+			data.boneName = boneName,
+			data.handles = poseHandles,
+			data.step = stepValue,
+			data.folder = folderStack
 			
 			try 
 			{
@@ -282,6 +275,19 @@
 			return false;
 		}
 		
+		public static function toggleMenu():Boolean
+		{
+			try
+			{
+				return sam.ToggleMenus();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to hide menus");
+			}
+			return false;
+		}
+		
 		public static function loadAdjustmentList()
 		{
 			try {
@@ -345,13 +351,10 @@
 		{
 			try
 			{
-				menuValues = [0, 0, 0, 0, false];
+				menuValues = [100, 0, 0, 0];
 				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
 				if (adjustment.scale) {
 					menuValues[0] = adjustment.scale;
-				}
-				if (adjustment.persistent) {
-					menuValues[4] = adjustment.persistent;				
 				}
 				if (adjustment.groups) {
 					for (var i:int = 0; i < adjustment.groups.length; i++) {
@@ -363,7 +366,7 @@
 			{
 				trace("Failed to get adjustment");
 				if (Util.debug) {
-					menuValues = [50, 0, 0, 0, true, "Head", "Left Arm", "Left Leg"]
+					menuValues = [100, 0, 0, 0, "Head", "Left Arm", "Left Leg"]
 				}
 			}
 		}
@@ -457,16 +460,17 @@
 			}
 		}
 		
-		public static function moveAdjustment(id:int, inc:Boolean)
+		public static function moveAdjustment(id:int, inc:Boolean):Boolean
 		{
 			try
 			{
-				sam.MoveAdjustment(menuValues[id], inc);
+				return sam.MoveAdjustment(menuValues[id], inc);
 			}
 			catch (e:Error)
 			{
 				trace("Failed to move adjustment");
 			}
+			return false;
 		}
 		
 		public static function renameAdjustment(name:String)
@@ -677,7 +681,7 @@
 		{
 			try
 			{
-				sam.SaveMorphPreset(filename);
+				sam.SaveMorphsPreset(filename);
 			}
 			catch (e:Error)
 			{
@@ -690,7 +694,7 @@
 			var filename:String = menuFiles[id];
 			try
 			{
-				sam.LoadMorphPreset(filename, selectedCategory);
+				sam.LoadMorphsPreset(filename, selectedCategory);
 			}
 			catch (e:Error)
 			{
@@ -737,14 +741,7 @@
 			menuValues[id] = value;
 			try
 			{
-				if (id < 2) //eye coord
-				{
-					sam.SetEyeCoords(menuValues[0], menuValues[1]);
-				}
-				else //eye tracking hack
-				{
-					sam.SetEyeTrackingHack(menuValues[2]);
-				}
+				sam.SetEyeCoords(menuValues[0], menuValues[1]);
 			}
 			catch (e:Error)
 			{
@@ -837,6 +834,18 @@
 			catch (e:Error)
 			{
 				trace("Failed to reset idle");
+			}
+		}
+		
+		public static function rotateIdle(value:Number)
+		{
+			try {
+				var dif:int = updateCursorDrag(value);
+				sam.AdjustPositioning(6, dif, 100);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to rotate idle");
 			}
 		}
 		
@@ -1003,7 +1012,6 @@
 					stepValue = step;
 				} else if (id < 8) {
 					var dif:int = updateCursorDrag(value);
-					trace(dif);
 					menuValues = sam.AdjustPositioning(id, dif, stepValue);
 					updatePositioning();
 				} else {
@@ -1109,17 +1117,15 @@
 		{
 			menuOptions = OPTION_NAMES;
 			try {
-				menuValues = sam.getOptions();
+				menuValues = sam.GetOptions();
 			}
 			catch (e:Error)
 			{
 				trace("Failed to load options");
-				menuValues = [
-					false,
-					false,
-					false,
-					false
-				];
+				menuValues = [];
+				for (var i:int = 0; i < OPTION_NAMES; i++) {
+					menuValues[i] = false;
+				}
 			}
 		}
 		

@@ -15,6 +15,7 @@
     <ClCompile Include="positioning.cpp" />
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="options.cpp" />
+    <ClCompile Include="input.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -30,6 +31,7 @@
     <ClInclude Include="positioning.h" />
     <ClInclude Include="compatibility.h" />
     <ClInclude Include="options.h" />
+    <ClInclude Include="input.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

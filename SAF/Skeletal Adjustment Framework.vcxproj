@@ -162,6 +162,7 @@
     <ClCompile Include="io.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="papyrus.cpp" />
+    <ClCompile Include="serialization.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -171,6 +172,7 @@
     <ClInclude Include="hacks.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="papyrus.h" />
+    <ClInclude Include="serialization.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>

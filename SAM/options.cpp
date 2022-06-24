@@ -13,13 +13,11 @@ __time64_t optionsTimestamp = 0;
 const char* menuOptionNames[] = {
 	"hotswap",
 	"alignment",
-	"widescreen",
-	"autoplay"
+	"widescreen"
 };
 
 bool menuOptionDefaults[] = {
 	true,
-	false,
 	false,
 	false
 };
@@ -34,11 +32,14 @@ void GetMenuOptionsGFx(GFxMovieRoot* root, GFxValue* result)
 }
 
 bool GetMenuOption(int index) {
-	return (menuOptions[menuOptionNames[index]].asBool());
+	if (index >= 0 && index < kOptionMax) {
+		return (menuOptions[menuOptionNames[index]].asBool());
+	}
+	return false;
 }
 
 void SetMenuOption(int index, bool value) {
-	if (index < kOptionMax) {
+	if (index >= 0 && index < kOptionMax) {
 		const char* key = menuOptionNames[index];
 		if (menuOptions[key] != value) {
 			menuOptions[key] = Json::Value(value);

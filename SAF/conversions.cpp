@@ -145,6 +145,19 @@ namespace SAF {
 		z *= -RADIAN_TO_DEGREE;
 	}
 
+	void MatrixFromPose(NiMatrix43& matrix, float x, float y, float z) {
+		MatrixFromEulerYPR(matrix, x * DEGREE_TO_RADIAN, y * DEGREE_TO_RADIAN, z * DEGREE_TO_RADIAN);
+		matrix = matrix.Transpose();
+	}
+
+	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z) {
+		NiMatrix43 transposed = matrix.Transpose();
+		MatrixToEulerYPR(transposed, x, y, z);
+		x *= RADIAN_TO_DEGREE;
+		y *= RADIAN_TO_DEGREE;
+		z *= RADIAN_TO_DEGREE;
+	}
+
 	NiMatrix43 NiMatrix43Invert(NiMatrix43& matrix) {
 		NiMatrix43 i;
 
@@ -355,14 +368,13 @@ namespace SAF {
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
 		NiTransform res;
 
-		res.pos = dst.pos - src.pos;
+		float srcScale = src.scale == 0 ? 1.0f : src.scale;
+		res.scale = dst.scale / srcScale;
 
-		if (src.scale == 0)
-			res.scale = 1.0f;
-		else
-			res.scale = dst.scale / src.scale;
+		NiMatrix43 inverted = src.rot.Transpose();
+		res.rot = inverted * dst.rot;
 
-		res.rot = NiMatrix43Invert(src.rot) * dst.rot;
+		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
 
 		return res;
 	}

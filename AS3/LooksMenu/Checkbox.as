@@ -63,6 +63,12 @@
 			update();
 		}
 		
+		public function selectCheck()
+		{
+			setCheck(true);
+			Util.playFocus();
+		}
+		
 		public function select()
 		{
 			switch (type) {
@@ -87,17 +93,22 @@
 				case SETTINGS:
 				case RECYCLE:
 				case FOLDER:
+				case UP:
+				case DOWN:
 					if (func != null) {
 						func.call(null, id);
+						Util.playOk();
 					}
 					break;
 				case CHECK:
 					check = !check;
 					if (func != null) {
 						func.call(null, id, check);
+						Util.playOk();
 					}
 					update();
 					break;
+				
 			}
 		}
 		

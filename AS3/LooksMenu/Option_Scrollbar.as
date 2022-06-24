@@ -29,6 +29,8 @@
         public var offsetLeft:Number = 0;
         public var offsetRight:Number = 0;
 		
+		internal var fStepSizePad:Number=0.05;
+		
 		public function Option_Scrollbar()
 		{
 			super();
@@ -76,7 +78,16 @@
 		public function set StepSize(arg1:Number):*
 		{
 			fStepSize = arg1;
+		}
+		
+		public function get StepSizePad():Number
+		{
+			return fStepSizePad;
+		}
 
+		public function set StepSizePad(arg1:Number):*
+		{
+			fStepSizePad = arg1;
 		}
 		
 		public function get position():Number
@@ -110,6 +121,16 @@
 		public function Increment():*
 		{
 			value = value + fStepSize;
+		}
+		
+		public function DecrementPad():*
+		{
+			value = value - fStepSizePad;
+		}
+		
+		public function IncrementPad():*
+		{
+			value = value + fStepSizePad;
 		}
 
 		public function HandleKeyboardInput(arg1:flash.events.KeyboardEvent):*

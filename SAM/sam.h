@@ -6,11 +6,21 @@
 #include "f4se/GameForms.h"
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformMovie.h"
+#include "f4se/GameMenus.h"
 
 #include "json.h"
 #include "strnatcmp.h"
 
 #include <unordered_map>
+
+//class SamMenu : public GameMenuBase
+//{
+//public:
+//	SamMenu();
+//
+//	virtual void	RegisterFunctions() override;
+//	virtual void	Invoke(Args* args) override final;
+//};
 
 class SelectedRefr {
 public:
@@ -55,11 +65,13 @@ struct NaturalSort {
 };
 
 TESObjectREFR* GetRefr();
-
+GFxMovieRoot* GetRoot(BSFixedString name);
 MenuCategoryList* GetMenu(MenuCache* cache);
 
-void RegisterSam();
+//void RegisterSam();
 
+void OpenMenu(const char* name);
+void CloseMenu(const char* name);
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 
 bool GetCursor(SInt32* pos);
@@ -68,7 +80,7 @@ void GetCursorPositionGFx(GFxMovieRoot* root, GFxValue* result);
 
 void OnMenuOpen();
 void OnMenuClose();
-void OnConsoleRefUpdate();
+void OnConsoleUpdate();
 
 void ToggleMenu();
 bool OpenSamFile(std::string filename);

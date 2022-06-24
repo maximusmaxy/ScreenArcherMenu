@@ -52,6 +52,8 @@ namespace SAF {
 	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z);
 	void MatrixFromDegree(NiMatrix43& matrix, float x, float y, float z);
 	void MatrixToDegree(NiMatrix43 & matrix, float& x, float& y, float& z);
+	void MatrixFromPose(NiMatrix43& matrix, float x, float y, float z);
+	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z);
 
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);

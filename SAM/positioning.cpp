@@ -103,11 +103,11 @@ struct GraphParamsPtr
 	UInt64 unk;
 };
 
-class BSAnimationGraphManager : public NiRefObject {};
+class BSAnimationGraphManagerRef : public NiRefObject {};
 
-typedef bool (*_GetBSAnimationGraphInternal)(UInt64* holder, NiPointer<BSAnimationGraphManager>& result);
+typedef bool (*_GetBSAnimationGraphInternal)(UInt64* holder, NiPointer<BSAnimationGraphManagerRef>& result);
 
-typedef void (*_SetAnimGraphVarInternal)(BSAnimationGraphManager* graphManager, GraphParamsPtr* params);
+typedef void (*_SetAnimGraphVarInternal)(BSAnimationGraphManagerRef* graphManager, GraphParamsPtr* params);
 RelocAddr<_SetAnimGraphVarInternal> SetAnimGraphVarInternal(0x514320);
 
 typedef bool(*_LookupREFRByHandle)(const UInt32& handleIn, NiPointer<TESObjectREFR>& ref);
@@ -117,7 +117,7 @@ void SetFootIK(const char* enabled) {
 	if (!selectedNonActor.refr || selectedNonActor.refr->formType != kFormType_ACHR) return;
 
 	UInt64* animGraphHolder = (UInt64*)selectedNonActor.refr + 9;
-	NiPointer<BSAnimationGraphManager> graphManager;
+	NiPointer<BSAnimationGraphManagerRef> graphManager;
 	auto func = (_GetBSAnimationGraphInternal)*(UInt64*)(*animGraphHolder + 0x20);
 	UInt8 result = func(animGraphHolder, graphManager);
 

@@ -17,7 +17,7 @@ public:
 	UInt64 unk40;
 	BSFixedString behaviorGraph;
 	BSFixedString animationEvent;
-	UInt64 unk58;
+	BSFixedString animationFile;
 	const char* editorID;
 	UInt64 unk68;
 };
@@ -38,3 +38,5 @@ void PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();
 void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
 void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategory);
+
+const char* GetCurrentIdleName();

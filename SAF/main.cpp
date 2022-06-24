@@ -122,7 +122,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentCreate:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp, data->persistent, data->hidden);
+		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp);
 		break;
 	}
 	case SAF::kSafAdjustmentSave:
@@ -134,8 +134,8 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentLoad:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		bool result = SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp, data->persistent, data->hidden);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), data->mod);
+		bool result = SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
 	case SAF::kSafAdjustmentErase:
@@ -160,7 +160,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		auto data = (SAF::AdjustmentActorMessage*)msg->data;
 		std::shared_ptr<SAF::ActorAdjustments> adjustments = SAF::g_adjustmentManager.CreateActorAdjustment(data->formId);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), data->mod);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), msg->sender);
 		break;
 	}
 	//case SAF::kSafAdjustmentNegate:
@@ -173,7 +173,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		auto data = (SAF::PoseMessage*)msg->data;
 		bool result = SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), data->mod);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
 	case SAF::kSafPoseReset:
@@ -191,7 +191,8 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentMove:
 	{
 		auto data = (SAF::MoveMessage*)msg->data;
-		SAF::g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
+		bool result = SAF::g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
 	case SAF::kSafAdjustmentRename:
@@ -224,7 +225,6 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 		break;
 	}
 }
-
 
 void SAFSaveCallback(const F4SESerializationInterface* ifc) {
 	//_DMESSAGE("Serializing save");

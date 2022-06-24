@@ -20,24 +20,29 @@
 #include "positioning.h"
 #include "compatibility.h"
 #include "options.h"
+#include "scripts.h"
 
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
 #include "SAF/util.h"
 #include "SAF/conversions.h"
 
-void SaveState::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Object);
-	saveData.Save(&args->args[0]);
-}
+#define GFxFunction(T, Func) class T ## Scaleform : public GFxFunctionHandler \
+{ \
+public: \
+void T ## Scaleform::Invoke(Args* args) \
+Func \
+};
 
-void ClearState::Invoke(Args* args)
-{
+GFxFunction(SaveState, {
+	saveData.Save(&args->args[0]);
+	args->args[0];
+});
+
+GFxFunction(ClearState, {
 	saveData.Clear();
 	int i = 0;
-}
+});
 
 enum {
 	kSamTargetError = 1,
@@ -46,247 +51,149 @@ enum {
 	kSamEyesError,
 };
 
-void CheckError::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(CheckError, {
 	switch (args->args[0].GetInt()) {
 		case kSamTargetError: args->result->SetBool(selected.refr); break;
 		case kSamSkeletonError: args->result->SetBool(CheckSelectedSkeleton()); break;
 		case kSamMorphsError: args->result->SetBool(GetMorphPointer()); break;
 		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
 	}
-}
+});
 
-void GetOptions::Invoke(Args* args)
-{
+GFxFunction(GetOptions, {
 	GetMenuOptionsGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void SetOption::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
+GFxFunction(SetOption, {
 	SetMenuOption(args->args[0].GetInt(), args->args[1].GetBool());
-}
+});
 
-void ModifyFacegenMorph::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 3);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
+GFxFunction(ModifyFacegenMorph, {
+	if (GetForceMorphUpdate() != kHackEnabled)
+		SetForceMorphUpdate(true);
+
 	SetFaceMorph(args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
-}
+});
 
-void GetMorphCategories::Invoke(Args* args)
-{
+GFxFunction(GetMorphCategories, {
 	GetMorphCategoriesGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void GetMorphs::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(GetMorphs, {
 	GetMorphsGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
-}
+})
 
-void SavePreset::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(SaveMorphsPreset, {
 	SaveMfg(args->args[0].GetString());
-}
+});
 
-void LoadPreset::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(LoadMorphsPreset, {
 	LoadMfg(args->args[0].GetString());
 	GetMorphsGFx(args->movie->movieRoot, args->result, args->args[1].GetInt());
-}
+});
 
-void ResetMorphs::Invoke(Args * args)
-{
+GFxFunction(ResetMorphs, {
 	ResetMfg();
-}
+});
 
-void SamPlaySound::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(SamPlaySound, {
 	PlayUISound(args->args[0].GetString());
-}
+});
 
-void SamOpenMenu::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	BSFixedString menuName(args->args[0].GetString());
-	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
-}
+GFxFunction(SamOpenMenu, {
+	OpenMenu(args->args[0].GetString());
+});
 
-void SamCloseMenu::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	BSFixedString menuName(args->args[0].GetString());
-	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
-}
+GFxFunction(SamCloseMenu, {
+	CloseMenu(args->args[0].GetString());
+});
 
-void SamIsMenuOpen::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(SamIsMenuOpen, {
 	args->result->SetBool((*g_ui)->IsMenuOpen(args->args[0].GetString()));
-}
+});
 
-void GetHacks::Invoke(Args * args)
-{
+GFxFunction(GetHacks, {
 	GetHacksGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void GetBlinkHack::Invoke(Args * args)
-{
-	args->result->SetInt(GetBlinkState());
-}
+GFxFunction(GetBlinkHack, {
+	args->result->SetBool(GetBlinkState() == kHackEnabled);
+});
 
-void SetBlinkHack::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
+GFxFunction(SetBlinkHack, {
 	SetBlinkState(args->args[0].GetBool());
-}
+});
 
-void GetMorphHack::Invoke(Args * args)
-{
-	args->result->SetInt(GetForceMorphUpdate());
-}
+GFxFunction(GetMorphHack, {
+	args->result->SetBool(GetForceMorphUpdate() == kHackEnabled);
+});
 
-void SetMorphHack::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
+GFxFunction(SetMorphHack, {
 	SetForceMorphUpdate(args->args[0].GetBool());
-}
+});
 
-void GetEyeTrackingHack::Invoke(Args * args)
-{
-	args->result->SetInt(GetDisableEyecoordUpdate());
-}
+GFxFunction(GetEyeTrackingHack, {
+	args->result->SetBool(GetDisableEyecoordUpdate() == kHackEnabled);
+});
 
-void SetEyeTrackingHack::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
+GFxFunction(SetEyeTrackingHack, {
 	SetDisableEyecoordUpdate(args->args[0].GetBool());
-}
+});
 
-void GetEyeCoords::Invoke(Args * args)
-{
+GFxFunction(GetEyeCoords, {
 	args->movie->movieRoot->CreateArray(args->result);
 	float coords[2];
 	if (GetEyecoords(selected.eyeNode, coords)) {
 		args->result->PushBack(&GFxValue(coords[0] * 4));
 		args->result->PushBack(&GFxValue(coords[1] * 5));
-	} else {
-		args->result->PushBack(&GFxValue(0.0));
-		args->result->PushBack(&GFxValue(0.0));
 	}
-}
+	 else {
+	  args->result->PushBack(&GFxValue(0.0));
+	  args->result->PushBack(&GFxValue(0.0));
+	}
+});
 
-void SetEyeCoords::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Number);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Number);
+GFxFunction(SetEyeCoords, {
+	if (GetDisableEyecoordUpdate() != kHackEnabled)
+		SetDisableEyecoordUpdate(true);
 	SetEyecoords(selected.eyeNode, args->args[0].GetNumber() / 4, args->args[1].GetNumber() / 5);
-}
+});
 
-void GetAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(GetAdjustment, {
 	GetAdjustmentGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
-}
+});
 
-void SetAdjustmentPersistence::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
-	SetPersistence(args->args[0].GetInt(), args->args[1].GetBool());
-}
-
-void SetAdjustmentScale::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+GFxFunction(SetAdjustmentScale, {
 	SetScale(args->args[0].GetInt(), args->args[1].GetInt());
-}
+});
 
-void GetAdjustmentList::Invoke(Args* args)
-{
+GFxFunction(GetAdjustmentList, {
 	GetAdjustmentsGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void GetCategoryList::Invoke(Args * args)
-{
+GFxFunction(GetCategoryList, {
 	GetCategoriesGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void GetNodeList::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(GetNodeList, {
 	GetNodesGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
-}
+});
 
-void GetNodeTransform::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 3);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
+GFxFunction(GetNodeTransform, {
 	GetTransformGFx(args->movie->movieRoot, args->result, args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
-}
+});
 
-void SetNodePosition::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 5);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Number);
-	ASSERT(args->args[3].GetType() == GFxValue::kType_Number);
-	ASSERT(args->args[4].GetType() == GFxValue::kType_Number);
-
+GFxFunction(SetNodePosition, {
 	SetAdjustmentPos(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber(), args->args[3].GetNumber(), args->args[4].GetNumber());
-}
+});
 
-
-void SetNodeRotation::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 5);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Number);
-	ASSERT(args->args[3].GetType() == GFxValue::kType_Number);
-	ASSERT(args->args[4].GetType() == GFxValue::kType_Number);
-
+GFxFunction(SetNodeRotation, {
 	SetAdjustmentRot(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber(), args->args[3].GetNumber(), args->args[4].GetNumber());
-}
+});
 
-
-void SetNodeScale::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 3);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Number);
+GFxFunction(SetNodeScale, {
 	SetAdjustmentSca(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber());
-}
+});
 
 std::unordered_map<UInt32, UInt32> rotationTypeMap = {
 	{7, kRotationX},
@@ -294,344 +201,250 @@ std::unordered_map<UInt32, UInt32> rotationTypeMap = {
 	{9, kRotationZ}
 };
 
-void AdjustNodeRotation::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 4);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[3].GetType() == GFxValue::kType_Int);
+GFxFunction(AdjustNodeRotation, {
 	UInt32 type = rotationTypeMap[args->args[2].GetInt()];
 	RotateAdjustmentXYZ(args->movie->movieRoot, args->result, args->args[0].GetString(), args->args[1].GetInt(), type, args->args[3].GetNumber());
-}
+});
 
-void ResetTransform::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+GFxFunction(ResetTransform, {
 	ResetAdjustmentTransform(args->args[0].GetString(), args->args[1].GetInt());
-}
+)};
 
-void SaveAdjustment::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_String);
-
+GFxFunction(SaveAdjustment, {
 	SaveAdjustmentFile(args->args[1].GetString(), args->args[0].GetInt());
-}
+});
 
-void LoadAdjustment::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(LoadAdjustment, {
 	LoadAdjustmentFile(args->args[0].GetString());
-}
+});
 
-void NewAdjustment::Invoke(Args * args)
-{
+GFxFunction(NewAdjustment, {
 	PushNewAdjustment("New Adjustment");
 	GetAdjustmentsGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void RemoveAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(RemoveAdjustment, {
 	EraseAdjustment(args->args[0].GetInt());
-}
+});
 
-void ResetAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(ResetAdjustment, {
 	ClearAdjustment(args->args[0].GetInt());
-}
+});
 
-void NegateAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+GFxFunction(NegateAdjustment, {
 	NegateTransform(args->args[0].GetString(), args->args[1].GetInt());
-}
+});
 
-void NegateAdjustmentGroup::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_String);
+GFxFunction(NegateAdjustmentGroup, {
 	NegateAdjustments(args->args[0].GetInt(), args->args[1].GetString());
-}
+});
 
-void MoveAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
-	ShiftAdjustment(args->args[0].GetInt(), args->args[1].GetBool());
-}
+GFxFunction(MoveAdjustment, {
+	args->result->SetBool(ShiftAdjustment(args->args[0].GetInt(), args->args[1].GetBool()));
+});
 
-void RenameAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_String);
+GFxFunction(RenameAdjustment, {
 	SetAdjustmentName(args->args[0].GetInt(), args->args[1].GetString());
-}
+});
 
-void GetIdleCategories::Invoke(Args* args)
-{
+GFxFunction(GetIdleCategories, {
 	GetIdleMenuCategoriesGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void GetIdles::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(GetIdles, {
 	GetIdleMenuGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
-}
+});
 
-void PlayIdle::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_UInt);
+GFxFunction(PlayIdle, {
 	PlayIdleAnimation(args->args[0].GetUInt());
-}
+});
 
-void ResetIdle::Invoke(Args* args)
-{
+GFxFunction(ResetIdle, {
 	ResetIdleAnimation();
-}
+});
 
-void GetPoseList::Invoke(Args* args)
-{
+GFxFunction(GetIdleName, {
+	args->result->SetString(GetCurrentIdleName());
+});
+
+GFxFunction(GetPoseList, {
 	GetPoseListGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void SavePose::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Array);
+GFxFunction(SavePose, {
 	SaveJsonPose(args->args[0].GetString(), args->args[1]);
-}
+});
 
-void LoadPose::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(LoadPose, {
 	LoadJsonPose(args->args[0].GetString());
-}
+});
 
-void ResetPose::Invoke(Args* args)
+class ResetPoseScaleform : public GFxFunctionHandler
 {
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	switch (args->args[0].GetInt()) {
-	case kPoseReset:
-		ResetJsonPose();
-		break;
-	case kPoseAPose:
-		//TODO human a-pose, probably shouldn't be hard coded
-		UInt32 formId = GetFormId("ScreenArcherMenu.esp", 0x802);
-		if (formId)
-			PlayIdleAnimation(formId);
-		break;
+public:
+	void ResetPoseScaleform::Invoke(Args* args)
+	{
+		switch (args->args[0].GetInt()) {
+		case kPoseReset:
+			ResetJsonPose();
+			break;
+		case kPoseAPose:
+			//TODO human a-pose, probably shouldn't be hard coded
+			UInt32 formId = GetFormId("ScreenArcherMenu.esp", 0x802);
+			if (formId) {
+				PlayIdleAnimation(formId);
+			}
+			break;
+		}
 	}
-}
+};
 
-void GetSkeletonAdjustments::Invoke(Args* args)
-{
+GFxFunction(GetSkeletonAdjustments, {
 	GetDefaultAdjustmentsGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void LoadSkeletonAdjustment::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 3);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Bool);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Bool);
-	ASSERT(args->args[3].GetType() == GFxValue::kType_Bool);
+GFxFunction(LoadSkeletonAdjustment, {
 	LoadDefaultAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool(), args->args[3].GetBool());
-}
+});
 
-void ResetSkeletonAdjustment::Invoke(Args* args)
-{
+GFxFunction(ResetSkeletonAdjustment, {
 	LoadDefaultAdjustment(nullptr, false, true, false);
-}
+});
 
-void GetPositioning::Invoke(Args* args)
-{
+GFxFunction(GetPositioning, {
 	SaveObjectTranslation();
 	GetPositioningGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void AdjustPositioning::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 3);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_Int);
+GFxFunction(AdjustPositioning, {
 	AdjustObjectPosition(args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
 	GetPositioningGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void SelectPositioning::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(SelectPositioning, {
 	SelectPositioningMenuOption(args->args[0].GetInt());
 	GetPositioningGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void ResetPositioning::Invoke(Args* args)
-{
+GFxFunction(ResetPositioning, {
 	SetDefaultObjectTranslation();
 	GetPositioningGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void GetSamPoses::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_String);
+GFxFunction(GetSamPoses, {
 	GetSamPosesGFx(args->movie->movieRoot, args->result, args->args[0].GetString());
-}
+});
 
-void SetCursorVisible::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
+GFxFunction(SetCursorVisible, {
 	static BSFixedString cursorMenu("CursorMenu");
 	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", args->args[0].GetBool());
-}
+});
 
-void GetCursorPosition::Invoke(Args* args)
-{
+GFxFunction(GetCursorPosition, {
 	GetCursorPositionGFx(args->movie->movieRoot, args->result);
-}
+});
 
-void SetCursorPosition::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 2);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_Int);
+GFxFunction(SetCursorPosition, {
 	SetCursor(args->args[0].GetInt(), args->args[1].GetInt());
-}
+});
 
-void GetLock::Invoke(Args* args)
-{
-	ASSERT(args->numArgs >= 1);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Int);
+GFxFunction(GetLock, {
 	args->result->SetBool(GetFfcLock((FfcType)args->args[0].GetInt()));
-}
+});
 
-void HideMenu::Invoke(Args * args)
-{
-	ASSERT(args->numArgs >= 4);
-	ASSERT(args->args[0].GetType() == GFxValue::kType_Bool);
-	ASSERT(args->args[1].GetType() == GFxValue::kType_String);
-	ASSERT(args->args[2].GetType() == GFxValue::kType_UInt);
-	ASSERT(args->args[3].GetType() == GFxValue::kType_UInt);
-	UInt64 high = args->args[2].GetUInt();
-	UInt64 low = args->args[3].GetUInt();
-	UInt64 handle = (high << 32) | low;
-	bool hide = args->args[0].GetBool();
-	SetMenuMovement(hide, args->args[1].GetString(), handle);
-	static BSFixedString cursorMenu("CursorMenu");
-	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", !hide);
-}
+GFxFunction(ToggleMenus, {
+	args->result->SetBool(ToggleMenusHidden());
+});
 
-void Test::Invoke(Args * args)
-{
-	//
+GFxFunction(Test, {
 	BSFixedString photoMenu("PhotoMenu");
 	IMenu* menu = (*g_ui)->GetMenu(photoMenu);
 	GFxMovieRoot* root = menu->movie->movieRoot;
 
 	GFxValue func;
 	GFxValue ten(10.0);
-	
+
 	bool hasFunc = root->Invoke("root1.Menu_mc.BGSCodeObj.SetPlayerLeftRight", nullptr, &ten, 1);
 
 	_DMESSAGE("test");
-}
+});
 
-void Test2::Invoke(Args* args)
-{
-	//
-}
+GFxFunction(Test2, {
+
+});
+
+#define GFxRegister(T) RegisterFunction<T ## Scaleform>(value, view->movieRoot, #T)
 
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 { 
-	RegisterFunction<SaveState>(value, view->movieRoot, "SaveState");
-	RegisterFunction<ClearState>(value, view->movieRoot, "ClearState");
-	RegisterFunction<CheckError>(value, view->movieRoot, "CheckError");
-	RegisterFunction<GetOptions>(value, view->movieRoot, "GetOptions");
-	RegisterFunction<SetOption>(value, view->movieRoot, "SetOption");
-	RegisterFunction<ModifyFacegenMorph>(value, view->movieRoot, "ModifyFacegenMorph");
-	RegisterFunction<GetMorphCategories>(value, view->movieRoot, "GetMorphCategories");
-	RegisterFunction<GetMorphs>(value, view->movieRoot, "GetMorphs");
-	RegisterFunction<SavePreset>(value, view->movieRoot, "SaveMorphPreset");
-	RegisterFunction<LoadPreset>(value, view->movieRoot, "LoadMorphPreset");
-	RegisterFunction<ResetMorphs>(value, view->movieRoot, "ResetMorphs");
-	RegisterFunction<SamPlaySound>(value, view->movieRoot, "PlaySound");
-	RegisterFunction<SamOpenMenu>(value, view->movieRoot, "OpenMenu");
-	RegisterFunction<SamCloseMenu>(value, view->movieRoot, "CloseMenu");
-	RegisterFunction<SamIsMenuOpen>(value, view->movieRoot, "IsMenuOpen");
-	RegisterFunction<GetHacks>(value, view->movieRoot, "GetHacks");
-	RegisterFunction<GetBlinkHack>(value, view->movieRoot, "GetBlinkHack");
-	RegisterFunction<SetBlinkHack>(value, view->movieRoot, "SetBlinkHack");
-	RegisterFunction<GetMorphHack>(value, view->movieRoot, "GetMorphHack");
-	RegisterFunction<SetMorphHack>(value, view->movieRoot, "SetMorphHack");
-	RegisterFunction<GetEyeTrackingHack>(value, view->movieRoot, "GetEyeTrackingHack");
-	RegisterFunction<SetEyeTrackingHack>(value, view->movieRoot, "SetEyeTrackingHack");
-	RegisterFunction<GetEyeCoords>(value, view->movieRoot, "GetEyeCoords");
-	RegisterFunction<SetEyeCoords>(value, view->movieRoot, "SetEyeCoords");
-	RegisterFunction<GetAdjustment>(value, view->movieRoot, "GetAdjustment");
-	RegisterFunction<SetAdjustmentPersistence>(value, view->movieRoot, "SetAdjustmentPersistence");
-	RegisterFunction<SetAdjustmentScale>(value, view->movieRoot, "SetAdjustmentScale");
-	RegisterFunction<GetAdjustmentList>(value, view->movieRoot, "GetAdjustmentList");
-	RegisterFunction<SaveAdjustment>(value, view->movieRoot, "SaveAdjustment");
-	RegisterFunction<LoadAdjustment>(value, view->movieRoot, "LoadAdjustment");
-	RegisterFunction<NewAdjustment>(value, view->movieRoot, "NewAdjustment");
-	RegisterFunction<RemoveAdjustment>(value, view->movieRoot, "RemoveAdjustment");
-	RegisterFunction<ResetAdjustment>(value, view->movieRoot, "ResetAdjustment");
-	RegisterFunction<NegateAdjustment>(value, view->movieRoot, "NegateAdjustment");
-	RegisterFunction<NegateAdjustmentGroup>(value, view->movieRoot, "NegateAdjustmentGroup");
-	RegisterFunction<MoveAdjustment>(value, view->movieRoot, "MoveAdjustment");
-	RegisterFunction<RenameAdjustment>(value, view->movieRoot, "RenameAdjustment");
-	RegisterFunction<GetCategoryList>(value, view->movieRoot, "GetCategoryList");
-	RegisterFunction<GetNodeList>(value, view->movieRoot, "GetNodeList");
-	RegisterFunction<GetNodeTransform>(value, view->movieRoot, "GetNodeTransform");
-	RegisterFunction<SetNodePosition>(value, view->movieRoot, "SetNodePosition");
-	RegisterFunction<SetNodeRotation>(value, view->movieRoot, "SetNodeRotation");
-	RegisterFunction<SetNodeScale>(value, view->movieRoot, "SetNodeScale");
-	RegisterFunction<AdjustNodeRotation>(value, view->movieRoot, "AdjustNodeRotation");
-	RegisterFunction<ResetTransform>(value, view->movieRoot, "ResetTransform");
-	RegisterFunction<GetIdleCategories>(value, view->movieRoot, "GetIdleCategories");
-	RegisterFunction<GetIdles>(value, view->movieRoot, "GetIdles");
-	RegisterFunction<PlayIdle>(value, view->movieRoot, "PlayIdle");
-	RegisterFunction<ResetIdle>(value, view->movieRoot, "ResetIdle");
-	RegisterFunction<GetPoseList>(value, view->movieRoot, "GetPoseList");
-	RegisterFunction<SavePose>(value, view->movieRoot, "SavePose");
-	RegisterFunction<LoadPose>(value, view->movieRoot, "LoadPose");
-	RegisterFunction<ResetPose>(value, view->movieRoot, "ResetPose");
-	RegisterFunction<GetSkeletonAdjustments>(value, view->movieRoot, "GetSkeletonAdjustments");
-	RegisterFunction<LoadSkeletonAdjustment>(value, view->movieRoot, "LoadSkeletonAdjustment");
-	RegisterFunction<ResetSkeletonAdjustment>(value, view->movieRoot, "ResetSkeletonAdjustment");
-	RegisterFunction<AdjustPositioning>(value, view->movieRoot, "AdjustPositioning"); 
-	RegisterFunction<GetPositioning>(value, view->movieRoot, "GetPositioning");
-	RegisterFunction<SelectPositioning>(value, view->movieRoot, "SelectPositioning");
-	RegisterFunction<ResetPositioning>(value, view->movieRoot, "ResetPositioning");
-	RegisterFunction<GetSamPoses>(value, view->movieRoot, "GetSamPoses");
-	RegisterFunction<SetCursorVisible>(value, view->movieRoot, "SetCursorVisible");
-	RegisterFunction<GetCursorPosition>(value, view->movieRoot, "GetCursorPosition");
-	RegisterFunction<SetCursorPosition>(value, view->movieRoot, "SetCursorPosition");
-	RegisterFunction<GetLock>(value, view->movieRoot, "GetLock");
-	RegisterFunction<HideMenu>(value, view->movieRoot, "HideMenu");
-	RegisterFunction<Test>(value, view->movieRoot, "Test");
-	RegisterFunction<Test2>(value, view->movieRoot, "Test2");
+	GFxRegister(SaveState);
+	GFxRegister(ClearState);
+	GFxRegister(CheckError);
+	GFxRegister(GetOptions);
+	GFxRegister(SetOption);
+	GFxRegister(ModifyFacegenMorph);
+	GFxRegister(GetMorphCategories);
+	GFxRegister(GetMorphs);
+	GFxRegister(SaveMorphsPreset);
+	GFxRegister(LoadMorphsPreset);
+	GFxRegister(ResetMorphs);
+	GFxRegister(SamPlaySound);
+	GFxRegister(SamOpenMenu);
+	GFxRegister(SamCloseMenu);
+	GFxRegister(SamIsMenuOpen);
+	GFxRegister(GetHacks);
+	GFxRegister(GetBlinkHack);
+	GFxRegister(SetBlinkHack);
+	GFxRegister(GetMorphHack);
+	GFxRegister(SetMorphHack);
+	GFxRegister(GetEyeTrackingHack);
+	GFxRegister(SetEyeTrackingHack);
+	GFxRegister(GetEyeCoords);
+	GFxRegister(SetEyeCoords);
+	GFxRegister(GetAdjustment);
+	GFxRegister(SetAdjustmentScale);
+	GFxRegister(GetAdjustmentList);
+	GFxRegister(SaveAdjustment);
+	GFxRegister(LoadAdjustment);
+	GFxRegister(NewAdjustment);
+	GFxRegister(RemoveAdjustment);
+	GFxRegister(ResetAdjustment);
+	GFxRegister(NegateAdjustment);
+	GFxRegister(NegateAdjustmentGroup);
+	GFxRegister(MoveAdjustment);
+	GFxRegister(RenameAdjustment);
+	GFxRegister(GetCategoryList);
+	GFxRegister(GetNodeList);
+	GFxRegister(GetNodeTransform);
+	GFxRegister(SetNodePosition);
+	GFxRegister(SetNodeRotation);
+	GFxRegister(SetNodeScale);
+	GFxRegister(AdjustNodeRotation);
+	GFxRegister(ResetTransform);
+	GFxRegister(GetIdleCategories);
+	GFxRegister(GetIdles);
+	GFxRegister(PlayIdle);
+	GFxRegister(ResetIdle);
+	GFxRegister(GetIdleName);
+	GFxRegister(GetPoseList);
+	GFxRegister(SavePose);
+	GFxRegister(LoadPose);
+	GFxRegister(ResetPose);
+	GFxRegister(GetSkeletonAdjustments);
+	GFxRegister(LoadSkeletonAdjustment);
+	GFxRegister(ResetSkeletonAdjustment);
+	GFxRegister(AdjustPositioning);
+	GFxRegister(GetPositioning);
+	GFxRegister(SelectPositioning);
+	GFxRegister(ResetPositioning);
+	GFxRegister(GetSamPoses);
+	GFxRegister(SetCursorVisible);
+	GFxRegister(GetCursorPosition);
+	GFxRegister(SetCursorPosition);
+	GFxRegister(GetLock);
+	GFxRegister(ToggleMenus);
+	GFxRegister(Test);
+	GFxRegister(Test2);
+
 	return true;
 }

@@ -50,7 +50,9 @@
 		
 		public var storeX:int = 0;
 		public var storeY:int = -1;
-		public var storePos:int = 0;
+		public var storePos:int = -1;
+		
+		public var isEnabled:Boolean = true;
 		
 		public function SliderList() {
 			super();
@@ -131,8 +133,8 @@
 			if (entry) {
 				switch (selectedX) {
 					case 0: entry.select(); break;
-					case 1: entry.checkbox.setCheck(true); break;
-					case 2: entry.checkbox2.setCheck(true); break;
+					case 1: entry.checkbox.selectCheck(); break;
+					case 2: entry.checkbox2.selectCheck(); break;
 				}
 			}
 		}
@@ -177,7 +179,6 @@
 			switch (event._type) {
 				case EntryEvent.OVER:
 					if (event.id != selectedY || event.horizontal != selectedX) {
-						trace("over");
 						if (selectedY != -1) {
 							unselect();
 						}
@@ -187,7 +188,8 @@
 						}
 						selectedX = event.horizontal;
 						selectedY = event.id;
-						if (entry.selectable) {
+
+						if (entry.selectable && isEnabled) {
 							select();
 						}
 						focused = false;
@@ -272,9 +274,9 @@
 			switch (entry.type) {
 				case SliderListEntry.SLIDER:
 					if (inc)
-						entry.slider.Increment();
+						entry.slider.IncrementPad();
 					else
-						entry.slider.Decrement();
+						entry.slider.DecrementPad();
 					break;
 				case SliderListEntry.ADJUSTMENT:
 					if (selectedY != -1)
@@ -319,13 +321,18 @@
 		
 		public function storeSelected()
 		{
+			isEnabled = false;
 			storeX = selectedX;
 			storeY = selectedY;
 			storePos = listPosition;
+			if (storeY != -1) {
+				unselect();
+			}
 		}
 		
 		public function restoreSelected()
 		{
+			isEnabled = true;
 			if (selectedY != -1) {
 				storeY += (listPosition - storePos);
 				if (storeY >= entrySize) {
@@ -524,7 +531,7 @@
 			switch (entry.id)
 			{
 				case 0: //Scale
-					entry.updateSliderData(0, 100, 1, 0)
+					entry.updateSliderData(0, 100, 1, 1, 0)
 					entry.updateSlider("$SAM_Scale", SliderListEntry.INT);
 					break;
 				case 1: //Save
@@ -535,9 +542,6 @@
 					break;
 				case 3: //Reset
 					entry.updateList("$SAM_ResetAdjustment");
-					break;
-				case 4: //Persistent
-					entry.updateCheckbox("$SAM_Saved", Data.menuValues[entry.id]);
 					break;
 				default:
 					entry.updateList("Negate " + Translator.translate(Data.menuValues[entry.id]));
@@ -554,17 +558,17 @@
 		{
 			if (entry.id < 3) //rot
 			{
-				entry.updateSliderData(0.0, 360.0, 0.1, 180.0, 2);
+				entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 180.0, 2);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 6) //pos
 			{
-				entry.updateSliderData(0.0, 20.0, 0.01, 10.0, 4);
+				entry.updateSliderData(0.0, 20.0, 0.01, 0.1, 10.0, 4);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 7)//scale
 			{
-				entry.updateSliderData(0.0, 2.0, 0.01, 0.0, 4);
+				entry.updateSliderData(0.0, 2.0, 0.01, 0.1, 0.0, 4);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 10)//rot2
@@ -581,7 +585,7 @@
 		
 		public function updateMorphsEntry(entry:SliderListEntry):void
 		{
-			entry.updateSliderData(0, 100, 1, 0);
+			entry.updateSliderData(0, 100, 1, 1, 0);
 			entry.updateSlider(Data.menuOptions[entry.id], SliderListEntry.INT);
 		}
 		
@@ -593,13 +597,8 @@
 		
 		public function updateEyesEntry(entry:SliderListEntry):void
 		{
-			if (entry.id < 2) {
-				entry.updateSliderData(0.0, 2.0, 0.01, 1.0, 4);
-				entry.updateSlider(Data.EYE_NAMES[entry.id], SliderListEntry.FLOAT);
-			}
-			else {
-				entry.updateCheckbox(Data.EYE_NAMES[entry.id], Data.menuValues[entry.id]);
-			}
+			entry.updateSliderData(0.0, 2.0, 0.01, 0.1, 1.0, 4);
+			entry.updateSlider(Data.EYE_NAMES[entry.id], SliderListEntry.FLOAT);
 		}
 		
 		public function updatePositioning(func:Function):void
@@ -611,7 +610,7 @@
 		public function updatePositioningEntry(entry:SliderListEntry):void
 		{
 			if (entry.id < 1) {
-				entry.updateSliderData(0, 500, 1, 0, 0);
+				entry.updateSliderData(0, 500, 1, 1, 0, 0);
 				entry.updateSlider(Data.POSITIONING_NAMES[entry.id], SliderListEntry.INT);
 			}
 			else if (entry.id < 8) {

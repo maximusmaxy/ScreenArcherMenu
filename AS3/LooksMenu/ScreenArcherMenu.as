@@ -71,7 +71,7 @@
 		internal var buttonHintReset:BSButtonHintData;
 		internal var buttonHintBack:BSButtonHintData;
 		internal var buttonHintConfirm:BSButtonHintData;
-		internal var buttonHintSwap:BSButtonHintData;
+		internal var buttonHintHide:BSButtonHintData;
 		internal var buttonHintExtra:BSButtonHintData;
 		//internal var buttonHintTarget:BSButtonHintData;
 		
@@ -84,10 +84,18 @@
 		public var swapped:Boolean = false;
 		public var hidden:Boolean = false;
 		public var saved:Boolean = false;
+		public var textInput:Boolean = false;
 		public var multi:Boolean = false;
 		public var widescreen:Boolean = false;
 		public var targetRace:Boolean = false;
 		public var order:Boolean = false;
+		
+		public static const HELD_X:int = 1;
+		
+		public var held:Boolean = false;
+		public var heldType:int = 0;
+		public var heldFuncLeft:Function = null;
+		public var heldFuncRight:Function = null;
 		
 		public var targetIgnore:Array = [
 			HACK_STATE,
@@ -146,7 +154,8 @@
 			},
 			{
 				state: OPTIONS_STATE,
-				check: NO_CHECK
+				check: NO_CHECK,
+				ignor: true
 			}
 		];
 		
@@ -195,10 +204,11 @@
 			updateAlignment();
 			
 			//addEventListener(PlatformChangeEvent.PLATFORM_CHANGE, onPlatformChange);
-			if (Util.debug) {
-				addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
-				addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
-			}
+//			if (Util.debug) {
+//				addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+//				addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+//			}
+			//addEventListener("F4SE::Initialized", onF4SEInitialized);
 		}
 		
 		internal function initButtonHints():void
@@ -209,12 +219,12 @@
 			buttonHintLoad = new BSButtonHintData("$SAM_Load","E","PSN_R1","Xenon_R1",1,loadButton);
 			buttonHintReset = new BSButtonHintData("$SAM_Reset","R","PSN_Y","Xenon_Y",1,resetButton);
 			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirmButton);
-			buttonHintSwap = new BSButtonHintData("$SAM_Swap","Z","PSN_Select","Xenon_Select",1,swapButton);
+			buttonHintHide = new BSButtonHintData("$SAM_Hide","F","PSN_Select","Xenon_Select",1,hideButton);
 			buttonHintExtra = new BSButtonHintData("","X","PSN_X","Xenon_X",1,extraButton);
 			//buttonHintTarget = new BSButtonHintData("","E","PSN_R1","Xenon_R1",1,targetButton);
 			buttonHintData.push(buttonHintExit);
 			buttonHintData.push(buttonHintBack);
-			buttonHintData.push(buttonHintSwap);
+			buttonHintData.push(buttonHintHide);
 			buttonHintData.push(buttonHintSave);
 			buttonHintData.push(buttonHintLoad);
 			buttonHintData.push(buttonHintExtra);
@@ -248,12 +258,8 @@
 			if (data.saved) {
 				state = data.saved.state;
 				sliderList.listPosition = data.saved.slider;
-				
-				stateStack.length = 0;
-				Util.packObjectArray(stateStack, "menu", data.saved.stateStack);
-				Util.packObjectArray(stateStack, "pos", data.saved.posStack);
-				Util.packObjectArray(stateStack, "x", data.saved.xStack);
-				Util.packObjectArray(stateStack, "y", data.saved.yStack);
+				stateStack = data.saved.stack;
+				textInput = data.saved.text;
 				
 				updateState();
 			}
@@ -263,29 +269,36 @@
 		
 		public function consoleRefUpdated(data:Object)
 		{
-			switch (this.state) {
-				case EYE_STATE:
-					Data.loadEyes();
-					sliderList.updateValues();
-					break;
-				case HACK_STATE:
-					Data.loadHacks();
-					sliderList.updateValues();
-					break;
-				case POSITIONING_STATE:
-					Data.loadPositioning();
-					sliderList.updateValues();
-					break;
+			if (data.updated) {
+				switch (this.state) {
+					case EYE_STATE:
+						Data.loadEyes();
+						sliderList.updateValues();
+						break;
+					case HACK_STATE:
+						Data.loadHacks();
+						sliderList.updateValues();
+						break;
+					case POSITIONING_STATE:
+						Data.loadPositioning();
+						sliderList.updateValues();
+						break;
+				}
+				
+				if (resetIgnore.indexOf(this.state) < 0) {
+					resetState();
+				}
+				
+				Util.playOk();
 			}
 			
-			if (resetIgnore.indexOf(this.state) < 0) {
-				resetState();
+			if (data.idle) {
+				showNotification(data.idle);
+			} else {
+				hideNotification();
 			}
 
 			sliderList.title.text = data.title;
-			
-			notification.visible = false;
-			Util.playOk();
 		}
 		
 		public function onF4SEObjCreated(obj:Object)
@@ -293,30 +306,32 @@
 			this.f4seObj = obj;
 		}
 		
-		public function onPlatformChange(event:PlatformChangeEvent)
-		{
-			switch (event.uiPlatform) {
-				case PlatformChangeEvent.PLATFORM_PC_KB_MOUSE:
-					break;
-				case PlatformChangeEvent.PLATFORM_PC_GAMEPAD:
-					break;
-			}
-		}
+//		public function onPlatformChange(event:PlatformChangeEvent)
+//		{
+//			switch (event.uiPlatform) {
+//				case PlatformChangeEvent.PLATFORM_PC_KB_MOUSE:
+//					break;
+//				case PlatformChangeEvent.PLATFORM_PC_GAMEPAD:
+//					break;
+//			}
+//		}
 		
-		public function onKeyDown(event:KeyboardEvent) 
-		{
-			processKeyDown(event.keyCode);
-		}
-		
-		public function onKeyUp(event:KeyboardEvent) 
-		{
+//		public function onKeyDown(event:KeyboardEvent) 
+//		{
+//			processKeyDown(event.keyCode);
+//		}
+//		
+//		public function onKeyUp(event:KeyboardEvent)
+//		{
+//			processKeyUp(event.keyCode);
+//		}
 
-		}
-		
 		public function processKeyDown(keyCode:uint)
 		{
 			//https://www.creationkit.com/fallout4/index.php?title=DirectX_Scan_Codes
-			trace(keyCode);
+			if (held) {
+				return;
+			}
 			switch (keyCode)
 			{
 				case 9://Tab
@@ -334,6 +349,83 @@
 					}
 					Util.unselectText();
 					break;
+				case 69://E
+				case 273://Pad R1
+					if (buttonHintLoad.ButtonVisible) {
+						loadButton();
+					} 
+//					else if (buttonHintTarget.ButtonVisible) {
+//						targetButton();
+//					}
+					break;
+				case 81://Q
+				case 272://Pad L1
+					if (buttonHintSave.ButtonVisible) {
+						saveButton();
+					}
+					break;
+				case 82://R
+				case 279://Pad Y
+					if (buttonHintReset.ButtonVisible) {
+						resetButton();
+					}
+					break;
+				case 88://X
+				case 278://Pad X
+					if (buttonHintExtra.ButtonVisible) {
+						extraButton();
+					}
+					break;
+				case 70://F
+				case 271://Pad Select
+					if (buttonHintHide.ButtonVisible) {
+						hideButton();
+					}
+					break;
+//				case 257://Mouse2
+//					hide();
+//					break;
+//				case 282://ScrollUp
+//					if (Data.isLocked(Data.KEYBOARD)) {
+//						sliderList.scrollList(-1);
+//					}
+//					break;
+//				case 283://ScrollDown
+//					if (Data.isLocked(Data.KEYBOARD)) {
+//						sliderList.scrollList(1);
+//					}
+//					break;
+			}
+		};
+		
+		public function processKeyHeld(keyCode:uint)
+		{
+			switch (keyCode)
+			{
+				case 37://Left
+				case 65://A
+				case 268://Pad Left
+					if (heldFuncLeft != null) {
+						heldFuncLeft();
+					}
+					break;
+				case 39://Right
+				case 68://D
+				case 269://Pad Right
+					if (heldFuncRight != null) {
+						heldFuncRight();
+					}
+					break;
+			}
+		}
+		
+		public function processKeyRepeat(keyCode:uint)
+		{
+			if (held) {
+				processKeyHeld(keyCode);
+				return;
+			}
+			switch (keyCode) {
 				case 37://Left
 				case 65://A
 				case 268://Pad Left
@@ -363,55 +455,6 @@
 						sliderList.processInput(SliderList.DOWN);
 					}
 					break;
-				case 69://E
-					if (buttonHintLoad.ButtonVisible) {
-						loadButton();
-					} 
-//					else if (buttonHintTarget.ButtonVisible) {
-//						targetButton();
-//					}
-					break;
-				case 81://Q
-					if (buttonHintSave.ButtonVisible) {
-						saveButton();
-					}
-					break;
-				case 82://R
-					if (buttonHintReset.ButtonVisible) {
-						resetButton();
-					}
-					break;
-				case 88://X
-					if (buttonHintExtra.ButtonVisible) {
-						extraButton();
-					}
-					break;
-				case 90://Z
-					if (buttonHintSwap.ButtonVisible) {
-						swapButton();
-					}
-					break;
-//				case 257://Mouse2
-//					hide();
-//					break;
-//				case 282://ScrollUp
-//					if (Data.isLocked(Data.KEYBOARD)) {
-//						sliderList.scrollList(-1);
-//					}
-//					break;
-//				case 283://ScrollDown
-//					if (Data.isLocked(Data.KEYBOARD)) {
-//						sliderList.scrollList(1);
-//					}
-//					break;
-			}
-		};
-		
-		public function processKeyHeld(keyCode:uint)
-		{
-			switch (keyCode)
-			{
-				
 			}
 		}
 		
@@ -419,9 +462,13 @@
 		{
 			switch (keyCode)
 			{
-				case 257://Mouse2
-					show();
+				case 88://X
+				case 278://Pad X
+					disableHold(HELD_X, onZMove);
 					break;
+//				case 257://Mouse2
+//					show();
+//					break;
 			}
 		}
 		
@@ -432,14 +479,24 @@
 			Data.scriptHandleLow = data.__handleLow__;
 		}
 		
+		public function showNotification(msg:String)
+		{
+			notification.visible = true;
+			notification.message.text = msg;
+		}
+		
+		public function hideNotification()
+		{
+			notification.visible = false;
+		}
+		
 		public function checkError(id:int):Boolean
 		{
 			if (Data.checkError(id)) {
-				notification.visible = false;
+				hideNotification();
 				return true;
 			} else {
-				notification.visible = true;
-				notification.message.text = Data.ERROR_NAMES[id];
+				showNotification(Data.ERROR_NAMES[id]);
 				return false;
 			}
 		}
@@ -447,7 +504,7 @@
 		public function checkIgnore(id:int, arr:Array):Boolean
 		{
 			if (arr.indexOf(id) >= 0) {
-				notification.visible = false;
+				hideNotification();
 				return true;
 			}
 			return false;
@@ -481,6 +538,8 @@
 		
 		public function popState()
 		{
+			hideNotification();
+			
 			currentState = stateStack.pop();
 			
 			this.state = currentState.menu;
@@ -649,10 +708,6 @@
 				case 3:
 					Data.resetAdjustment();
 					break;
-				case 4:
-					Data.menuValues[id] = value;	
-					Data.setAdjustmentPersistent(value);
-					break;
 				default:
 					Data.negateAdjustmentGroup(id);
 			}
@@ -669,24 +724,26 @@
 		
 		public function downAdjustment(id:int):void
 		{
-			if (id < sliderList.entrySize - 1) {
-				trace("down");
-				Data.moveAdjustment(id, true);
+			if (Data.moveAdjustment(id, true)) {
+				Data.loadAdjustmentList();
 				sliderList.storeSelected();
 				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
-				sliderList.storeY++;
+				if (sliderList.focused) {
+					sliderList.storeY++;
+				}
 				sliderList.restoreSelected();
 			}
 		}
 		
 		public function upAdjustment(id:int):void
 		{
-			if (id > 0) {
-				trace("up");
-				Data.moveAdjustment(id, false);
+			if (Data.moveAdjustment(id, false)) {
+				Data.loadAdjustmentList();
 				sliderList.storeSelected();
 				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
-				sliderList.storeY--;
+				if (sliderList.focused) {
+					sliderList.storeY--;
+				}
 				sliderList.restoreSelected();
 			}
 		}
@@ -755,6 +812,7 @@
 		
 		internal function setTextInput(enabled:Boolean)
 		{
+			textInput = enabled;
 			if (enabled)
 			{
 				filenameInput.visible = true;
@@ -822,6 +880,7 @@
 		internal function selectIdle(id:int)
 		{
 			Data.playIdle(id);
+			showNotification(Data.menuOptions[id]);
 		}
 		
 		internal function selectPose(id:int, enabled:Boolean)
@@ -832,7 +891,7 @@
 		internal function selectPoseFile(id:int)
 		{
 			Data.loadPose(id);
-			sliderList.updateList(selectPoseFile);
+			sliderList.updateFolder(selectPoseFile);
 		}
 		
 		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
@@ -916,7 +975,7 @@
 			{
 				Data.popFolder();
 				switch(this.state) {
-					case POSEPLAY_STATE: sliderList.updateList(selectPosePlay); break;
+					case POSEPLAY_STATE: sliderList.updateFolder(selectPosePlay); break;
 				}
 			}
 			else
@@ -937,13 +996,24 @@
 				//delay close event so it doesn't close multiple menus at once
 				closeTimer = new Timer(100,1);
 				closeTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) {
-					root.f4se.plugins.ScreenArcherMenu.CloseMenu("ScreenArcherMenu");
+					close();
 				});
 				closeTimer.start();
 			}
 			else
 			{
-				root.f4se.plugins.ScreenArcherMenu.CloseMenu("ScreenArcherMenu");
+				close();
+			}
+		}
+		
+		public function close()
+		{
+			try {
+				root.f4se.plugins.ScreenArcherMenu.SamCloseMenu("ScreenArcherMenu");
+			}
+			catch (e:Error)
+			{
+				trace("No escape");
 			}
 		}
 		
@@ -977,9 +1047,53 @@
 				case POSEPLAY_STATE: //a-pose
 					Data.resetPose(2);
 					break;
+				case IDLECATEGORY_STATE: //z-rotate
+				case IDLE_STATE:
+					enableHold(HELD_X, onZMove, onZLeft, onZRight);
+					break;
 			}
 		}
 		
+		public function enableHold(type:int, move:Function, left:Function, right:Function)
+		{
+			if (!held) {
+				held = true;
+				heldType = type;
+				stage.addEventListener(MouseEvent.MOUSE_MOVE, move);
+				heldFuncMove = move;
+				heldFuncLeft = left;
+				heldFuncRight = right;
+				Data.setCursorVisible(false);
+				Data.storeCursorPos();
+				sliderList.storeSelected();
+			}
+		}
+		
+		public function disableHold(type:int, move:Function) {
+			if (held && heldType == type) {
+				held = false;
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, move);
+				heldFuncMove = null;
+				heldFuncLeft = null;
+				heldFuncRight = null;
+				Data.setCursorVisible(true);
+				Data.endCursorDrag();
+				sliderList.restoreSelected();
+			}
+		}
+		
+		public function onZMove(event:MouseEvent) {
+			Data.rotateIdle(NaN);
+		}
+		
+		public function onZLeft() {
+			Data.rotateIdle(-2.0);
+		}
+		
+		public function onZRight() {
+			Data.rotateIdle(2.0);
+		}
+
 		public function targetButton()
 		{
 			targetRace = !targetRace;
@@ -1002,60 +1116,69 @@
 		{
 			buttonHintBack.ButtonText = state == MAIN_STATE ? "$SAM_Exit" : "$SAM_Back";
 			buttonHintBack.ButtonVisible = true;
-			buttonHintReset.ButtonText = state == "$SAM_Reset";
 			switch (state)
 			{
 				case MAIN_STATE :
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = false;
 					break;
 				case ADJUSTMENT_STATE :
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = "$SAM_New";
+					buttonHintExtra.ButtonClickDisabled = false;
 					buttonHintReset.ButtonVisible = true;
 					buttonHintReset.ButtonText = order ? "$SAM_Edit" : "$SAM_Order";
 					break;
 				case TRANSFORM_STATE :
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = "$SAM_Negate";
+					buttonHintExtra.ButtonClickDisabled = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
 					break;
 				case IDLECATEGORY_STATE:
 				case IDLE_STATE:
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = "$SAM_Rotate";
+					buttonHintExtra.ButtonClickDisabled = true;
+					break;
 				case POSITIONING_STATE:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
 					break;
 				case MORPH_STATE:
 				case MORPHCATEGORY_STATE:
 				case POSEEXPORT_STATE:
 					buttonHintSave.ButtonVisible = true;
 					buttonHintLoad.ButtonVisible = true;
-					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
 					break;
 				case SAVEMFG_STATE:
 				case SAVEADJUSTMENT_STATE:
@@ -1065,53 +1188,52 @@
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = true;
-					buttonHintSwap.ButtonVisible = false;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = true;
+					buttonHintHide.ButtonVisible = true;
 					//buttonHintTarget.ButtonText = targetRace ? "$SAM_NPC" : "$SAM_Race";
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
+					buttonHintExtra.ButtonClickDisabled = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
 					break;
 				case POSEPLAY_STATE:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = "$SAM_Apose";
+					buttonHintExtra.ButtonClickDisabled = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
 					break;
 				default:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintSwap.ButtonVisible = true;
-					//buttonHintTarget.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = false;
 			}
 		};
 
-		internal function swapButton():void
+		internal function hideButton():void
 		{
 			if (!filenameInput.visible) {
-				hidden = !hidden;
-				if (hidden) {
-					
-				} else {
-					
-				}
+				hidden = Data.toggleMenu();
+				sliderList.isEnabled = !hidden;
 			}
 		}
+		
 		internal function updateAdjustment():void
 		{
 			sliderList.storeSelected();
@@ -1132,27 +1254,6 @@
 				sliderList.x = swapped ? -623 : 278;
 			}
 		}
-		
-		internal function hide():void
-		{
-//			root.f4se.plugins.ScreenArcherMenu.HideMenu(true, Data.scriptType, Data.scriptHandleHigh, Data.scriptHandleLow);
-//			if (Data.hideMenu) {
-//				filenameInput.visible = false;
-//				sliderList.visible = false;
-//				ButtonHintBar_mc.visible = false;
-//			}
-		}
-		
-		internal function show():void
-		{
-//			root.f4se.plugins.ScreenArcherMenu.HideMenu(false, Data.scriptType, Data.scriptHandleHigh, Data.scriptHandleLow);
-//			if (this.state == SAVEMFG_STATE || this.state == SAVEADJUSTMENT_STATE) {
-//				filenameInput.visible = true;
-//			} else {
-//				sliderList.visible = true;
-//			}
-//			ButtonHintBar_mc.visible = true;
-		}
 
 		public function tryClose():void
 		{
@@ -1162,10 +1263,8 @@
 					state: menuState,
 					slider: sliderPos,
 					swap: swapped,
-					stateStack: Util.unpackObjectArray(stateStack, "menu"),
-					posStack: Util.unpackObjectArray(stateStack, "pos"),
-					xStack: Util.unpackObjectArray(stateStack, "x"),
-					yStack: Util.unpackObjectArray(stateStack, "y")
+					stack: stateStack,
+					text: textInput
 				}
 				Data.saveState(data);
 				saved = true;
