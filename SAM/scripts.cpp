@@ -16,7 +16,7 @@ RelocAddr<_SetMenusDisabledInternal> SetMenusDisabledInternal(0xAE5BB0);
 #define uiVisible (reinterpret_cast<bool*>(g_ui.GetUIntPtr()) + 0x248)
 
 bool GetMenusHidden() {
-	return !*uiVisible;
+	return !(*uiVisible);
 }
 
 void SetMenusHidden(bool hidden) {

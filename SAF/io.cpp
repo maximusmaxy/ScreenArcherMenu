@@ -309,7 +309,7 @@ namespace SAF {
 		}
 
 		std::string jsonString = writer.write(value);
-		file.WriteString(jsonString.c_str());
+		file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
 		file.Close();
 
 		return true;
@@ -368,16 +368,17 @@ namespace SAF {
 		Json::Value value;
 
 		value["version"] = Json::Value(1);
-		value["name"] = Json::Value(filename);
+		value["name"] = Json::Value(getFilename(filename));
 
 		Json::Value transforms(Json::ValueType::objectValue);
-		value["transforms"] = transforms;
 
 		for (auto& kvp : *poseMap) {
 			Json::Value member;
 			WriteTransformJson(&kvp.second, member, 1);
 			transforms[kvp.first] = member;
 		}
+
+		value["transforms"] = transforms;
 
 		IFileStream file;
 
@@ -392,7 +393,7 @@ namespace SAF {
 		}
 
 		std::string jsonString = writer.write(value);
-		file.WriteString(jsonString.c_str());
+		file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
 		file.Close();
 
 		return true;
@@ -453,7 +454,59 @@ namespace SAF {
 		return LoadPosePath(filename, poseMap);
 	}
 
+	void LoadSettingsFile(const char* path)
+	{
+		//defaults
+		g_adjustmentManager.overridePostfix = "_Pose";
+		g_adjustmentManager.offsetPostfix = "_Offset";
+
+		IFileStream file;
+
+		//if settings doesn't exist generate it
+		if (!file.Open(path)) {
+			try {
+				Json::StyledWriter writer;
+				Json::Value value;
+
+				value["override"] = Json::Value("_Pose");
+				value["offset"] = Json::Value("_Offset");
+
+
+				std::string jsonString = writer.write(value);
+
+				if (file.Create(path))
+				{
+					file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
+					file.Close();
+				}
+			}
+			catch (...) {
+				_DMESSAGE("Failed to create settings json");
+				return;
+			}
+
+			return;
+		}
+
+		std::string settingString;
+		ReadAll(&file, &settingString);
+		file.Close();
+
+		Json::Reader reader;
+		Json::Value value;
+
+		if (!reader.parse(settingString, value)) {
+			_DMESSAGE("Failed to parse settings json");
+			return;
+		}
+
+		g_adjustmentManager.overridePostfix = value["override"].isString() ? value["override"].asString() : "_Pose";
+		g_adjustmentManager.offsetPostfix = value["offset"].isString() ? value["offset"].asString() : "_Offset";
+	}
+
 	void LoadAllFiles() {
+		LoadSettingsFile("Data\\F4SE\\Plugins\\SAF\\settings.json");
+
 		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\NodeMaps", "*.json"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();

@@ -445,7 +445,7 @@ void GetPoseListGFx(GFxMovieRoot* root, GFxValue* result)
 		GFxValue name(adjustment->name.c_str());
 		names.PushBack(&name);
 
-		GFxValue value(!adjustment->isDefault);
+		GFxValue value(adjustment->file.empty());
 		values.PushBack(&value);
 
 		GFxValue handle(adjustment->handle);

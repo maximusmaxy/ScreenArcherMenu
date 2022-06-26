@@ -293,7 +293,7 @@
 					select();
 					break;
 				case SliderListEntry.DRAG:
-					entry.checkbox.forceDrag(inc ? 1.0 : -1.0);
+					entry.checkbox.forceDrag(inc);
 					break;
 			}
 		}
@@ -346,6 +346,13 @@
 				selectedY = storeY;
 				select();
 			}
+		}
+		
+		public function getState(data:Object)
+		{
+			data.x = selectedX;
+			data.y = selectedY;
+			data.pos = listPosition;
 		}
 		
 		public function updatePosition(newPosition:int):Boolean
@@ -568,12 +575,13 @@
 			}
 			else if (entry.id < 7)//scale
 			{
-				entry.updateSliderData(0.0, 2.0, 0.01, 0.1, 0.0, 4);
+				entry.updateSliderData(0.0, 2.0, 0.01, 0.02, 0.0, 4);
 				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
 			}
 			else if (entry.id < 10)//rot2
 			{
 				entry.updateDrag(Data.TRANSFORM_NAMES[entry.id])
+				entry.checkbox.increment = 2.0;
 			}
 		}
 		
@@ -597,7 +605,7 @@
 		
 		public function updateEyesEntry(entry:SliderListEntry):void
 		{
-			entry.updateSliderData(0.0, 2.0, 0.01, 0.1, 1.0, 4);
+			entry.updateSliderData(0.0, 2.0, 0.01, 0.05, 1.0, 4);
 			entry.updateSlider(Data.EYE_NAMES[entry.id], SliderListEntry.FLOAT);
 		}
 		
@@ -615,6 +623,13 @@
 			}
 			else if (entry.id < 8) {
 				entry.updateDragValue(Data.POSITIONING_NAMES[entry.id]);
+				if (entry.id < 4) { //pos
+					entry.checkbox.increment = 10.0
+				} else if (entry.id < 7){ //rot
+					entry.checkbox.increment = 2.0;
+				} else { //scale
+					entry.checkbox.increment = 1.0;
+				}
 			}
 			else {
 				entry.updateList(Data.POSITIONING_NAMES[entry.id]);

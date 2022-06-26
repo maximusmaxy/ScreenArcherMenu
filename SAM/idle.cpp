@@ -198,6 +198,26 @@ void ResetIdleAnimation() {
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
 
+void PlayAPose() {
+	if (!selected.refr) return;
+
+	Actor* actor = (Actor*)selected.refr;
+
+	UInt32 dataId = GetIdleDataId(selected.race);
+	if (!dataId) return;
+
+	UInt32 aposeId = raceIdleData[dataId].aposeId;
+	if (!aposeId) return;
+
+	TESForm* form = LookupFormByID(aposeId);
+	if (!form) return;
+
+	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
+	if (!idleForm) return;
+
+	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
+}
+
 void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
 	root->CreateArray(result);

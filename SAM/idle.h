@@ -28,6 +28,7 @@ struct IdleData
 {
 	UInt32 raceId;
 	UInt32 resetId;
+	UInt32 aposeId;
 	BSFixedString behavior;
 	BSFixedString event;
 };
@@ -36,6 +37,7 @@ extern std::unordered_map<UInt32, IdleData> raceIdleData;
 
 void PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();
+void PlayAPose();
 void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
 void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategory);
 

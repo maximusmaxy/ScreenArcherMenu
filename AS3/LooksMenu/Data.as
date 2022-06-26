@@ -37,9 +37,9 @@
 		
 		public static var selectedText:SliderListEntry = null;
 		
-		public static const MORPH_DIRECTORY:String = "Data/F4SE/Plugins/SAM/FaceMorphs";
-		public static const ADJUSTMENT_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Adjustments";
-		public static const POSE_DIRECTORY:String = "Data/F4SE/Plugins/SAF/Poses";
+		public static const MORPH_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAM\\FaceMorphs";
+		public static const ADJUSTMENT_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Adjustments";
+		public static const POSE_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Poses";
 		
 		public static const KEYBOARD = 1;
 		public static const PAD = 2;
@@ -121,7 +121,7 @@
 			delayClose = data.delayClose;
 			
 			stage = stageObj;
-
+			
 			if (data.saved) {
 				menuOptions = data.saved.options;
 				menuValues = data.saved.values;
@@ -132,22 +132,24 @@
 				boneName = data.saved.boneName;
 				poseHandles = data.saved.handles;
 				stepValue = data.saved.step;
-				folderStack = data.saved.folder;
+				folderStack = data.saved.folderStack;
+				menuFolder = data.saved.folder;
 			}
 		}
 		
 		public static function saveState(data:Object)
 		{
-			data.options = menuOptions,
-			data.values = menuValues,
-			data.files = menuFiles,
-			data.adjustment = selectedAdjustment,
-			data.category = selectedCategory,
-			data.bone = selectedBone,
-			data.boneName = boneName,
-			data.handles = poseHandles,
-			data.step = stepValue,
-			data.folder = folderStack
+			data.options = menuOptions;
+			data.values = menuValues;
+			data.files = menuFiles;
+			data.adjustment = selectedAdjustment;
+			data.category = selectedCategory;
+			data.bone = selectedBone;
+			data.boneName = boneName;
+			data.handles = poseHandles;
+			data.step = stepValue;
+			data.folderStack = folderStack;
+			data.folder = menuFolder;
 			
 			try 
 			{
@@ -849,6 +851,18 @@
 			}
 		}
 		
+		public static function getIdleName():String
+		{
+			try {
+				return sam.GetIdleName();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get idle name");
+			}
+			return null;
+		}
+		
 		public static function getPoseList() 
 		{
 			try {
@@ -876,7 +890,7 @@
 		{
 			try 
 			{
-				var handles:Array = []
+				var handles:Array = [];
 				for (var i:int = 0; i < menuValues.length; i++) {
 					if (menuValues[i]) {
 						handles.push(poseHandles[i]);
@@ -894,7 +908,7 @@
 		{
 			try 
 			{
-				sam.LoadPose(POSE_DIRECTORY + "/Exports/" + menuFiles[id] + ".json");
+				sam.LoadPose(POSE_DIRECTORY + "\\Exports\\" + menuFiles[id] + ".json");
 			}
 			catch (e:Error)
 			{
@@ -904,7 +918,7 @@
 		
 		public static function loadPoseFiles()
 		{
-			if (!getFileListing(POSE_DIRECTORY + "/Exports", "*.json"))
+			if (!getFileListing(POSE_DIRECTORY + "\\Exports", "*.json"))
 			{
 				if (Util.debug){
 					for (var y:int = 0; y < 1000; y++) {
@@ -1049,8 +1063,8 @@
 		public static function popFolder()
 		{
 			folderStack.pop();
-			var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length[-1]];
 			try {
+				var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length - 1];
 				menuFolder = sam.GetSamPoses(path);
 				updateFolderNames();
 			}
@@ -1063,8 +1077,8 @@
 		
 		public static function loadSamPoses()
 		{
-			var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length[-1]];
 			try {
+				var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length - 1];
 				menuFolder = sam.GetSamPoses(path);
 				updateFolderNames();
 			}

@@ -239,16 +239,12 @@ namespace SAF {
 
 									map[key] = transform;
 								}
-								if (modLoaded) {
-									persistentAdjustments[formId].push_back(PersistentAdjustment(name, file, mod, scale, adjustmentType, map));
-								}
+								LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType, map), modLoaded);
 							}
 						}
 						else
 						{
-						if (modLoaded) {
-							persistentAdjustments[formId].push_back(PersistentAdjustment(name, file, mod, scale, adjustmentType));
-						}
+							LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType), modLoaded);
 						}
 					}
 				}
@@ -301,6 +297,18 @@ namespace SAF {
 		}
 	}
 
+	void AdjustmentManager::LoadPersistentIfValid(UInt32 formId, PersistentAdjustment persistent, bool loaded) {
+		if (!loaded)
+			return;
+
+		if (persistent.type == kAdjustmentSerializeAdd) {
+			if (TransformMapIsDefault(persistent.map))
+				return;
+		}
+
+		persistentAdjustments[formId].push_back(persistent);
+	}
+
 	void AdjustmentManager::SerializeRevert(const F4SESerializationInterface* ifc) {
 		std::unique_lock<std::shared_mutex> persistenceLock(persistenceMutex, std::defer_lock);
 		std::unique_lock<std::shared_mutex> actorLock(actorMutex, std::defer_lock);
@@ -327,7 +335,7 @@ namespace SAF {
 		std::vector<PersistentAdjustment> persistents;
 		adjustments->GetPersistentAdjustments(persistents);
 
-		//Must have 1 add that isn't empty or 1 adjustment that isn't default
+		//Must have 1 add or 1 load
 		for (auto& persistent : persistents) {
 			if (IsPersistentValid(persistent)) {
 				map[adjustments->formId] = persistents;
@@ -338,17 +346,8 @@ namespace SAF {
 
 	bool AdjustmentManager::IsPersistentValid(PersistentAdjustment& adjustment)
 	{
-		switch (adjustment.type) {
-		case kAdjustmentSerializeLoad:
-			return true;
-		case kAdjustmentSerializeAdd:
-			for (auto& kvp : adjustment.map) {
-				if (!TransormIsDefault(kvp.second)) {
-					return true;
-				}
-			}
-		}
-		return false;
+		return (adjustment.type == kAdjustmentSerializeAdd ||
+			adjustment.type == kAdjustmentSerializeLoad);
 	}
 
 	void ActorAdjustments::GetPersistentAdjustments(std::vector<PersistentAdjustment>& persistents) {
@@ -371,17 +370,19 @@ namespace SAF {
 
 		UInt8 type = kAdjustmentSerializeDisabled;
 
-		if (updated) {
-			type = kAdjustmentSerializeAdd;
+		if (!updated) {
+			if (isDefault) {
+				type = kAdjustmentSerializeDefault;
+			}
+			else if (!file.empty()) {
+				type = kAdjustmentSerializeLoad;
+			}
 		}
-		else if (isDefault) {
-			type = kAdjustmentSerializeDefault;
-		}
-		else if (!file.empty()) {
-			type = kAdjustmentSerializeLoad;
-		}
-		else {
-			type = kAdjustmentSerializeAdd;
+
+		if (type == kAdjustmentSerializeDisabled) {
+			if (!TransformMapIsDefault(map)) {
+				type = kAdjustmentSerializeAdd;
+			}
 		}
 
 		switch (type) {

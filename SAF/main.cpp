@@ -27,51 +27,6 @@ F4SEMessagingInterface* g_messaging = nullptr;
 F4SEPapyrusInterface* g_papyrus = nullptr;
 F4SESerializationInterface* g_serialization = nullptr;
 
-const std::string& GetSafConfigPath()
-{
-	static std::string safConfigPath;
-
-	if (safConfigPath.empty())
-	{
-		std::string	runtimePath = GetRuntimeDirectory();
-		if (!runtimePath.empty())
-		{
-			safConfigPath = runtimePath + "Data\\F4SE\\Plugins\\SAF.ini";
-
-			//_MESSAGE("config path = %s", safConfigPath.c_str());
-		}
-	}
-
-	return safConfigPath;
-}
-
-std::string GetSafConfigOption(const char* section, const char* key)
-{
-	std::string	result;
-
-	const std::string& configPath = GetSafConfigPath();
-	if (!configPath.empty())
-	{
-		char	resultBuf[256];
-		resultBuf[0] = 0;
-
-		UInt32	resultLen = GetPrivateProfileString(section, key, NULL, resultBuf, sizeof(resultBuf), configPath.c_str());
-
-		result = resultBuf;
-	}
-
-	return result;
-}
-
-bool GetSafConfigOption_UInt32(const char* section, const char* key, UInt32* dataOut)
-{
-	std::string	data = GetSafConfigOption(section, key);
-	if (data.empty())
-		return false;
-
-	return (sscanf_s(data.c_str(), "%u", dataOut) == 1);
-}
-
 class SAFEventReciever :
 	public BSTEventSink<TESObjectLoadedEvent>,
 	public BSTEventSink<TESLoadGameEvent>,
@@ -218,8 +173,6 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 		//GetEventDispatcher<TESInitScriptEvent>()->AddEventSink(&safEventReciever);
 		break;
 	case F4SEMessagingInterface::kMessage_GameDataReady:
-		SAF::g_adjustmentManager.overridePostfix = GetSafConfigOption("skeleton", "override");
-		SAF::g_adjustmentManager.offsetPostfix = GetSafConfigOption("skeleton", "offset");
 		SAF::g_adjustmentManager.LoadFiles();
 		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
 		break;

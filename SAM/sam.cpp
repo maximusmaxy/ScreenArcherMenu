@@ -382,8 +382,6 @@ void OnConsoleUpdate() {
 	GFxValue menuState;
 	root->GetVariable(&menuState, "root1.Menu_mc.state");
 
-	GetMenuTarget(data);
-
 	//Idle states
 	if (menuState.GetInt() == 14 || menuState.GetInt() == 15) {
 		const char* idleName = GetCurrentIdleName();
@@ -405,6 +403,8 @@ void OnConsoleUpdate() {
 
 	GFxValue updated(refUpdated);
 	data.SetMember("updated", &updated);
+
+	GetMenuTarget(data);
 
 	root->Invoke("root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
 }
@@ -618,7 +618,7 @@ bool ParseMenuFile(std::string path, IFileStream& file) {
 	}
 
 	UInt64 key = GetFormId(header[kMenuHeaderMod], header[kMenuHeaderRace]);
-	if (header[kMenuHeaderSex] == "female" || header[kMenuHeaderSex] == "Female")
+	if (!_stricmp(header[kMenuHeaderSex].c_str(), "female"))
 		key |= 0x100000000;
 
 	MenuCache* cache;
@@ -716,7 +716,15 @@ bool LoadIdleFile(std::string path) {
 			data.resetId = GetFormId(member["reset"]["mod"].asString(), member["reset"]["idle"].asString());
 			data.behavior = BSFixedString(member["filter"]["behavior"].asCString());
 			data.event = BSFixedString(member["filter"]["event"].asCString());
-			
+
+			if (member["apose"].isObject()) {
+				data.aposeId = GetFormId(member["apose"]["mod"].asString(), member["apose"]["idle"].asString());
+			}
+			else {
+				//human a pose
+				data.aposeId = GetFormId("ScreenArcherMenu.esp", 0x802);
+			}
+
 			raceIdleData[data.raceId] = data;
 		}
 	}
@@ -730,7 +738,6 @@ bool LoadIdleFile(std::string path) {
 
 void LoadMenuFiles() {
 	//Add menu categories preemptively for ordering purposes
-
 	std::unordered_set<std::string> loadedMenus;
 
 	//Load human menu first for ordering purposes

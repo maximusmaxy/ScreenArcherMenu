@@ -405,8 +405,10 @@ namespace SAF {
 		void SerializeLoad(const F4SESerializationInterface* ifc);
 		void SerializeRevert(const F4SESerializationInterface* ifc);
 
+		void LoadPersistentIfValid(UInt32 formId, PersistentAdjustment persistent, bool loaded);
 		void StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
 		void StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
+		void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
 		bool IsPersistentValid(PersistentAdjustment& persistent);
 	};
 

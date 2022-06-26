@@ -18,6 +18,7 @@
 		public var type:int;
 		public var dragState:int = 0;
 		public var selectable:Boolean = false;
+		public var increment:Number = 0.0;
 
 		public static const CHECK = 0;
 		public static const SETTINGS = 1;
@@ -173,10 +174,10 @@
 			Data.endCursorDrag();
 		}
 		
-		public function forceDrag(value:Number)
+		public function forceDrag(inc:Boolean)
 		{
 			if (func != null) {
-				func.call(null, id, value);
+				func.call(null, id, inc ? increment : -increment);
 			}
 		}
 	}

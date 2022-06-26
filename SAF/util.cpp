@@ -49,6 +49,16 @@ bool TransormIsDefault(NiTransform& transform) {
 	return false;
 }
 
+bool TransformMapIsDefault(SAF::TransformMap& map)
+{
+	for (auto& kvp : map) {
+		if (!TransormIsDefault(kvp.second)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 float Modulo(float a, float b) {
 	return fmodf((fmodf(a, b) + b), b);
 }
@@ -57,4 +67,14 @@ std::string toLower(std::string& str) {
 	std::string result(str.size(), '\0');
 	std::transform(str.begin(), str.end(), result.begin(), std::tolower);
 	return result;
+}
+
+std::string getFilename(std::string& path) {
+	int lastSlash = path.find_last_of('\\') + 1;
+	if (!lastSlash)
+		lastSlash = path.find_last_of('/') + 1;
+
+	int lastPeriod = path.find_last_of('.');
+
+	return std::string(path.substr(lastSlash, (path.size() - lastSlash) - (path.size() - lastPeriod)));
 }

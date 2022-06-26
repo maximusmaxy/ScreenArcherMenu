@@ -75,12 +75,12 @@
 					case ADJUSTMENT:
 					case FOLDER:
 						func.call(null, id); 
+						Util.playOk();
 						break;
 					case CHECKBOX:
 						checkbox.confirm();
 						break;
 				}
-				Util.playOk();
 			}
 		}
 		

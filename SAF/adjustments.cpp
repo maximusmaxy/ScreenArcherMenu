@@ -166,6 +166,7 @@ namespace SAF {
 	void Adjustment::Clear()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
+
 		map.clear();
 	}
 
@@ -658,7 +659,7 @@ namespace SAF {
 	void ActorAdjustments::SavePose(std::string filename, std::unordered_set<UInt32> handles) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		if (handles.size() == 0) return;
+		//if (handles.size() == 0) return;
 
 		//Order matters for applying translations so get them from the list in the correct order
 		std::vector<std::shared_ptr<Adjustment>> adjustments;
@@ -667,7 +668,7 @@ namespace SAF {
 				adjustments.push_back(adjustment);
 		}
 
-		if (adjustments.size() == 0) return;
+		//if (adjustments.size() == 0) return;
 
 		TransformMap poseMap;
 		for (auto& overrider : nodeSets->pose) {
@@ -704,18 +705,10 @@ namespace SAF {
 
 			std::shared_ptr<Adjustment> adjustment;
 
-			//try both slashes
-			int lastOf = path.find_last_of('\\') + 1;
-			if (!lastOf)
-				lastOf = path.find_last_of('/') + 1;
-
-			std::string filename = path.substr(lastOf, path.size() - lastOf - 5);
+			std::string filename = getFilename(path);
 
 			for (auto& kvp : map) {
-				//if (!kvp.second->persistent && kvp.second->handle != poseHandle) {
-				//	kvp.second->Clear();
-				//}
-				if (!kvp.second->isDefault && kvp.second->handle != poseHandle) {
+				if (kvp.second->file.empty() && kvp.second->handle != poseHandle) {
 					kvp.second->Clear();
 				}
 			}
@@ -760,7 +753,7 @@ namespace SAF {
 		if (clear) 
 			RemoveDefaultAdjustments();
 
-		if (filename.empty()) 
+		if (filename.empty())
 			return;
 
 		if (enable) {

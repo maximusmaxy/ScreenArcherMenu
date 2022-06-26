@@ -7,7 +7,7 @@
 
 #include "sam.h"
 
-UInt32 repeat[InputMap::kMaxMacros] = { 0 };
+UInt32 inputRepeat[InputMap::kMaxMacros] = { 0 };
 
 void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 {
@@ -50,10 +50,10 @@ void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 			if (timer == 0.0f) {
 				root->Invoke("root1.Menu_mc.processKeyDown", nullptr, &GFxValue(keyCode), 1);
 				root->Invoke("root1.Menu_mc.processKeyRepeat", nullptr, &GFxValue(keyCode), 1);
-				repeat[keyCode] = 0;
+				inputRepeat[keyCode] = 0;
 			}
 			else {
-				UInt32 repeats = ++repeat[keyCode];
+				UInt32 repeats = ++inputRepeat[keyCode];
 				if (repeats > 10) { //if (repeats > 20 && repeats % 3 == 0) {
 					root->Invoke("root1.Menu_mc.processKeyRepeat", nullptr, &GFxValue(keyCode), 1);
 				}

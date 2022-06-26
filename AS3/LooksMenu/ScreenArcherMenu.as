@@ -155,7 +155,7 @@
 			{
 				state: OPTIONS_STATE,
 				check: NO_CHECK,
-				ignor: true
+				ignore: true
 			}
 		];
 		
@@ -177,7 +177,7 @@
 		{
 			super();
 			
-			Util.debug = true;
+			Util.debug = false;
 			widescreen = false;
 			
 			this.BGSCodeObj = new Object();
@@ -199,7 +199,7 @@
 				"pos": 0,
 				"x": 0,
 				"y": 0
-			}
+			};
 			updateState();
 			updateAlignment();
 			
@@ -237,7 +237,7 @@
 		public function menuOpened(data:Object)
 		{
 			Data.load(data, root, this.f4seObj, stage);
-			
+
 			if (data.title) {
 				sliderList.title.text = data.title;
 			}
@@ -254,13 +254,14 @@
 			if (alignment) {
 				updateAlignment();
 			}
-			
+
 			if (data.saved) {
-				state = data.saved.state;
-				sliderList.listPosition = data.saved.slider;
+				this.state = data.saved.state;
+				currentState = data.saved.current;
 				stateStack = data.saved.stack;
 				textInput = data.saved.text;
-				
+				sliderList.focused = data.saved.focused;
+				sliderList.updateState(currentState.pos);
 				updateState();
 			}
 			
@@ -292,11 +293,11 @@
 				Util.playOk();
 			}
 			
-			if (data.idle) {
-				showNotification(data.idle);
-			} else {
-				hideNotification();
-			}
+//			if (data.idle) {
+//				showNotification(data.idle);
+//			} else {
+//				hideNotification();
+//			}
 
 			sliderList.title.text = data.title;
 		}
@@ -351,6 +352,7 @@
 					break;
 				case 69://E
 				case 273://Pad R1
+				case 275://Pad R2
 					if (buttonHintLoad.ButtonVisible) {
 						loadButton();
 					} 
@@ -360,6 +362,7 @@
 					break;
 				case 81://Q
 				case 272://Pad L1
+				case 274://Pad L2
 					if (buttonHintSave.ButtonVisible) {
 						saveButton();
 					}
@@ -481,8 +484,12 @@
 		
 		public function showNotification(msg:String)
 		{
-			notification.visible = true;
-			notification.message.text = msg;
+			if (msg && msg.length > 0) {
+				notification.visible = true;
+				notification.message.text = msg;
+			} else {
+				notification.visible = false;
+			}
 		}
 		
 		public function hideNotification()
@@ -515,16 +522,21 @@
 			return checkIgnore(id, targetIgnore);
 		}
 		
-		public function pushState(id:int)
+		public function getState():Object
 		{
-			if (!checkTargetIgnore(id) && !checkError(TARGET_CHECK)) return;
-			
-			stateStack.push({
+			return {
 				"menu": this.state,
 				"pos": sliderList.listPosition,
 				"x": sliderList.selectedX,
 				"y": sliderList.selectedY
-			});
+			};
+		}
+		
+		public function pushState(id:int)
+		{
+			if (!checkTargetIgnore(id) && !checkError(TARGET_CHECK)) return;
+			
+			stateStack.push(getState());
 			
 			this.state = id;
 			
@@ -538,8 +550,6 @@
 		
 		public function popState()
 		{
-			hideNotification();
-			
 			currentState = stateStack.pop();
 			
 			this.state = currentState.menu;
@@ -561,6 +571,22 @@
 			}
 			
 			updateState();
+		}
+		
+		public function pushFolder(id:int, func:Function)
+		{
+			stateStack.push(getState());
+			sliderList.updateState(0);
+			sliderList.updateFolder(func);
+			sliderList.updateSelected(0, 0);
+		}
+		
+		public function popFolder(func:Function) 
+		{
+			currentState = stateStack.pop();
+			sliderList.updateState(currentState.pos);
+			sliderList.updateFolder(func);
+			sliderList.updateSelected(currentState.x, currentState.y);
 		}
 		
 		internal function updateState()
@@ -666,6 +692,15 @@
 			sliderList.updateSelected(currentState.x, currentState.y);
 			order = false;
 			updateButtonHints();
+			updateNotification();
+		}
+		
+		public function updateFolder():void
+		{
+			Data.popFolder();
+			switch(this.state) {
+				case POSEPLAY_STATE: popFolder(selectPosePlay); break;
+			}
 		}
 		
 		public function selectMenu(id:int):void
@@ -891,7 +926,6 @@
 		internal function selectPoseFile(id:int)
 		{
 			Data.loadPose(id);
-			sliderList.updateFolder(selectPoseFile);
 		}
 		
 		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
@@ -902,7 +936,7 @@
 		internal function selectPosePlay(id:int)
 		{
 			if (Data.selectSamPose(id)) {
-				sliderList.updateList(selectPosePlay);
+				pushFolder(id, selectPosePlay);
 			}
 		}
 		
@@ -944,6 +978,7 @@
 				case IDLECATEGORY_STATE:
 				case IDLE_STATE:
 					Data.resetIdle();
+					hideNotification();
 					break;
 				case POSEEXPORT_STATE:
 				case POSEPLAY_STATE:
@@ -975,8 +1010,8 @@
 			{
 				Data.popFolder();
 				switch(this.state) {
-					case POSEPLAY_STATE: sliderList.updateFolder(selectPosePlay); break;
-				}
+					case POSEPLAY_STATE: popFolder(selectPosePlay); break;
+				}			
 			}
 			else
 			{
@@ -1190,8 +1225,7 @@
 					buttonHintConfirm.ButtonVisible = true;
 					buttonHintHide.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
+					buttonHintReset.ButtonVisible = false;
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					buttonHintSave.ButtonVisible = false;
@@ -1225,6 +1259,20 @@
 					buttonHintExtra.ButtonVisible = false;
 			}
 		};
+		
+		internal function updateNotification()
+		{
+			switch (state)
+			{
+				case IDLECATEGORY_STATE:
+				case IDLE_STATE:
+					showNotification(Data.getIdleName());
+					break;
+				default:
+					hideNotification();
+					break;
+			}
+		}
 
 		internal function hideButton():void
 		{
@@ -1248,9 +1296,11 @@
 		internal function updateAlignment():void
 		{
 			if (widescreen) {
+				notification.x = swapped ? 480 : -834;
 				sliderList.x = swapped ? -836 : 496;
 			}
 			else {
+				notification.x = swapped ? 278 : -631;
 				sliderList.x = swapped ? -623 : 278;
 			}
 		}
@@ -1259,13 +1309,17 @@
 		{
 			if (!filenameInput.visible)
 			{
+				sliderList.getState(currentState);
+				currentState.menu = this.state;
+
 				var data:Object = {
-					state: menuState,
-					slider: sliderPos,
-					swap: swapped,
+					state: this.state,
+					current: currentState,
 					stack: stateStack,
-					text: textInput
+					text: textInput,
+					focused: sliderList.focused
 				}
+				
 				Data.saveState(data);
 				saved = true;
 				exit();

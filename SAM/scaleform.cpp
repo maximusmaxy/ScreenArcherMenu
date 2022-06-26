@@ -144,7 +144,7 @@ GFxFunction(GetEyeCoords, {
 	args->movie->movieRoot->CreateArray(args->result);
 	float coords[2];
 	if (GetEyecoords(selected.eyeNode, coords)) {
-		args->result->PushBack(&GFxValue(coords[0] * 4));
+		args->result->PushBack(&GFxValue(coords[0] * -4));
 		args->result->PushBack(&GFxValue(coords[1] * 5));
 	}
 	 else {
@@ -156,7 +156,7 @@ GFxFunction(GetEyeCoords, {
 GFxFunction(SetEyeCoords, {
 	if (GetDisableEyecoordUpdate() != kHackEnabled)
 		SetDisableEyecoordUpdate(true);
-	SetEyecoords(selected.eyeNode, args->args[0].GetNumber() / 4, args->args[1].GetNumber() / 5);
+	SetEyecoords(selected.eyeNode, args->args[0].GetNumber() * -0.25, args->args[1].GetNumber() * 0.2);
 });
 
 GFxFunction(GetAdjustment, {
@@ -261,6 +261,7 @@ GFxFunction(PlayIdle, {
 
 GFxFunction(ResetIdle, {
 	ResetIdleAnimation();
+	ResetJsonPose();
 });
 
 GFxFunction(GetIdleName, {
@@ -289,11 +290,7 @@ public:
 			ResetJsonPose();
 			break;
 		case kPoseAPose:
-			//TODO human a-pose, probably shouldn't be hard coded
-			UInt32 formId = GetFormId("ScreenArcherMenu.esp", 0x802);
-			if (formId) {
-				PlayIdleAnimation(formId);
-			}
+			PlayAPose();
 			break;
 		}
 	}
