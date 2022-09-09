@@ -86,3 +86,7 @@ void ToggleMenu();
 bool OpenSamFile(std::string filename);
 
 void LoadMenuFiles();
+
+void SamSerializeSave(const F4SESerializationInterface* ifc);
+void SamSerializeLoad(const F4SESerializationInterface* ifc);
+void SamSerializeRevert(const F4SESerializationInterface* ifc);

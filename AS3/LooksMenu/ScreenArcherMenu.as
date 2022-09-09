@@ -50,6 +50,7 @@
 		public static const OPTIONS_STATE:int = 21;
 		public static const POSEPLAY_STATE:int = 22;
 		public static const RENAMEADJUSTMENT_STATE:int = 23;
+		public static const CAMERA_STATE:int = 24;
 		
 		//Error checks
 		public static const NO_CHECK = 0;
@@ -57,6 +58,7 @@
 		public static const SKELETON_CHECK = 2;
 		public static const MORPHS_CHECK = 3;
 		public static const EYE_CHECK = 4;
+		public static const CAMERA_CHECK = 5;
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
@@ -100,7 +102,8 @@
 		public var targetIgnore:Array = [
 			HACK_STATE,
 			POSITIONING_STATE,
-			OPTIONS_STATE
+			OPTIONS_STATE,
+			CAMERA_STATE,
 		];
 		
 		public var resetIgnore:Array = [
@@ -110,7 +113,8 @@
 			IDLE_STATE,
 			POSITIONING_STATE,
 			OPTIONS_STATE,
-			POSEPLAY_STATE
+			POSEPLAY_STATE,
+			CAMERA_STATE
 		];
 		
 		public var mainMenuOptions:Array = [
@@ -148,6 +152,11 @@
 				check: EYE_CHECK
 			},
 			{
+				state: CAMERA_STATE,
+				check: CAMERA_CHECK,
+				ignore: true
+			},
+			{
 				state: HACK_STATE,
 				check: NO_CHECK,
 				ignore: true
@@ -173,11 +182,13 @@
 			down: 0
 		}
 		
+		public var testbutton:TextField;
+		
 		public function ScreenArcherMenu()
 		{
 			super();
 			
-			Util.debug = false;
+			Util.debug = true;
 			widescreen = false;
 			
 			this.BGSCodeObj = new Object();
@@ -209,6 +220,14 @@
 //				addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 //			}
 			//addEventListener("F4SE::Initialized", onF4SEInitialized);
+			
+			testbutton.addEventListener(MouseEvent.CLICK, onTestClick);
+		}
+		
+		internal function onTestClick(event:Event):void
+		{
+			trace("test");
+			root.f4se.plugins.ScreenArcherMenu.Test();
 		}
 		
 		internal function initButtonHints():void
@@ -232,6 +251,11 @@
 			buttonHintData.push(buttonHintReset);
 			buttonHintData.push(buttonHintConfirm);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
+		}
+		
+		internal function initMenus():void
+		{
+			
 		}
 		
 		public function menuOpened(data:Object)
@@ -688,6 +712,10 @@
 					Data.loadOptions();
 					sliderList.updateCheckboxes(selectOptions);
 					break;
+				case CAMERA_STATE:
+					Data.loadCamera();
+					sliderList.updateCamera(selectCamera);
+					break;
 			}
 			sliderList.updateSelected(currentState.x, currentState.y);
 			order = false;
@@ -785,13 +813,13 @@
 		
 		public function selectCategory(id:int):void
 		{
-			Data.selectedCategory = id;
+			Data.selectedCategory = Data.menuValues[id];
 			pushState(POSENODE_STATE);
 		}
 		
 		public function selectBone(id:int):void
 		{
-			Data.selectedBone = id;
+			Data.selectedBone = Data.menuValues[id];
 			pushState(TRANSFORM_STATE);
 		}
 		
@@ -958,6 +986,13 @@
 					break;
 			}
 			Data.setOption(id, enabled);
+		}
+		
+		internal function selectCamera(id:int, value:Number = 0)
+		{
+			Data.setCamera(id, value);
+			Data.loadCamera();
+			sliderList.updateValues();
 		}
 
 		internal function resetButton():void

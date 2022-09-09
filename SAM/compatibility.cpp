@@ -1,31 +1,54 @@
 #include "compatibility.h"
 
 #include "SAF/util.h"
+#include "SAF/conversions.h"
+
+using namespace SAF;
 
 #include "f4se/PapyrusVM.h"
 #include "f4se/PapyrusArgs.h"
 #include "f4se/PapyrusEvents.h"
 #include "f4se/PapyrusUtilities.h"
 #include "f4se/GameMenus.h"
+#include "f4se_common/f4se_version.h"
 
 #include "sam.h"
 
 bool** ffcKeyboardInput = nullptr;
 bool** ffcPadInput = nullptr;
 
-bool RegisterFfcCompatiblity()
+float* pmCameraRoll = nullptr;
+float* ffcCameraRoll = nullptr;
+
+void RegisterCompatibility(F4SEInterface* ifc)
 {
-	_DMESSAGE("Getting loaded plugin");
+	//Only register compatibility on f4se version 0.6.23 or greater
+	if (ifc->f4seVersion >= MAKE_EXE_VERSION(0, 6, 23)) {
 
-	UInt64 ffcHandle = (UInt64)GetModuleHandle("FreeFlyCam Fo4.dll");
+		//FFC version EXACTLY V12
+		const PluginInfo* ffcInfo = ifc->GetPluginInfo("Free Fly Cam");
+		if (ffcInfo && ffcInfo->version == 12) {
 
-	if (ffcHandle) {
-		ffcKeyboardInput = (bool**)(ffcHandle + 0x3E2B8);
-		ffcPadInput = (bool**)(ffcHandle + 0x3E2C0);
-		return true;
+			UInt64 ffcHandle = (UInt64)GetModuleHandle("FreeFlyCam Fo4.dll");
+
+			if (ffcHandle) {
+				ffcKeyboardInput = (bool**)(ffcHandle + 0x3E2B8);
+				ffcPadInput = (bool**)(ffcHandle + 0x3E2C0);
+				ffcCameraRoll = (float*)(ffcHandle + 0x3E3D8);
+			}
+		}
+
+		//Photo mode v1.03
+		const PluginInfo* pmInfo = ifc->GetPluginInfo("f4pm");
+		if (pmInfo && pmInfo->version == 1) {
+
+			UInt64 pmHandle = (UInt64)GetModuleHandle("f4pm.dll");
+
+			if (pmHandle) {
+				pmCameraRoll = (float*)(pmHandle + 0x5CF48);
+			}
+		}
 	}
-
-	return false;
 }
 
 //Start of public variables
@@ -75,6 +98,31 @@ void LockFfc(bool locked)
 		//restore previous state
 		SetFfcLock(ffcKeyboardInput, keyboardLocked);
 		SetFfcLock(ffcPadInput, padLocked);
+	}
+}
+
+float GetCameraRoll()
+{
+	if (ffcCameraRoll)
+	{
+		return *ffcCameraRoll;
+	}
+	else if (pmCameraRoll)
+	{
+		return *pmCameraRoll;
+	}
+	return 0.0f;
+}
+
+void SetCameraRoll(float roll)
+{
+	if (ffcCameraRoll)
+	{
+		*ffcCameraRoll = roll;
+	}
+	else if (pmCameraRoll)
+	{
+		*pmCameraRoll = roll;
 	}
 }
 

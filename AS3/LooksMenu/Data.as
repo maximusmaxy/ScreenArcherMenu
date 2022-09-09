@@ -53,6 +53,7 @@
 			"$SAM_PositionMenu",
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
+			"$SAM_CameraMenu",
             "$SAM_HacksMenu",
 			"$SAM_OptionsMenu"
         ];
@@ -62,7 +63,8 @@
 			"$SAM_ConsoleError", 
 			"$SAM_SkeletonError",
 			"$SAM_MorphsError",
-			"$SAM_EyeError"
+			"$SAM_EyeError",
+			"$SAM_CameraError",
 		];
 		
 		public static const TRANSFORM_NAMES:Vector.<String> = new <String>[
@@ -111,6 +113,16 @@
 			"$SAM_Hotswap",
 			"$SAM_Alignment",
 			"$SAM_Widescreen"
+		];
+		
+		public static const CAMERA_NAMES:Vector.<String> = new <String>[
+			"$SAM_PosX",
+			"$SAM_PosY",
+			"$SAM_PosZ",
+			"$SAM_Yaw",
+			"$SAM_Pitch",
+			"$SAM_Roll",
+			"$SAM_FOV"
 		];
 		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
@@ -489,7 +501,9 @@
 		public static function loadCategories()
 		{
 			try {
-				menuOptions = sam.GetCategoryList();
+				var categories:Object = sam.GetCategoryList();
+				menuOptions = categories.names;
+				menuValues = categories.values;
 			}
 			catch (e:Error)
 			{
@@ -505,6 +519,10 @@
 						"Knee Fix",
 						"Misc"
 					];
+					menuValues = [];
+				} else {
+					menuOptions = [];
+					menuValues = [];
 				}
 			}
 		}
@@ -512,16 +530,20 @@
 		public static function loadBones()
 		{
 			try {
-				menuOptions = sam.GetNodeList(selectedCategory);
+				var nodes:Object = sam.GetNodeList(selectedCategory);
+				menuOptions = nodes.names;
+				menuValues = nodes.values;
 			}
 			catch (e:Error)
 			{
 				trace("Failed to load bones");
+				menuOptions = [];
+				menuValues = [];
 				if (Util.debug) {
-					menuOptions = [];
 					for (var i:int = 0; i < 30; i++)
 					{
 						menuOptions[i] = i.toString();
+						menuValues[i] = i;
 					}
 				}
 			}
@@ -1151,6 +1173,56 @@
 			catch (e:Error)
 			{
 				trace("Failed to set option");
+			}
+		}
+		
+		public static function loadCamera()
+		{
+			menuOptions = CAMERA_NAMES;
+			try 
+			{
+				menuValues = sam.GetCamera();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load camera");
+				menuValues = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 1, 2, 0, 1, 2];
+			}
+		}
+		
+		public static function setCamera(id:int, value:Number)
+		{
+			try
+			{
+				if (id < 3)
+				{
+					var dif:int = updateCursorDrag(value);
+					menuValues[id] += dif * 0.5;
+					sam.SetCameraPosition(menuValues[0], menuValues[1], menuValues[2]);
+				} 
+				else if (id < 6)
+				{
+					menuValues[id] = value;
+					sam.SetCameraRotation(menuValues[3], menuValues[4], menuValues[5]);
+				}
+				else if (id < 7)
+				{
+					menuValues[id] = value;
+					sam.SetCameraFOV(menuValues[6]);
+				}
+				else
+				{
+					var save:Boolean = id < (7 + ((Data.menuValues.length - 7) / 2));
+					if (save) {
+						sam.SaveCameraState(menuValues[id]);
+					} else {
+						sam.LoadCameraState(menuValues[id]);
+					}
+				}
+			}
+			catch (e:Error)
+			{
+				trace("Failed to set camera");
 			}
 		}
 	}

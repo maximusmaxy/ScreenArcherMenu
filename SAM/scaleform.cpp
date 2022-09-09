@@ -21,6 +21,7 @@
 #include "compatibility.h"
 #include "options.h"
 #include "scripts.h"
+#include "camera.h"
 
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
@@ -49,6 +50,7 @@ enum {
 	kSamSkeletonError,
 	kSamMorphsError,
 	kSamEyesError,
+	kSamCameraError,
 };
 
 GFxFunction(CheckError, {
@@ -57,6 +59,7 @@ GFxFunction(CheckError, {
 		case kSamSkeletonError: args->result->SetBool(CheckSelectedSkeleton()); break;
 		case kSamMorphsError: args->result->SetBool(GetMorphPointer()); break;
 		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
+		case kSamCameraError: args->result->SetBool(GetFreeCameraState()); break;
 	}
 });
 
@@ -353,15 +356,40 @@ GFxFunction(ToggleMenus, {
 	args->result->SetBool(ToggleMenusHidden());
 });
 
+GFxFunction(GetCamera, {
+	GetCameraGFx(args->movie->movieRoot, args->result);
+});
+
+GFxFunction(SetCameraPosition, {
+	SetCameraPos(args->args[0].GetNumber(), args->args[1].GetNumber(), args->args[2].GetNumber());
+});
+
+GFxFunction(SetCameraRotation, {
+	SetCameraRot(args->args[0].GetNumber(), args->args[1].GetNumber(), args->args[2].GetNumber());
+});
+
+GFxFunction(SetCameraFOV, {
+	SetFOV(args->args[0].GetNumber());
+});
+
+GFxFunction(SaveCameraState, {
+	SaveCamera(args->args[0].GetInt());
+});
+
+GFxFunction(LoadCameraState, {
+	LoadCamera(args->args[0].GetInt());
+});
+
+
 GFxFunction(Test, {
 	BSFixedString photoMenu("PhotoMenu");
 	IMenu* menu = (*g_ui)->GetMenu(photoMenu);
 	GFxMovieRoot* root = menu->movie->movieRoot;
 
 	GFxValue func;
-	GFxValue ten(10.0);
+	GFxValue ten(((UInt32)10));
 
-	bool hasFunc = root->Invoke("root1.Menu_mc.BGSCodeObj.SetPlayerLeftRight", nullptr, &ten, 1);
+	bool hasFunc = root->Invoke("root1.Menu_mc.BGSCodeObj.SetPlayerRotation", nullptr, &ten, 1);
 
 	_DMESSAGE("test");
 });
@@ -440,6 +468,12 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(SetCursorPosition);
 	GFxRegister(GetLock);
 	GFxRegister(ToggleMenus);
+	GFxRegister(GetCamera);
+	GFxRegister(SetCameraPosition);
+	GFxRegister(SetCameraRotation);
+	GFxRegister(SetCameraFOV);
+	GFxRegister(SaveCameraState);
+	GFxRegister(LoadCameraState);
 	GFxRegister(Test);
 	GFxRegister(Test2);
 

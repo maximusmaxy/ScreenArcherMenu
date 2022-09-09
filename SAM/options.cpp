@@ -27,13 +27,17 @@ void GetMenuOptionsGFx(GFxMovieRoot* root, GFxValue* result)
 	root->CreateArray(result);
 
 	for (int i = 0; i < kOptionMax; ++i) {
-		result->PushBack(&GFxValue(menuOptions[menuOptionNames[i]].asBool()));
+		result->PushBack(&GFxValue(GetMenuOption(i)));
 	}
 }
 
 bool GetMenuOption(int index) {
 	if (index >= 0 && index < kOptionMax) {
-		return (menuOptions[menuOptionNames[index]].asBool());
+		const char* key = menuOptionNames[index];
+		if (menuOptions[key].isNull()) {
+			menuOptions[key] = Json::Value(menuOptionDefaults[index]);
+		}
+		return (menuOptions[key].asBool());
 	}
 	return false;
 }
@@ -76,8 +80,9 @@ void LoadOptionsFile() {
 
 	//validate and set defaults
 	for (int i = 0; i < kOptionMax; ++i) {
-		if (!menuOptions[menuOptionNames[i]].isBool())
-			menuOptions[menuOptionNames[i]] = Json::Value(menuOptionDefaults[i]);
+		const char* key = menuOptionNames[i];
+		if (menuOptions[key].isNull())
+			menuOptions[key] = Json::Value(menuOptionDefaults[i]);
 	}
 }
 
@@ -96,7 +101,7 @@ void SaveOptionsFile() {
 	}
 
 	auto jsonString = writer.write(menuOptions);
-	file.WriteString(jsonString.c_str());
+	file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
 	file.Close();
 
 	//update timestamp

@@ -35,6 +35,7 @@
 		public static const ADJUSTMENTORDER = 7;
 		public static const POSITIONING = 8;
 		public static const FOLDER = 9;
+		public static const CAMERA = 10;
 		
 		public static const LEFT = 1;
 		public static const UP = 2;
@@ -480,6 +481,7 @@
 				case ADJUSTMENTEDIT: updateAdjustmentEditEntry(entry); break;
 				case POSITIONING: updatePositioningEntry(entry); break;
 				case FOLDER: updateFolderEntry(entry); break;
+				case CAMERA: updateCameraEntry(entry); break;
 			}
 		}
 		
@@ -648,6 +650,45 @@
 				entry.updateFolder(Data.menuOptions[entry.id]);
 			} else {
 				entry.updateList(Data.menuOptions[entry.id]);
+			}
+		}
+		
+		public function updateCamera(func:Function):void
+		{
+			this.type = CAMERA;
+			update(Data.menuValues.length, LIST_MAX, func);
+		}
+		
+		public function updateCameraEntry(entry:SliderListEntry):void
+		{
+			switch (entry.id) {
+				case 0: //pos
+				case 1:
+				case 2: 
+					entry.updateDragValue(Data.CAMERA_NAMES[entry.id]);
+					entry.checkbox.increment = 10.0
+					break;
+				case 3: //yaw
+					entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 0.0, 2);
+					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
+					break;
+				case 4: //pitch
+					entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 180, 2);
+					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
+					break;
+				case 5: //roll
+					entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 180, 2);
+					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
+					break;
+				case 6: //fov
+					entry.updateSliderData(1.0, 160.0, 0.1, 1.0, 0.0, 2);
+					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
+					break;
+				default: //save/load state
+					//save/load are half the remainder each
+					var save:Boolean = entry.id < (7 + ((Data.menuValues.length - 7) / 2));
+					entry.updateList(Translator.translate(save ? "$SAM_SaveState" : "$SAM_LoadState") + " " + (Data.menuValues[entry.id] + 1));
+					break;
 			}
 		}
 	}

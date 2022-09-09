@@ -7,6 +7,7 @@
 #include "f4se/GameRTTI.h"
 #include "f4se/PluginManager.h"
 #include "f4se/CustomMenu.h"
+#include "f4se/Serialization.h"
 
 #include "common/IDirectoryIterator.h"
 #include "common/IFileStream.h"
@@ -26,6 +27,7 @@
 #include "positioning.h"
 #include "compatibility.h"
 #include "options.h"
+#include "camera.h"
 
 #include <regex>
 #include <WinUser.h>
@@ -340,6 +342,9 @@ void OnMenuOpen() {
 
 	GFxValue widescreen(GetMenuOption(kOptionWidescreen));
 	data.SetMember("widescreen", &widescreen);
+
+	GFxValue alignment(GetMenuOption(kOptionAlignment));
+	data.SetMember("swap", &alignment);
 
 	root->Invoke("root1.Menu_mc.menuOpened", nullptr, &data, 1);
 }
@@ -759,4 +764,32 @@ void LoadMenuFiles() {
 		std::string	path = iter.GetFullPath();
 		LoadIdleFile(path);
 	}
+}
+
+void SamSerializeSave(const F4SESerializationInterface* ifc)
+{
+	ifc->OpenRecord('CAM', 1);
+	SerializeCamera(ifc);
+}
+
+void SamSerializeLoad(const F4SESerializationInterface* ifc)
+{
+	UInt32 type, length, version;
+
+	while (ifc->GetNextRecordInfo(&type, &version, &length))
+	{
+		switch (type)
+		{
+		case 'CAM': //adjustment
+		{
+			DeserializeCamera(ifc);
+			break;
+		}
+		}
+	}
+}
+
+void SamSerializeRevert(const F4SESerializationInterface* ifc)
+{
+	RevertCamera();
 }

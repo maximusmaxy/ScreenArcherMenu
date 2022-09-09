@@ -337,7 +337,16 @@ bool CheckMenuHasNode(std::shared_ptr<ActorAdjustments> adjustments, MenuList& l
 
 void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
-	root->CreateArray(result);
+	root->CreateObject(result);
+
+	GFxValue names;
+	root->CreateArray(&names);
+
+	GFxValue values;
+	root->CreateArray(&values);
+
+	result->SetMember("names", &names);
+	result->SetMember("values", &values);
 
 	if (!selected.refr) return;
 
@@ -348,10 +357,14 @@ void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	for (auto& kvp : *categories) {
-		if (CheckMenuHasNode(adjustments, kvp.second)) {
-			GFxValue category(kvp.first.c_str());
-			result->PushBack(&category);
+	int size = categories->size();
+	for (SInt32 i = 0; i < size; ++i)
+	{
+		if (CheckMenuHasNode(adjustments, (*categories)[i].second)) {
+			GFxValue category((*categories)[i].first.c_str());
+			names.PushBack(&category);
+			GFxValue index(i);
+			values.PushBack(&index);
 		}
 	}
 }
@@ -359,6 +372,15 @@ void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 {
 	root->CreateArray(result);
+
+	GFxValue names;
+	root->CreateArray(&names);
+
+	GFxValue values;
+	root->CreateArray(&values);
+
+	result->SetMember("names", &names);
+	result->SetMember("values", &values);
 
 	if (!selected.refr) return;
 
@@ -368,10 +390,16 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	for (auto& kvp : (*categories)[categoryIndex].second) {
-		if (adjustments->HasNode(kvp.second)) {
-			GFxValue node(kvp.first.c_str());
-			result->PushBack(&node);
+	auto category = &(*categories)[categoryIndex].second;
+
+	int size = category->size();
+	for (SInt32 i = 0; i < size; ++i)
+	{
+		if (adjustments->HasNode((*category)[i].second)) {
+			GFxValue node((*category)[i].first.c_str());
+			names.PushBack(&node);
+			GFxValue index(i);
+			values.PushBack(&index);
 		}
 	}
 }

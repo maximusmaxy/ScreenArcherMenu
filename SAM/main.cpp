@@ -34,6 +34,7 @@ PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
 F4SEScaleformInterface* g_scaleform = nullptr;
 F4SEMessagingInterface* g_messaging = nullptr;
 F4SEPapyrusInterface* g_papyrus = nullptr;
+F4SESerializationInterface* g_serialization = nullptr;
 F4SEInterface* g_f4se = nullptr;
 
 class SamOpenCloseHandler : public BSTEventSink<MenuOpenCloseEvent>
@@ -202,12 +203,7 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 			RegisterSafMessageDispatcher();
 
 		if (g_f4se) {
-			//Try register ffc if f4se version 0.6.23 or greater and FFC version EXACTLY V12
-			if (g_f4se->f4seVersion >= MAKE_EXE_VERSION(0, 6, 23)) {
-				const PluginInfo* info = g_f4se->GetPluginInfo("Free Fly Cam");
-				if (info && info->version == 12)
-					RegisterFfcCompatiblity();
-			}
+			RegisterCompatibility(g_f4se);
 		}
 		break;
 	}
@@ -273,6 +269,12 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 		_WARNING("couldn't get papyrus interface");
 	}
 
+	g_serialization = (F4SESerializationInterface*)f4se->QueryInterface(kInterface_Serialization);
+	if (!g_serialization) {
+		_FATALERROR("couldn't get serialization interface");
+		return false;
+	}
+
 	samObScriptInit();
 
 	// supported runtime version
@@ -289,6 +291,13 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 
 	if (g_papyrus)
 		g_papyrus->Register(RegisterPapyrus);
+
+	if (g_serialization) {
+		g_serialization->SetUniqueID(g_pluginHandle, 'SAM');
+		g_serialization->SetSaveCallback(g_pluginHandle, SamSerializeSave);
+		g_serialization->SetLoadCallback(g_pluginHandle, SamSerializeLoad);
+		g_serialization->SetRevertCallback(g_pluginHandle, SamSerializeRevert);
+	}
 
 	samObScriptCommit();
 		

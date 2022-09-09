@@ -1120,14 +1120,16 @@ namespace SAF {
 			if (*(UInt64*)object == flattenedBoneTreeVFTableAddr) {
 				boneTrees.push_back(object);
 			}
-			std::string nodeName(object->m_name.c_str());
-			if (set->allOrBase.count(object->m_name.c_str())) {
-				if (set->fixedConversion.count(nodeName)) {
-					boneMap[set->fixedConversion[nodeName]] = object;
-					remainingNodes.erase(nodeName);
+			if (object->m_name) {
+				std::string nodeName(object->m_name.c_str());
+				if (set->allOrBase.count(object->m_name.c_str())) {
+					if (set->fixedConversion.count(nodeName)) {
+						boneMap[set->fixedConversion[nodeName]] = object;
+						remainingNodes.erase(nodeName);
+					}
 				}
+				return (remainingNodes.size() <= 0);
 			}
-			return (remainingNodes.size() <= 0);
 		});
 
 		if (remainingNodes.size() <= 0) return boneMap;
