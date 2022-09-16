@@ -5,6 +5,17 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 
+union TranslationParam
+{
+	UInt64 axis;
+	double value;
+};
+
+typedef UInt32(*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationParam param1, TranslationParam param2);
+extern RelocAddr<_UpdateTranslationInternal> UpdateTranslationInternal;
+
+extern RelocPtr<UInt64> unkTranslation;
+
 struct ObjectTranslation {
 	NiPoint3 position;
 	NiPoint3 rotation;

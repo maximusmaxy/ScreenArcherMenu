@@ -38,6 +38,6 @@ void SetFOV(float fov);
 bool SaveCamera(int index);
 bool LoadCamera(int index);
 
-void SerializeCamera(const F4SESerializationInterface* ifc);
-void DeserializeCamera(const F4SESerializationInterface* ifc);
+void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
+void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void RevertCamera();

@@ -12,6 +12,7 @@
 #include "strnatcmp.h"
 
 #include <unordered_map>
+#include <regex>
 
 //class SamMenu : public GameMenuBase
 //{
@@ -21,6 +22,9 @@
 //	virtual void	RegisterFunctions() override;
 //	virtual void	Invoke(Args* args) override final;
 //};
+
+extern std::regex tabSeperatedRegex;
+extern std::regex tabOptionalRegex;
 
 class SelectedRefr {
 public:
@@ -59,6 +63,7 @@ typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 extern MenuCache groupsMenuCache;
+extern MenuCategoryList lightsMenuCache;
 
 struct NaturalSort {
 	bool operator()(const std::string& a, const std::string& b) const;

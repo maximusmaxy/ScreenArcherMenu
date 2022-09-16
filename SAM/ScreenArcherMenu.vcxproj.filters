@@ -17,6 +17,7 @@
     <ClCompile Include="options.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="camera.cpp" />
+    <ClCompile Include="lights.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -34,6 +35,7 @@
     <ClInclude Include="options.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="camera.h" />
+    <ClInclude Include="lights.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

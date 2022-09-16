@@ -5,8 +5,6 @@
 #include "f4se/GameData.h"
 #include "f4se/NiTypes.h"
 
-#include "json/json.h"
-
 #include "adjustments.h"
 #include "util.h"
 #include "conversions.h"
@@ -22,7 +20,7 @@ namespace SAF {
 		}
 	}
 
-	float ReadFloat(Json::Value& value) {
+	float ReadJsonFloat(Json::Value& value) {
 		if (value.isDouble()) {
 			return value.asFloat();
 		}
@@ -234,14 +232,14 @@ namespace SAF {
 	}
 
 	void ReadTransformJson(NiTransform& transform, Json::Value& value, UInt32 version) {
-		transform.pos.x = ReadFloat(value["x"]);
-		transform.pos.y = ReadFloat(value["y"]);
-		transform.pos.z = ReadFloat(value["z"]);
+		transform.pos.x = ReadJsonFloat(value["x"]);
+		transform.pos.y = ReadJsonFloat(value["y"]);
+		transform.pos.z = ReadJsonFloat(value["z"]);
 
 		float yaw, pitch, roll;
-		yaw = ReadFloat(value["yaw"]);
-		pitch = ReadFloat(value["pitch"]);
-		roll = ReadFloat(value["roll"]);
+		yaw = ReadJsonFloat(value["yaw"]);
+		pitch = ReadJsonFloat(value["pitch"]);
+		roll = ReadJsonFloat(value["roll"]);
 
 		switch (version) {
 		case 0:
@@ -252,17 +250,14 @@ namespace SAF {
 			break;
 		}
 
-		transform.scale = ReadFloat(value["scale"]);
+		transform.scale = ReadJsonFloat(value["scale"]);
 	}
 
 	void WriteTransformJson(NiTransform* transform, Json::Value& value, UInt32 version) {
 		char buffer[32];
-		sprintf_s(buffer, "%.06f", transform->pos.x);
-		value["x"] = Json::Value(buffer);
-		sprintf_s(buffer, "%.06f", transform->pos.y);
-		value["y"] = Json::Value(buffer);
-		sprintf_s(buffer, "%.06f", transform->pos.z);
-		value["z"] = Json::Value(buffer);
+		WriteJsonFloat(value["x"], transform->pos.x, "%.06f");
+		WriteJsonFloat(value["y"], transform->pos.y, "%.06f");
+		WriteJsonFloat(value["z"], transform->pos.z, "%.06f");
 
 		float yaw, pitch, roll;
 		switch (version) {
@@ -274,14 +269,10 @@ namespace SAF {
 			break;
 		}
 
-		sprintf_s(buffer, "%.02f", yaw);
-		value["yaw"] = Json::Value(buffer);
-		sprintf_s(buffer, "%.02f", pitch);
-		value["pitch"] = Json::Value(buffer);
-		sprintf_s(buffer, "%.02f", roll);
-		value["roll"] = Json::Value(buffer);
-		sprintf_s(buffer, "%.06f", transform->scale);
-		value["scale"] = Json::Value(buffer);
+		WriteJsonFloat(value["yaw"], yaw, "%.02f");
+		WriteJsonFloat(value["pitch"], pitch, "%.02f");
+		WriteJsonFloat(value["roll"], roll, "%.02f");
+		WriteJsonFloat(value["scale"], transform->scale, "%.06f");
 	}
 
 	bool SaveAdjustmentFile(std::string filename, std::shared_ptr<Adjustment> adjustment) {

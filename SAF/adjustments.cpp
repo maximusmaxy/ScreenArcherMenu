@@ -1130,6 +1130,7 @@ namespace SAF {
 				}
 				return (remainingNodes.size() <= 0);
 			}
+			return false;
 		});
 
 		if (remainingNodes.size() <= 0) return boneMap;

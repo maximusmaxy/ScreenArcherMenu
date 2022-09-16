@@ -4,6 +4,7 @@
 #include "conversions.h"
 
 #include <algorithm>
+#include <sstream>
 
 void _Log(std::string msg, UInt64 num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
@@ -35,6 +36,16 @@ UInt32 GetFormId(std::string modName, UInt32 formId) {
 UInt32 GetFormId(std::string modName, std::string idString) {
 	UInt32 formId = std::stoul(idString, nullptr, 16) & 0xFFFFFF;
 	return GetFormId(modName, formId);
+}
+
+UInt32 GetModId(UInt32 formId)
+{
+	return (formId & 0xFE000000) == 0xFE000000 ? (formId & 0xFFFFF000) : (formId & 0xFF000000);
+}
+
+UInt32 GetBaseId(UInt32 formId)
+{
+	return (formId & 0xFE000000) == 0xFE000000 ? (formId & 0xFFF) : (formId & 0xFFFFFF);
 }
 
 bool TransormIsDefault(NiTransform& transform) {
@@ -77,4 +88,11 @@ std::string getFilename(std::string& path) {
 	int lastPeriod = path.find_last_of('.');
 
 	return std::string(path.substr(lastSlash, (path.size() - lastSlash) - (path.size() - lastPeriod)));
+}
+
+std::string HexToString(UInt32 hex)
+{
+	std::stringstream stream;
+	stream << std::hex << hex;
+	return stream.str();
 }

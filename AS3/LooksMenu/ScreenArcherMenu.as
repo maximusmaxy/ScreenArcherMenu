@@ -51,6 +51,17 @@
 		public static const POSEPLAY_STATE:int = 22;
 		public static const RENAMEADJUSTMENT_STATE:int = 23;
 		public static const CAMERA_STATE:int = 24;
+		public static const LIGHTSELECT_STATE:int = 25;
+		public static const LIGHTEDIT_STATE:int = 26;
+		public static const LIGHTCATEGORY_STATE:int = 27;
+		public static const LIGHTOBJECT_STATE:int = 28;
+		public static const LIGHTSWAPCATEGORY_STATE:int = 29;
+		public static const LIGHTSWAPOBJECT_STATE:int = 30;
+		public static const SAVELIGHT_STATE:int = 31;
+		public static const LOADLIGHT_STATE:int = 32;
+		public static const RENAMELIGHT_STATE:int = 33;
+		public static const LIGHTSETTINGS_STATE:int = 34;
+		public static const RACEADJUSTMENT_STATE:int = 35;
 		
 		//Error checks
 		public static const NO_CHECK = 0;
@@ -99,13 +110,18 @@
 		public var heldFuncLeft:Function = null;
 		public var heldFuncRight:Function = null;
 		
+		//menu's listed here don't require an actor to be targeted
 		public var targetIgnore:Array = [
 			HACK_STATE,
 			POSITIONING_STATE,
 			OPTIONS_STATE,
 			CAMERA_STATE,
+			LIGHTSELECT_STATE,
+			LIGHTCATEGORY_STATE,
+			LIGHTOBJECT_STATE,
 		];
 		
+		//Menu's listed here won't reset to main menu on console target hotswap
 		public var resetIgnore:Array = [
 			EYE_STATE,
 			HACK_STATE,
@@ -114,7 +130,10 @@
 			POSITIONING_STATE,
 			OPTIONS_STATE,
 			POSEPLAY_STATE,
-			CAMERA_STATE
+			CAMERA_STATE,
+			LIGHTSELECT_STATE,
+			LIGHTCATEGORY_STATE,
+			LIGHTOBJECT_STATE,
 		];
 		
 		public var mainMenuOptions:Array = [
@@ -124,6 +143,10 @@
 			},
 			{
 				state: SKELETONADJUSTMENT_STATE,
+				check: SKELETON_CHECK
+			},
+			{
+				state: RACEADJUSTMENT_STATE,
 				check: SKELETON_CHECK
 			},
 			{
@@ -150,6 +173,11 @@
 			{
 				state: EYE_STATE,
 				check: EYE_CHECK
+			},
+			{
+				state: LIGHTSELECT_STATE,
+				check: NO_CHECK,
+				ignore: true
 			},
 			{
 				state: CAMERA_STATE,
@@ -253,11 +281,6 @@
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
 		}
 		
-		internal function initMenus():void
-		{
-			
-		}
-		
 		public function menuOpened(data:Object)
 		{
 			Data.load(data, root, this.f4seObj, stage);
@@ -308,6 +331,7 @@
 						Data.loadPositioning();
 						sliderList.updateValues();
 						break;
+					
 				}
 				
 				if (resetIgnore.indexOf(this.state) < 0) {
@@ -664,6 +688,8 @@
 				case SAVEADJUSTMENT_STATE:
 				case SAVEPOSE_STATE:
 				case RENAMEADJUSTMENT_STATE:
+				case SAVELIGHT_STATE:
+				case RENAMELIGHT_STATE:
 					setTextInput(true);
 					break;
 				case EYE_STATE:
@@ -704,6 +730,14 @@
 						sliderList.updateList(selectSkeletonAdjustment);
 					}
 					break;
+				case RACEADJUSTMENT_STATE:
+					Data.getSkeletonAdjustments();
+					if (multi) {
+						sliderList.updateCheckboxes(selectRaceAdjustment);
+					} else {
+						sliderList.updateList(selectRaceAdjustment);
+					}
+					break;
 				case POSITIONING_STATE:
 					Data.loadPositioning();
 					sliderList.updatePositioning(selectPositioning);
@@ -715,6 +749,33 @@
 				case CAMERA_STATE:
 					Data.loadCamera();
 					sliderList.updateCamera(selectCamera);
+					break;
+				case LIGHTSELECT_STATE:
+					Data.loadLightSelect();
+					sliderList.updateList(selectLightSelect);
+					break;
+				case LIGHTEDIT_STATE:
+					Data.loadLightEdit();
+					sliderList.updateLight(selectLightEdit);
+					break;
+				case LIGHTCATEGORY_STATE:
+				case LIGHTSWAPCATEGORY_STATE:
+					Data.loadLightCategory();
+					sliderList.updateList(selectLightCategory);
+					break;
+				case LIGHTOBJECT_STATE:
+				case LIGHTSWAPOBJECT_STATE:
+					Data.loadLightObject();
+					sliderList.updateList(selectLightObject);
+					break;
+				case LOADLIGHT_STATE:
+					Data.loadLightFiles();
+					Data.menuOptions = Data.menuFiles;
+					sliderList.updateList(selectLightFile);
+					break;
+				case LIGHTSETTINGS_STATE:
+					Data.loadLightSettings();
+					sliderList.updateLightSettings(selectLightSettings);
 					break;
 			}
 			sliderList.updateSelected(currentState.x, currentState.y);
@@ -867,6 +928,8 @@
 				case SAVEADJUSTMENT_STATE: Data.saveAdjustment(filenameInput.Input_tf.text); break;
 				case SAVEPOSE_STATE: Data.savePose(filenameInput.Input_tf.text); break;
 				case RENAMEADJUSTMENT_STATE: Data.renameAdjustment(filenameInput.Input_tf.text); break;
+				case SAVELIGHT_STATE: Data.saveLights(filenameInput.Input_tf.text); break;
+				case RENAMELIGHT_STATE: Data.renameLight(filenameInput.Input_tf.text); break;
 			}
 			setTextInput(false);
 			popState();
@@ -909,6 +972,7 @@
 					pushState(SAVEMFG_STATE); break;
 				case ADJUSTMENT_STATE: pushState(SAVEADJUSTMENT_STATE); break;
 				case POSEEXPORT_STATE: pushState(SAVEPOSE_STATE); break;
+				case LIGHTSELECT_STATE: pushState(SAVELIGHT_STATE); break;
 			}
 		}
 
@@ -920,6 +984,10 @@
 					pushState(LOADMFG_STATE); break;
 				case ADJUSTMENT_STATE: pushState(LOADADJUSTMENT_STATE); break;
 				case POSEEXPORT_STATE: pushState(LOADPOSE_STATE); break;
+				case LIGHTSELECT_STATE: pushState(LOADLIGHT_STATE); break;
+				case POSEPLAY_STATE: //a-pose
+					Data.resetPose(2);
+					break;
 			}
 		}
 		
@@ -961,6 +1029,11 @@
 			Data.loadSkeletonAdjustment(id, false, !multi, enabled);
 		}
 		
+		internal function selectRaceAdjustment(id:int, enabled:Boolean = true)
+		{
+			Data.loadSkeletonAdjustment(id, true, !multi, enabled);
+		}
+		
 		internal function selectPosePlay(id:int)
 		{
 			if (Data.selectSamPose(id)) {
@@ -994,6 +1067,79 @@
 			Data.loadCamera();
 			sliderList.updateValues();
 		}
+		
+		internal function selectLightSelect(id:int)
+		{
+			if (id < Data.menuOptions.length - 3) { //light
+				Data.selectedAdjustment = id;
+				pushState(LIGHTEDIT_STATE);
+			} else if (id < Data.menuOptions.length - 2) { //add new
+				pushState(LIGHTCATEGORY_STATE);
+			} else if (id < Data.menuOptions.length - 1) { //add console
+				Data.addLight();
+				Data.loadLightSelect();
+				sliderList.updateList(selectLightSelect);
+			} else {
+				pushState(LIGHTSETTINGS_STATE);
+			}
+		}
+		
+		internal function selectLightEdit(id:int, value:Number = 0)
+		{
+			if (id < 5) { //properties
+				Data.editLight(id, value);
+				sliderList.updateValues();
+			} else if (id < 6) { //rename
+				pushState(RENAMELIGHT_STATE);
+			} else if (id < 7) { //swap
+				pushState(LIGHTSWAPCATEGORY_STATE);
+			} else { //delete
+				Data.deleteLight();
+				popState();
+			}
+		}
+		
+		internal function selectLightCategory(id:int)
+		{
+			Data.selectedCategory = id;
+			switch (this.state) {
+				case LIGHTCATEGORY_STATE: pushState(LIGHTOBJECT_STATE); break;
+				case LIGHTSWAPCATEGORY_STATE: pushState(LIGHTSWAPOBJECT_STATE); break;
+			}
+		}
+		
+		internal function selectLightObject(id:int)
+		{
+			switch (this.state) {
+				case LIGHTOBJECT_STATE:
+					Data.createLight(id);
+					break;
+				case LIGHTSWAPOBJECT_STATE:
+					Data.swapLight(id);
+					break;
+			}
+			//need to double pop so fake pop first
+			stateStack.pop();
+			popState();
+		}
+		
+		internal function selectLightFile(id:int)
+		{
+			Data.loadLights(id);
+			popState();
+		}
+		
+		internal function selectLightSettings(id:int, value:Number = 0)
+		{
+			if (id < 4) { // pos/rot
+				Data.editLightSettings(id, value);
+				sliderList.updateValues();
+			} else if (id < 5) { //update all
+				Data.updateAllLights();
+			} else { //delete all
+				Data.deleteAllLights();
+			}
+		}
 
 		internal function resetButton():void
 		{
@@ -1021,10 +1167,19 @@
 					Data.resetPose(1);
 					break;
 				case SKELETONADJUSTMENT_STATE:
-					Data.resetSkeletonAdjustment();
+					Data.resetSkeletonAdjustment(false);
+					break;
+				case RACEADJUSTMENT_STATE:
+					Data.resetSkeletonAdjustment(true);
 					break;
 				case POSITIONING_STATE:
 					Data.resetPositioning();
+					break;
+				case LIGHTEDIT_STATE:
+					Data.resetLight();
+					break;
+				case LIGHTSETTINGS_STATE:
+					Data.resetLightSettings();
 					break;
 			}
 			sliderList.updateValues();
@@ -1105,6 +1260,20 @@
 					}
 					sliderList.restoreSelected();
 					break;
+				case RACEADJUSTMENT_STATE: //multi
+					sliderList.storeSelected();
+					multi = !multi;
+					if (multi) {
+						buttonHintExtra.ButtonText = "$SAM_Multi";
+						sliderList.updateCheckboxes(selectRaceAdjustment);
+					} 
+					else
+					{
+						buttonHintExtra.ButtonText = "$SAM_Single";
+						sliderList.updateList(selectRaceAdjustment);
+					}
+					sliderList.restoreSelected();
+					break;
 				case ADJUSTMENT_STATE: //new
 					Data.newAdjustment();
 					updateAdjustment();
@@ -1114,12 +1283,17 @@
 					Data.loadTransforms();
 					sliderList.updateValues();
 					break;
-				case POSEPLAY_STATE: //a-pose
-					Data.resetPose(2);
-					break;
 				case IDLECATEGORY_STATE: //z-rotate
 				case IDLE_STATE:
+				case POSEPLAY_STATE:
 					enableHold(HELD_X, onZMove, onZLeft, onZRight);
+					break;
+				case LIGHTSELECT_STATE: //visible
+				case LIGHTSETTINGS_STATE:
+					buttonHintExtra.ButtonText = (Data.toggleLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
+					break;
+				case LIGHTEDIT_STATE: //visible
+					buttonHintExtra.ButtonText = (Data.toggleLightVisible() ? "$SAM_Invisible" : "$SAM_Visible");
 					break;
 			}
 		}
@@ -1199,6 +1373,7 @@
 				case ADJUSTMENT_STATE :
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = true;
+					buttonHintLoad.ButtonText = "$SAM_Load";
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = true;
@@ -1244,6 +1419,7 @@
 				case POSEEXPORT_STATE:
 					buttonHintSave.ButtonVisible = true;
 					buttonHintLoad.ButtonVisible = true;
+					buttonHintLoad.ButtonText = "$SAM_Load";
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = false;
@@ -1254,6 +1430,8 @@
 				case SAVEADJUSTMENT_STATE:
 				case SAVEPOSE_STATE:
 				case RENAMEADJUSTMENT_STATE:
+				case SAVELIGHT_STATE:
+				case RENAMELIGHT_STATE:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
@@ -1263,11 +1441,11 @@
 					buttonHintReset.ButtonVisible = false;
 					break;
 				case SKELETONADJUSTMENT_STATE:
+				case RACEADJUSTMENT_STATE:
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintHide.ButtonVisible = true;
-					//buttonHintTarget.ButtonText = targetRace ? "$SAM_NPC" : "$SAM_Race";
 					buttonHintExtra.ButtonVisible = true;
 					buttonHintExtra.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
 					buttonHintExtra.ButtonClickDisabled = false;
@@ -1276,14 +1454,48 @@
 					break;
 				case POSEPLAY_STATE:
 					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = true;
+					buttonHintLoad.ButtonText = "$SAM_Apose";
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = "$SAM_Rotate";
+					buttonHintExtra.ButtonClickDisabled = true;
+					break;
+				case LIGHTSELECT_STATE:
+					buttonHintSave.ButtonVisible = true;
+					buttonHintLoad.ButtonVisible = true;
+					buttonHintLoad.ButtonText = "$SAM_Load";
+					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = "$SAM_Apose";
+					buttonHintExtra.ButtonText = (Data.getLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
 					buttonHintExtra.ButtonClickDisabled = false;
+					break;
+				case LIGHTSETTINGS_STATE:
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = true;
 					buttonHintReset.ButtonText = "$SAM_Reset";
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = (Data.getLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
+					buttonHintExtra.ButtonClickDisabled = false;
+					break;
+				case LIGHTEDIT_STATE:
+					buttonHintSave.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = false;
+					buttonHintReset.ButtonVisible = true;
+					buttonHintReset.ButtonText = "$SAM_Reset";
+					buttonHintConfirm.ButtonVisible = false;
+					buttonHintHide.ButtonVisible = true;
+					buttonHintExtra.ButtonVisible = true;
+					buttonHintExtra.ButtonText = (Data.getLightVisible() ? "$SAM_Invisible" : "$SAM_Visible");
+					buttonHintExtra.ButtonClickDisabled = false;
 					break;
 				default:
 					buttonHintSave.ButtonVisible = false;
@@ -1292,6 +1504,7 @@
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = false;
+					buttonHintExtra.ButtonClickDisabled = false;
 			}
 		};
 		

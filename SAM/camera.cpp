@@ -126,39 +126,44 @@ bool LoadCamera(int index)
 	return true;
 }
 
-void SerializeCamera(const F4SESerializationInterface* ifc)
+void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 {
-	UInt32 size = CAM_SAVE_STATE_SLOTS;
-	WriteData<UInt32>(ifc, &size);
+	if (version == 1) {
+		UInt32 size = CAM_SAVE_STATE_SLOTS;
+		WriteData<UInt32>(ifc, &size);
 
-	for (int i = 0; i < size; ++i)
-	{
-		WriteData<bool>(ifc, &cameraSaveStates[i].enabled);
-		WriteData<float>(ifc, &cameraSaveStates[i].x);
-		WriteData<float>(ifc, &cameraSaveStates[i].y);
-		WriteData<float>(ifc, &cameraSaveStates[i].z);
-		WriteData<float>(ifc, &cameraSaveStates[i].yaw);
-		WriteData<float>(ifc, &cameraSaveStates[i].pitch);
-		WriteData<float>(ifc, &cameraSaveStates[i].roll);
-		WriteData<float>(ifc, &cameraSaveStates[i].fov);
+		for (int i = 0; i < size; ++i)
+		{
+			WriteData<bool>(ifc, &cameraSaveStates[i].enabled);
+			WriteData<float>(ifc, &cameraSaveStates[i].x);
+			WriteData<float>(ifc, &cameraSaveStates[i].y);
+			WriteData<float>(ifc, &cameraSaveStates[i].z);
+			WriteData<float>(ifc, &cameraSaveStates[i].yaw);
+			WriteData<float>(ifc, &cameraSaveStates[i].pitch);
+			WriteData<float>(ifc, &cameraSaveStates[i].roll);
+			WriteData<float>(ifc, &cameraSaveStates[i].fov);
+		}
 	}
 }
 
-void DeserializeCamera(const F4SESerializationInterface* ifc)
+void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 {
-	UInt32 size;
-	ReadData<UInt32>(ifc, &size);
-
-	for (int i = 0; i < size; ++i)
+	if (version == 1)
 	{
-		ReadData<bool>(ifc, &cameraSaveStates[i].enabled);
-		ReadData<float>(ifc, &cameraSaveStates[i].x);
-		ReadData<float>(ifc, &cameraSaveStates[i].y);
-		ReadData<float>(ifc, &cameraSaveStates[i].z);
-		ReadData<float>(ifc, &cameraSaveStates[i].yaw);
-		ReadData<float>(ifc, &cameraSaveStates[i].pitch);
-		ReadData<float>(ifc, &cameraSaveStates[i].roll);
-		ReadData<float>(ifc, &cameraSaveStates[i].fov);
+		UInt32 size;
+		ReadData<UInt32>(ifc, &size);
+
+		for (int i = 0; i < size; ++i)
+		{
+			ReadData<bool>(ifc, &cameraSaveStates[i].enabled);
+			ReadData<float>(ifc, &cameraSaveStates[i].x);
+			ReadData<float>(ifc, &cameraSaveStates[i].y);
+			ReadData<float>(ifc, &cameraSaveStates[i].z);
+			ReadData<float>(ifc, &cameraSaveStates[i].yaw);
+			ReadData<float>(ifc, &cameraSaveStates[i].pitch);
+			ReadData<float>(ifc, &cameraSaveStates[i].roll);
+			ReadData<float>(ifc, &cameraSaveStates[i].fov);
+		}
 	}
 }
 

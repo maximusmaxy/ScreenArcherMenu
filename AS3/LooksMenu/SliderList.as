@@ -36,6 +36,8 @@
 		public static const POSITIONING = 8;
 		public static const FOLDER = 9;
 		public static const CAMERA = 10;
+		public static const LIGHT = 11;
+		public static const LIGHTSETTINGS = 12;
 		
 		public static const LEFT = 1;
 		public static const UP = 2;
@@ -482,6 +484,8 @@
 				case POSITIONING: updatePositioningEntry(entry); break;
 				case FOLDER: updateFolderEntry(entry); break;
 				case CAMERA: updateCameraEntry(entry); break;
+				case LIGHT: updateLightEntry(entry); break;
+				case LIGHTSETTINGS: updateLightSettingsEntry(entry); break;
 			}
 		}
 		
@@ -688,6 +692,63 @@
 					//save/load are half the remainder each
 					var save:Boolean = entry.id < (7 + ((Data.menuValues.length - 7) / 2));
 					entry.updateList(Translator.translate(save ? "$SAM_SaveState" : "$SAM_LoadState") + " " + (Data.menuValues[entry.id] + 1));
+					break;
+			}
+		}
+		
+		public function updateLight(func:Function):void
+		{
+			this.type = LIGHT;
+			update(Data.LIGHT_NAMES.length, LIST_MAX, func);
+		}
+		
+		public function updateLightEntry(entry:SliderListEntry):void
+		{
+			switch (entry.id) {
+				case 0: //distance
+					entry.updateDragValue(Data.LIGHT_NAMES[entry.id]);
+					entry.checkbox.increment = 10.0;
+					break;
+				case 1: //rotation
+					entry.updateDragValue(Data.LIGHT_NAMES[entry.id]);
+					entry.checkbox.increment = 2.0;
+					break;
+				case 2: //height
+					entry.updateDragValue(Data.LIGHT_NAMES[entry.id]);
+					entry.checkbox.increment = 10.0;
+					break;
+				case 3: //xoffset
+				case 4: //yoffset
+					entry.updateSliderData(0.0, 180, 0.1, 1.0, 90, 2);
+					entry.updateSlider(Data.LIGHT_NAMES[entry.id], SliderListEntry.FLOAT);
+					break;
+				default: //functions
+					entry.updateList(Data.LIGHT_NAMES[entry.id]);
+					break;
+			}
+		}
+		
+		public function updateLightSettings(func:Function):void
+		{
+			this.type = LIGHTSETTINGS;
+			update(Data.LIGHTSETTINGS_NAMES.length, LIST_MAX, func);
+		}
+		
+		public function updateLightSettingsEntry(entry:SliderListEntry):void
+		{
+			switch (entry.id) {
+				case 0: //x
+				case 1: //y
+				case 2: //z
+					entry.updateDragValue(Data.LIGHTSETTINGS_NAMES[entry.id]);
+					entry.checkbox.increment = 10.0;
+					break;
+				case 3: //rotation
+					entry.updateDragValue(Data.LIGHTSETTINGS_NAMES[entry.id]);
+					entry.checkbox.increment = 2.0;
+					break;
+				default: //functions
+					entry.updateList(Data.LIGHTSETTINGS_NAMES[entry.id]);
 					break;
 			}
 		}

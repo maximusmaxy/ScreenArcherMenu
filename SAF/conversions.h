@@ -43,7 +43,9 @@ namespace SAF {
 	constexpr double DEGREE_TO_RADIAN = MATH_PI / 180;
 	constexpr double RADIAN_TO_DEGREE = 180 / MATH_PI;
 	constexpr double HALF_PI = MATH_PI / 2;
+	constexpr double DOUBLE_PI = MATH_PI * 2;
 
+	NiMatrix43 MatrixIdentity();
 	NiTransform TransformIdentity();
 
 	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z);
@@ -54,6 +56,9 @@ namespace SAF {
 	void MatrixToDegree(NiMatrix43 & matrix, float& x, float& y, float& z);
 	void MatrixFromPose(NiMatrix43& matrix, float x, float y, float z);
 	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z);
+
+	NiPoint3 YPRToRPY(NiPoint3& rot);
+	NiPoint3 RPYToYPR(NiPoint3& rot);
 
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
@@ -136,4 +141,6 @@ namespace SAF {
 			return result;
 		}
 	};
+
+	Quat QuaternionIdentity();
 }

@@ -1,6 +1,7 @@
 #include "sam.h"
 
 #include "f4se/GameMenus.h"
+#include "f4se/GameData.h"
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformLoader.h"
@@ -28,8 +29,8 @@
 #include "compatibility.h"
 #include "options.h"
 #include "camera.h"
+#include "lights.h"
 
-#include <regex>
 #include <WinUser.h>
 #include <libloaderapi.h>
 
@@ -38,10 +39,14 @@ SelectedRefr selected;
 MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
 MenuCache groupsMenuCache;
+MenuCategoryList lightsMenuCache;
 
 SavedMenuData saveData;
 
 bool menuOpened = false;
+
+std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
+std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
 
 bool NaturalSort::operator() (const std::string& a, const std::string& b) const 
 {
@@ -186,18 +191,23 @@ MenuCategoryList* GetMenu(MenuCache* cache)
 void OpenMenu(const char* name)
 {
 	BSFixedString menuName(name);
-	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
+	if ((*g_ui)->IsMenuRegistered(menuName) && !(*g_ui)->IsMenuOpen(menuName)) {
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
+	}
 }
 
 void CloseMenu(const char* name)
 {
 	BSFixedString menuName(name);
-	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+	if ((*g_ui)->IsMenuRegistered(menuName) && (*g_ui)->IsMenuOpen(menuName)) {
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+	}
 }
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
 {
-	if ((*g_ui)->IsMenuOpen(menuName)) {
+	BSReadLocker locker(g_menuTableLock);
+	if ((*g_ui)->IsMenuRegistered(menuName) && (*g_ui)->IsMenuOpen(menuName)) {
 		GFxMovieRoot* root = GetRoot(menuName);
 		if (root) {
 			root->SetVariable(visiblePath, &GFxValue(visible));
@@ -582,11 +592,9 @@ enum {
 enum {
 	kMenuTypePose = 1,
 	kMenuTypeMorphs,
-	kMenuTypeGroups
+	kMenuTypeGroups,
+	kMenuTypeLights
 };
-
-std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
-std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
 
 std::unordered_map<std::string, UInt32> menuHeaderMap = {
 	{"race", kMenuHeaderRace},
@@ -599,6 +607,15 @@ std::unordered_map<std::string, UInt32> menuTypeMap = {
 	{"pose", kMenuTypePose},
 	{"morphs", kMenuTypeMorphs},
 	{"groups", kMenuTypeGroups},
+	{"lights", kMenuTypeLights}
+};
+
+struct MenuHeader
+{
+	std::string race;
+	std::string mod;
+	bool isFemale = false;
+	UInt32 type = 0;
 };
 
 bool ParseMenuFile(std::string path, IFileStream& file) {
@@ -606,63 +623,124 @@ bool ParseMenuFile(std::string path, IFileStream& file) {
 	char buf[512];
 	std::cmatch match;
 	std::string categoryIdentifier = "Category";
-	std::string header[4];
-
-	//header
-	for (int i = 0; i < 4; ++i) {
-		file.ReadString(buf, 512, '\n', '\r');
-		bool matched = std::regex_search(buf, match, tabSeperatedRegex);
-		std::string lower = toLower(match[1].str());
-		if (matched && match[2].str().size() && menuHeaderMap.count(lower)) {
-			header[menuHeaderMap[lower]] = match[2].str();
-		}
-		else {
-			_DMESSAGE("Failed to read header ", path);
-			return false;
-		}
-	}
-
-	UInt64 key = GetFormId(header[kMenuHeaderMod], header[kMenuHeaderRace]);
-	if (!_stricmp(header[kMenuHeaderSex].c_str(), "female"))
-		key |= 0x100000000;
-
-	MenuCache* cache;
-	UInt32 menuType = menuTypeMap[header[kMenuHeaderType]];
-	if (!menuType) {
-		_DMESSAGE("Unknown menu type: ", header[kMenuHeaderType]);
-		return false;
-	}
-
-	switch (menuType) {
-		case kMenuTypePose: cache = &poseMenuCache; break;
-		case kMenuTypeMorphs: cache = &morphsMenuCache; break;
-		case kMenuTypeGroups: cache = &groupsMenuCache; break;
-	}
-
+	MenuCategoryList* menu = nullptr;
+	MenuHeader header;
 	UInt32 categoryIndex = 0;
+	const ModInfo* mod; 
 
 	try {
 		while (!file.HitEOF()) {
 			file.ReadString(buf, 512, '\n', '\r');
 			if (std::regex_search(buf, match, tabOptionalRegex)) {
 				if (match[1].str() == categoryIdentifier) {
+
+					//After reaching the first category, validate the header and either break or continue
+					if (!menu) 
+					{
+						if (!header.type) 
+						{
+							_DMESSAGE("Failed to read header type", path);
+							return false;
+						}
+
+						UInt32 key = 0;
+
+						if (header.type == kMenuTypeLights)
+						{
+							mod = (*g_dataHandler)->LookupModByName(header.mod.c_str());
+							if (!mod || mod->modIndex == 0xFF) 
+							{
+								_DMESSAGE("Failed to read header mod", path);
+								return false;
+							}
+
+							UInt32 modId = (mod->recordFlags & (1 << 9)) ? ((0xFE << 24) | (mod->lightIndex << 12)) : (mod->modIndex << 24);
+							lightModMap.emplace(modId, mod->name);
+						}
+						else
+						{
+							key = GetFormId(header.mod, header.race);
+							if (!key)
+							{
+								_DMESSAGE("Failed to read header race or mod", path);
+								return false;
+							}
+							if (header.isFemale)
+								key |= 0x100000000;
+						}
+
+						switch (header.type) {
+							case kMenuTypePose: menu = &poseMenuCache[key]; break;
+							case kMenuTypeMorphs: menu = &morphsMenuCache[key]; break;
+							case kMenuTypeGroups: menu = &groupsMenuCache[key]; break;
+							case kMenuTypeLights: menu = &lightsMenuCache; break;
+						}
+					}
+
 					//Try find existing category
-					UInt32 size = (*cache)[key].size();
+					UInt32 size = menu->size();
 					for (categoryIndex = 0; categoryIndex < size; categoryIndex++) {
-						if ((*cache)[key][categoryIndex].first == match[2].str()) {
+						if ((*menu)[categoryIndex].first == match[2].str()) {
 							break;
 						}
 					}
+
 					//if category not found add it
 					if (categoryIndex >= size) {
 						MenuList list;
-						(*cache)[key].push_back(std::make_pair(match[2].str(), list));
-						categoryIndex = (*cache)[key].size() - 1;
+						menu->push_back(std::make_pair(match[2].str(), list));
+						categoryIndex = menu->size() - 1;
 					}
 				}
-				else {
-					//add to existing category
-					(*cache)[key][categoryIndex].second.push_back(std::make_pair(match[2].str(), match[1].str()));
+
+				//Continue reading header
+				else if (!menu)
+				{
+					std::string lowerHeader = toLower(match[1].str());
+					if (match[2].str().size() && menuHeaderMap.count(lowerHeader))
+					{
+						switch (menuHeaderMap[lowerHeader])
+						{
+						case kMenuHeaderRace:
+							header.race = match[2].str();
+							break;
+						case kMenuHeaderMod:
+							header.mod = match[2].str();
+							break;
+						case kMenuHeaderSex:
+							header.isFemale = !_stricmp(match[2].str().c_str(), "female");
+							break;
+						case kMenuHeaderType:
+							std::string lowerType = toLower(match[2].str());
+							if (menuTypeMap.count(lowerType)) {
+								header.type = menuTypeMap[lowerType];
+							}
+							break;
+						}
+					}
+				}
+				//Add to category
+				else
+				{
+					if (header.type == kMenuTypeLights) {
+						//merge the mod id in now
+						UInt32 formId = std::stoul(match[1].str(), nullptr, 16) & 0xFFFFFF;
+
+						UInt32 flags = mod->recordFlags;
+						if (flags & (1 << 9)) {
+							formId &= 0xFFF;
+							formId |= 0xFE << 24;
+							formId |= mod->lightIndex << 12;
+						}
+						else {
+							formId |= mod->modIndex << 24;
+						}
+
+						(*menu)[categoryIndex].second.push_back(std::make_pair(HexToString(formId), match[2].str()));
+					}
+					else {
+						(*menu)[categoryIndex].second.push_back(std::make_pair(match[2].str(), match[1].str()));
+					}
 				}
 			}
 		}
@@ -756,7 +834,7 @@ void LoadMenuFiles() {
 		if (!loadedMenus.count(path)) {
 			LoadMenuFile(path);
 			loadedMenus.insert(path);
-		}	
+		}
 	}
 
 	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Idles", "*.json"); !iter.Done(); iter.Next())
@@ -769,7 +847,9 @@ void LoadMenuFiles() {
 void SamSerializeSave(const F4SESerializationInterface* ifc)
 {
 	ifc->OpenRecord('CAM', 1);
-	SerializeCamera(ifc);
+	SerializeCamera(ifc, 1);
+	ifc->OpenRecord('LIGH', 1);
+	SerializeLights(ifc, 1);
 }
 
 void SamSerializeLoad(const F4SESerializationInterface* ifc)
@@ -780,9 +860,14 @@ void SamSerializeLoad(const F4SESerializationInterface* ifc)
 	{
 		switch (type)
 		{
-		case 'CAM': //adjustment
+		case 'CAM': //Camera
 		{
-			DeserializeCamera(ifc);
+			DeserializeCamera(ifc, version);
+			break;
+		}
+		case 'LIGH': //Lights
+		{
+			DeserializeLights(ifc, version);
 			break;
 		}
 		}
@@ -792,4 +877,5 @@ void SamSerializeLoad(const F4SESerializationInterface* ifc)
 void SamSerializeRevert(const F4SESerializationInterface* ifc)
 {
 	RevertCamera();
+	RevertLights();
 }

@@ -40,6 +40,7 @@
 		public static const MORPH_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAM\\FaceMorphs";
 		public static const ADJUSTMENT_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Adjustments";
 		public static const POSE_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Poses";
+		public static const LIGHT_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAM\\Lights";
 		
 		public static const KEYBOARD = 1;
 		public static const PAD = 2;
@@ -47,12 +48,14 @@
         public static const MAIN_MENU:Vector.<String> = new <String>[
             "$SAM_PoseAdjustMenu",
 			"$SAM_SkeletonAdjustMenu",
+			"$SAM_RaceAdjustMenu",
 			"$SAM_PosePlayMenu",
 			"$SAM_PoseExportMenu",
 			"$SAM_PlayIdleMenu",
 			"$SAM_PositionMenu",
             "$SAM_FaceMorphsMenu",
             "$SAM_EyesMenu",
+			"$SAM_LightMenu",
 			"$SAM_CameraMenu",
             "$SAM_HacksMenu",
 			"$SAM_OptionsMenu"
@@ -123,6 +126,26 @@
 			"$SAM_Pitch",
 			"$SAM_Roll",
 			"$SAM_FOV"
+		];
+		
+		public static const LIGHT_NAMES:Vector.<String> = new <String>[
+			"$SAM_Distance",
+			"$SAM_Rotation",
+			"$SAM_Height",
+			"$SAM_XOffset",
+			"$SAM_YOffset",
+			"$SAM_Rename",
+			"$SAM_Swap",
+			"$SAM_Delete"
+		];
+		
+		public static const LIGHTSETTINGS_NAMES:Vector.<String> = new <String>[
+			"$SAM_PosX",
+			"$SAM_PosY",
+			"$SAM_PosZ",
+			"$SAM_Rotation",
+			"$SAM_UpdateAll",
+			"$SAM_DeleteAll",
 		];
 		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
@@ -982,7 +1005,7 @@
 			}
 		}
 		
-		public static function loadSkeletonAdjustment(id:int, npc:Boolean, clear:Boolean, enabled:Boolean)
+		public static function loadSkeletonAdjustment(id:int, race:Boolean, clear:Boolean, enabled:Boolean)
 		{
 			if (clear) {
 				for (var i:int = 0; i < menuValues.length; i++) {
@@ -994,7 +1017,7 @@
 			
 			try 
 			{
-				sam.LoadSkeletonAdjustment(menuOptions[id], npc, clear, enabled);
+				sam.LoadSkeletonAdjustment(menuOptions[id], race, clear, enabled);
 			}
 			catch (e:Error)
 			{
@@ -1002,11 +1025,11 @@
 			}
 		}
 		
-		public static function resetSkeletonAdjustment()
+		public static function resetSkeletonAdjustment(race:Boolean)
 		{
 			try 
 			{
-				sam.ResetSkeletonAdjustment();
+				sam.ResetSkeletonAdjustment(race);
 			}
 			catch (e:Error)
 			{
@@ -1223,6 +1246,331 @@
 			catch (e:Error)
 			{
 				trace("Failed to set camera");
+			}
+		}
+
+		public static function loadLightSelect()
+		{
+			try
+			{
+				menuOptions = sam.GetLightSelect();
+				menuOptions.push("$SAM_AddNew");
+				menuOptions.push("$SAM_AddConsole");
+				menuOptions.push("$SAM_LightGlobal");
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load lights");
+				if (Util.debug) {
+					menuOptions = ["Light", "Light", "Light", "$SAM_AddNew", "$SAM_AddConsole", "$SAM_LightGlobal"];
+				} else {
+					menuOptions = [];
+				}
+			}
+		}
+		
+		public static function loadLightEdit()
+		{
+			menuOptions = LIGHT_NAMES;
+			try
+			{
+				menuValues = sam.GetLightEdit(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load light");
+				menuValues = [100.0, 0.0, 100.0, 0.0, 0.0];
+			}
+		}
+		
+		public static function loadLightCategory()
+		{
+			try
+			{
+				menuOptions = sam.GetLightCategories();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load light categories");
+				if (Util.debug) {
+					menuOptions = ["Hemisphere", "Spotlight", "Omni"];
+				} else {
+					menuOptions = [];
+				}
+			}
+		}
+		
+		public static function loadLightObject()
+		{
+			try
+			{
+				menuOptions = sam.GetLightObjects(selectedCategory);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load light Objects");
+				if (Util.debug) {
+					menuOptions = ["White", "Warm", "Cold"];
+				} else {
+					menuOptions = [];
+				}
+			}
+		}
+		
+		public static function loadLightSettings()
+		{
+			try
+			{
+				menuValues = sam.GetLightSettings();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get light settings");
+				menuValues = [0.0, 0.0, 0.0, 0.0];
+			}
+		}
+		
+		public static function editLight(id:int, value:Number)
+		{
+			try
+			{
+				if (id < 3) {
+					var dif:int = updateCursorDrag(value);
+					menuValues[id] += dif * 0.5;
+					if (id == 0 && menuValues[id] < 0) {
+						//clamp distance above 0
+						menuValues[id] = 0;
+					} else if (id == 1) {
+						//rotation 0-360
+						if (menuValues[id] < 0) {
+							menuValues[id] += 360;
+						} else if (menuValues[id] >= 360) {
+							menuValues[id] -= 360;
+						}
+					}
+				} else {
+					menuValues[id] = value;
+				}
+				sam.EditLight(selectedAdjustment, id, menuValues[id]);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to edit light");
+			}
+		}
+		
+		public static function resetLight()
+		{
+			menuValues = [100.0, 0.0, 100.0, 0.0, 0.0];
+			try
+			{
+				sam.ResetLight(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to reset adjustment");
+			}
+		}
+		
+		public static function deleteLight()
+		{
+			try
+			{
+				sam.DeleteLight(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to delete light");
+			}
+		}
+		
+		public static function swapLight(id:int)
+		{
+			try
+			{
+				sam.SwapLight(selectedAdjustment, selectedCategory, id);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to swap light");
+			}
+		}
+		
+		public static function renameLight(name:String)
+		{
+			try
+			{
+				sam.RenameLight(selectedAdjustment, name);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to rename light");
+			}
+		}
+		
+		public static function createLight(id:int)
+		{
+			try
+			{
+				sam.CreateLight(selectedCategory, id);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to create light");
+			}
+		}
+		
+		public static function addLight()
+		{
+			try
+			{
+				sam.AddLight();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to add light");
+			}
+		}
+		
+		public static function getLightVisible():Boolean
+		{
+			try
+			{
+				return sam.GetLightVisible(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get light visibility");
+				return false;
+			}
+		}
+		
+		public static function toggleLightVisible():Boolean
+		{
+			try
+			{
+				return sam.ToggleLightVisible(selectedAdjustment);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to toggle light visiblity");
+				return true;
+			}
+		}
+		
+		public static function getLightsVisibility():Boolean
+		{
+			try
+			{
+				return sam.GetAllLightsVisible();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get light visibility");
+				return false;
+			}
+		}
+		
+		public static function toggleLightsVisibility():Boolean
+		{
+			try
+			{
+				return sam.ToggleAllLightsVisible();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to toggle lights visibility");
+				return true;
+			}
+		}
+		
+		public static function editLightSettings(id:int, value:Number)
+		{
+			try
+			{
+				var dif:int = updateCursorDrag(value);
+				menuValues[id] += dif * 0.5;
+				if (id == 3) { //rotation clamp
+					if (menuValues[id] < 0) {
+						menuValues[id] += 360;
+					} else if (menuValues[id] >= 360) {
+						menuValues[id] -= 360;
+					}
+				}
+				sam.EditLightSettings(id, menuValues[id]);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to edit light settings");
+			}
+		}
+		
+		public static function resetLightSettings()
+		{
+			menuValues = [0.0, 0.0, 0.0, 0.0];
+			try
+			{
+				sam.ResetLightSettings();
+			}
+			catch (e:Error)
+			{
+				trace("Reset light settings");
+			}
+		}
+		
+		public static function updateAllLights()
+		{
+			try
+			{
+				sam.UpdateAllLights();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to update lights");
+			}
+		}
+		
+		public static function deleteAllLights()
+		{
+			try 
+			{
+				sam.DeleteAllLights();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to delete lights");
+			}
+		}
+		
+		public static function loadLightFiles()
+		{
+			if (!getFileListing(LIGHT_DIRECTORY, "*.json"))
+			{
+				menuFiles = [];
+			}
+		}
+		
+		public static function loadLights(id:int)
+		{
+			try
+			{
+				sam.LoadLights(menuOptions[id]);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to load lights");
+			}
+		}
+		
+		public static function saveLights(filename:String)
+		{
+			try
+			{
+				sam.SaveLights(filename);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to save lights");
 			}
 		}
 	}

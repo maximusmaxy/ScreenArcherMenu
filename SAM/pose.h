@@ -70,7 +70,7 @@ void SaveJsonPose(const char* filename, GFxValue selectedHandles);
 bool LoadJsonPose(const char* filename);
 void ResetJsonPose();
 
-void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);
+void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race);
 void LoadDefaultAdjustment(const char* filename, bool npc, bool clear, bool enable);
 
 void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int scalar);

@@ -22,6 +22,7 @@
 #include "options.h"
 #include "scripts.h"
 #include "camera.h"
+#include "lights.h"
 
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
@@ -300,7 +301,7 @@ public:
 };
 
 GFxFunction(GetSkeletonAdjustments, {
-	GetDefaultAdjustmentsGFx(args->movie->movieRoot, args->result);
+	GetDefaultAdjustmentsGFx(args->movie->movieRoot, args->result, args->args[0].GetBool());
 });
 
 GFxFunction(LoadSkeletonAdjustment, {
@@ -308,7 +309,7 @@ GFxFunction(LoadSkeletonAdjustment, {
 });
 
 GFxFunction(ResetSkeletonAdjustment, {
-	LoadDefaultAdjustment(nullptr, false, true, false);
+	LoadDefaultAdjustment(nullptr, args->args[0].GetBool(), true, false);
 });
 
 GFxFunction(GetPositioning, {
@@ -380,18 +381,96 @@ GFxFunction(LoadCameraState, {
 	LoadCamera(args->args[0].GetInt());
 });
 
+GFxFunction(GetLightSelect, {
+	GetLightSelectGFx(args->movie->movieRoot, args->result);
+});
+
+GFxFunction(GetLightEdit, {
+	GetLightEditGFx(args->movie->movieRoot, args->result, args->args[0].GetUInt());
+});
+
+GFxFunction(GetLightCategories, {
+	GetLightCategoriesGFx(args->movie->movieRoot, args->result);
+});
+
+GFxFunction(GetLightObjects, {
+	GetLightObjectsGFx(args->movie->movieRoot, args->result, args->args[0].GetUInt());
+});
+
+GFxFunction(GetLightSettings, {
+	GetLightSettingsGFx(args->movie->movieRoot, args->result);
+});
+
+GFxFunction(CreateLight, {
+	CreateLight(args->args[0].GetUInt(), args->args[1].GetUInt());
+});
+
+GFxFunction(AddLight, {
+	AddLight();
+});
+
+GFxFunction(EditLight, {
+	EditLight(args->args[0].GetUInt(), args->args[1].GetUInt(), args->args[2].GetNumber());
+});
+
+GFxFunction(SwapLight, {
+	SwapLight(args->args[0].GetUInt(), args->args[1].GetUInt(), args->args[2].GetUInt());
+});
+
+GFxFunction(DeleteLight, {
+	DeleteLight(args->args[0].GetUInt());
+});
+
+GFxFunction(ResetLight, {
+	ResetLight(args->args[0].GetUInt());
+});
+
+GFxFunction(RenameLight, {
+	RenameLight(args->args[0].GetUInt(), args->args[1].GetString());
+});
+
+GFxFunction(GetLightVisible, {
+	args->result->SetBool(GetLightVisible(args->args[0].GetUInt()));
+});
+
+GFxFunction(ToggleLightVisible, {
+	args->result->SetBool(ToggleLightVisible(args->args[0].GetUInt()));
+});
+
+GFxFunction(GetAllLightsVisible, {
+	args->result->SetBool(GetAllLightsVisible());
+});
+
+GFxFunction(ToggleAllLightsVisible, {
+	args->result->SetBool(ToggleAllLightsVisible());
+}); 
+
+GFxFunction(EditLightSettings, {
+	EditLightSettings(args->args[0].GetUInt(), args->args[1].GetNumber());
+});
+
+GFxFunction(ResetLightSettings, {
+	ResetLightSettings();
+});
+
+GFxFunction(UpdateAllLights, {
+	UpdateAllLights();
+});
+
+GFxFunction(DeleteAllLights, {
+	DeleteAllLights();
+});
+
+GFxFunction(SaveLights, {
+	SaveLightsJson(args->args[0].GetString());
+});
+
+GFxFunction(LoadLights, {
+	LoadLightsJson(args->args[0].GetString());
+});
 
 GFxFunction(Test, {
-	BSFixedString photoMenu("PhotoMenu");
-	IMenu* menu = (*g_ui)->GetMenu(photoMenu);
-	GFxMovieRoot* root = menu->movie->movieRoot;
-
-	GFxValue func;
-	GFxValue ten(((UInt32)10));
-
-	bool hasFunc = root->Invoke("root1.Menu_mc.BGSCodeObj.SetPlayerRotation", nullptr, &ten, 1);
-
-	_DMESSAGE("test");
+	
 });
 
 GFxFunction(Test2, {
@@ -474,6 +553,28 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(SetCameraFOV);
 	GFxRegister(SaveCameraState);
 	GFxRegister(LoadCameraState);
+	GFxRegister(GetLightSelect);
+	GFxRegister(GetLightEdit);
+	GFxRegister(GetLightCategories);
+	GFxRegister(GetLightObjects);
+	GFxRegister(GetLightSettings);
+	GFxRegister(CreateLight);
+	GFxRegister(AddLight);
+	GFxRegister(EditLight);
+	GFxRegister(SwapLight);
+	GFxRegister(DeleteLight);
+	GFxRegister(ResetLight);
+	GFxRegister(RenameLight);
+	GFxRegister(GetLightVisible);
+	GFxRegister(ToggleLightVisible);
+	GFxRegister(GetAllLightsVisible);
+	GFxRegister(ToggleAllLightsVisible);
+	GFxRegister(EditLightSettings);
+	GFxRegister(UpdateAllLights);
+	GFxRegister(ResetLightSettings);
+	GFxRegister(DeleteAllLights);
+	GFxRegister(SaveLights);
+	GFxRegister(LoadLights);
 	GFxRegister(Test);
 	GFxRegister(Test2);
 

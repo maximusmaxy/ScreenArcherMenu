@@ -530,7 +530,7 @@ void ResetJsonPose()
 	adjustments->UpdateAllAdjustments();
 }
 
-void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
+void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
 {
 	root->CreateObject(result);
 
@@ -563,7 +563,7 @@ void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 	}
 }
 
-void LoadDefaultAdjustment(const char* filename, bool npc, bool clear, bool enable)
+void LoadDefaultAdjustment(const char* filename, bool race, bool clear, bool enable)
 {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
@@ -572,13 +572,10 @@ void LoadDefaultAdjustment(const char* filename, bool npc, bool clear, bool enab
 	//If clearing they are in single select so forcing enable makes more sense
 	if (clear) enable = true;
 
-	//if single target npc is true, send the formId instead of race
-	//UInt32 formId = npc ? adjustments->formId : selected.race;
-	
-	//single target npc disabled for now
-	UInt32 formId = selected.race;
+	//if race adjustment is true, send the formId instead of race
+	UInt32 formId = race ? selected.race : adjustments->formId;
 
-	safMessageDispatcher.loadDefaultAdjustment(formId, selected.isFemale, filename, npc, clear, enable);
+	safMessageDispatcher.loadDefaultAdjustment(formId, selected.isFemale, filename, race, clear, enable);
 }
 
 void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int dif) {

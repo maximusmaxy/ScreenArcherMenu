@@ -115,22 +115,22 @@ namespace SAF {
 	}
 
 	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z) {
-		if (matrix.data[0][2] < 1.0) {
-			if (matrix.data[0][2] > -1.0) {
+		if (matrix.data[2][0] < 1.0) {
+			if (matrix.data[2][0] > -1.0) {
 				x = atan2(matrix.data[1][0], matrix.data[0][0]);
 				y = asin(-matrix.data[2][0]);
 				z = atan2(matrix.data[2][1], matrix.data[2][2]);
 			}
 			else {
-				x = 0.0f; 
-				y = -HALF_PI;
-				z = atan2(-matrix.data[1][2], matrix.data[1][1]);
+				x = -atan2(matrix.data[0][1], matrix.data[1][1]);
+				y = HALF_PI;
+				z = 0.0f;
 			}
 		}
 		else {
-			x = 0.0f;
-			y = HALF_PI;
-			z = -atan2(matrix.data[1][2], matrix.data[1][1]);
+			x = atan2(-matrix.data[0][1], matrix.data[1][1]);
+			y = -HALF_PI;
+			z = 0.0f;
 		}
 	}
 
@@ -156,6 +156,31 @@ namespace SAF {
 		x *= RADIAN_TO_DEGREE;
 		y *= RADIAN_TO_DEGREE;
 		z *= RADIAN_TO_DEGREE;
+	}
+
+	NiPoint3 YPRToRPY(NiPoint3& rot)
+	{
+		NiMatrix43 matrix;
+		MatrixFromEulerYPR(matrix, -rot.x, -rot.y, -rot.z);
+
+		NiPoint3 newRot;
+		MatrixToEulerRPY(matrix, newRot.x, newRot.y, newRot.z);
+
+		return newRot;
+	}
+
+	NiPoint3 RPYToYPR(NiPoint3& rot)
+	{
+		NiMatrix43 matrix;
+		MatrixFromEulerRPY(matrix, rot.x, rot.y, rot.z);
+
+		NiPoint3 newRot;
+		MatrixToEulerYPR(matrix, newRot.x, newRot.y, newRot.z);
+		newRot.x *= -1;
+		newRot.y *= -1;
+		newRot.z *= -1;
+
+		return newRot;
 	}
 
 	NiMatrix43 NiMatrix43Invert(NiMatrix43& matrix) {
@@ -422,5 +447,50 @@ namespace SAF {
 		}
 
 		matrix = rot * matrix;
+	}
+
+	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar) {
+		NiMatrix43 rot;
+
+		float sin = std::sinf(scalar);
+		float cos = std::cosf(scalar);
+
+		switch (type) {
+		case kRotationX:
+			rot.data[0][0] = 1.0f;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = sin;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = -sin;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationY:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = -sin;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = 1.0f;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = sin;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationZ:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = sin;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = -sin;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = 1.0f;
+			break;
+		}
+
+		matrix = matrix * rot;
 	}
 }

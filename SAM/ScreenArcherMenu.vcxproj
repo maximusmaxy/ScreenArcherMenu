@@ -117,6 +117,7 @@
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="input.cpp" />
+    <ClCompile Include="lights.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mfg.cpp" />
     <ClCompile Include="options.cpp" />
@@ -134,6 +135,7 @@
     <ClInclude Include="console.h" />
     <ClInclude Include="idle.h" />
     <ClInclude Include="input.h" />
+    <ClInclude Include="lights.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="options.h" />
     <ClInclude Include="papyrus.h" />

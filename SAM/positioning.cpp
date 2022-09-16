@@ -7,17 +7,11 @@
 
 NonActorRefr selectedNonActor;
 
-union TranslationParam
-{
-	UInt64 axis;
-	double value;
-};
-
 //typedef UInt32 (*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationValue value);
 //RelocAddr<_UpdateTranslationInternal> UpdateTranslationInternal(0xD583F0);
 
-typedef UInt32 (*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationParam param1, TranslationParam param2);
 RelocAddr<_UpdateTranslationInternal> UpdateTranslationInternal(0xD583F0);
+RelocPtr<UInt64> unkTranslation(0x5AC64F0);
 
 typedef float (*_GetScaleInternal)(TESObjectREFR* refr, float mod);
 RelocAddr<_GetScaleInternal> GetScaleInternal(0x3F8540);
@@ -27,8 +21,6 @@ RelocAddr<_SetScaleInternal> SetScaleInternal(0x3F85B0);
 
 typedef UInt64 (*_TESObjectREFRUnk29)(TESObjectREFR* refr, UInt8 result);
 RelocAddr<_TESObjectREFRUnk29> TesObjectREFRUnk29(0x40B4B0);
-
-RelocPtr<UInt64> unkTranslation(0x5AC64F0);
 
 typedef void (*_ToggleWorldCollisionInternal)();
 RelocAddr<_ToggleWorldCollisionInternal> ToggleWorldCollisionInternal(0xFBF80);
