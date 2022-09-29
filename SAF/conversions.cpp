@@ -56,6 +56,315 @@ namespace SAF {
 		return q;
 	}
 
+	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt) {
+		return NiPoint3(
+			m.data[0][0] * pt.x + m.data[1][0] * pt.y + m.data[2][0] * pt.z,
+			m.data[0][1] * pt.x + m.data[1][1] * pt.y + m.data[2][1] * pt.z,
+			m.data[0][2] * pt.x + m.data[1][2] * pt.y + m.data[2][2] * pt.z
+		);
+	}
+
+	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs)
+	{
+		NiMatrix43 tmp;
+		tmp.data[0][0] =
+			lhs.data[0][0] * rhs.data[0][0] +
+			lhs.data[1][0] * rhs.data[0][1] +
+			lhs.data[2][0] * rhs.data[0][2];
+		tmp.data[0][1] =
+			lhs.data[0][1] * rhs.data[0][0] +
+			lhs.data[1][1] * rhs.data[0][1] +
+			lhs.data[2][1] * rhs.data[0][2];
+		tmp.data[0][2] =
+			lhs.data[0][2] * rhs.data[0][0] +
+			lhs.data[1][2] * rhs.data[0][1] +
+			lhs.data[2][2] * rhs.data[0][2];
+		tmp.data[1][0] =
+			lhs.data[0][0] * rhs.data[1][0] +
+			lhs.data[1][0] * rhs.data[1][1] +
+			lhs.data[2][0] * rhs.data[1][2];
+		tmp.data[1][1] =
+			lhs.data[0][1] * rhs.data[1][0] +
+			lhs.data[1][1] * rhs.data[1][1] +
+			lhs.data[2][1] * rhs.data[1][2];
+		tmp.data[1][2] =
+			lhs.data[0][2] * rhs.data[1][0] +
+			lhs.data[1][2] * rhs.data[1][1] +
+			lhs.data[2][2] * rhs.data[1][2];
+		tmp.data[2][0] =
+			lhs.data[0][0] * rhs.data[2][0] +
+			lhs.data[1][0] * rhs.data[2][1] +
+			lhs.data[2][0] * rhs.data[2][2];
+		tmp.data[2][1] =
+			lhs.data[0][1] * rhs.data[2][0] +
+			lhs.data[1][1] * rhs.data[2][1] +
+			lhs.data[2][1] * rhs.data[2][2];
+		tmp.data[2][2] =
+			lhs.data[0][2] * rhs.data[2][0] +
+			lhs.data[1][2] * rhs.data[2][1] +
+			lhs.data[2][2] * rhs.data[2][2];
+		return tmp;
+	}
+
+	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs) {
+		NiTransform tmp;
+		tmp.scale = lhs.scale * rhs.scale;
+		tmp.rot = MultiplyNiMatrix(lhs.rot, rhs.rot);
+		tmp.pos = lhs.pos + RotateMatrix(lhs.rot, rhs.pos) * lhs.scale;
+		return tmp;
+	}
+
+	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
+		NiTransform res;
+
+		float srcScale = src.scale == 0 ? 1.0f : src.scale;
+		res.scale = dst.scale / srcScale;
+
+		NiMatrix43 inverted = src.rot.Transpose();
+		res.rot = inverted * dst.rot;
+
+		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
+
+		return res;
+	}
+
+	NiPoint3 Rotate(NiMatrix43& m, NiPoint3& pt) {
+		return NiPoint3(
+			m.data[0][0] * pt.x + m.data[1][0] * pt.y + m.data[2][0] * pt.z,
+			m.data[0][1] * pt.x + m.data[1][1] * pt.y + m.data[2][1] * pt.z,
+			m.data[0][2] * pt.x + m.data[1][2] * pt.y + m.data[2][2] * pt.z
+		);
+	}
+
+	NiTransform NegateNiTransform2(NiTransform& src, NiTransform& dst) {
+		NiTransform res;
+
+		float srcScale = src.scale == 0 ? 1.0f : src.scale;
+		res.scale = dst.scale / srcScale;
+
+		NiMatrix43 inverted = src.rot.Transpose();
+		res.rot = MultiplyNiMatrix(inverted, dst.rot);
+
+		res.pos = RotateMatrix(inverted, (dst.pos - src.pos) / srcScale);
+
+		return res;
+	}
+
+	NiMatrix43 GetXYZRotation(int type, float scalar) {
+		NiMatrix43 rot;
+
+		float sin = std::sinf(scalar);
+		float cos = std::cosf(scalar);
+
+		switch (type) {
+		case kRotationX:
+			rot.data[0][0] = 1.0f;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = sin;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = -sin;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationY:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = -sin;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = 1.0f;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = sin;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationZ:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = sin;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = -sin;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = 1.0f;
+		}
+
+		return rot;
+	}
+
+	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar) {
+		NiMatrix43 rot;
+
+		float sin = std::sinf(scalar);
+		float cos = std::cosf(scalar);
+
+		switch (type) {
+		case kRotationX:
+			rot.data[0][0] = 1.0f;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = sin;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = -sin;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationY:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = -sin;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = 1.0f;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = sin;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationZ:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = sin;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = -sin;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = 1.0f;
+			break;
+		}
+
+		matrix = rot * matrix;
+	}
+
+	void RotateMatrixXYZ2(NiMatrix43& matrix, int type, float scalar) {
+		NiMatrix43 rot;
+
+		float sin = std::sinf(scalar);
+		float cos = std::cosf(scalar);
+
+		//switch (type) {
+		//case kRotationX:
+		//	rot.data[0][0] = 1.0f;
+		//	rot.data[1][0] = 0.0f;
+		//	rot.data[2][0] = 0.0f;
+		//	rot.data[0][1] = 0.0f;
+		//	rot.data[1][1] = cos;
+		//	rot.data[2][1] = sin;
+		//	rot.data[0][2] = 0.0f;
+		//	rot.data[1][2] = -sin;
+		//	rot.data[2][2] = cos;
+		//	break;
+		//case kRotationY:
+		//	rot.data[0][0] = cos;
+		//	rot.data[1][0] = 0.0f;
+		//	rot.data[2][0] = -sin;
+		//	rot.data[0][1] = 0.0f;
+		//	rot.data[1][1] = 1.0f;
+		//	rot.data[2][1] = 0.0f;
+		//	rot.data[0][2] = sin;
+		//	rot.data[1][2] = 0.0f;
+		//	rot.data[2][2] = cos;
+		//	break;
+		//case kRotationZ:
+		//	rot.data[0][0] = cos;
+		//	rot.data[1][0] = sin;
+		//	rot.data[2][0] = 0.0f;
+		//	rot.data[0][1] = -sin;
+		//	rot.data[1][1] = cos;
+		//	rot.data[2][1] = 0.0f;
+		//	rot.data[0][2] = 0.0f;
+		//	rot.data[1][2] = 0.0f;
+		//	rot.data[2][2] = 1.0f;
+		//	break;
+		//}
+
+		switch (type) {
+		case kRotationX:
+			rot.data[0][0] = 1.0f;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = sin;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = -sin;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationY:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = -sin;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = 1.0f;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = sin;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationZ:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = sin;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = -sin;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = 1.0f;
+			break;
+		}
+
+		matrix = MultiplyNiMatrix(rot, matrix);
+	}
+
+	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar) {
+		NiMatrix43 rot;
+
+		float sin = std::sinf(scalar);
+		float cos = std::cosf(scalar);
+
+		switch (type) {
+		case kRotationX:
+			rot.data[0][0] = 1.0f;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = sin;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = -sin;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationY:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = 0.0f;
+			rot.data[0][2] = -sin;
+			rot.data[1][0] = 0.0f;
+			rot.data[1][1] = 1.0f;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = sin;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = cos;
+			break;
+		case kRotationZ:
+			rot.data[0][0] = cos;
+			rot.data[0][1] = sin;
+			rot.data[0][2] = 0.0f;
+			rot.data[1][0] = -sin;
+			rot.data[1][1] = cos;
+			rot.data[1][2] = 0.0f;
+			rot.data[2][0] = 0.0f;
+			rot.data[2][1] = 0.0f;
+			rot.data[2][2] = 1.0f;
+			break;
+		}
+
+		matrix = matrix * rot;
+	}
+
 	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z) {
 		float sinX = sin(x);
 		float cosX = cos(x);
@@ -75,6 +384,25 @@ namespace SAF {
 		matrix.data[2][2] = cosX * cosY;
 	}
 
+	void MatrixFromEulerYPR2(NiMatrix43& matrix, float x, float y, float z) {
+		float sinX = sin(x);
+		float cosX = cos(x);
+		float sinY = sin(y);
+		float cosY = cos(y);
+		float sinZ = sin(z);
+		float cosZ = cos(z);
+
+		matrix.data[0][0] = cosY * cosZ;
+		matrix.data[1][0] = -cosY * sinZ;
+		matrix.data[2][0] = sinY;
+		matrix.data[0][1] = sinX * sinY * cosZ + sinZ * cosX;
+		matrix.data[1][1] = cosX * cosZ - sinX * sinY * sinZ;
+		matrix.data[2][1] = -sinX * cosY;
+		matrix.data[0][2] = sinX * sinZ - cosX * sinY * cosZ;
+		matrix.data[1][2] = cosX * sinY * sinZ + sinX * cosZ;
+		matrix.data[2][2] = cosX * cosY;
+	}
+
 	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[0][2] < 1.0) {
 			if (matrix.data[0][2] > -1.0) {
@@ -90,6 +418,26 @@ namespace SAF {
 		}
 		else {
 			x = atan2(matrix.data[1][0], matrix.data[1][1]);
+			y = HALF_PI;
+			z = 0.0;
+		}
+	}
+
+	void MatrixToEulerYPR2(NiMatrix43& matrix, float& x, float& y, float& z) {
+		if (matrix.data[2][0] < 1.0) {
+			if (matrix.data[2][0] > -1.0) {
+				x = atan2(-matrix.data[2][1], matrix.data[2][2]);
+				y = asin(matrix.data[2][0]);
+				z = atan2(-matrix.data[1][0], matrix.data[0][0]);
+			}
+			else {
+				x = -atan2(-matrix.data[0][1], matrix.data[1][1]);
+				y = -HALF_PI;
+				z = 0.0;
+			}
+		}
+		else {
+			x = atan2(matrix.data[0][1], matrix.data[1][1]);
 			y = HALF_PI;
 			z = 0.0;
 		}
@@ -146,13 +494,11 @@ namespace SAF {
 	}
 
 	void MatrixFromPose(NiMatrix43& matrix, float x, float y, float z) {
-		MatrixFromEulerYPR(matrix, x * DEGREE_TO_RADIAN, y * DEGREE_TO_RADIAN, z * DEGREE_TO_RADIAN);
-		matrix = matrix.Transpose();
+		MatrixFromEulerYPR2(matrix, x * DEGREE_TO_RADIAN, y * DEGREE_TO_RADIAN, z * DEGREE_TO_RADIAN);
 	}
 
 	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z) {
-		NiMatrix43 transposed = matrix.Transpose();
-		MatrixToEulerYPR(transposed, x, y, z);
+		MatrixToEulerYPR2(matrix, x, y, z);
 		x *= RADIAN_TO_DEGREE;
 		y *= RADIAN_TO_DEGREE;
 		z *= RADIAN_TO_DEGREE;
@@ -390,107 +736,82 @@ namespace SAF {
 		return res;
 	}
 
-	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
-		NiTransform res;
+	//Conversion to outfit studio rotation vector https://github.com/ousnius/nifly/blob/main/src/Object3d.cpp#L46
+	Vector3 MatrixToOutfitStudioVector(NiMatrix43& m)
+	{
+		double cosang = (m.data[0][0] + m.data[1][1] + m.data[2][2] - 1) * 0.5;
 
-		float srcScale = src.scale == 0 ? 1.0f : src.scale;
-		res.scale = dst.scale / srcScale;
-
-		NiMatrix43 inverted = src.rot.Transpose();
-		res.rot = inverted * dst.rot;
-
-		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
-
-		return res;
-	}
-
-	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar) {
-		NiMatrix43 rot;
-
-		float sin = std::sinf(scalar);
-		float cos = std::cosf(scalar);
-
-		switch (type) {
-		case kRotationX:
-			rot.data[0][0] = 1.0f;
-			rot.data[0][1] = 0.0f;
-			rot.data[0][2] = 0.0f;
-			rot.data[1][0] = 0.0f;
-			rot.data[1][1] = cos;
-			rot.data[1][2] = sin;
-			rot.data[2][0] = 0.0f;
-			rot.data[2][1] = -sin;
-			rot.data[2][2] = cos;
-			break;
-		case kRotationY:
-			rot.data[0][0] = cos;
-			rot.data[0][1] = 0.0f;
-			rot.data[0][2] = -sin;
-			rot.data[1][0] = 0.0f;
-			rot.data[1][1] = 1.0f;
-			rot.data[1][2] = 0.0f;
-			rot.data[2][0] = sin;
-			rot.data[2][1] = 0.0f;
-			rot.data[2][2] = cos;
-			break;
-		case kRotationZ:
-			rot.data[0][0] = cos;
-			rot.data[0][1] = sin;
-			rot.data[0][2] = 0.0f;
-			rot.data[1][0] = -sin;
-			rot.data[1][1] = cos;
-			rot.data[1][2] = 0.0f;
-			rot.data[2][0] = 0.0f;
-			rot.data[2][1] = 0.0f;
-			rot.data[2][2] = 1.0f;
-			break;
+		if (cosang > 0.5) {
+			Vector3 v(m.data[1][2] - m.data[2][1], m.data[2][0] - m.data[0][2], m.data[0][1] - m.data[1][0]);
+			double sin2ang = v.Magnitude();
+			if (sin2ang == 0.0)
+				return Vector3();
+			v.Scale(static_cast<float>(std::asin(sin2ang * 0.5) / sin2ang));
+			return v;
 		}
 
-		matrix = rot * matrix;
-	}
-
-	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar) {
-		NiMatrix43 rot;
-
-		float sin = std::sinf(scalar);
-		float cos = std::cosf(scalar);
-
-		switch (type) {
-		case kRotationX:
-			rot.data[0][0] = 1.0f;
-			rot.data[0][1] = 0.0f;
-			rot.data[0][2] = 0.0f;
-			rot.data[1][0] = 0.0f;
-			rot.data[1][1] = cos;
-			rot.data[1][2] = sin;
-			rot.data[2][0] = 0.0f;
-			rot.data[2][1] = -sin;
-			rot.data[2][2] = cos;
-			break;
-		case kRotationY:
-			rot.data[0][0] = cos;
-			rot.data[0][1] = 0.0f;
-			rot.data[0][2] = -sin;
-			rot.data[1][0] = 0.0f;
-			rot.data[1][1] = 1.0f;
-			rot.data[1][2] = 0.0f;
-			rot.data[2][0] = sin;
-			rot.data[2][1] = 0.0f;
-			rot.data[2][2] = cos;
-			break;
-		case kRotationZ:
-			rot.data[0][0] = cos;
-			rot.data[0][1] = sin;
-			rot.data[0][2] = 0.0f;
-			rot.data[1][0] = -sin;
-			rot.data[1][1] = cos;
-			rot.data[1][2] = 0.0f;
-			rot.data[2][0] = 0.0f;
-			rot.data[2][1] = 0.0f;
-			rot.data[2][2] = 1.0f;
-			break;
+		if (cosang > -1) {
+			Vector3 v(m.data[1][2] - m.data[2][1], m.data[2][0] - m.data[0][2], m.data[0][1] - m.data[1][0]);
+			v.Normalize();
+			v.Scale(static_cast<float>(std::acos(cosang)));
+			return v;
 		}
 
-		matrix = matrix * rot;
+		// cosang <= -1, sinang == 0
+		double x = (m.data[0][0] - cosang) * 0.5;
+		double y = (m.data[1][1] - cosang) * 0.5;
+		double z = (m.data[2][2] - cosang) * 0.5;
+
+		// Solve precision issues that would cause NaN
+		if (x < 0.0)
+			x = 0.0;
+		if (y < 0.0)
+			y = 0.0;
+		if (z < 0.0)
+			z = 0.0;
+
+		Vector3 v(static_cast<float>(std::sqrt(x)),
+			static_cast<float>(std::sqrt(y)),
+			static_cast<float>(std::sqrt(z)));
+
+		v.Normalize();
+
+		if (m.data[1][2] < m.data[2][1])
+			v.x = -v.x;
+		if (m.data[2][0] < m.data[0][2])
+			v.y = -v.y;
+		if (m.data[0][1] < m.data[1][0])
+			v.z = -v.z;
+
+		v.Scale(MATH_PI);
+
+		return v;
 	}
+
+	//Conversion from outfit studio rotation vector https://github.com/ousnius/nifly/blob/main/src/Object3d.cpp#L21
+	//NiMatrix43 MatrixFromOutfitStudioVector(NiPoint3& pt)
+	//{
+	//	double angle = std::sqrt(pt.x * pt.x + pt.y * pt.y + pt.z * pt.z);
+	//	double cosang = std::cos(angle);
+	//	double sinang = std::sin(angle);
+	//	double onemcosang = NAN; // One minus cosang
+	//	// Avoid loss of precision from cancellation in calculating onemcosang
+	//	if (cosang > .5)
+	//		onemcosang = sinang * sinang / (1 + cosang);
+	//	else
+	//		onemcosang = 1 - cosang;
+
+	//	Vector3 n = angle != 0.0 ? v / static_cast<float>(angle) : Vector3(1.0f, 0.0f, 0.0f);
+	//	Matrix3 m;
+	//	m[0][0] = n.x * n.x * static_cast<float>(onemcosang) + static_cast<float>(cosang);
+	//	m[1][1] = n.y * n.y * static_cast<float>(onemcosang) + static_cast<float>(cosang);
+	//	m[2][2] = n.z * n.z * static_cast<float>(onemcosang) + static_cast<float>(cosang);
+	//	m[0][1] = n.x * n.y * static_cast<float>(onemcosang) + n.z * static_cast<float>(sinang);
+	//	m[1][0] = n.x * n.y * static_cast<float>(onemcosang) - n.z * static_cast<float>(sinang);
+	//	m[1][2] = n.y * n.z * static_cast<float>(onemcosang) + n.x * static_cast<float>(sinang);
+	//	m[2][1] = n.y * n.z * static_cast<float>(onemcosang) - n.x * static_cast<float>(sinang);
+	//	m[2][0] = n.z * n.x * static_cast<float>(onemcosang) + n.y * static_cast<float>(sinang);
+	//	m[0][2] = n.z * n.x * static_cast<float>(onemcosang) - n.y * static_cast<float>(sinang);
+	//	return m;
+	//}
 }

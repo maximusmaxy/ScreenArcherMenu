@@ -11,7 +11,7 @@ UInt32 GetFormId(std::string modName, std::string idString);
 UInt32 GetModId(UInt32 formId);
 UInt32 GetBaseId(UInt32 formId);
 
-bool TransormIsDefault(NiTransform& transform);
+bool TransformIsDefault(NiTransform& transform);
 bool TransformMapIsDefault(SAF::TransformMap& map);
 
 float Modulo(float a, float b);
@@ -19,3 +19,4 @@ float Modulo(float a, float b);
 std::string toLower(std::string& str);
 std::string getFilename(std::string& path);
 std::string HexToString(UInt32 hex);
+UInt32 ComparePostfix(const char* comparer, UInt32 cLength, const char* postfix, UInt32 pLength);

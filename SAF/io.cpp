@@ -5,9 +5,22 @@
 #include "f4se/GameData.h"
 #include "f4se/NiTypes.h"
 
-#include "adjustments.h"
 #include "util.h"
 #include "conversions.h"
+
+#include "rapidxml/rapidxml.hpp"
+#include "rapidxml/rapidxml_print.hpp"
+using namespace rapidxml;
+
+std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
+std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
+
+std::unordered_map<std::string, UInt32> menuHeaderMap = {
+	{"race", kMenuHeaderRace},
+	{"mod", kMenuHeaderMod},
+	{"sex", kMenuHeaderSex},
+	{"type", kMenuHeaderType},
+};
 
 namespace SAF {
 
@@ -29,35 +42,57 @@ namespace SAF {
 		}
 		return 0.0f;
 	}
-	
-	void InsertOffsetNode(NodeSets* nodeSet, Json::Value& node) {
-		std::string offset = node.asString();
-		std::string offsetFixed = BSFixedString(offset.c_str()).c_str();
-		nodeSet->offsets.insert(offset);
-		nodeSet->all.insert(offset);
-		nodeSet->allOrBase.insert(offsetFixed);
-		nodeSet->fixedConversion[offsetFixed] = offset;
-	}
 
-	void InsertOverrideNode(NodeSets* nodeSet, Json::Value& node, bool pose) {
-		std::string base = node.asString();
-		std::string overrider = base + g_adjustmentManager.overridePostfix;
-		std::string baseFixed = BSFixedString(base.c_str()).c_str();
-		std::string overriderFixed = BSFixedString(overrider.c_str()).c_str();
-		nodeSet->base.insert(base);
-		nodeSet->overrides.insert(overrider);
-		nodeSet->all.insert(overrider);
-		nodeSet->allOrBase.insert(baseFixed);
-		nodeSet->allOrBase.insert(overriderFixed);
-		nodeSet->fixedConversion[baseFixed] = base;
-		nodeSet->fixedConversion[overriderFixed] = overrider;
-		nodeSet->baseMap[overrider] = base;
-		if (pose) {
-			nodeSet->pose.insert(overrider);
+	enum {
+		kNodeTypeOffset = 1,
+		kNodeTypePose
+	};
+
+	//UInt32 GetNodeType(const char* name) {
+	//	if (!name)
+	//		return 0;
+	//	
+	//	if (ComparePostfix(name, offsetPostfix, 7))
+	//	{
+	//		return kNodeTypeOffset;
+	//	}
+
+	//	static const char* posePostfix = "_Pose";
+	//	static const char* overridePostfix = "_Override";
+	//	if (ComparePostfix(name, posePostfix, 5) || ComparePostfix(name, overridePostfix, 9))
+	//	{
+	//		return kNodeTypePose;
+	//	}
+
+	//	return 0;
+	//}
+
+	void InsertNode(NodeSets* nodeSet, const char* name, bool offset)
+	{
+		BSFixedString baseStr(name);
+		BSFixedString offsetStr((name + g_adjustmentManager.offsetPostfix).c_str());
+		
+		NodeKey offsetKey(baseStr, true);
+		nodeSet->offsets.insert(offsetKey);
+		nodeSet->all.insert(offsetKey);
+		nodeSet->nodeKeys.emplace(offsetStr, offsetKey);
+		nodeSet->baseStrings.insert(baseStr);
+		nodeSet->allStrings.insert(offsetStr);
+		
+		//if offset don't insert the pose nodes
+		if (!offset) {
+			NodeKey baseKey(baseStr, false);
+			nodeSet->pose.insert(baseKey);
+			nodeSet->all.insert(baseKey);
+			nodeSet->nodeKeys.emplace(baseStr, baseKey);
+			nodeSet->allStrings.insert(baseStr);
+			nodeSet->baseNodeStrings.insert(baseStr);
 		}
+
+		nodeSet->offsetMap.emplace(baseStr, offsetStr);
 	}
 
-	bool LoadNodeSetsFile(std::string path)
+	bool LoadNodeSetsJson(std::string path)
 	{
 		IFileStream file;
 
@@ -89,15 +124,15 @@ namespace SAF {
 			const char* sex = value["sex"].asCString();
 			bool isFemale = !_stricmp(sex, "female");
 
-			Json::Value pose = value["pose"];
-			Json::Value offsets = value["offsets"];
-			Json::Value overrides = value["overrides"];
-
 			UInt64 key = formId;
 			if (isFemale)
 				key |= 0x100000000;
 
 			NodeSets* nodeSet = &g_adjustmentManager.nodeSets[key];
+
+			Json::Value pose = value["pose"];
+			Json::Value offsets = value["offsets"];
+			Json::Value overrides = value["overrides"];
 
 			//TODO This probably shouldn't be hard coded
 			if (formId == 0x1D698) { //DogmeatRace
@@ -109,19 +144,146 @@ namespace SAF {
 
 			if (!offsets.isNull()) {
 				for (auto& node : offsets) {
-					InsertOffsetNode(nodeSet, node);
+					InsertNode(nodeSet, node.asCString(), true);
 				}
 			}
 
+			//As of Update v1.0 pose/overrides have been combined so just treat them as the same thing for legacy support
 			if (!pose.isNull()) {
 				for (auto& node : pose) {
-					InsertOverrideNode(nodeSet, node, true);
+					InsertNode(nodeSet, node.asCString(), false);
 				}
 			}
-
 			if (!overrides.isNull()) {
 				for (auto& node : overrides) {
-					InsertOverrideNode(nodeSet, node, false);
+					InsertNode(nodeSet, node.asCString(), false);
+				}
+			}
+		}
+		catch (...) {
+			_DMESSAGE("Failed to read ", path);
+			return false;
+		}
+
+		return true;
+	}
+
+	enum {
+		kMenuTypeNodes = 1,
+	};
+
+	std::unordered_map<std::string, UInt32> menuTypeMap = {
+		{"nodes", kMenuTypeNodes},
+	};
+
+	std::unordered_map<std::string, UInt32> nodeTypeMap = {
+		{ "offset", kNodeTypeOffset },
+		{ "pose", kNodeTypePose },
+		{ "override", kNodeTypePose }
+	};
+
+	bool LoadNodeSetsTsv(std::string path)
+	{
+		IFileStream file;
+
+		if (!file.Open(path.c_str())) {
+			_DMESSAGE(path.c_str(), " not found");
+			return false;
+		}
+
+		char buf[512];
+		std::cmatch match;
+		std::string categoryIdentifier = "Category";
+		MenuHeader header;
+		UInt32 categoryIndex = 0;
+		NodeSets* nodeSet = nullptr;
+
+		try {
+			while (!file.HitEOF()) {
+				file.ReadString(buf, 512, '\n', '\r');
+				if (std::regex_search(buf, match, tabOptionalRegex)) {
+					if (match[1].str() == categoryIdentifier) {
+
+						//After reaching the first category, validate the header and either break or continue
+						if (!nodeSet)
+						{
+							if (!header.type)
+							{
+								_DMESSAGE("Failed to read header type", path);
+								return false;
+							}
+
+							UInt32 key = 0;
+
+							key = GetFormId(header.mod, header.race);
+							if (!key)
+							{
+								_DMESSAGE("Failed to read header race or mod", path);
+								return false;
+							}
+							if (header.isFemale)
+								key |= 0x100000000;
+
+							nodeSet = &g_adjustmentManager.nodeSets[key];
+
+							//TODO This probably shouldn't be hard coded
+							if (key == 0x1D698) { //DogmeatRace
+								nodeSet->rootName = BSFixedString("Dogmeat_Root");
+							}
+							else {
+								nodeSet->rootName = BSFixedString("Root");
+							}
+						}
+
+						//set category index
+						std::string lowerNode = toLower(match[2].str());
+						if (nodeTypeMap.count(lowerNode)) {
+							categoryIndex = nodeTypeMap[lowerNode];
+						}
+						else {
+							categoryIndex = 0;
+						}
+					}
+
+					//Continue reading header
+					else if (!nodeSet)
+					{
+						std::string lowerHeader = toLower(match[1].str());
+						if (match[2].str().size() && menuHeaderMap.count(lowerHeader))
+						{
+							switch (menuHeaderMap[lowerHeader])
+							{
+							case kMenuHeaderRace:
+								header.race = match[2].str();
+								break;
+							case kMenuHeaderMod:
+								header.mod = match[2].str();
+								break;
+							case kMenuHeaderSex:
+								header.isFemale = !_stricmp(match[2].str().c_str(), "female");
+								break;
+							case kMenuHeaderType:
+								std::string lowerType = toLower(match[2].str());
+								if (menuTypeMap.count(lowerType)) {
+									header.type = menuTypeMap[lowerType];
+								}
+								break;
+							}
+						}
+					}
+
+					//Add to category
+					else 
+					{
+						switch (categoryIndex) {
+						case kNodeTypeOffset:
+							InsertNode(nodeSet, match[1].str().c_str(), true);
+							break;
+						case kNodeTypePose:
+							InsertNode(nodeSet, match[1].str().c_str(), false);
+							break;
+						}
+					}
 				}
 			}
 		}
@@ -187,49 +349,49 @@ namespace SAF {
 		return true;
 	}
 
-	bool LoadUniqueAdjustmentFile(std::string path) {
-		IFileStream file;
+	//bool LoadUniqueAdjustmentFile(std::string path) {
+	//	IFileStream file;
 
-		if (!file.Open(path.c_str())) {
-			_DMESSAGE(path.c_str(), " not found");
-			return false;
-		}
+	//	if (!file.Open(path.c_str())) {
+	//		_DMESSAGE(path.c_str(), " not found");
+	//		return false;
+	//	}
 
-		std::string actorString;
-		ReadAll(&file, &actorString);
-		file.Close();
+	//	std::string actorString;
+	//	ReadAll(&file, &actorString);
+	//	file.Close();
 
-		Json::Reader reader;
-		Json::Value value;
+	//	Json::Reader reader;
+	//	Json::Value value;
 
-		if (!reader.parse(actorString, value)) {
-			_DMESSAGE("Failed to parse ", path);
-			return false;
-		}
+	//	if (!reader.parse(actorString, value)) {
+	//		_DMESSAGE("Failed to parse ", path);
+	//		return false;
+	//	}
 
-		try {
-			std::string mod = value["mod"].asString();
-			std::string actor = value["actor"].asString();
+	//	try {
+	//		std::string mod = value["mod"].asString();
+	//		std::string actor = value["actor"].asString();
 
-			UInt32 formId = GetFormId(mod, actor);
-			if (!formId) return false;
+	//		UInt32 formId = GetFormId(mod, actor);
+	//		if (!formId) return false;
 
-			Json::Value members = value["adjustments"];
-			std::vector<std::pair<std::string, std::string>> adjustments;
+	//		Json::Value members = value["adjustments"];
+	//		std::vector<std::pair<std::string, std::string>> adjustments;
 
-			for (auto& member : members) {
-				adjustments.push_back(std::make_pair(member.asString(), mod));
-			}
+	//		for (auto& member : members) {
+	//			adjustments.push_back(std::make_pair(member.asString(), mod));
+	//		}
 
-			g_adjustmentManager.uniqueAdjustments[formId] = adjustments;
-		}
-		catch (...) {
-			_DMESSAGE("Failed to read ", path);
-			return false;
-		}
+	//		g_adjustmentManager.uniqueAdjustments[formId] = adjustments;
+	//	}
+	//	catch (...) {
+	//		_DMESSAGE("Failed to read ", path);
+	//		return false;
+	//	}
 
-		return true;
-	}
+	//	return true;
+	//}
 
 	void ReadTransformJson(NiTransform& transform, Json::Value& value, UInt32 version) {
 		transform.pos.x = ReadJsonFloat(value["x"]);
@@ -248,6 +410,9 @@ namespace SAF {
 		case 1:
 			MatrixFromPose(transform.rot, yaw, pitch, roll);
 			break;
+		case 2:
+			MatrixFromEulerYPR2(transform.rot, yaw * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, roll * DEGREE_TO_RADIAN);
+			break;
 		}
 
 		transform.scale = ReadJsonFloat(value["scale"]);
@@ -261,11 +426,17 @@ namespace SAF {
 
 		float yaw, pitch, roll;
 		switch (version) {
-		case 0:
+		case 0: 
 			MatrixToDegree(transform->rot, yaw, pitch, roll);
 			break;
 		case 1:
 			MatrixToPose(transform->rot, yaw, pitch, roll);
+			break;
+		case 2:
+			MatrixToEulerYPR2(transform->rot, yaw, pitch, roll);
+			yaw *= RADIAN_TO_DEGREE;
+			pitch *= RADIAN_TO_DEGREE;
+			roll *= RADIAN_TO_DEGREE;
 			break;
 		}
 
@@ -275,17 +446,30 @@ namespace SAF {
 		WriteJsonFloat(value["scale"], transform->scale, "%.06f");
 	}
 
+	/*
+	* v0 was just a simple key->transform map
+	* The wrong conversion from euler to matrix was being used so we need to add versioning for legacy support
+	*
+	* v1 header/version/name added
+	*/
+
 	bool SaveAdjustmentFile(std::string filename, std::shared_ptr<Adjustment> adjustment) {
 		Json::StyledWriter writer;
 		Json::Value value;
+		value["version"] = 1;
+		value["name"] = getFilename(filename);
 
-		adjustment->ForEachTransform([&](std::string name, NiTransform* transform) {
-			if (!TransormIsDefault(*transform)) {
+		Json::Value transforms(Json::ValueType::objectValue);
+
+		adjustment->ForEachTransform([&](const NodeKey* nodeKey, NiTransform* transform) {
+			if (!TransformIsDefault(*transform)) {
 				Json::Value member;
-				WriteTransformJson(transform, member, 0);
-				value[name] = member;
+				WriteTransformJson(transform, member, 2);
+				transforms[GetNodeKeyName(*nodeKey)] = member;
 			}
 		});
+
+		value["transforms"] = transforms;
 
 		IFileStream file;
 
@@ -306,7 +490,7 @@ namespace SAF {
 		return true;
 	}
 
-	bool LoadAdjustmentFile(std::string filename, TransformMap* map) {
+	bool LoadAdjustmentFile(std::string filename, LoadedAdjustment* adjustment) {
 		IFileStream file;
 
 		std::string path("Data\\F4SE\\Plugins\\SAF\\Adjustments\\");
@@ -331,12 +515,25 @@ namespace SAF {
 		}
 
 		try {
+			//If no version treat as simple key->transform map, else get map from transforms property
+			Json::Value versionValue = value["version"];
+			UInt32 version = versionValue.isNull() ? 0 : versionValue.asInt();
+			adjustment->version = version;
+
+			Json::Value transforms = value["transforms"];
+			if (version == 0 || transforms.isNull())
+				transforms = value;
+
 			Json::Value::Members members = value.getMemberNames();
 
 			for (auto& member : members) {
 				NiTransform transform;
-				ReadTransformJson(transform, value[member], 0);
-				(*map)[member] = transform;
+				//read version 2 if non zero version
+				ReadTransformJson(transform, value[member], (version > 0 ? 2 : 0));
+				NodeKey nodeKey = GetNodeKeyFromString(member.c_str());
+				if (nodeKey.key) {
+					adjustment->map.emplace(nodeKey, transform);
+				}
 			}
 		}
 		catch (...) {
@@ -348,25 +545,27 @@ namespace SAF {
 	}
 
 	/*
-	* Pre V0.5 was just a simple key->transform map
+	* v0 was just a simple key->transform map
 	* There was also a bug causing the output rotations to be transposed, this is fixed in future versions
 	* 
-	* Post 0.5 will now have a header with version numbers in case of updates
+	* V1 header/version/name added
+	* V2 skeleton added for compatibility with the .hkx pose converter
 	*/
 
-	bool SavePoseFile(std::string filename, TransformMap* poseMap) {
+	bool SavePoseFile(std::string filename, TransformMap* poseMap, const char* skeleton) {
 		Json::StyledWriter writer;
 		Json::Value value;
 
-		value["version"] = Json::Value(1);
-		value["name"] = Json::Value(getFilename(filename));
+		value["version"] = 2;
+		value["name"] = getFilename(filename);
+		value["skeleton"] = (skeleton ? skeleton : "Vanilla");
 
 		Json::Value transforms(Json::ValueType::objectValue);
 
 		for (auto& kvp : *poseMap) {
 			Json::Value member;
 			WriteTransformJson(&kvp.second, member, 1);
-			transforms[kvp.first] = member;
+			transforms[GetNodeKeyName(kvp.first)] = member;
 		}
 
 		value["transforms"] = transforms;
@@ -425,7 +624,10 @@ namespace SAF {
 			for (auto& member : members) {
 				NiTransform transform;
 				ReadTransformJson(transform, transforms[member], version);
-				(*poseMap)[member] = transform;
+				NodeKey nodeKey = GetNodeKeyFromString(member.c_str());
+				if (nodeKey.key) {
+					poseMap->emplace(nodeKey, transform);
+				}
 			}
 		}
 		catch (...) {
@@ -436,13 +638,71 @@ namespace SAF {
 		return true;
 	}
 
-	bool LoadPoseFile(std::string filename, TransformMap* poseMap) 
+	bool LoadPoseFile(std::string filename, TransformMap* poseMap)
 	{
 		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
 		path += filename;
 		path += ".json";
 
 		return LoadPosePath(filename, poseMap);
+	}
+
+	bool SaveOutfitStudioXml(std::string filename, TransformMap* poseMap)
+	{
+		IFileStream file;
+
+		std::string path("Data\\tools\\bodyslide\\PoseData\\");
+		path += filename;
+		path += ".xml";
+
+		IFileStream::MakeAllDirs(path.c_str());
+		if (!file.Create(path.c_str())) {
+			_DMESSAGE("Failed to create file ", filename);
+			return false;
+		}
+
+		xml_document<> doc;
+		xml_node<>* declaration = doc.allocate_node(node_declaration);
+		declaration->append_attribute(doc.allocate_attribute("version", "1.0"));
+		declaration->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
+		doc.append_node(declaration);
+		xml_node<>* poseData = doc.allocate_node(node_element, "PoseData");
+		doc.append_node(poseData);
+		xml_node<>* pose = doc.allocate_node(node_element, "Pose");
+		pose->append_attribute(doc.allocate_attribute("name", filename.c_str()));
+		poseData->append_node(pose);
+
+		for (auto& node : *poseMap) {
+			xml_node<>* bone = doc.allocate_node(node_element, "Bone");
+			bone->append_attribute(doc.allocate_attribute("name", doc.allocate_string(GetNodeKeyName(node.first).c_str())));
+
+			Vector3 rot = MatrixToOutfitStudioVector(node.second.rot);
+			bone->append_attribute(doc.allocate_attribute("rotX", doc.allocate_string(std::to_string(rot.x).c_str())));
+			bone->append_attribute(doc.allocate_attribute("rotY", doc.allocate_string(std::to_string(rot.y).c_str())));
+			bone->append_attribute(doc.allocate_attribute("rotZ", doc.allocate_string(std::to_string(rot.z).c_str())));
+
+			bone->append_attribute(doc.allocate_attribute("transX", doc.allocate_string(std::to_string(node.second.pos.x).c_str())));
+			bone->append_attribute(doc.allocate_attribute("transY", doc.allocate_string(std::to_string(node.second.pos.y).c_str())));
+			bone->append_attribute(doc.allocate_attribute("transZ", doc.allocate_string(std::to_string(node.second.pos.z).c_str())));
+
+			bone->append_attribute(doc.allocate_attribute("scale", doc.allocate_string(std::to_string(node.second.scale).c_str())));
+
+			pose->append_node(bone);
+		}
+
+		std::string out;
+		print(std::back_inserter(out), doc, 0);
+
+		try {
+			file.WriteBuf(out.c_str(), out.size() - 1);
+			file.Close();
+		}
+		catch (...) {
+			_DMESSAGE("Failed to write ", path);
+			return false;
+		}
+
+		return true;
 	}
 
 	void LoadSettingsFile(const char* path)
@@ -498,20 +758,29 @@ namespace SAF {
 	void LoadAllFiles() {
 		LoadSettingsFile("Data\\F4SE\\Plugins\\SAF\\settings.json");
 
+		//node set jsons for legacy support
 		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\NodeMaps", "*.json"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();
-			LoadNodeSetsFile(path);
+			LoadNodeSetsJson(path);
 		}
+
+		//node set text files
+		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\NodeMaps", "*.txt"); !iter.Done(); iter.Next())
+		{
+			std::string	path = iter.GetFullPath();
+			LoadNodeSetsTsv(path);
+		}
+
 		//for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\DefaultAdjustments", "*.json"); !iter.Done(); iter.Next())
 		//{
 		//	std::string	path = iter.GetFullPath();
 		//	LoadDefaultAdjustmentFile(path);
 		//}
-		for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Actors", "*.json"); !iter.Done(); iter.Next())
-		{
-			std::string	path = iter.GetFullPath();
-			LoadUniqueAdjustmentFile(path);
-		}
+		//for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Actors", "*.json"); !iter.Done(); iter.Next())
+		//{
+		//	std::string	path = iter.GetFullPath();
+		//	LoadUniqueAdjustmentFile(path);
+		//}
 	}
 }

@@ -14,17 +14,17 @@ private:
 	std::mutex mutex;
 public:
 	std::shared_ptr<SAF::ActorAdjustments> actorAdjustments = nullptr;
-	bool result = false;
+	UInt32 result = 0;
 
 	std::shared_ptr<SAF::ActorAdjustments> GetActorAdjustments(UInt32 formId);
-	bool GetResult();
+	UInt32 GetResult();
 
 	void (*createAdjustment)(UInt32 formId, const char* name);
 	void (*saveAdjustment)(UInt32 formId, const char* filename, UInt32 handle);
 	void (*loadAdjustment)(UInt32 formId, const char* filename);
 	void (*removeAdjustment)(UInt32 formId, UInt32 handle);
 	void (*resetAdjustment)(UInt32 formId, UInt32 handle);
-	void (*transformAdjustment)(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c);
+	void (*transformAdjustment)(UInt32 formId, UInt32 handle, const SAF::NodeKey nodeKey, UInt32 type, float a, float b, float c);
 	void (*createActorAdjustments)(UInt32 formId);
 	void (*negateAdjustments)(UInt32 formId, UInt32 handle, const char* group);
 	void (*loadPose)(UInt32 formId, const char* filename);
@@ -32,6 +32,7 @@ public:
 	void (*loadDefaultAdjustment)(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
 	void (*moveAdjustment)(UInt32 formId, UInt32 from, UInt32 to);
 	void (*renameAdjustment)(UInt32 formId, UInt32 handle, const char* name);
+	void (*loadTongueAdjustment)(UInt32 formId, SAF::TransformMap* transforms);
 };
 
 extern SafMessageDispatcher safMessageDispatcher;
@@ -66,13 +67,14 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex);
 void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, int nodeIndex, int adjustmentHandle);
 
 void GetPoseListGFx(GFxMovieRoot* rot, GFxValue* result);
-void SaveJsonPose(const char* filename, GFxValue selectedHandles);
+void SaveJsonPose(const char* filename, GFxValue selectedHandles, int exportType);
 bool LoadJsonPose(const char* filename);
 void ResetJsonPose();
 
-void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race);
-void LoadDefaultAdjustment(const char* filename, bool npc, bool clear, bool enable);
+void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race);
+void LoadSkeletonAdjustment(const char* filename, bool npc, bool clear, bool enable);
 
 void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int scalar);
 
 void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path);
+void GetPoseExportTypesGFx(GFxMovieRoot* root, GFxValue* result);

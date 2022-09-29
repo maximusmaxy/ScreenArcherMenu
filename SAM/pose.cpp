@@ -36,9 +36,9 @@ std::shared_ptr<ActorAdjustments> SafMessageDispatcher::GetActorAdjustments(UInt
 	return adjustments;
 }
 
-bool SafMessageDispatcher::GetResult() {
-	bool _result = result;
-	result = false;
+UInt32 SafMessageDispatcher::GetResult() {
+	UInt32 _result = result;
+	result = 0;
 	return _result;
 }
 
@@ -57,8 +57,11 @@ void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformPosition, x, y, z);
-	adjustments->UpdateAdjustments(key);
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+	if (nodeKey.key) {
+		safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformPosition, x, y, z);
+		adjustments->UpdateNode(nodeKey.name);
+	}
 }
 
 void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float yaw, float pitch, float roll) {
@@ -68,9 +71,11 @@ void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float yaw, float
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformRotation, yaw, pitch, roll);
-		
-	adjustments->UpdateAdjustments(key);
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+	if (nodeKey.key) {
+		safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformRotation, yaw, pitch, roll);
+		adjustments->UpdateNode(nodeKey.name);
+	}
 }
 
 void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale) {
@@ -80,8 +85,11 @@ void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale) {
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformScale, scale, 0, 0);
-	adjustments->UpdateAdjustments(key);
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+	if (nodeKey.key) {
+		safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformScale, scale, 0, 0);
+		adjustments->UpdateNode(nodeKey.name);
+	}
 }
 
 void ResetAdjustmentTransform(const char* key, int adjustmentHandle) {
@@ -91,8 +99,11 @@ void ResetAdjustmentTransform(const char* key, int adjustmentHandle) {
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformReset, 0, 0, 0);
-	adjustments->UpdateAdjustments(key);
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+	if (nodeKey.key) {
+		safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformReset, 0, 0, 0);
+		adjustments->UpdateNode(nodeKey.name);
+	}
 }
 
 void NegateTransform(const char* key, UInt32 adjustmentHandle) {
@@ -102,8 +113,11 @@ void NegateTransform(const char* key, UInt32 adjustmentHandle) {
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformNegate, 0, 0, 0);
-	adjustments->UpdateAdjustments(key);
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+	if (nodeKey.key) {
+		safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformNegate, 0, 0, 0);
+		adjustments->UpdateNode(nodeKey.name);
+	}
 }
 
 void SaveAdjustmentFile(const char* filename, int adjustmentHandle) {
@@ -169,8 +183,8 @@ void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
 	for (auto it = groupsMenu->begin(); it < groupsMenu->end(); it++) {
 		if (it->first == adjustmentGroup) {
 			for (auto& kvp : it->second) {
-				std::string key = kvp.second + safAdjustmentManager->overridePostfix;
-				safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key.c_str(), kAdjustmentTransformNegate, 0, 0, 0);
+				safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle,
+					NodeKey(BSFixedString(kvp.second.c_str()), false), kAdjustmentTransformNegate, 0, 0, 0);
 			}
 		}
 	}
@@ -225,18 +239,18 @@ bool NiAVObjectVisitAll(NiAVObject* root, const std::function<bool(NiAVObject*)>
 	return false;
 }
 
-std::vector<NiAVObject*> FindAdjustableChildren(NiAVObject* root, NodeSet* set) {
-	std::vector<NiAVObject*> nodes;
-	NiAVObjectVisitAll(root, [&](NiAVObject* object) {
-		std::string nodeName(object->m_name.c_str());
-		if (set->count(nodeName)) {
-			nodes.push_back(object);
-			return true;
-		}
-		return false;
-		});
-	return nodes;
-}
+//std::vector<NiAVObject*> FindAdjustableChildren(NiAVObject* root, NodeSet* set) {
+//	std::vector<NiAVObject*> nodes;
+//	NiAVObjectVisitAll(root, [&](NiAVObject* object) {
+//		BSFixedString nodeName(object->m_name.c_str());
+//		if (set->count(nodeName)) {
+//			nodes.push_back(object);
+//			return true;
+//		}
+//		return false;
+//	});
+//	return nodes;
+//}
 
 void SetScale(UInt32 adjustmentHandle, int scale)
 {
@@ -289,7 +303,8 @@ MenuCategoryList* GetAdjustmentMenu()
 	if (!adjustments || !adjustments->nodeSets) return nullptr;
 	
 	MenuList list;
-	for (auto& name : adjustments->nodeSets->all) {
+	for (auto& nodeKey : adjustments->nodeSets->all) {
+		std::string name = GetNodeKeyName(nodeKey);
 		list.push_back(std::make_pair(name, name));
 	}
 
@@ -330,7 +345,7 @@ void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result)
 bool CheckMenuHasNode(std::shared_ptr<ActorAdjustments> adjustments, MenuList& list)
 {
 	for (auto& kvp : list) {
-		if (adjustments->HasNode(kvp.second)) return true;
+		if (adjustments->HasNode(kvp.second.c_str())) return true;
 	}
 	return false;
 }
@@ -395,7 +410,7 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 	int size = category->size();
 	for (SInt32 i = 0; i < size; ++i)
 	{
-		if (adjustments->HasNode((*category)[i].second)) {
+		if (adjustments->HasNode((*category)[i].second.c_str())) {
 			GFxValue node((*category)[i].first.c_str());
 			names.PushBack(&node);
 			GFxValue index(i);
@@ -406,12 +421,13 @@ void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex)
 
 void PushBackTransformGFx(GFxValue* result, NiTransform& transform) {
 	float yaw, pitch, roll;
-	MatrixToDegree(transform.rot, yaw, pitch, roll);
+	//MatrixToDegree(transform.rot, yaw, pitch, roll);
 	//MatrixToEulerRPY(transform.rot, roll, pitch, yaw);
+	MatrixToEulerYPR2(transform.rot, yaw, pitch, roll);
 
-	GFxValue rx(yaw);
-	GFxValue ry(pitch);
-	GFxValue rz(roll);
+	GFxValue rx(yaw * RADIAN_TO_DEGREE);
+	GFxValue ry(pitch * RADIAN_TO_DEGREE);
+	GFxValue rz(roll * RADIAN_TO_DEGREE);
 	result->PushBack(&rx);
 	result->PushBack(&ry);
 	result->PushBack(&rz);
@@ -437,14 +453,16 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, in
 
 	if (!categories || categoryIndex >= categories->size() || nodeIndex >= (*categories)[categoryIndex].second.size()) return;
 
-	std::string name = (*categories)[categoryIndex].second[nodeIndex].second;
-
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	NiTransform transform = adjustment->GetTransformOrDefault(name);
+	std::string name = (*categories)[categoryIndex].second[nodeIndex].second;
+
+	NodeKey nodeKey = GetNodeKeyFromString(name.c_str());
+
+	NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
 
 	PushBackTransformGFx(result, transform);
 
@@ -485,23 +503,52 @@ void GetPoseListGFx(GFxMovieRoot* root, GFxValue* result)
 	result->SetMember("handles", &handles);
 }
 
-void SaveJsonPose(const char* filename, GFxValue selectedAdjustments)
+void SaveJsonPose(const char* filename, GFxValue selectedAdjustments, int exportType)
 {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	std::unordered_set<UInt32> handles;
+	auto menu = GetMenu(&exportMenuCache);
+
+	//+2 for All/Outfit Studio
+	if (exportType < 0 || exportType > menu->size() + 1)
+		return;
+
+	std::string exportPath = "Exports\\" + std::string(filename);
+
+	ExportSkeleton exports;
+
 	UInt32 size = selectedAdjustments.GetArraySize();
 	for (int i = 0; i < size; ++i) {
 		GFxValue handle;
 		selectedAdjustments.GetElement(i, &handle);
-		handles.insert(handle.GetUInt());
+		exports.handles.insert(handle.GetUInt());
 	}
 
-	std::string exportPath = "Exports\\" + std::string(filename);
+	//menu size +1 = Outfit Studio Xml
+	if (exportType == menu->size() + 1) 
+	{
+		adjustments->SaveOutfitStudioPose(filename, &exports);
+		return;
+	}
 
-	adjustments->SavePose(exportPath, handles);
+	NodeSet nodeSet;
+
+	//Types out of range will be considered as exporting all
+	if (exportType < menu->size()) 
+	{
+		for (auto& node : (*menu)[exportType].second) {
+			nodeSet.insert(NodeKey(BSFixedString(node.second.c_str()), false));
+		}
+		exports.nodes = &nodeSet;
+		exports.skeleton = (*menu)[exportType].first.c_str();
+	}
+	else {
+		exports.nodes = nullptr;
+	}
+
+	adjustments->SavePose(exportPath, &exports);
 }
 
 bool LoadJsonPose(const char* filename)
@@ -530,7 +577,7 @@ void ResetJsonPose()
 	adjustments->UpdateAllAdjustments();
 }
 
-void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
+void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
 {
 	root->CreateObject(result);
 
@@ -563,7 +610,7 @@ void GetDefaultAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
 	}
 }
 
-void LoadDefaultAdjustment(const char* filename, bool race, bool clear, bool enable)
+void LoadSkeletonAdjustment(const char* filename, bool race, bool clear, bool enable)
 {
 	if (!selected.refr) return;
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
@@ -588,11 +635,13 @@ void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, 
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, key, kAdjustmentTransformRotate, type, dif * 0.01, 0);
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+	if (nodeKey.key) {
+		safMessageDispatcher.transformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformRotate, type, dif * 0.01, 0);
+		adjustments->UpdateNode(nodeKey.name);
+	}
 
-	adjustments->UpdateAdjustments(key);
-
-	NiTransform transform = adjustment->GetTransformOrDefault(key);
+	NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
 
 	PushBackTransformGFx(result, transform);
 }
@@ -662,4 +711,18 @@ void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path) {
 
 		result->PushBack(&value);
 	}
+}
+
+void GetPoseExportTypesGFx(GFxMovieRoot* root, GFxValue* result)
+{
+	root->CreateArray(result);
+
+	auto menu = GetMenu(&exportMenuCache);
+	for (auto& category : *menu) 
+	{
+		result->PushBack(&GFxValue(category.first.c_str()));
+	}
+
+	result->PushBack(&GFxValue("All"));
+	result->PushBack(&GFxValue("Outfit Studio"));
 }

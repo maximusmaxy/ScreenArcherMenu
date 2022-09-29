@@ -127,7 +127,7 @@
       <AdditionalOptions>/VERBOSE %(AdditionalOptions)</AdditionalOptions>
       <FunctionOrder>
       </FunctionOrder>
-      <OptimizeReferences>true</OptimizeReferences>
+      <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
     </Link>
   </ItemDefinitionGroup>

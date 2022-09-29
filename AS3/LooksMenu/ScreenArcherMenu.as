@@ -62,6 +62,8 @@
 		public static const RENAMELIGHT_STATE:int = 33;
 		public static const LIGHTSETTINGS_STATE:int = 34;
 		public static const RACEADJUSTMENT_STATE:int = 35;
+		public static const POSEEXPORTTYPE_STATE:int = 36;
+		public static const MORPHTONGUE_STATE:int = 37;
 		
 		//Error checks
 		public static const NO_CHECK = 0;
@@ -154,7 +156,7 @@
 				check: SKELETON_CHECK
 			},
 			{
-				state: POSEEXPORT_STATE,
+				state: POSEEXPORTTYPE_STATE,
 				check: SKELETON_CHECK
 			},
 			{
@@ -713,6 +715,10 @@
 					Data.getPoseList();
 					sliderList.updateCheckboxes(selectPose);
 					break;
+				case POSEEXPORTTYPE_STATE:
+					Data.loadPoseExport();
+					sliderList.updateList(selectExportType);
+					break;
 				case POSEPLAY_STATE:
 					Data.loadSamPoses();
 					sliderList.updateFolder(selectPosePlay);
@@ -723,7 +729,7 @@
 					sliderList.updateList(selectPoseFile);
 					break;
 				case SKELETONADJUSTMENT_STATE:
-					Data.getSkeletonAdjustments();
+					Data.getSkeletonAdjustments(false);
 					if (multi) {
 						sliderList.updateCheckboxes(selectSkeletonAdjustment);
 					} else {
@@ -731,7 +737,7 @@
 					}
 					break;
 				case RACEADJUSTMENT_STATE:
-					Data.getSkeletonAdjustments();
+					Data.getSkeletonAdjustments(true);
 					if (multi) {
 						sliderList.updateCheckboxes(selectRaceAdjustment);
 					} else {
@@ -776,6 +782,10 @@
 				case LIGHTSETTINGS_STATE:
 					Data.loadLightSettings();
 					sliderList.updateLightSettings(selectLightSettings);
+					break;
+				case MORPHTONGUE_STATE:
+					Data.menuOptions = Data.TONGUEBONES_NAMES;
+					sliderList.updateList(selectMorphTongue);
 					break;
 			}
 			sliderList.updateSelected(currentState.x, currentState.y);
@@ -895,7 +905,12 @@
 		public function selectMorphCategory(id:int):void
 		{
 			Data.selectedCategory = id;
-			pushState(MORPH_STATE);
+			//If selected tongue bones
+			if (id == Data.menuOptions.length - 1) {
+				pushState(MORPHTONGUE_STATE);
+			} else {
+				pushState(MORPH_STATE);
+			}
 		}
 		
 		public function selectMorph(id:int, value:Number):void
@@ -1019,6 +1034,12 @@
 			Data.menuValues[id] = enabled;
 		}
 		
+		internal function selectPoseExport(id:int)
+		{
+			Data.selectedCategory = id;
+			pushState(POSEEXPORT_STATE);
+		}
+		
 		internal function selectPoseFile(id:int)
 		{
 			Data.loadPose(id);
@@ -1139,6 +1160,18 @@
 			} else { //delete all
 				Data.deleteAllLights();
 			}
+		}
+		
+		internal function selectExportType(id:int)
+		{
+			Data.selectedCategory = id;
+			pushState(POSEEXPORT_STATE);
+		}
+		
+		internal function selectMorphTongue(id:int)
+		{
+			Data.getMorphsTongue(id);
+			pushState(TRANSFORM_STATE);
 		}
 
 		internal function resetButton():void

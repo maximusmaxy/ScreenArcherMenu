@@ -100,6 +100,10 @@ GFxFunction(ResetMorphs, {
 	ResetMfg();
 });
 
+GFxFunction(GetMorphsTongue, {
+	GetMorphsTongueGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
+});
+
 GFxFunction(SamPlaySound, {
 	PlayUISound(args->args[0].GetString());
 });
@@ -277,7 +281,7 @@ GFxFunction(GetPoseList, {
 });
 
 GFxFunction(SavePose, {
-	SaveJsonPose(args->args[0].GetString(), args->args[1]);
+	SaveJsonPose(args->args[0].GetString(), args->args[1], args->args[2].GetUInt());
 });
 
 GFxFunction(LoadPose, {
@@ -301,15 +305,15 @@ public:
 };
 
 GFxFunction(GetSkeletonAdjustments, {
-	GetDefaultAdjustmentsGFx(args->movie->movieRoot, args->result, args->args[0].GetBool());
+	GetSkeletonAdjustmentsGFx(args->movie->movieRoot, args->result, args->args[0].GetBool());
 });
 
 GFxFunction(LoadSkeletonAdjustment, {
-	LoadDefaultAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool(), args->args[3].GetBool());
+	LoadSkeletonAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool(), args->args[3].GetBool());
 });
 
 GFxFunction(ResetSkeletonAdjustment, {
-	LoadDefaultAdjustment(nullptr, args->args[0].GetBool(), true, false);
+	LoadSkeletonAdjustment(nullptr, args->args[0].GetBool(), true, false);
 });
 
 GFxFunction(GetPositioning, {
@@ -469,8 +473,52 @@ GFxFunction(LoadLights, {
 	LoadLightsJson(args->args[0].GetString());
 });
 
-GFxFunction(Test, {
+GFxFunction(GetPoseExportTypes, {
+	GetPoseExportTypesGFx(args->movie->movieRoot, args->result);
+});
+
+void testFunc() {
+	auto adjustments = safAdjustmentManager->GetActorAdjustments(*g_player);
+	NiTransform s1 = (*adjustments->baseMap)[BSFixedString("SPINE1")]->m_localTransform;
+	NiTransform s2 = (*adjustments->baseMap)[BSFixedString("SPINE2")]->m_localTransform;
 	
+}
+
+void testFunc2() {
+	auto adjustments = safAdjustmentManager->GetActorAdjustments(*g_player);
+	NiTransform t = (*adjustments->baseMap)[BSFixedString("SPINE2")]->m_localTransform;
+
+	NiTransform offset;
+	offset.pos = NiPoint3(2, 0, 0);
+	offset.scale = 1.0f;
+	SAF::MatrixFromEulerYPR2(offset.rot, 0, 0, 45 * SAF::DEGREE_TO_RADIAN);
+	NiTransform pose;
+	pose.pos = NiPoint3(10.673931, -0.349279, 0);
+	pose.scale = 1.0f;
+	SAF::MatrixFromEulerYPR2(pose.rot, 0, 0, 34.94 * SAF::DEGREE_TO_RADIAN);
+	NiTransform negation;
+	negation.pos = NiPoint3(-8.570897, -1.520177, 0);
+	negation.scale = 1.0f;
+	SAF::MatrixFromEulerYPR2(negation.rot, 0, 0, 10.06 * SAF::DEGREE_TO_RADIAN);
+
+	float x, y, z;
+	NiTransform result = SAF::MultiplyNiTransform(offset, pose);
+	SAF::MatrixToEulerYPR2(result.rot, x, y, z);
+	x *= SAF::RADIAN_TO_DEGREE;
+	y *= SAF::RADIAN_TO_DEGREE;
+	z *= SAF::RADIAN_TO_DEGREE;
+
+	NiTransform result2 = SAF::MultiplyNiTransform(result, negation);
+	SAF::MatrixToEulerYPR2(result2.rot, x, y, z);
+	x *= SAF::RADIAN_TO_DEGREE;
+	y *= SAF::RADIAN_TO_DEGREE;
+	z *= SAF::RADIAN_TO_DEGREE;
+
+	_DMESSAGE("lol");
+}
+
+GFxFunction(Test, {
+	testFunc();
 });
 
 GFxFunction(Test2, {
@@ -492,6 +540,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(SaveMorphsPreset);
 	GFxRegister(LoadMorphsPreset);
 	GFxRegister(ResetMorphs);
+	GFxRegister(GetMorphsTongue);
 	GFxRegister(SamPlaySound);
 	GFxRegister(SamOpenMenu);
 	GFxRegister(SamCloseMenu);
@@ -575,6 +624,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(DeleteAllLights);
 	GFxRegister(SaveLights);
 	GFxRegister(LoadLights);
+	GFxRegister(GetPoseExportTypes);
 	GFxRegister(Test);
 	GFxRegister(Test2);
 

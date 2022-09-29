@@ -10,6 +10,7 @@
 
 #include "json.h"
 #include "strnatcmp.h"
+#include "SAF/io.h"
 
 #include <unordered_map>
 #include <regex>
@@ -23,8 +24,7 @@
 //	virtual void	Invoke(Args* args) override final;
 //};
 
-extern std::regex tabSeperatedRegex;
-extern std::regex tabOptionalRegex;
+
 
 class SelectedRefr {
 public:
@@ -56,14 +56,11 @@ public:
 
 extern SavedMenuData saveData;
 
-typedef std::vector<std::pair<std::string, std::string>> MenuList;
-typedef std::vector<std::pair<std::string, MenuList>> MenuCategoryList;
-typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
-
 extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 extern MenuCache groupsMenuCache;
 extern MenuCategoryList lightsMenuCache;
+extern MenuCache exportMenuCache;
 
 struct NaturalSort {
 	bool operator()(const std::string& a, const std::string& b) const;

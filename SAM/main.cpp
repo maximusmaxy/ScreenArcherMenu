@@ -104,7 +104,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 		safMessageDispatcher.actorAdjustments = *(std::shared_ptr<SAF::ActorAdjustments>*)msg->data;
 		break;
 	case SAF::kSafResult:
-		safMessageDispatcher.result = *(bool*)msg->data;
+		safMessageDispatcher.result = *(UInt32*)msg->data;
 		break;
 	}
 }
@@ -135,8 +135,8 @@ void SafResetAdjustment(UInt32 formId, UInt32 handle) {
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentReset, &message, sizeof(uintptr_t), "SAF");
 }
 
-void SafTransformAdjustment(UInt32 formId, UInt32 handle, const char* key, UInt32 type, float a, float b, float c) {
-	SAF::AdjustmentTransformMessage message{ formId, handle, key, type, a, b, c };
+void SafTransformAdjustment(UInt32 formId, UInt32 handle, const SAF::NodeKey nodeKey, UInt32 type, float a, float b, float c) {
+	SAF::AdjustmentTransformMessage message{ formId, handle, nodeKey, type, a, b, c };
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTransform, &message, sizeof(uintptr_t), "SAF");
 }
 
@@ -175,6 +175,11 @@ void SafRenameAdjustment(UInt32 formId, UInt32 handle, const char* name) {
 	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentRename, &message, sizeof(uintptr_t), "SAF");
 }
 
+void SafLoadTongueAdjustment(UInt32 formId, SAF::TransformMap* transforms) {
+	SAF::TransformMapMessage message{ formId, transforms };
+	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTongue, &message, sizeof(uintptr_t), "SAF");
+}
+
 void RegisterSafMessageDispatcher()
 {
 	g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
@@ -191,6 +196,7 @@ void RegisterSafMessageDispatcher()
 	safMessageDispatcher.loadDefaultAdjustment = SafLoadDefaultAdjustment;
 	safMessageDispatcher.moveAdjustment = SafMoveAdjustment;
 	safMessageDispatcher.renameAdjustment = SafRenameAdjustment;
+	safMessageDispatcher.loadTongueAdjustment = SafLoadTongueAdjustment;
 }
 
 void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)

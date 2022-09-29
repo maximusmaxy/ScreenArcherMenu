@@ -77,7 +77,8 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentCreate:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp);
+		UInt32 result = SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp);
+		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
 	case SAF::kSafAdjustmentSave:
@@ -89,7 +90,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafAdjustmentLoad:
 	{
 		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		bool result = SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp);
+		UInt32 result = SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp);
 		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
@@ -127,7 +128,7 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafPoseLoad:
 	{
 		auto data = (SAF::PoseMessage*)msg->data;
-		bool result = SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
+		UInt32 result = SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
 		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
@@ -140,13 +141,13 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	case SAF::kSafDefaultAdjustmentLoad:
 	{
 		auto data = (SAF::SkeletonMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadDefaultAdjustment(data->raceId, data->isFemale, data->filename, data->npc, data->clear, data->enable);
+		SAF::g_adjustmentManager.LoadRaceAdjustment(data->raceId, data->isFemale, data->filename, data->npc, data->clear, data->enable);
 		break;
 	}
 	case SAF::kSafAdjustmentMove:
 	{
 		auto data = (SAF::MoveMessage*)msg->data;
-		bool result = SAF::g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
+		UInt32 result = SAF::g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
 		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
 		break;
 	}
@@ -154,6 +155,12 @@ void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		auto data = (SAF::AdjustmentSaveMessage*)msg->data;
 		SAF::g_adjustmentManager.RenameAdjustment(data->formId, data->handle, data->filename);
+		break;
+	}
+	case SAF::kSafAdjustmentTongue:
+	{
+		auto data = (SAF::TransformMapMessage*)msg->data;
+		SAF::g_adjustmentManager.LoadTongueAdjustment(data->formId, data->transforms);
 		break;
 	}
 	}

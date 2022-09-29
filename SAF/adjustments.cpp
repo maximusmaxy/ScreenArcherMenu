@@ -3,10 +3,11 @@
 #include "f4se/GameData.h"
 #include "f4se/GameRTTI.h"
 #include "f4se/GameTypes.h"
+#include "f4se/NiExtraData.h"
 
-#include "io.h"
 #include "util.h"
 #include "conversions.h"
+#include "io.h"
 
 #include <algorithm>
 #include <mutex>
@@ -14,116 +15,192 @@
 #include <filesystem>
 
 namespace SAF {
-
 	AdjustmentManager g_adjustmentManager;
 
 	RelocAddr<GetBaseModelRootNode> getBaseModelRootNode(0x323BB0);
 	RelocAddr<GetRefrModelFilename> getRefrModelFilename(0x408360);
 
-	NiTransform Adjustment::GetTransform(std::string name)
+#define NodeKeyBufferSize 256
+#define NodeOffsetPostfix "_Offset"
+#define NodePosePostfix "_Pose"
+#define NodeOverridePostfix "_Override"
+
+	const NodeKey GetNodeKeyFromString(const char* str)
+	{
+		if (!str)
+			return NodeKey();
+
+		UInt32 length = strlen(str);
+
+		if (!length)
+			return NodeKey();
+
+		UInt32 offsetLength = ComparePostfix(str, length, NodeOffsetPostfix, 7);
+		if (offsetLength)
+		{
+			if (offsetLength > NodeKeyBufferSize) {
+				_DMESSAGE("Node name too long", str);
+				return NodeKey();
+			}
+			char buf[NodeKeyBufferSize];
+			memcpy(buf, str, offsetLength);
+			buf[offsetLength] = '\0';
+			return NodeKey(BSFixedString(buf), true);
+		}
+
+		//Check for both pose/override for legacy support
+		UInt32 poseLength = ComparePostfix(str, length, NodePosePostfix, 5);
+		if (!poseLength) {
+			poseLength = ComparePostfix(str, length, NodeOverridePostfix, 9);
+		}
+		if (poseLength)
+		{
+			if (poseLength > NodeKeyBufferSize) {
+				_DMESSAGE("Node name too long", str);
+				return NodeKey();
+			}
+			char buf[NodeKeyBufferSize];
+			memcpy(buf, str, poseLength);
+			buf[poseLength] = '\0';
+			return NodeKey(BSFixedString(buf), false);
+		}
+
+		return NodeKey(BSFixedString(str), false);
+	}
+
+	std::string GetNodeKeyName(const NodeKey& nodeKey)
+	{
+		std::string str(nodeKey.name);
+		if (nodeKey.offset) {
+			str += g_adjustmentManager.offsetPostfix;
+		}
+		return str;
+	}
+
+	NiTransform* GetFromTransformMap(TransformMap& map, const NodeKey& key) {
+		auto found = map.find(key);
+		if (found == map.end())
+			return nullptr;
+		return &found->second;
+	}
+
+	BSFixedString* GetFromBSFixedStringMap(BSFixedStringMap& map, const BSFixedString& key) {
+		auto found = map.find(key);
+		if (found == map.end())
+			return nullptr;
+		return &found->second;
+	}
+
+	NiAVObject* GetFromNodeMap(NodeMap& map, const BSFixedString& key) {
+		auto found = map.find(key);
+		if (found == map.end())
+			return nullptr;
+		return found->second;
+	}
+
+	NiTransform* Adjustment::GetTransform(const NodeKey& key)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
-		return map[name];
+		return GetFromTransformMap(map, key);
 	}
 
-	NiTransform Adjustment::GetTransformOrDefault(std::string name)
+	NiTransform Adjustment::GetTransformOrDefault(const NodeKey& key)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
-		if (map.count(name))
-			return map[name];
-		return TransformIdentity();
+		auto found = map.find(key);
+		return found != map.end() ? found->second : TransformIdentity();
 	}
 
-	void Adjustment::SetTransform(std::string name, NiTransform transform)
+	void Adjustment::SetTransform(const NodeKey& key, NiTransform& transform)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
-		map[name] = transform;
+		map[key] = transform;
 	}
 
-	bool Adjustment::HasTransform(std::string name) {
+	bool Adjustment::HasTransform(const NodeKey& key)
+	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
-		return map.count(name);
+		return map.count(key);
 	}
 
-	void Adjustment::ResetTransform(std::string name)
+	void Adjustment::ResetTransform(const NodeKey& key)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+		
+		NiTransform* transform = GetFromTransformMap(map, key);
+		if (transform) {
+			*transform = TransformIdentity();
+			updated = true;
+		}
+	}
+
+	void Adjustment::SetTransformPos(const NodeKey& key, float x, float y, float z)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform def = TransformIdentity();
-		map[name] = def;
-
-		updated = true;
-	}
-
-	void Adjustment::SetTransformPos(std::string name, float x, float y, float z)
-	{
-		std::lock_guard<std::shared_mutex> lock(mutex);
-
-		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
+		auto found = map.find(key);
+		NiTransform transform = found != map.end() ? found->second: TransformIdentity();
 
 		transform.pos.x = x;
 		transform.pos.y = y;
 		transform.pos.z = z;
 
-		map[name] = transform;
+		map[key] = transform;
 
 		updated = true;
 	}
 
-	void Adjustment::SetTransformRot(std::string name, float yaw, float pitch, float roll)
+	void Adjustment::SetTransformRot(const NodeKey& key, float yaw, float pitch, float roll)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
+		auto found = map.find(key);
+		NiTransform transform = found != map.end() ? found->second : TransformIdentity();
 
 		//MatrixFromEulerRPY(transform.rot, roll * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, yaw * DEGREE_TO_RADIAN);
-		MatrixFromDegree(transform.rot, yaw, pitch, roll);
+		//MatrixFromDegree(transform.rot, yaw, pitch, roll);
+		MatrixFromEulerYPR2(transform.rot, yaw * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, roll * DEGREE_TO_RADIAN);
 
-		map[name] = transform;
+		map[key] = transform;
 
 		updated = true;
 	}
 
-	void Adjustment::SetTransformSca(std::string name, float scale)
+	void Adjustment::SetTransformSca(const NodeKey& key, float scale)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
+		auto found = map.find(key);
+		NiTransform transform = found != map.end() ? found->second : TransformIdentity();
 
 		transform.scale = scale;
-		map[name] = transform;
+		map[key] = transform;
 
 		updated = true;
 	}
 
-	NiTransform Adjustment::GetScaledTransform(std::string name, float scalar)
-	{
-		std::lock_guard<std::shared_mutex> lock(mutex);
-
-		return SlerpNiTransform(map[name], scalar);
-	}
-
-	void Adjustment::ForEachTransform(const std::function<void(std::string, NiTransform*)>& functor)
+	void Adjustment::ForEachTransform(const std::function<void(const NodeKey*, NiTransform*)>& functor)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 		for (auto& transform : map) {
-			functor(transform.first, &transform.second);
+			functor(&transform.first, &transform.second);
 		}
 	}
 	
-	void Adjustment::ForEachTransformOrDefault(const std::function<void(std::string, NiTransform*)>& functor, NodeSet* set)
+	void Adjustment::ForEachTransformOrDefault(const std::function<void(const NodeKey*, NiTransform*)>& functor, NodeSet* set)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 		for (auto& nodeName : *set) {
-			NiTransform transform = map.count(name) ? map[name] : TransformIdentity();
-			functor(nodeName, &transform);
+			auto found = map.find(nodeName);
+			NiTransform transform = found != map.end() ? found->second : TransformIdentity();
+			functor(&nodeName, &transform);
 		}
 	}
 
-	TransformMap Adjustment::GetMap()
+	TransformMap* Adjustment::GetMap()
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
-		return map;
+		return &map;
 	}
 
 	void Adjustment::SetMap(TransformMap newMap)
@@ -140,7 +217,7 @@ namespace SAF {
 
 		for (auto& kvp : *newMap) {
 			if (set->count(kvp.first)) {
-				map[kvp.first] = kvp.second;
+				map.emplace(kvp);
 			}
 		}
 	}
@@ -166,7 +243,7 @@ namespace SAF {
 	void Adjustment::Clear()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
-
+		
 		map.clear();
 	}
 
@@ -231,44 +308,126 @@ namespace SAF {
 		list.clear();
 		removedAdjustments.clear();
 		poseHandle = 0;
+		tongueHandle = 0;
 	}
 
-	void ActorAdjustments::UpdateAdjustments(std::string name)
+	NiTransform ActorAdjustments::GetOffsetTransform(BSFixedString name)
 	{
-		std::lock_guard<std::shared_mutex> lock(mutex);
+		NiTransform result = TransformIdentity();
 
-		if (!nodeMap.count(name)) return;
-		NiAVObject* node = nodeMap[name];
-		if (!nodeMapBase->count(name)) return;
-		NiAVObject* baseNode = (*nodeMapBase)[name];
-
-		NiTransform transform = baseNode->m_localTransform;
-
-		for (auto& adjustment : list) {
-			if (adjustment->HasTransform(name)) {
-				NiTransform adjust = adjustment->scale == 1.0f ? adjustment->GetTransform(name) :
-					adjustment->GetScaledTransform(name, adjustment->scale);
-				transform = transform * adjust;
+		for (auto& adjustment : list)
+		{
+			NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
+			if (offset) {
+				if (adjustment->scale == 1.0f) {
+					result = result * *offset;
+				}
+				else {
+					result = result * SlerpNiTransform(*offset, adjustment->scale);
+				}
 			}
 		}
 
-		node->m_localTransform = transform;
+		return result;
+	}
+
+	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform)
+	{
+		for (auto& adjustment : list) {
+
+			NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
+			if (offset) {
+				if (adjustment->scale == 1.0f) {
+					*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
+				}
+				else {
+					*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
+				}
+			}
+
+			NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
+			if (pose) {
+				if (adjustment->scale == 1.0f) {
+					*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
+				}
+				else {
+					*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
+				}
+			}
+		}
+	}
+
+	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform, std::vector<std::shared_ptr<Adjustment>> adjustmentList)
+	{
+		for (auto& adjustment : adjustmentList) {
+
+			NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
+			if (offset) {
+				if (adjustment->scale == 1.0f) {
+					*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
+				}
+				else {
+					*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
+				}
+			}
+
+			NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
+			if (pose) {
+				if (adjustment->scale == 1.0f) {
+					*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
+				}
+				else {
+					*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
+				}
+			}
+		}
+	}
+
+	void ActorAdjustments::UpdateNode(BSFixedString name)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		NiAVObject* offsetNode = GetFromNodeMap(offsetMap, name);
+		if (!offsetNode)
+			return;
+
+		//if base node is found, this is a pose/offset node
+		NiAVObject* baseNode = GetFromNodeMap(*baseMap, name);
+		if (baseNode) {
+
+			NiTransform offsets = TransformIdentity();
+			NiTransform poses = baseNode->m_localTransform;
+
+			GetPoseTransforms(name, &offsets, &poses);
+
+			NiTransform result = MultiplyNiTransform(offsets, poses);
+			NiTransform negate = NegateNiTransform2(baseNode->m_localTransform, TransformIdentity());
+			result = MultiplyNiTransform(result, negate);
+
+			offsetNode->m_localTransform = result;
+		}
+
+		//If the base node isn't found, this is an offset only node
+		else {
+			offsetNode->m_localTransform = GetOffsetTransform(name);
+		}
 	}
 
 	void ActorAdjustments::UpdateAllAdjustments()
 	{
-		if (!nodeMapBase || !nodeSets) return;
+		if (!baseMap || !nodeSets) return;
 
-		for (auto& name : nodeSets->all) {
-			UpdateAdjustments(name);
+		for (auto& name : nodeSets->baseStrings) {
+			UpdateNode(name);
 		}
 	}
 
 	void ActorAdjustments::UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment)
 	{
 		auto map = adjustment->GetMap();
-		for (auto& kvp : map) {
-			UpdateAdjustments(kvp.first);
+		for (auto& kvp : *map) {
+			//TODO: this performs the update twice if both an offset/pose adjustment exist on the same node, should fix
+			UpdateNode(kvp.first.name);
 		}
 	}
 
@@ -286,8 +445,11 @@ namespace SAF {
 					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name);
 					adjustment->file = persistent.file;
 					adjustment->mod = persistent.mod;
-					adjustment->map = persistent.map;
 					adjustment->scale = persistent.scale;
+					adjustment->map = persistent.map;
+					
+					//if version < 2 treat as 0
+					UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
 					break;
 				}
 				case kAdjustmentSerializeLoad:
@@ -326,18 +488,6 @@ namespace SAF {
 					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(def, true);
 					if (adjustment != nullptr) {
 						adjustment->isDefault = true;
-					}
-				}
-			}
-		}
-		
-		//Only load uniques if there are no persistents, add the unique into the persistents then ignore it
-		if (data.uniques && !data.persistents) {
-			for (auto& kvp : *data.uniques) {
-				if (!removeSet.count(kvp.first)) {
-					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(kvp.first, true);
-					if (adjustment != nullptr) {
-						adjustment->file.clear();
 					}
 				}
 			}
@@ -405,6 +555,9 @@ namespace SAF {
 		if (handle == poseHandle)
 			poseHandle = 0;
 
+		if (handle == tongueHandle)
+			tongueHandle = 0;
+
 		list.erase(it);
 		map.erase(handle);
 	}
@@ -427,6 +580,8 @@ namespace SAF {
 		UInt32 handle = (*it)->handle;
 		if (handle == poseHandle)
 			poseHandle = 0;
+		if (handle == tongueHandle)
+			tongueHandle = 0;
 
 		list.erase(it);
 		map.erase(handle);
@@ -469,11 +624,11 @@ namespace SAF {
 		return -1;
 	}
 
-	bool ActorAdjustments::MoveAdjustment(UInt32 fromIndex, UInt32 toIndex)
+	UInt32 ActorAdjustments::MoveAdjustment(UInt32 fromIndex, UInt32 toIndex)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.size() || toIndex >= list.size()) return false;
+		if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.size() || toIndex >= list.size()) return 0;
 
 		std::shared_ptr<Adjustment> adjustment = list[fromIndex];
 
@@ -490,7 +645,28 @@ namespace SAF {
 
 		list[toIndex] = adjustment;
 
-		return true;
+		return 1;
+	}
+
+	void ActorAdjustments::UpdateAdjustmentVersion(TransformMap& map, UInt32 version)
+	{
+		//If version 0, update to new method
+		if (version == 0) {
+			for (auto& transform : map) {
+				if (!transform.first.offset) {
+					auto baseNode = GetFromNodeMap(*baseMap, transform.first.name);
+					if (baseNode) {
+						NiTransform dst = baseNode->m_localTransform * transform.second;
+						transform.second = NegateNiTransform2(baseNode->m_localTransform, dst);
+					}
+				}
+			}
+		}
+	}
+
+	void ActorAdjustments::UpdateLoadedAdjustmentVersion(LoadedAdjustment& adjustment)
+	{
+		UpdateAdjustmentVersion(adjustment.map, adjustment.version);
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(std::string filename, bool cached)
@@ -515,21 +691,24 @@ namespace SAF {
 			}
 		}
 
-		std::unordered_map<std::string, NiTransform> adjustmentMap;
+		LoadedAdjustment loadedAdjustment;
 
-		if (LoadAdjustmentFile(filename, &adjustmentMap)) {
+		if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
+
+			UpdateLoadedAdjustmentVersion(loadedAdjustment);
+
 			if (cached) {
-				g_adjustmentManager.SetAdjustmentFile(filename, adjustmentMap);
+				g_adjustmentManager.SetAdjustmentFile(filename, loadedAdjustment.map);
 			}
+
 			std::shared_ptr<Adjustment> adjustment = CreateAdjustment(filename);
 
-			if (removedAdjustments.count(filename)) {
-				removedAdjustments.erase(filename);
+			if (removedAdjustments.erase(filename)) {
 				adjustment->isDefault = true;
 			}
-			
+
 			if (nodeSets) {
-				adjustment->CopyMap(&adjustmentMap, &nodeSets->all);
+				adjustment->CopyMap(&loadedAdjustment.map, &nodeSets->all);
 			}
 			
 			adjustment->file = filename;
@@ -595,113 +774,236 @@ namespace SAF {
 		return updated;
 	}
 
-	bool ActorAdjustments::HasNode(std::string name)
+	bool ActorAdjustments::HasNode(BSFixedString name)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
-		if (!nodeMap.count(name)) return false;
-		if (!nodeMapBase->count(name)) return false;
+		if (offsetMap.count(name)) return true;
+		if (poseMap.count(name)) return true;
 
 		return true;
 	}
 
 	//Sets the override node such that it negates the base node back to the a-pose position
-	void ActorAdjustments::NegateTransform(std::shared_ptr<Adjustment> adjustment, std::string name)
+	void ActorAdjustments::NegateTransform(std::shared_ptr<Adjustment> adjustment, NodeKey& key)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
+		
+		NiTransform result;
 
-		if (!nodeSets->baseMap.count(name)) return;
-		std::string baseName = nodeSets->baseMap[name];
+		//if offset set to identity
+		if (key.offset) {
+			result = TransformIdentity();
+		}
+		//else calculate the difference we currently are from base
+		else {
+			NiAVObject* poseNode = GetFromNodeMap(poseMap, key.name);
+			if (!poseNode)
+				return;
 
-		if (!nodeMap.count(baseName)) return;
-		NiAVObject* baseNode = nodeMap[baseName];
+			NiAVObject* baseNode = GetFromNodeMap(*baseMap, key.name);
+			if (!baseNode)
+				return;
 
-		if (!nodeMapBase->count(baseName)) return;
-		NiAVObject* skeletonNode = (*nodeMapBase)[baseName];
+			result = NegateNiTransform2(poseNode->m_localTransform, baseNode->m_localTransform);
+		}
 
-		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, skeletonNode->m_localTransform));
+		adjustment->SetTransform(key, result);
 		adjustment->updated = true;
 	}
 
 	//Sets the override node such that it negates the base node to the specified transform position
-	void ActorAdjustments::OverrideTransform(std::shared_ptr<Adjustment> adjustment, std::string name, NiTransform transform)
+	void ActorAdjustments::OverrideTransform(std::shared_ptr<Adjustment> adjustment, const NodeKey& key, NiTransform& transform)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		if (!nodeSets->baseMap.count(name)) return;
-		std::string baseName = nodeSets->baseMap[name];
+		NiTransform result;
 
-		if (!nodeMap.count(baseName)) return;
-		NiAVObject* baseNode = nodeMap[baseName];
+		//if offset just set as is
+		if (key.offset) {
+			result = transform;
+		}
+		//if override get the difference
+		else {
+			NiAVObject* poseNode = GetFromNodeMap(poseMap, key.name);
+			if (!poseNode)
+				return;
 
-		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
+			NiAVObject* baseNode = GetFromNodeMap(*baseMap, key.name);
+			if (!baseNode)
+				return;
+
+			result = MultiplyNiTransform(transform, NegateNiTransform2(poseNode->m_localTransform, TransformIdentity()));
+			result = MultiplyNiTransform(result, baseNode->m_localTransform);
+			result = NegateNiTransform2(baseNode->m_localTransform, result);
+		}
+
+		adjustment->SetTransform(key, result);
 		adjustment->updated = true;
 	}
 
-	void ActorAdjustments::RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, std::string name, UInt32 type, float scalar)
+	void ActorAdjustments::RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& key, UInt32 type, float scalar)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		if (!nodeSets->baseMap.count(name)) return;
-		std::string baseName = nodeSets->baseMap[name];
+		NiTransform result;
 
-		if (!nodeMap.count(baseName)) return;
-		NiAVObject* baseNode = nodeMap[baseName];
+		if (key.offset) {
+			result = adjustment->GetTransformOrDefault(key);
+			result.rot = MultiplyNiMatrix(result.rot, GetXYZRotation(type, scalar));
+			result = NegateNiTransform2(TransformIdentity(), result);
+		}
+		else {
+			NiAVObject* baseNode = GetFromNodeMap(*baseMap, key.name);
+			if (!baseNode)
+				return;
 
-		NiTransform transform = baseNode->m_localTransform * adjustment->GetTransformOrDefault(name);
-		RotateMatrixXYZ(transform.rot, type, scalar);
-		//RotateMatrixAxis(transform.rot, type, scalar);
+			NiAVObject* poseNode = GetFromNodeMap(poseMap, key.name);
+			if (!baseNode)
+				return;
 
-		adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
+			//NiTransform transform = baseNode->m_localTransform * adjustment->GetTransformOrDefault(name);
+			//RotateMatrixXYZ(transform.rot, type, scalar);
+			//adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
+
+			//Get Current position
+			result = MultiplyNiTransform(baseNode->m_localTransform, adjustment->GetTransformOrDefault(key));
+			result = MultiplyNiTransform(result, NegateNiTransform2(baseNode->m_localTransform, TransformIdentity()));
+			result = MultiplyNiTransform(result, poseNode->m_localTransform);
+
+			//Apply rotation to current position
+			result.rot = MultiplyNiMatrix(result.rot, GetXYZRotation(type, scalar));
+
+			//Trace back the pose/negation
+			result = MultiplyNiTransform(result, NegateNiTransform2(poseNode->m_localTransform, TransformIdentity()));
+			result = MultiplyNiTransform(result, baseNode->m_localTransform);
+
+			//Get the difference
+			result = NegateNiTransform2(baseNode->m_localTransform, result);
+		}
+
+		adjustment->SetTransform(key, result);
 		adjustment->updated = true;
 	}
 
-	void ActorAdjustments::SavePose(std::string filename, std::unordered_set<UInt32> handles) {
+	void ActorAdjustments::SavePose(std::string filename, ExportSkeleton* exports)
+	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
-
-		//if (handles.size() == 0) return;
 
 		//Order matters for applying translations so get them from the list in the correct order
 		std::vector<std::shared_ptr<Adjustment>> adjustments;
 		for (auto& adjustment : list) {
-			if (handles.count(adjustment->handle))
+			if (exports->handles.count(adjustment->handle))
 				adjustments.push_back(adjustment);
 		}
 
-		//if (adjustments.size() == 0) return;
+		//If no nodeset specified, grab everything and assume vanilla skeleton
+		if (!exports->nodes) {
+			exports->nodes = &nodeSets->all;
+			exports->skeleton = "Vanilla";
+		}
 
-		TransformMap poseMap;
-		for (auto& overrider : nodeSets->pose) {
-			if (nodeSets->baseMap.count(overrider)) {
+		TransformMap transformMap;
 
-				std::string baseName = nodeSets->baseMap[overrider];
-				if (nodeMap.count(baseName)) {
-					
-					NiTransform transform = nodeMap[baseName]->m_localTransform;
+		for (auto& node : *exports->nodes) {
+			//Include offsets only if they are edited
+			if (node.offset) {
+
+				NiTransform offsetTransform = TransformIdentity();
+				bool updated = false;
+
+				for (auto& adjustment : adjustments) {
+					NiTransform* transform = adjustment->GetTransform(node);
+					if (transform) {
+						offsetTransform = MultiplyNiTransform(offsetTransform, *transform);
+						updated = true;
+					}
+				}
+
+				if (updated) {
+					transformMap.emplace(node, offsetTransform);
+				}
+			}
+
+			//Must include all pose nodes
+			else {
+
+				NiAVObject* poseNode = GetFromNodeMap(poseMap, node.name);
+				if (poseNode) {
+
+					NiTransform poseTransform = poseNode->m_localTransform;
 
 					for (auto& adjustment : adjustments) {
-						if (adjustment->HasTransform(overrider)) {
-							transform = transform * adjustment->GetTransform(overrider);
+						NiTransform* transform = adjustment->GetTransform(node);
+						if (transform) {
+							poseTransform = MultiplyNiTransform(poseTransform, *transform);
 						}
 					}
 
-					poseMap[baseName] = transform;
+					transformMap.emplace(node, poseTransform);
 				}
-			}
-			else {
-				_DMESSAGE("could not find overrider node", overrider.c_str());
 			}
 		}
 
-		SavePoseFile(filename, &poseMap);
+		SavePoseFile(filename, &transformMap, exports->skeleton);
 	}
 
-	bool ActorAdjustments::LoadPose(std::string path) {
+	void ActorAdjustments::SaveOutfitStudioPose(std::string filename, ExportSkeleton* exports)
+	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		TransformMap poseMap;
+		//Order matters for applying translations so get them from the list in the correct order
+		std::vector<std::shared_ptr<Adjustment>> adjustments;
+		for (auto& adjustment : list) {
+			if (exports->handles.count(adjustment->handle))
+				adjustments.push_back(adjustment);
+		}
+
+		TransformMap transformMap;
+
+		for (auto& name : nodeSets->baseStrings) {
+
+			NiAVObject* baseNode = GetFromNodeMap(*baseMap, name);
+
+			//if the base node isn't found it's an offset only node
+			if (baseNode) {
+				NiAVObject* poseNode = GetFromNodeMap(poseMap, name);
+				if (poseNode) {
+					NiTransform offsets = TransformIdentity();
+					NiTransform poses = baseNode->m_localTransform;
+
+					GetPoseTransforms(name, &offsets, &poses, adjustments);
+
+					NiTransform result = MultiplyNiTransform(offsets, poses); //get offset + pose
+					result = MultiplyNiTransform(result, NegateNiTransform2(baseNode->m_localTransform, TransformIdentity())); //negate base node
+					result = MultiplyNiTransform(result, poseNode->m_localTransform); //apply base node
+					result = NegateNiTransform2(result, baseNode->m_localTransform); //get difference from virtual result to the base position
+
+					//insert if non zero
+					if (!TransformIsDefault(result)) {
+						transformMap.emplace(NodeKey(name, false), result);
+					}
+				}
+			}
+
+			//There's no pose node to override so just output as is
+			else {
+				NiTransform offset = GetOffsetTransform(name);
+				if (!TransformIsDefault(offset)) {
+					transformMap.emplace(NodeKey(name, true), offset);
+				}
+			}
+		}
+
+		SaveOutfitStudioXml(filename, &transformMap);
+	}
+
+	UInt32 ActorAdjustments::LoadPose(std::string path) {
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		TransformMap transformMap;
 		
-		if (LoadPosePath(path, &poseMap)) {
+		if (LoadPosePath(path, &transformMap)) {
 
 			std::shared_ptr<Adjustment> adjustment;
 
@@ -728,18 +1030,36 @@ namespace SAF {
 				poseHandle = adjustment->handle;
 			}
 
-			for (auto& kvp : poseMap) {
-				std::string base = kvp.first;
-				std::string overrider = base + g_adjustmentManager.overridePostfix;
-				if (nodeMap.count(base)) {
-					adjustment->SetTransform(overrider, NegateNiTransform(nodeMap[base]->m_localTransform, kvp.second));
+			for (auto& kvp : transformMap) {
+				if (kvp.first.offset) {
+					//Just apply offset as is
+					adjustment->SetTransform(kvp.first, kvp.second);
+				}
+				else {
+					//Negate the pose node into the correct position
+					NiAVObject* poseNode = GetFromNodeMap(poseMap, kvp.first.name);
+					if (poseNode) {
+						NiAVObject* baseNode = GetFromNodeMap(*baseMap, kvp.first.name);
+						if (baseNode) {
+
+							//base -> adjust -> ibase -> pose = transform
+							//base -> adjust = transform -> ipose -> base
+							//adjust = (transform -> ipose -> base) / base
+
+							NiTransform dst = MultiplyNiTransform(kvp.second, NegateNiTransform2(poseNode->m_localTransform, TransformIdentity()));
+							dst = MultiplyNiTransform(dst, baseNode->m_localTransform);
+							dst = NegateNiTransform2(baseNode->m_localTransform, dst);
+
+							adjustment->SetTransform(kvp.first, dst);
+						}
+					}
 				}
 			}
 			
-			return true;
+			return 1;
 		}
 
-		return false;
+		return 0;
 	}
 
 	void ActorAdjustments::ResetPose() {
@@ -749,9 +1069,9 @@ namespace SAF {
 		RemoveAdjustment(poseHandle);
 	}
 
-	void ActorAdjustments::LoadDefaultAdjustment(std::string filename, bool clear, bool enable) {
+	void ActorAdjustments::LoadRaceAdjustment(std::string filename, bool clear, bool enable) {
 		if (clear) 
-			RemoveDefaultAdjustments();
+			RemoveRaceAdjustments();
 
 		if (filename.empty())
 			return;
@@ -768,7 +1088,7 @@ namespace SAF {
 		}
 	}
 
-	void ActorAdjustments::RemoveDefaultAdjustments() {
+	void ActorAdjustments::RemoveRaceAdjustments() {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		auto it = list.begin();
@@ -797,7 +1117,8 @@ namespace SAF {
 
 			if (valid == kActorValid) {
 				return adjustments;
-			} else if (valid == kActorUpdated) {
+			} 
+			else if (valid == kActorUpdated) {
 				//attempt update
 				if (!UpdateActorCache(adjustments)) {
 					return nullptr;
@@ -850,7 +1171,7 @@ namespace SAF {
 	NodeSets* AdjustmentManager::GetNodeSets(UInt32 race, bool isFemale) {
 		UInt64 key = race;
 		if (isFemale)
-			race |= 0x100000000;
+			key |= 0x100000000;
 
 		if (nodeSets.count(key))
 			return &nodeSets[key];
@@ -873,7 +1194,7 @@ namespace SAF {
 
 		return nullptr;
 	}
-
+	
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::CreateActorAdjustment(UInt32 formId)
 	{
 		TESForm* form = LookupFormByID(formId);
@@ -894,14 +1215,14 @@ namespace SAF {
 		return adjustments;
 	}
 
-	std::unordered_set<std::string>* AdjustmentManager::GetDefaultAdjustments(UInt32 race, bool isFemale)
+	std::unordered_set<std::string>* AdjustmentManager::GetRaceAdjustments(UInt32 race, bool isFemale)
 	{
 		UInt64 key = race;
 		if (isFemale)
 			key |= 0x100000000;
 
-		if (defaultAdjustments.count(key))
-			return &defaultAdjustments[key];
+		if (raceAdjustments.count(key))
+			return &raceAdjustments[key];
 
 		return nullptr;
 	}
@@ -1008,10 +1329,12 @@ namespace SAF {
 
 		static BSFixedString safVersion("SAF_Version");
 
-		if (!rootNode->HasExtraData(safVersion))
+		NiIntegerExtraData* extraData = (NiIntegerExtraData*)rootNode->GetExtraData(safVersion);
+		if (!extraData)
 			return false;
-
-		return true;
+		
+		//There has been no breaking changes yet so just accept any version
+		return extraData->value;
 	}
 
 	bool AdjustmentManager::UpdateActor(std::shared_ptr<ActorAdjustments> adjustments) {
@@ -1057,27 +1380,27 @@ namespace SAF {
 		if (!IsRootValid(adjustments->root, adjustments->nodeSets)) 
 			return false;
 
-		adjustments->nodeMap = CreateNodeMap(adjustments->root, adjustments->nodeSets);
+		adjustments->poseMap.clear();
+		adjustments->offsetMap.clear();
+		CreateNodeMap(adjustments->root, &adjustments->nodeSets->nodeKeys, &adjustments->nodeSets->allStrings, &adjustments->poseMap, &adjustments->offsetMap);
 
 		adjustments->baseRoot = (*getBaseModelRootNode)(adjustments->npc, adjustments->actor);
 
 		if (!IsRootValid(adjustments->baseRoot, adjustments->nodeSets))
 			return false;
 
-		adjustments->nodeMapBase = GetCachedNodeMap(adjustments->baseRoot, adjustments->nodeSets);
-		if (!adjustments->nodeMapBase)
+		adjustments->baseMap = GetCachedNodeMap(adjustments->baseRoot, &adjustments->nodeSets->nodeKeys, &adjustments->nodeSets->baseNodeStrings);
+		if (!adjustments->baseMap)
 			return false;
 
 		adjustments->CreateAdjustment("New Adjustment");
 
 		AdjustmentUpdateData data;
-		data.defaults = GetDefaultAdjustments(adjustments->race, adjustments->isFemale);
+		data.defaults = GetRaceAdjustments(adjustments->race, adjustments->isFemale);
 
-		if (uniqueAdjustments.count(adjustments->npc->formID))
-			data.uniques = &uniqueAdjustments[adjustments->npc->formID];
-
-		if (persistentAdjustments.count(adjustments->formId))
-			data.persistents = &persistentAdjustments[adjustments->formId];
+		auto foundPersistents = persistentAdjustments.find(adjustments->formId);
+		if (foundPersistents != persistentAdjustments.end())
+			data.persistents = &foundPersistents->second;
 
 		adjustments->UpdatePersistentAdjustments(data);
 
@@ -1108,58 +1431,64 @@ namespace SAF {
 		return nullptr;
 	}
 
-	NodeMap AdjustmentManager::CreateNodeMap(NiNode* root, NodeSets* set) {
-		NodeMap boneMap;
-
+	void AdjustmentManager::CreateNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings, NodeMap* poseMap, NodeMap* offsetMap)
+	{
 		std::vector<NiAVObject*> boneTrees;
-		std::unordered_set<std::string> remainingNodes(set->allOrBase);
+		BSFixedStringSet remainingNodes(*strings);
 		UInt64 flattenedBoneTreeVFTableAddr = bsFlattenedBoneTreeVFTable.GetUIntPtr();
 
 		root->Visit([&](NiAVObject* object) {
 			//check for flattend bone tree VFtable and add it to be searched for missing nodes after DFS is complete
 			if (*(UInt64*)object == flattenedBoneTreeVFTableAddr) {
 				boneTrees.push_back(object);
-			}
-			if (object->m_name) {
-				std::string nodeName(object->m_name.c_str());
-				if (set->allOrBase.count(object->m_name.c_str())) {
-					if (set->fixedConversion.count(nodeName)) {
-						boneMap[set->fixedConversion[nodeName]] = object;
-						remainingNodes.erase(nodeName);
+			} 
+			else if (object->m_name) {
+				auto nodeKey = nodeKeys->find(object->m_name);
+				if (nodeKey != nodeKeys->end()) {
+					if (nodeKey->second.offset) {
+						if (offsetMap) {
+							offsetMap->emplace(nodeKey->second.name, object);
+							remainingNodes.erase(object->m_name);
+							return (remainingNodes.size() <= 0);
+						}
+					}
+					else {
+						poseMap->emplace(nodeKey->second.name, object);
+						remainingNodes.erase(object->m_name);
+						return (remainingNodes.size() <= 0);
 					}
 				}
-				return (remainingNodes.size() <= 0);
 			}
 			return false;
 		});
 
-		if (remainingNodes.size() <= 0) return boneMap;
+		if (remainingNodes.size() <= 0) return;
 
 		for (auto& nodeName : remainingNodes) {
-			if (set->fixedConversion.count(nodeName)) {
-				BSFixedString name(nodeName.c_str());
-				std::string converted = set->fixedConversion[nodeName];
-
-				//Search flattened bone trees for remaining nodes
-				NiPointer<NiAVObject> flattenedBone = GetNodeFromFlattenedTrees(boneTrees, name);
-				if (flattenedBone) {
-					boneMap[converted] = flattenedBone;
-				}
-				else {
-
-					//Shouldn't need to do this to find missing bones, if this is triggered something is wrong with the method above.
-					NiPointer<NiAVObject> findBone = root->GetObjectByName(&name);
-					if (findBone) {
-						boneMap[converted] = findBone;
+			//Search flattened bone trees for remaining nodes
+			NiPointer<NiAVObject> flattenedBone = GetNodeFromFlattenedTrees(boneTrees, nodeName);
+			if (flattenedBone) {
+				auto nodeKey = nodeKeys->find(nodeName);
+				if (nodeKey != nodeKeys->end()) {
+					if (nodeKey->second.offset) {
+						if (offsetMap) {
+							offsetMap->emplace(nodeKey->second.name, flattenedBone);
+						}
+					}
+					else {
+						poseMap->emplace(nodeKey->second.name, flattenedBone);
 					}
 				}
 			}
+			else {
+				_DMESSAGE((std::string("node not found: ") + nodeName.c_str()).c_str());
+			}
 		}
 
-		return boneMap;
+		return;
 	}
 
-	NodeMap* AdjustmentManager::GetCachedNodeMap(NiNode* root, NodeSets* set)
+	NodeMap* AdjustmentManager::GetCachedNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings)
 	{
 		std::lock_guard<std::shared_mutex> lock(nodeMapMutex);
 
@@ -1170,7 +1499,11 @@ namespace SAF {
 			return &nodeMapCache[root].map;
 		}
 
-		nodeMapCache[root] = NodeMapRef(CreateNodeMap(root, set));
+		NodeMapRef ref;
+
+		//only get the pose nodes
+		CreateNodeMap(root, nodeKeys, strings, &ref.map, nullptr);
+		nodeMapCache.emplace(root, ref);
 
 		return &nodeMapCache[root].map;
 	}
@@ -1200,14 +1533,14 @@ namespace SAF {
 		adjustmentFileCache[filename] = map;
 	}
 
-	void AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod) {
+	UInt32 AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(formId)) return;
+		if (!actorAdjustmentCache.count(formId)) return 0;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
-		adjustments->CreateAdjustment(name, mod);
+		return adjustments->CreateAdjustment(name, mod);
 	}
 
 	void  AdjustmentManager::SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle) {
@@ -1220,10 +1553,10 @@ namespace SAF {
 		adjustments->SaveAdjustment(filename, handle);
 	}
 
-	bool AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod) {
+	UInt32 AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(formId)) return false;
+		if (!actorAdjustmentCache.count(formId)) return 0;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
@@ -1258,32 +1591,39 @@ namespace SAF {
 	void AdjustmentManager::SetTransform(AdjustmentTransformMessage* message) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(message->formId)) return;
+		if (!actorAdjustmentCache.count(message->formId)) 
+			return;
 		
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[message->formId];
-		if (!adjustments) return;
+		if (!adjustments)
+			return;
 
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(message->handle);
-		if (!adjustment) return;
+		if (!adjustment)
+			return;
+
+		//make sure node exists
+		if (!adjustments->HasNode(message->nodeKey.name))
+			return;
 
 		switch (message->type) {
 		case kAdjustmentTransformPosition:
-			adjustment->SetTransformPos(message->key, message->a, message->b, message->c);
+			adjustment->SetTransformPos(message->nodeKey, message->a, message->b, message->c);
 			break;
 		case kAdjustmentTransformRotation:
-			adjustment->SetTransformRot(message->key, message->a, message->b, message->c);
+			adjustment->SetTransformRot(message->nodeKey, message->a, message->b, message->c);
 			break;
 		case kAdjustmentTransformScale:
-			adjustment->SetTransformSca(message->key, message->a);
+			adjustment->SetTransformSca(message->nodeKey, message->a);
 			break;
 		case kAdjustmentTransformReset:
-			adjustment->ResetTransform(message->key);
+			adjustment->ResetTransform(message->nodeKey);
 			break;
 		case kAdjustmentTransformNegate:
-			adjustments->NegateTransform(adjustment, message->key);
+			adjustments->NegateTransform(adjustment, message->nodeKey);
 			break;
 		case kAdjustmentTransformRotate:
-			adjustments->RotateTransformXYZ(adjustment, message->key, message->a, message->b);
+			adjustments->RotateTransformXYZ(adjustment, message->nodeKey, message->a, message->b);
 			break;
 		}
 	}
@@ -1302,10 +1642,10 @@ namespace SAF {
 	//	adjustments->NegateTransformGroup(adjustment, groupName);
 	//}
 
-	bool AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
+	UInt32 AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		if (!actorAdjustmentCache.count(formId)) return false;
+		if (!actorAdjustmentCache.count(formId)) return 0;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 		if (!adjustments) return false;
@@ -1324,7 +1664,7 @@ namespace SAF {
 		adjustments->ResetPose();
 	}
 
-	void AdjustmentManager::LoadDefaultAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable)
+	void AdjustmentManager::LoadRaceAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
@@ -1332,17 +1672,16 @@ namespace SAF {
 
 		//if single npc target just use the regular adjustment functions
 		if (npc) { 
-			//single targeting is currently disabled
-			
-			//std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(formId);
-			//if (!adjustments) return;
 
-			//if (!filename) {
-			//	adjustments->RemoveDefaultAdjustments();
-			//}
-			//else {
-			//	
-			//}
+			std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(formId);
+			if (!adjustments) return;
+
+			if (!filename) {
+				adjustments->RemoveRaceAdjustments();
+			}
+			else {
+				
+			}
 		}
 		//target all race/gender
 		else { 
@@ -1351,21 +1690,28 @@ namespace SAF {
 				key |= 0x100000000;
 
 			if (clear) {
-				defaultAdjustments.erase(key);
+				raceAdjustments.erase(key);
 			}
+
+			bool updateVersion = false;
+			LoadedAdjustment loadedAdjustment;
 
 			if (!name.empty()) {
 				if (enable) {
-					defaultAdjustments[key].insert(name);
+					raceAdjustments[key].insert(name);
 
-					//recache the adjustment file before loading
-					std::unordered_map<std::string, NiTransform> adjustmentMap;
-					if (LoadAdjustmentFile(filename, &adjustmentMap)) {
-						SetAdjustmentFile(filename, adjustmentMap);
+					if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
+
+						//we need a reference actor to update the version so mark it to be updated using the first actor found
+						if (loadedAdjustment.version == 0) {
+							updateVersion = true;
+						}
+
+						SetAdjustmentFile(filename, loadedAdjustment.map);
 					}
 				}
 				else {
-					defaultAdjustments[key].erase(name);
+					raceAdjustments[key].erase(name);
 				}
 			}
 
@@ -1373,18 +1719,24 @@ namespace SAF {
 			ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
 				if (adjustments->race == formId && adjustments->isFemale == isFemale)
 				{
-					adjustments->LoadDefaultAdjustment(name, clear, enable);
+					//we need a reference actor to update the version so use the first actor found as a reference
+					if (updateVersion) {
+						adjustments->UpdateLoadedAdjustmentVersion(loadedAdjustment);
+						updateVersion = false;
+					}
+
+					adjustments->LoadRaceAdjustment(name, clear, enable);
 					adjustments->UpdateAllAdjustments();
 				}
 			});
 		}
 	}
 
-	bool AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
+	UInt32 AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 		
-		if (!actorAdjustmentCache.count(formId)) return false;
+		if (!actorAdjustmentCache.count(formId)) return 0;
 
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
@@ -1403,6 +1755,50 @@ namespace SAF {
 		if (!adjustment) return;
 
 		adjustment->Rename(name);
+	}
+
+	void AdjustmentManager::LoadTongueAdjustment(UInt32 formId, TransformMap* transforms)
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		if (!actorAdjustmentCache.count(formId)) return;
+		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
+
+		//if all transforms are identity then delete the adjustment
+		bool updated = false;
+		for (auto& transform : *transforms) {
+			if (!TransformIsDefault(transform.second))
+				updated = true;
+		}
+
+		if (updated) {
+
+			std::shared_ptr<Adjustment> adjustment;
+
+			if (adjustments->tongueHandle) {
+				adjustment = adjustments->GetAdjustment(adjustments->tongueHandle);
+				adjustment->Clear();
+				adjustment->name = "Face Morphs Tongue";
+				adjustment->scale = 1.0f;
+			}
+			else {
+				adjustment = adjustments->CreateAdjustment("Face Morphs Tongue");
+				adjustments->tongueHandle = adjustment->handle;
+			}
+
+			for (auto& transform : *transforms) {
+				if (!TransformIsDefault(transform.second)) {
+					adjustments->OverrideTransform(adjustment, transform.first, transform.second);
+				}
+			}
+		}
+		else {
+			if (adjustments->tongueHandle) {
+				adjustments->RemoveAdjustment(adjustments->tongueHandle);
+			}
+		}
+
+		adjustments->UpdateAllAdjustments();
 	}
 
 	void AdjustmentManager::RemoveMod(BSFixedString modName)

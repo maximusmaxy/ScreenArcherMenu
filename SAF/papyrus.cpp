@@ -71,22 +71,25 @@ namespace SAF {
 		VMArray<BSFixedString> result;
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return result;
-		for (auto& nodeName: adjustments->nodeSets->all) {
-			result.Push(&BSFixedString(nodeName.c_str()));
+		for (auto& nodeName: adjustments->nodeSets->allStrings) {
+			if (adjustments->HasNode(nodeName)) {
+				BSFixedString name(nodeName);
+				result.Push(&name);
+			}
 		}
 		return result;
 	}
 
-	Transform TransformToPapyrus(NiTransform& transform, BSFixedString name, bool override) {
+	Transform TransformToPapyrus(NiTransform& transform, BSFixedString name, bool offset) {
 		Transform result;
 
 		result.Set<BSFixedString>("name", name);
-		result.Set<bool>("override", override);
+		result.Set<bool>("offset", offset);
 		result.Set<float>("x", transform.pos.x);
 		result.Set<float>("y", transform.pos.y);
 		result.Set<float>("z", transform.pos.z);
 		float yaw, pitch, roll;
-		MatrixToEulerYPR(transform.rot, yaw, pitch, roll);
+		MatrixToEulerYPR2(transform.rot, yaw, pitch, roll);
 		result.Set<float>("yaw", yaw);
 		result.Set<float>("pitch", pitch);
 		result.Set<float>("roll", roll);
@@ -105,10 +108,23 @@ namespace SAF {
 		transform.Get<float>("yaw", &yaw);
 		transform.Get<float>("pitch", &pitch);
 		transform.Get<float>("roll", &roll);
-		MatrixFromEulerYPR(result.rot, yaw, pitch, roll);
+		MatrixFromEulerYPR2(result.rot, yaw, pitch, roll);
 		transform.Get<float>("scale", &result.scale);
 
 		return result;
+	}
+
+	const NodeKey GetPapyrusKeyTransform(BSFixedString name, Transform& transform, NiTransform* out)
+	{
+		NodeKey nodeKey = GetNodeKeyFromString(name);
+		if (!nodeKey.key)
+			return nodeKey;
+		*out = TransformFromPapyrus(transform);
+
+		//if node key is not an offset, but the transform specifies offset, make it an offset key instead
+		bool isOffset;
+		transform.Get<bool>("offset", &isOffset);
+		return (!nodeKey.offset && isOffset) ? NodeKey(nodeKey.name, isOffset) : nodeKey;
 	}
 
 	Transform PapyrusGetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
@@ -119,11 +135,11 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return result;
 
-		std::string nodeName(name);
-		NiTransform transform = adjustment->GetTransformOrDefault(nodeName);
-		bool isOverride = adjustments->nodeSets->overrides.count(nodeName) > 0;
+		const NodeKey nodeKey = GetNodeKeyFromString(name);
 
-		return TransformToPapyrus(transform, name, isOverride);
+		NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
+
+		return TransformToPapyrus(transform, name, nodeKey.offset);
 	}
 
 	void PapyrusSetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle, Transform transform)
@@ -133,9 +149,12 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
 
-		std::string nodeName(name);
-		adjustment->SetTransform(nodeName, TransformFromPapyrus(transform));
-		adjustments->UpdateAdjustments(nodeName);
+		NiTransform papyrusTransform;
+		NodeKey nodeKey = GetPapyrusKeyTransform(name, transform, &papyrusTransform);
+		if (nodeKey.key && adjustments->HasNode(nodeKey.name)) {
+			adjustment->SetTransform(nodeKey, papyrusTransform);
+			adjustments->UpdateNode(nodeKey.name);
+		}
 	}
 
 	void PapyrusOverrideTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle, Transform transform)
@@ -145,9 +164,18 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
 
-		std::string nodeName(name);
-		adjustments->OverrideTransform(adjustment, nodeName, TransformFromPapyrus(transform));
-		adjustments->UpdateAdjustments(nodeName);
+		NiTransform papyrusTransform;
+		NodeKey nodeKey = GetPapyrusKeyTransform(name, transform, &papyrusTransform);
+		if (nodeKey.key && adjustments->HasNode(nodeKey.name)) {
+			if (nodeKey.offset) {
+				//if an offset just do a regular set
+				adjustment->SetTransform(nodeKey, papyrusTransform);
+			}
+			else {
+				adjustments->OverrideTransform(adjustment, nodeKey, papyrusTransform);
+			}
+			adjustments->UpdateNode(nodeKey.name);
+		}
 	}
 
 	void PapyrusResetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
@@ -157,9 +185,11 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
 
-		std::string nodeName(name);
-		adjustment->ResetTransform(nodeName);
-		adjustments->UpdateAdjustments(nodeName);
+		NodeKey nodeKey = GetNodeKeyFromString(name);
+		if (nodeKey.key) {
+			adjustment->ResetTransform(nodeKey);
+			adjustments->UpdateNode(nodeKey.name);
+		}
 	}
 
 	VMArray<Transform> PapyrusGetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
@@ -170,9 +200,8 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return result;
 
-		adjustment->ForEachTransformOrDefault([&](std::string name, NiTransform* transform) {
-			bool isOverride = adjustments->nodeSets->overrides.count(name) > 0;
-			result.Push(&TransformToPapyrus(*transform, BSFixedString(name.c_str()), isOverride));
+		adjustment->ForEachTransformOrDefault([&](const NodeKey* nodeKey, NiTransform* transform) {
+			result.Push(&TransformToPapyrus(*transform, nodeKey->name, nodeKey->offset));
 		}, &adjustments->nodeSets->all);
 
 		return result;
@@ -189,12 +218,18 @@ namespace SAF {
 		for (UInt32 i = 0; i < length; ++i) {
 			Transform result;
 			transforms.Get(&result, i);
+
 			BSFixedString name;
 			result.Get<BSFixedString>("name", &name);
-			std::string nodeName(name);
-			adjustment->SetTransform(nodeName, TransformFromPapyrus(result));
-			adjustments->UpdateAdjustments(nodeName);
+
+			NiTransform papyrusTransform;
+			NodeKey nodeKey = GetPapyrusKeyTransform(name, result, &papyrusTransform);
+			if (nodeKey.key && adjustments->HasNode(nodeKey.name))
+			{
+				adjustment->SetTransform(nodeKey, papyrusTransform);
+			}
 		}
+		adjustments->UpdateAllAdjustments();
 	}
 
 	void PapyrusOverrideAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, VMArray<Transform> transforms)
@@ -208,15 +243,23 @@ namespace SAF {
 		for (UInt32 i = 0; i < length; ++i) {
 			Transform result;
 			transforms.Get(&result, i);
+
 			BSFixedString name;
 			result.Get<BSFixedString>("name", &name);
-			std::string nodeName(name);
-			if (adjustments->nodeSets->overrides.count(nodeName))
-				adjustments->OverrideTransform(adjustment, nodeName, TransformFromPapyrus(result));
-			else
-				adjustment->SetTransform(nodeName, TransformFromPapyrus(result));
-			adjustments->UpdateAdjustments(nodeName);
+
+			NiTransform papyrusTransform;
+			NodeKey nodeKey = GetPapyrusKeyTransform(name, result, &papyrusTransform);
+			if (nodeKey.key && adjustments->HasNode(nodeKey.name))
+			{
+				if (nodeKey.offset) {
+					adjustment->SetTransform(nodeKey, papyrusTransform);
+				}
+				else {
+					adjustments->OverrideTransform(adjustment, nodeKey, papyrusTransform);
+				}
+			}
 		}
+		adjustments->UpdateAllAdjustments();
 	}
 
 	void PapyrusResetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
@@ -266,14 +309,16 @@ namespace SAF {
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
 
-		std::unordered_set<UInt32> handles;
+		ExportSkeleton exports;
+		exports.skeleton = "All";
+
 		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
 			if (!adjustment->isDefault) {
-				handles.insert(adjustment->handle);
+				exports.handles.insert(adjustment->handle);
 			}
 		});
 
-		adjustments->SavePose(std::string(filename), handles);
+		adjustments->SavePose(std::string(filename), &exports);
 	}
 
 	void PapyrusResetPose(StaticFunctionTag*, TESObjectREFR* refr)

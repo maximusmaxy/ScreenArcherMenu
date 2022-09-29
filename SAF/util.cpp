@@ -48,14 +48,14 @@ UInt32 GetBaseId(UInt32 formId)
 	return (formId & 0xFE000000) == 0xFE000000 ? (formId & 0xFFF) : (formId & 0xFFFFFF);
 }
 
-bool TransormIsDefault(NiTransform& transform) {
-	if (transform.pos.x == 0.0f &&
-		transform.pos.y == 0.0f &&
-		transform.pos.z == 0.0f &&
-		transform.rot.arr[0] == 1.0f &&
-		transform.rot.arr[5] == 1.0f &&
-		transform.rot.arr[10] == 1.0f &&
-		transform.scale == 1.0f)
+bool TransformIsDefault(NiTransform& transform) {
+	if (FloatEqual(transform.pos.x, 0.0f) &&
+		FloatEqual(transform.pos.y, 0.0f) &&
+		FloatEqual(transform.pos.z, 0.0f) &&
+		FloatEqual(transform.rot.arr[0], 1.0f) &&
+		FloatEqual(transform.rot.arr[5], 1.0f) &&
+		FloatEqual(transform.rot.arr[10], 1.0f) &&
+		FloatEqual(transform.scale, 1.0f))
 		return true;
 	return false;
 }
@@ -63,7 +63,7 @@ bool TransormIsDefault(NiTransform& transform) {
 bool TransformMapIsDefault(SAF::TransformMap& map)
 {
 	for (auto& kvp : map) {
-		if (!TransormIsDefault(kvp.second)) {
+		if (!TransformIsDefault(kvp.second)) {
 			return false;
 		}
 	}
@@ -95,4 +95,18 @@ std::string HexToString(UInt32 hex)
 	std::stringstream stream;
 	stream << std::hex << hex;
 	return stream.str();
+}
+
+//returns the size of the prefix if match or 0 if no match
+UInt32 ComparePostfix(const char* comparer,  UInt32 cLength, const char* postFix, UInt32 pLength)
+{
+	if (cLength < pLength)
+		return 0;
+	UInt32 preLength = cLength - pLength;
+	const char* comparerPostFix = comparer + preLength;
+	if (!_stricmp(comparerPostFix, postFix))
+	{
+		return preLength;
+	}
+	return 0;
 }

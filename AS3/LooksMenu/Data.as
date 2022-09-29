@@ -67,7 +67,7 @@
 			"$SAM_SkeletonError",
 			"$SAM_MorphsError",
 			"$SAM_EyeError",
-			"$SAM_CameraError",
+			"$SAM_CameraError"
 		];
 		
 		public static const TRANSFORM_NAMES:Vector.<String> = new <String>[
@@ -91,7 +91,7 @@
 		public static const HACK_NAMES:Vector.<String> = new <String>[
 			"$SAM_BlinkHack",
 			"$SAM_MorphHack",
-			"$SAM_EyeTrackingHack",
+			"$SAM_EyeTrackingHack"
 		];
 		
 		public static const POSITIONING_NAMES:Vector.<String> = new <String>[
@@ -145,7 +145,15 @@
 			"$SAM_PosZ",
 			"$SAM_Rotation",
 			"$SAM_UpdateAll",
-			"$SAM_DeleteAll",
+			"$SAM_DeleteAll"
+		];
+		
+		public static const TONGUEBONES_NAMES:Vector.<String> = new <String>[
+			"$BONE_Tongue0",
+			"$BONE_Tongue1",
+			"$BONE_Tongue2",
+			"$BONE_Tongue3",
+			"$BONE_Tongue4"
 		];
 		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
@@ -659,6 +667,7 @@
 			try
 			{
 				menuOptions = sam.GetMorphCategories();
+				menuOptions.push("$SAM_TongueBones");
 			}
 			catch (e:Error)
 			{
@@ -941,7 +950,7 @@
 						handles.push(poseHandles[i]);
 					}
 				}
-				sam.SavePose(filename, handles);
+				sam.SavePose(filename, handles, selectedCategory);
 			}
 			catch (e:Error)
 			{
@@ -985,10 +994,10 @@
 			}
 		}
 		
-		public static function getSkeletonAdjustments()
+		public static function getSkeletonAdjustments(race:Boolean)
 		{
 			try {
-				var adjustments:Object = sam.GetSkeletonAdjustments();
+				var adjustments:Object = sam.GetSkeletonAdjustments(race);
 				menuOptions = adjustments.names;
 				menuValues = adjustments.values;
 			}
@@ -1571,6 +1580,43 @@
 			catch (e:Error)
 			{
 				trace("Failed to save lights");
+			}
+		}
+		
+		public static function loadPoseExport()
+		{
+			try
+			{
+				menuOptions = sam.GetPoseExportTypes();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get pose export types");
+				if (Util.debug) {
+					menuOptions = ["Vanilla", "ZeX", "All", "Outfit Studio"];
+				} else {
+					menuOptions = [];
+				}
+			}
+		}
+		
+		public static function getMorphsTongue(id:int)
+		{
+			try {
+				var tongue:Array = sam.GetMorphsTongue();
+				if (tongue.length == 0) {
+					boneName = "";
+					selectedAdjustment = 0;
+				} else {
+					boneName = tongue[0];
+					selectedAdjustment = tongue[1];
+				}
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get morphs tongue");
+				boneName = "";
+				selectedAdjustment = 0;
 			}
 		}
 	}

@@ -40,13 +40,11 @@ MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
 MenuCache groupsMenuCache;
 MenuCategoryList lightsMenuCache;
+MenuCache exportMenuCache;
 
 SavedMenuData saveData;
 
 bool menuOpened = false;
-
-std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
-std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
 
 bool NaturalSort::operator() (const std::string& a, const std::string& b) const 
 {
@@ -583,39 +581,19 @@ void SavedMenuData::Clear() {
 }
 
 enum {
-	kMenuHeaderRace = 0,
-	kMenuHeaderMod,
-	kMenuHeaderSex,
-	kMenuHeaderType
-};
-
-enum {
 	kMenuTypePose = 1,
 	kMenuTypeMorphs,
 	kMenuTypeGroups,
-	kMenuTypeLights
-};
-
-std::unordered_map<std::string, UInt32> menuHeaderMap = {
-	{"race", kMenuHeaderRace},
-	{"mod", kMenuHeaderMod},
-	{"sex", kMenuHeaderSex},
-	{"type", kMenuHeaderType},
+	kMenuTypeLights,
+	kMenuTypeExport
 };
 
 std::unordered_map<std::string, UInt32> menuTypeMap = {
 	{"pose", kMenuTypePose},
 	{"morphs", kMenuTypeMorphs},
 	{"groups", kMenuTypeGroups},
-	{"lights", kMenuTypeLights}
-};
-
-struct MenuHeader
-{
-	std::string race;
-	std::string mod;
-	bool isFemale = false;
-	UInt32 type = 0;
+	{"lights", kMenuTypeLights},
+	{"export", kMenuTypeExport}
 };
 
 bool ParseMenuFile(std::string path, IFileStream& file) {
@@ -674,6 +652,7 @@ bool ParseMenuFile(std::string path, IFileStream& file) {
 							case kMenuTypeMorphs: menu = &morphsMenuCache[key]; break;
 							case kMenuTypeGroups: menu = &groupsMenuCache[key]; break;
 							case kMenuTypeLights: menu = &lightsMenuCache; break;
+							case kMenuTypeExport: menu = &exportMenuCache[key]; break;
 						}
 					}
 
@@ -828,6 +807,15 @@ void LoadMenuFiles() {
 	LoadMenuFile(humanPoseFile);
 	loadedMenus.insert(humanPoseFile);
 
+	//Load Vanilla and ZeX Export files first for ordering purposes
+	const char* vanillaExport = "Data\\F4SE\\Plugins\\SAM\\Menus\\Vanilla Export.txt";
+	LoadMenuFile(vanillaExport);
+	loadedMenus.insert(vanillaExport);
+
+	const char* zexExport = "Data\\F4SE\\Plugins\\SAM\\Menus\\ZeX Export.txt";
+	LoadMenuFile(zexExport);
+	loadedMenus.insert(zexExport);
+
 	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Menus", "*.txt"); !iter.Done(); iter.Next())
 	{
 		std::string	path = iter.GetFullPath();
@@ -860,16 +848,8 @@ void SamSerializeLoad(const F4SESerializationInterface* ifc)
 	{
 		switch (type)
 		{
-		case 'CAM': //Camera
-		{
-			DeserializeCamera(ifc, version);
-			break;
-		}
-		case 'LIGH': //Lights
-		{
-			DeserializeLights(ifc, version);
-			break;
-		}
+		case 'CAM': DeserializeCamera(ifc, version); break;
+		case 'LIGH': DeserializeLights(ifc, version); break;
 		}
 	}
 }

@@ -151,13 +151,19 @@ void MenuLight::Initialize()
 	NiPoint3 pos = target->pos + lightManager.pos;
 
 	distance = DistanceBetweenPoints(pos, refr->pos);
-	rotation = Modulo(CurrentRotation(pos, refr->pos, distance) - target->rot.z - lightManager.rot, DOUBLE_PI);
+	//player relative
+	//rotation = Modulo(CurrentRotation(pos, refr->pos, distance) - target->rot.z - lightManager.rot, DOUBLE_PI);
+	//world relative
+	rotation = Modulo(CurrentRotation(pos, refr->pos, distance) - lightManager.rot, DOUBLE_PI);
 	height = refr->pos.z - pos.z;
 
 	//Convert to RPY for correct order of rotations
 	NiPoint3 rot = YPRToRPY(refr->rot);
 
-	xOffset = Modulo(-rotation - rot.x - HALF_PI - target->rot.z - lightManager.rot, DOUBLE_PI);
+	//player relative
+	//xOffset = Modulo(-rotation - rot.x - HALF_PI - target->rot.z - lightManager.rot, DOUBLE_PI);
+	//world relative
+	xOffset = Modulo(-rotation - rot.x - HALF_PI - lightManager.rot, DOUBLE_PI);
 	if (xOffset >= MATH_PI)
 		xOffset -= DOUBLE_PI;
 	float pitch = distance == 0.0f ? 0.0f : std::atan((height - 100) / distance);
@@ -170,7 +176,10 @@ void MenuLight::Update()
 	if (!target)
 		target = *g_player;
 
-	float adjustedRot = Modulo(rotation + lightManager.rot + target->rot.z, DOUBLE_PI);
+	//player relative
+	//float adjustedRot = Modulo(rotation + lightManager.rot + target->rot.z, DOUBLE_PI);
+	//world relative
+	float adjustedRot = Modulo(rotation + lightManager.rot, DOUBLE_PI);
 
 	NiPoint3 pos(
 		std::sin(adjustedRot) * distance + target->pos.x + lightManager.pos.x,
@@ -213,6 +222,8 @@ void MenuLight::Update()
 
 void MenuLight::MoveTo(NiPoint3& pos, NiPoint3& rot)
 {
+	//This uses the same method as the console commands setpos/setangle. The internal MoveRefrToPosition was causing 
+	//crashes when a light was moved inside the player (Collision related?)
 	TranslationParam p1;
 	TranslationParam p2;
 

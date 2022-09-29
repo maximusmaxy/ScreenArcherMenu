@@ -6,6 +6,7 @@ using namespace Serialization;
 
 #include "conversions.h"
 #include "util.h"
+#include "io.h"
 
 namespace SAF {
 
@@ -40,6 +41,26 @@ namespace SAF {
 	*		Type
 	*		Transforms length (Only if add type)
 	*			key
+	*			x
+	*			y
+	*			z
+	*			yaw
+	*			pitch
+	*			roll
+	*			scale
+	* 
+	* Version 2 (1.0) //Replaced transform key with node key name/offset
+	* Actors length
+	*	FormId
+	*	Adjustments length
+	*		Name
+	*		File
+	*		Mod
+	*		Scale
+	*		Type
+	*		Transforms length (Only if add type)
+	*			NodeKey name
+	*           NodeKey offset
 	*			x
 	*			y
 	*			z
@@ -87,7 +108,7 @@ namespace SAF {
 			}
 		}
 
-		ifc->OpenRecord('ADJU', 1); //adjustments
+		ifc->OpenRecord('ADJU', 2); //adjustments
 
 		UInt32 size = savedAdjustments.size();
 		WriteData<UInt32>(ifc, &size);
@@ -111,12 +132,13 @@ namespace SAF {
 					WriteData<UInt32>(ifc, &mapSize);
 
 					for (auto& kvp : adjustment.map) {
-						WriteData<std::string>(ifc, &kvp.first);
+						WriteData<BSFixedString>(ifc, &kvp.first.name);
+						WriteData<bool>(ifc, &kvp.first.offset);
 						WriteData<float>(ifc, &kvp.second.pos.x);
 						WriteData<float>(ifc, &kvp.second.pos.y);
 						WriteData<float>(ifc, &kvp.second.pos.z);
 						float yaw, pitch, roll;
-						MatrixToEulerYPR(kvp.second.rot, yaw, pitch, roll);
+						MatrixToEulerYPR2(kvp.second.rot, yaw, pitch, roll);
 						WriteData<float>(ifc, &yaw);
 						WriteData<float>(ifc, &pitch);
 						WriteData<float>(ifc, &roll);
@@ -138,10 +160,10 @@ namespace SAF {
 
 		ifc->OpenRecord('SKEL', 1); //skeleton adjustments
 
-		size = defaultAdjustments.size();
+		size = raceAdjustments.size();
 		WriteData<UInt32>(ifc, &size);
 
-		for (auto& keyKvp : defaultAdjustments) {
+		for (auto& keyKvp : raceAdjustments) {
 			WriteData<UInt64>(ifc, &keyKvp.first);
 
 			UInt32 adjustmentsSize = keyKvp.second.size();
@@ -194,7 +216,7 @@ namespace SAF {
 							ReadData<std::string>(ifc, &mod);
 							scale = 1.0f;
 							break;
-						case 1:
+						default:
 							ReadData<std::string>(ifc, &name);
 							ReadData<std::string>(ifc, &file);
 							ReadData<std::string>(ifc, &mod);
@@ -220,9 +242,25 @@ namespace SAF {
 
 								TransformMap map;
 								for (UInt32 k = 0; k < transformSize; ++k) {
+									
+									std::string keyName;
+									BSFixedString nodeName;
+									bool nodeOffset;
 
-									std::string key;
-									ReadData<std::string>(ifc, &key);
+									switch (version) {
+									case 0:
+									case 1:
+									{
+										ReadData<std::string>(ifc, &keyName);
+										break;
+									}
+									default:
+									{
+										ReadData<BSFixedString>(ifc, &nodeName);
+										ReadData<bool>(ifc, &nodeOffset);
+										break;
+									}
+									}
 
 									NiTransform transform;
 									ReadData<float>(ifc, &transform.pos.x);
@@ -233,18 +271,34 @@ namespace SAF {
 									ReadData<float>(ifc, &yaw);
 									ReadData<float>(ifc, &pitch);
 									ReadData<float>(ifc, &roll);
-									MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
 
 									ReadData<float>(ifc, &transform.scale);
 
-									map[key] = transform;
+									switch (version) {
+									case 0:
+									case 1:
+									{
+										MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
+										NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
+										if (nodeKey.key) {
+											map.emplace(nodeKey, transform);
+										}
+										break;
+									}
+									default:
+									{
+										MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
+										map.emplace(NodeKey(nodeName, nodeOffset), transform);
+										break;
+									}
+									}
 								}
-								LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType, map), modLoaded);
+								LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType, version, map), modLoaded);
 							}
 						}
 						else
 						{
-							LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType), modLoaded);
+							LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType, version), modLoaded);
 						}
 					}
 				}
@@ -265,7 +319,7 @@ namespace SAF {
 						std::string adjustmentName;
 						ReadData<std::string>(ifc, &adjustmentName);
 
-						defaultAdjustments[adjustmentKey].insert(adjustmentName);
+						raceAdjustments[adjustmentKey].insert(adjustmentName);
 					}
 					break;
 				}
@@ -286,7 +340,7 @@ namespace SAF {
 							std::string adjustmentName;
 							ReadData<std::string>(ifc, &adjustmentName);
 
-							defaultAdjustments[adjustmentKey].insert(adjustmentName);
+							raceAdjustments[adjustmentKey].insert(adjustmentName);
 						}
 					}
 					break;
@@ -316,7 +370,7 @@ namespace SAF {
 		std::lock(actorLock, persistenceLock);
 
 		persistentAdjustments.clear();
-		defaultAdjustments.clear();
+		raceAdjustments.clear();
 		actorAdjustmentCache.clear();
 		nodeMapCache.clear();
 
@@ -387,10 +441,10 @@ namespace SAF {
 
 		switch (type) {
 		case kAdjustmentSerializeAdd:
-			return PersistentAdjustment(name, file, mod, scale, type, map);
+			return PersistentAdjustment(name, file, mod, scale, type, 2, map);
 		case kAdjustmentSerializeLoad:
 		case kAdjustmentSerializeDefault:
-			return PersistentAdjustment(name, file, mod, scale, type);
+			return PersistentAdjustment(name, file, mod, scale, 2, type);
 		default:
 			return PersistentAdjustment();
 		}
