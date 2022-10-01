@@ -289,6 +289,7 @@ namespace SAF {
 		if (!adjustments) return;
 
 		adjustments->SaveAdjustment(std::string(filename), handle);
+		adjustments->UpdateAllAdjustments();
 	}
 
 	void PapyrusLoadPose(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
@@ -313,7 +314,7 @@ namespace SAF {
 		exports.skeleton = "All";
 
 		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-			if (!adjustment->isDefault) {
+			if (adjustment->type == kAdjustmentTypeDefault || adjustment->type == kAdjustmentTypePose) {
 				exports.handles.insert(adjustment->handle);
 			}
 		});

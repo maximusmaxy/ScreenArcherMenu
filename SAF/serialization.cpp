@@ -49,7 +49,8 @@ namespace SAF {
 	*			roll
 	*			scale
 	* 
-	* Version 2 (1.0) //Replaced transform key with node key name/offset
+	* Version 2 (0.6.0 Unreleased) //Replaced transform key with node key name/offset
+    *
 	* Actors length
 	*	FormId
 	*	Adjustments length
@@ -68,18 +69,40 @@ namespace SAF {
 	*			pitch
 	*			roll
 	*			scale
+	* 
+	* Version 3 (1.0.0) //Changed types to be stored on the adjustment and not calculated retroactively 
+	*                   //Included the updated flag
+	* 	Actors length
+	*	FormId
+	*	Adjustments length
+	*		Name
+	*		File
+	*		Mod
+	*		Scale
+	*		Type
+	*		Updated
+	*		Transforms length (Only if add type)
+	*			NodeKey name
+	*           NodeKey offset
+	*			x
+	*			y
+	*			z
+	*			yaw
+	*			pitch
+	*			roll
+	*			scale
 	*/
 
 	/*
 	* SKEL (Skeleton Adjustments)
 	*
-	* Version 0
+	* Version 0 (Pre 0.5.0)
 	*
 	* Adjustments Length
 	*   Key
 	*   Name
 	*
-	* Version 1 (Beta pre 0.5)
+	* Version 1 (0.5.0)
 	*
 	* Keys Length
 	*   Key
@@ -108,7 +131,7 @@ namespace SAF {
 			}
 		}
 
-		ifc->OpenRecord('ADJU', 2); //adjustments
+		ifc->OpenRecord('ADJU', 3); //adjustments
 
 		UInt32 size = savedAdjustments.size();
 		WriteData<UInt32>(ifc, &size);
@@ -125,8 +148,9 @@ namespace SAF {
 				WriteData<std::string>(ifc, &adjustment.mod);
 				WriteData<float>(ifc, &adjustment.scale);
 				WriteData<UInt8>(ifc, &adjustment.type);
+				WriteData<bool>(ifc, &adjustment.updated);
 
-				if (adjustment.type == kAdjustmentSerializeAdd) {
+				if (adjustment.StoreMap()) {
 
 					UInt32 mapSize = adjustment.map.size();
 					WriteData<UInt32>(ifc, &mapSize);
@@ -147,16 +171,6 @@ namespace SAF {
 				}
 			}
 		}
-
-		//ifc->OpenRecord('SKEL', 0); //skeleton adjustments
-
-		//size = defaultAdjustments.size();
-		//WriteData<UInt32>(ifc, &size);
-
-		//for (auto& kvp : defaultAdjustments) {
-		//	WriteData<UInt64>(ifc, &kvp.first);
-		//	WriteData<std::string>(ifc, &kvp.second);
-		//}
 
 		ifc->OpenRecord('SKEL', 1); //skeleton adjustments
 
@@ -204,37 +218,51 @@ namespace SAF {
 
 					for (UInt32 j = 0; j < adjustmentsSize; ++j) {
 
-						std::string name;
-						std::string file;
-						std::string mod;
-						float scale;
+						PersistentAdjustment persistent;
+						persistent.version = 3;
 
 						switch (version) {
 						case 0:
-							ReadData<std::string>(ifc, &name);
-							file = name;
-							ReadData<std::string>(ifc, &mod);
-							scale = 1.0f;
+							ReadData<std::string>(ifc, &persistent.name);
+							persistent.file = persistent.name;
+							ReadData<std::string>(ifc, &persistent.mod);
+							persistent.scale = 1.0f;
+							ReadData<UInt8>(ifc, &persistent.type);
+							persistent.updated = false;
 							break;
-						default:
-							ReadData<std::string>(ifc, &name);
-							ReadData<std::string>(ifc, &file);
-							ReadData<std::string>(ifc, &mod);
-							ReadData<float>(ifc, &scale);
+						case 1:
+						case 2:
+							ReadData<std::string>(ifc, &persistent.name);
+							ReadData<std::string>(ifc, &persistent.file);
+							ReadData<std::string>(ifc, &persistent.mod);
+							ReadData<float>(ifc, &persistent.scale);
+							ReadData<UInt8>(ifc, &persistent.type);
+							//if file isn't empty and add type, change type to skeleton and set updated to true
+							if (!persistent.file.empty() && persistent.type == kAdjustmentTypeDefault) {
+								persistent.type = kAdjustmentTypeSkeleton;
+								persistent.updated = true;
+							}
+							else {
+								persistent.updated = false;
+							}
 							break;
+						default: //3+
+							ReadData<std::string>(ifc, &persistent.name);
+							ReadData<std::string>(ifc, &persistent.file);
+							ReadData<std::string>(ifc, &persistent.mod);
+							ReadData<float>(ifc, &persistent.scale);
+							ReadData<UInt8>(ifc, &persistent.type);
+							ReadData<bool>(ifc, &persistent.updated);
 						}
 
-						UInt8 adjustmentType;
-						ReadData<UInt8>(ifc, &adjustmentType);
-
 						//Accept loaded mods and adjustments that don't have a mod specified
-						bool modLoaded = mod.empty();
+						bool modLoaded = persistent.mod.empty();
 						if (!modLoaded) {
-							const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(mod.c_str());
+							const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
 							modLoaded = modInfo && modInfo->modIndex != 0xFF;
 						}
 
-						if (adjustmentType == kAdjustmentSerializeAdd) {
+						if (persistent.StoreMap()) {
 
 							UInt32 transformSize;
 							ReadData<UInt32>(ifc, &transformSize);
@@ -293,14 +321,16 @@ namespace SAF {
 									}
 									}
 								}
-								LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType, version, map), modLoaded);
+								LoadPersistentIfValid(formId, persistent, modLoaded);
 							}
 						}
 						else
 						{
-							LoadPersistentIfValid(formId, PersistentAdjustment(name, file, mod, scale, adjustmentType, version), modLoaded);
+							LoadPersistentIfValid(formId, persistent, modLoaded);
 						}
 					}
+					//enforce filename uniqueness
+					ValidateFilenames(persistentAdjustments[formId]);
 				}
 				break;
 			}
@@ -352,10 +382,12 @@ namespace SAF {
 	}
 
 	void AdjustmentManager::LoadPersistentIfValid(UInt32 formId, PersistentAdjustment persistent, bool loaded) {
+		//if mod not loaded
 		if (!loaded)
 			return;
 
-		if (persistent.type == kAdjustmentSerializeAdd) {
+		//if default or tongue type, check if transform is unedited
+		if (persistent.type == kAdjustmentTypeDefault || persistent.type == kAdjustmentTypeTongue) {
 			if (TransformMapIsDefault(persistent.map))
 				return;
 		}
@@ -389,7 +421,6 @@ namespace SAF {
 		std::vector<PersistentAdjustment> persistents;
 		adjustments->GetPersistentAdjustments(persistents);
 
-		//Must have 1 add or 1 load
 		for (auto& persistent : persistents) {
 			if (IsPersistentValid(persistent)) {
 				map[adjustments->formId] = persistents;
@@ -398,55 +429,37 @@ namespace SAF {
 		}
 	}
 
+	//This is to clear out any npcs with unedited adjustments, must have at least one non race adjustment
 	bool AdjustmentManager::IsPersistentValid(PersistentAdjustment& adjustment)
 	{
-		return (adjustment.type == kAdjustmentSerializeAdd ||
-			adjustment.type == kAdjustmentSerializeLoad);
+		return (adjustment.type != kAdjustmentTypeNone && adjustment.type != kAdjustmentTypeRace);
 	}
 
 	void ActorAdjustments::GetPersistentAdjustments(std::vector<PersistentAdjustment>& persistents) {
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
 		for (auto& adjustment : map) {
-			PersistentAdjustment persistentAdjustment = adjustment.second->GetPersistence();
-			if (persistentAdjustment.type != kAdjustmentSerializeDisabled)
+			PersistentAdjustment persistentAdjustment(adjustment.second, 3);
+			if (persistentAdjustment.type != kAdjustmentTypeNone)
 				persistents.push_back(persistentAdjustment);
-		}
-
-		for (auto& removed : removedAdjustments)
-		{
-			persistents.push_back(PersistentAdjustment(removed, kAdjustmentSerializeRemove));
 		}
 	}
 
-	PersistentAdjustment Adjustment::GetPersistence() {
-		std::shared_lock<std::shared_mutex> lock(mutex);
+	//Need to enforce file name uniqueness
+	void AdjustmentManager::ValidateFilenames(std::vector<PersistentAdjustment>& persistents) {
+		std::unordered_set<std::string> filenames;
 
-		UInt8 type = kAdjustmentSerializeDisabled;
-
-		if (!updated) {
-			if (isDefault) {
-				type = kAdjustmentSerializeDefault;
+		auto it = persistents.begin();
+		while (it != persistents.end()) {
+			//if already found, erase
+			if (filenames.count(it->file)) {
+				it = persistents.erase(it);
 			}
-			else if (!file.empty()) {
-				type = kAdjustmentSerializeLoad;
+			//else add to set
+			else {
+				filenames.insert(it->file);
+				++it;
 			}
-		}
-
-		if (type == kAdjustmentSerializeDisabled) {
-			if (!TransformMapIsDefault(map)) {
-				type = kAdjustmentSerializeAdd;
-			}
-		}
-
-		switch (type) {
-		case kAdjustmentSerializeAdd:
-			return PersistentAdjustment(name, file, mod, scale, type, 2, map);
-		case kAdjustmentSerializeLoad:
-		case kAdjustmentSerializeDefault:
-			return PersistentAdjustment(name, file, mod, scale, 2, type);
-		default:
-			return PersistentAdjustment();
 		}
 	}
 }

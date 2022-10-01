@@ -98,6 +98,27 @@ namespace SAF {
 		return found->second;
 	}
 
+	PersistentAdjustment::PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 _version)
+	{
+		type = adjustment->type;
+		name = adjustment->name;
+		mod = adjustment->mod;
+		scale = adjustment->scale;
+		updated = adjustment->updated;
+		version = _version;
+
+		if (StoreMap()) {
+			map = adjustment->map;
+		}
+	}
+
+	bool PersistentAdjustment::StoreMap()
+	{
+		if (!type) return false;
+		//Store map if a non file type or if a file type is updated
+		return (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue || updated);
+	}
+
 	NiTransform* Adjustment::GetTransform(const NodeKey& key)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
@@ -240,6 +261,12 @@ namespace SAF {
 		updated = true;
 	}
 
+	//Should it appear in the pose adjust menu or be a part of the node update
+	bool Adjustment::IsVisible()
+	{
+		return type != kAdjustmentTypeRemovedRace;
+	}
+
 	void Adjustment::Clear()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
@@ -306,9 +333,6 @@ namespace SAF {
 
 		map.clear();
 		list.clear();
-		removedAdjustments.clear();
-		poseHandle = 0;
-		tongueHandle = 0;
 	}
 
 	NiTransform ActorAdjustments::GetOffsetTransform(BSFixedString name)
@@ -334,24 +358,25 @@ namespace SAF {
 	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform)
 	{
 		for (auto& adjustment : list) {
+			if (adjustment->IsVisible()) {
+				NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
+				if (offset) {
+					if (adjustment->scale == 1.0f) {
+						*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
+					}
+					else {
+						*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
+					}
+				}
 
-			NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
-			if (offset) {
-				if (adjustment->scale == 1.0f) {
-					*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
-				}
-				else {
-					*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
-				}
-			}
-
-			NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
-			if (pose) {
-				if (adjustment->scale == 1.0f) {
-					*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
-				}
-				else {
-					*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
+				NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
+				if (pose) {
+					if (adjustment->scale == 1.0f) {
+						*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
+					}
+					else {
+						*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
+					}
 				}
 			}
 		}
@@ -432,62 +457,75 @@ namespace SAF {
 	}
 
 	void ActorAdjustments::UpdatePersistentAdjustments(AdjustmentUpdateData& data) {
-		std::unordered_set<std::string> removeSet;
-		
 		if (data.persistents) {
 			for (auto& persistent : *data.persistents) {
-				if (!persistent.file.empty()) {
-					removeSet.insert(persistent.file);
-				}
 				switch (persistent.type) {
-				case kAdjustmentSerializeAdd:
+				case kAdjustmentTypeDefault:
 				{
 					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name);
 					adjustment->file = persistent.file;
 					adjustment->mod = persistent.mod;
 					adjustment->scale = persistent.scale;
 					adjustment->map = persistent.map;
+					adjustment->updated = persistent.updated;
 					
 					//if version < 2 treat as 0
 					UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
 					break;
 				}
-				case kAdjustmentSerializeLoad:
+				case kAdjustmentTypeSkeleton:
+				case kAdjustmentTypeRace:
+				case kAdjustmentTypePose:
 				{
-					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.file, true);
+					std::shared_ptr<Adjustment> adjustment;
+					if (persistent.updated) {
+						adjustment = CreateAdjustment(persistent.name);
+						adjustment->map = persistent.map;
+					}
+					else {
+						adjustment = LoadAdjustment(persistent.file, true);
+					}
 					if (adjustment != nullptr) {
 						adjustment->name = persistent.name;
+						adjustment->file = persistent.file;
 						adjustment->mod = persistent.mod;
 						adjustment->scale = persistent.scale;
+						adjustment->type = persistent.type;
+						adjustment->updated = persistent.updated;
 					}
 					break;
 				}
-				case kAdjustmentSerializeRemove:
+				case kAdjustmentTypeRemovedRace:
 				{
-					removedAdjustments.insert(persistent.file);
+					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.file);
+					adjustment->file = persistent.file;
+					adjustment->name = persistent.file;
+					adjustment->mod = persistent.mod;
+					adjustment->type = kAdjustmentTypeRemovedRace;
 					break;
 				}
-				case kAdjustmentSerializeDefault:
+				case kAdjustmentTypeTongue:
 				{
-					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(persistent.file, true);
-					if (adjustment != nullptr) {
-						adjustment->name = persistent.file;
-						adjustment->isDefault = true;
-						adjustment->mod = persistent.mod;
-					}
-					break;
+					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name);
+					adjustment->file = persistent.file;
+					adjustment->mod = persistent.mod;
+					adjustment->scale = persistent.scale;
+					adjustment->map = persistent.map;
+					adjustment->updated = persistent.updated;
+					adjustment->type = persistent.type;
 				}
 				}
 			}
 		}
 		
-		if (data.defaults) {
-			for (auto& def : *data.defaults) {
-				if (!removeSet.count(def)) {
-					removeSet.insert(def);
-					std::shared_ptr<Adjustment> adjustment = LoadAdjustment(def, true);
+		if (data.race) {
+			for (auto& raceAdjustment : *data.race) {
+				//Find the filename if exists and add if necessary, this should prevent removed race adjustments from being loaded
+				std::shared_ptr<Adjustment> adjustment = GetFile(raceAdjustment);
+				if (!adjustment) {
+					adjustment = LoadAdjustment(raceAdjustment, true);
 					if (adjustment != nullptr) {
-						adjustment->isDefault = true;
+						adjustment->type = kAdjustmentTypeRace;
 					}
 				}
 			}
@@ -502,6 +540,8 @@ namespace SAF {
 		map[nextHandle] = adjustment;
 		list.push_back(adjustment);
 		nextHandle++;
+		adjustment->type = kAdjustmentTypeDefault;
+		adjustment->updated = false;
 		return adjustment;
 	}
 
@@ -516,9 +556,11 @@ namespace SAF {
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
-		if (map.count(handle))
-			return map[handle];
-		return nullptr;
+		if (!handle)
+			return nullptr;
+		
+		auto found = map.find(handle);
+		return (found != map.end() ? found->second : nullptr);
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::GetListAdjustment(UInt32 index)
@@ -544,22 +586,19 @@ namespace SAF {
 		}
 
 		if (it == list.end()) {
-			_DMESSAGE("Attempted to remove invalid handle");
 			return;
 		}
 
-		if ((*it)->isDefault) {
-			removedAdjustments.insert((*it)->name);
+		//If removing a race adjustment, set to removed race type instead 
+		if ((*it)->type == kAdjustmentTypeRace)
+		{
+			(*it)->type = kAdjustmentTypeRemovedRace;
+			(*it)->updated = false;
 		}
-
-		if (handle == poseHandle)
-			poseHandle = 0;
-
-		if (handle == tongueHandle)
-			tongueHandle = 0;
-
-		list.erase(it);
-		map.erase(handle);
+		else {
+			list.erase(it);
+			map.erase(handle);
+		}
 	}
 
 	void ActorAdjustments::RemoveAdjustment(std::string name)
@@ -578,13 +617,17 @@ namespace SAF {
 		}
 
 		UInt32 handle = (*it)->handle;
-		if (handle == poseHandle)
-			poseHandle = 0;
-		if (handle == tongueHandle)
-			tongueHandle = 0;
 
-		list.erase(it);
-		map.erase(handle);
+		//If removing a race adjustment, set to removed race type instead 
+		if ((*it)->type == kAdjustmentTypeRace)
+		{
+			(*it)->type = kAdjustmentTypeRemovedRace;
+			(*it)->updated = false;
+		}
+		else {
+			list.erase(it);
+			map.erase(handle);
+		}
 	}
 
 	bool ActorAdjustments::HasAdjustment(std::string name)
@@ -596,6 +639,33 @@ namespace SAF {
 		}
 
 		return false;
+	}
+
+	std::shared_ptr<Adjustment> ActorAdjustments::GetFile(std::string filename)
+	{
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		for (auto& it : list) {
+			if (it->file == filename) return it;
+		}
+
+		return nullptr;
+	}
+
+	void ActorAdjustments::RemoveFile(std::string filename, UInt32 keepHandle)
+	{
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		auto it = list.begin();
+		while (it != list.end()) {
+			//if filenames match but adjustment does not have the keep handle
+			if ((*it)->file == filename && (*it)->handle != keepHandle) {
+				it = list.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
 	}
 
 	std::unordered_set<std::string> ActorAdjustments::GetAdjustmentNames()
@@ -633,11 +703,33 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = list[fromIndex];
 
 		if (fromIndex < toIndex) {
+
+			//search for first visible
+			while (!list[toIndex]->IsVisible()) {
+				++toIndex;
+				//No visible above
+				if (toIndex >= list.size()) { 
+					return 0;
+				}
+			}
+
+			//shift downward
 			for (int i = fromIndex; i < toIndex; ++i) {
 				list[i] = list[i + 1];
 			}
 		}
 		else {
+
+			//search for first visible
+			while (!list[toIndex]->IsVisible()) {
+				--toIndex;
+				//No visible below
+				if (toIndex < 0) { 
+					return 0;
+				}
+			}
+
+			//shift upward
 			for (int i = fromIndex; i > toIndex; --i) {
 				list[i] = list[i - 1];
 			}
@@ -672,21 +764,26 @@ namespace SAF {
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(std::string filename, bool cached)
 	{
 		if (cached) {
+			//get from cache
 			auto adjustmentFile = g_adjustmentManager.GetAdjustmentFile(filename);
 			if (adjustmentFile) {
 
-				std::shared_ptr<Adjustment> adjustment = CreateAdjustment(filename);
+				//If an adjustment with the same file name already exists, load over that instead
+				std::shared_ptr<Adjustment> adjustment = GetFile(filename);
 
-				if (removedAdjustments.count(filename)) {
-					removedAdjustments.erase(filename);
-					adjustment->isDefault = true;
+				if (!adjustment) {
+					adjustment = CreateAdjustment(filename);
 				}
 
 				if (nodeSets) {
 					adjustment->CopyMap(adjustmentFile, &nodeSets->all);
 				}
 				
+				adjustment->name = filename;
 				adjustment->file = filename;
+				adjustment->updated = false;
+				adjustment->scale = 1.0f;
+				adjustment->type = kAdjustmentTypeSkeleton;
 				return adjustment;
 			}
 		}
@@ -697,21 +794,27 @@ namespace SAF {
 
 			UpdateLoadedAdjustmentVersion(loadedAdjustment);
 
+			//add to cache
 			if (cached) {
 				g_adjustmentManager.SetAdjustmentFile(filename, loadedAdjustment.map);
 			}
 
-			std::shared_ptr<Adjustment> adjustment = CreateAdjustment(filename);
+			//If an adjustment with the same file name already exists, load over that instead
+			std::shared_ptr<Adjustment> adjustment = GetFile(filename);
 
-			if (removedAdjustments.erase(filename)) {
-				adjustment->isDefault = true;
+			if (!adjustment) {
+				adjustment = CreateAdjustment(filename);
 			}
 
 			if (nodeSets) {
 				adjustment->CopyMap(&loadedAdjustment.map, &nodeSets->all);
 			}
 			
+			adjustment->name = filename;
 			adjustment->file = filename;
+			adjustment->updated = false;
+			adjustment->scale = 1.0f;
+			adjustment->type = kAdjustmentTypeSkeleton;
 			return adjustment;
 		}
 
@@ -733,13 +836,13 @@ namespace SAF {
 		if (!adjustment) return;
 
 		if (SaveAdjustmentFile(filename, adjustment)) {
-			//if saving to a new file from the default it needs to be removed 
-			if (adjustment->isDefault && adjustment->name != filename) {
-				removedAdjustments.insert(adjustment->name);
-				adjustment->isDefault = false;
-			}
+
+			//Need to delete all other adjustments with the same file name to enforce name uniqueness
+			RemoveFile(filename, handle);
+
 			adjustment->name = filename;
 			adjustment->file = filename;
+			adjustment->type = kAdjustmentTypeSkeleton;
 			adjustment->updated = false;
 		}
 	}
@@ -749,7 +852,9 @@ namespace SAF {
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
 		for (auto& adjustment : list) {
-			functor(adjustment);
+			if (adjustment->IsVisible()) {
+				functor(adjustment);
+			}
 		}
 	}
 
@@ -1009,14 +1114,16 @@ namespace SAF {
 
 			std::string filename = getFilename(path);
 
+			//clear default types
 			for (auto& kvp : map) {
-				if (kvp.second->file.empty() && kvp.second->handle != poseHandle) {
+				if (kvp.second->type == kAdjustmentTypeDefault) {
 					kvp.second->Clear();
 				}
 			}
 
-			if (poseHandle && map.count(poseHandle)) {
-				adjustment = map[poseHandle];
+			adjustment = GetAdjustmentByType(kAdjustmentTypePose);
+
+			if (adjustment != nullptr) {
 				adjustment->Clear();
 				adjustment->name = filename;
 				adjustment->scale = 1.0f;
@@ -1026,8 +1133,8 @@ namespace SAF {
 				map[nextHandle] = adjustment;
 				list.push_back(adjustment);
 				nextHandle++;
-
-				poseHandle = adjustment->handle;
+				
+				adjustment->type = kAdjustmentTypePose;
 			}
 
 			for (auto& kvp : transformMap) {
@@ -1063,16 +1170,19 @@ namespace SAF {
 	}
 
 	void ActorAdjustments::ResetPose() {
-		if (!poseHandle) 
+		UInt32 poseHandle = GetHandleByType(kAdjustmentTypePose);
+		if (!poseHandle)
 			return;
 
 		RemoveAdjustment(poseHandle);
 	}
 
 	void ActorAdjustments::LoadRaceAdjustment(std::string filename, bool clear, bool enable) {
-		if (clear) 
-			RemoveRaceAdjustments();
-
+		if (clear) {
+			RemoveAdjustmentsByType(kAdjustmentTypeRace);
+			RemoveAdjustmentsByType(kAdjustmentTypeRemovedRace);
+		}
+			
 		if (filename.empty())
 			return;
 
@@ -1081,20 +1191,20 @@ namespace SAF {
 			if (!adjustment) 
 				return;
 
-			adjustment->isDefault = true;
+			adjustment->type = kAdjustmentTypeRace;
 		} 
 		else {
-			RemoveAdjustment(filename);
+			RemoveFile(filename, 0);
 		}
 	}
 
-	void ActorAdjustments::RemoveRaceAdjustments() {
+	void ActorAdjustments::RemoveAdjustmentsByType(UInt32 type) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		auto it = list.begin();
 
 		while (it != list.end()) {
-			if ((*it)->isDefault) {
+			if ((*it)->type == type) {
 				map.erase((*it)->handle);
 				it = list.erase(it);
 			}
@@ -1102,8 +1212,26 @@ namespace SAF {
 				++it;
 			}
 		}
+	}
 
-		removedAdjustments.clear();
+	UInt32 ActorAdjustments::GetHandleByType(UInt32 type) {
+		for (auto& adjustment : list) {
+			if (adjustment->type == type) {
+				return adjustment->handle;
+			}
+		}
+
+		return 0;
+	}
+
+	std::shared_ptr<Adjustment> ActorAdjustments::GetAdjustmentByType(UInt32 type) {
+		for (auto& adjustment : list) {
+			if (adjustment->type == type) {
+				return adjustment;
+			}
+		}
+
+		return nullptr;
 	}
 
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
@@ -1396,7 +1524,7 @@ namespace SAF {
 		adjustments->CreateAdjustment("New Adjustment");
 
 		AdjustmentUpdateData data;
-		data.defaults = GetRaceAdjustments(adjustments->race, adjustments->isFemale);
+		data.race = GetRaceAdjustments(adjustments->race, adjustments->isFemale);
 
 		auto foundPersistents = persistentAdjustments.find(adjustments->formId);
 		if (foundPersistents != persistentAdjustments.end())
@@ -1479,9 +1607,6 @@ namespace SAF {
 						poseMap->emplace(nodeKey->second.name, flattenedBone);
 					}
 				}
-			}
-			else {
-				_DMESSAGE((std::string("node not found: ") + nodeName.c_str()).c_str());
 			}
 		}
 
@@ -1628,20 +1753,6 @@ namespace SAF {
 		}
 	}
 
-	//void AdjustmentManager::NegateAdjustments(UInt32 formId, UInt32 handle, const char* groupName) {
-	//	std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-	//	if (!actorAdjustmentCache.count(formId)) return;
-
-	//	std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
-	//	if (!adjustments) return;
-
-	//	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-	//	if (!adjustment) return;
-
-	//	adjustments->NegateTransformGroup(adjustment, groupName);
-	//}
-
 	UInt32 AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
@@ -1664,27 +1775,14 @@ namespace SAF {
 		adjustments->ResetPose();
 	}
 
-	void AdjustmentManager::LoadRaceAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable)
+	void AdjustmentManager::LoadRaceAdjustment(UInt32 formId, bool isFemale, const char* filename, bool race, bool clear, bool enable)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
 		std::string name(filename ? filename : "");
 
-		//if single npc target just use the regular adjustment functions
-		if (npc) { 
-
-			std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(formId);
-			if (!adjustments) return;
-
-			if (!filename) {
-				adjustments->RemoveRaceAdjustments();
-			}
-			else {
-				
-			}
-		}
 		//target all race/gender
-		else { 
+		if (race) { 
 			UInt64 key = formId;
 			if (isFemale)
 				key |= 0x100000000;
@@ -1730,6 +1828,28 @@ namespace SAF {
 				}
 			});
 		}
+
+		//if single npc target just use the regular adjustment functions
+		else { 
+			std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(formId);
+			if (!adjustments) return;
+
+			if (clear) 
+				adjustments->RemoveAdjustmentsByType(kAdjustmentTypeSkeleton);
+			
+			if (!filename)
+				return;
+
+			if (enable) {
+				std::shared_ptr<Adjustment> adjustment = adjustments->LoadAdjustment(filename, false);
+				if (adjustment != nullptr) {
+					adjustment->type = kAdjustmentTypeSkeleton;
+				}
+			}
+			else {
+				adjustments->RemoveFile(filename, 0);
+			}
+		}
 	}
 
 	UInt32 AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
@@ -1764,6 +1884,17 @@ namespace SAF {
 		if (!actorAdjustmentCache.count(formId)) return;
 		std::shared_ptr<ActorAdjustments> adjustments = actorAdjustmentCache[formId];
 
+		UInt32 tongueHandle = adjustments->GetHandleByType(kAdjustmentTypeTongue);
+
+		//clear if no transforms
+		if (!transforms) {
+			if (!tongueHandle) {
+				adjustments->RemoveAdjustment(tongueHandle);
+				adjustments->UpdateAllAdjustments();
+			}
+			return;
+		}
+
 		//if all transforms are identity then delete the adjustment
 		bool updated = false;
 		for (auto& transform : *transforms) {
@@ -1775,15 +1906,15 @@ namespace SAF {
 
 			std::shared_ptr<Adjustment> adjustment;
 
-			if (adjustments->tongueHandle) {
-				adjustment = adjustments->GetAdjustment(adjustments->tongueHandle);
+			if (tongueHandle) {
+				adjustment = adjustments->GetAdjustment(tongueHandle); 
 				adjustment->Clear();
 				adjustment->name = "Face Morphs Tongue";
 				adjustment->scale = 1.0f;
 			}
 			else {
 				adjustment = adjustments->CreateAdjustment("Face Morphs Tongue");
-				adjustments->tongueHandle = adjustment->handle;
+				adjustment->type = kAdjustmentTypeTongue;
 			}
 
 			for (auto& transform : *transforms) {
@@ -1793,9 +1924,7 @@ namespace SAF {
 			}
 		}
 		else {
-			if (adjustments->tongueHandle) {
-				adjustments->RemoveAdjustment(adjustments->tongueHandle);
-			}
+			adjustments->RemoveAdjustment(tongueHandle);
 		}
 
 		adjustments->UpdateAllAdjustments();

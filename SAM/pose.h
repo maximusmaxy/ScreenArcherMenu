@@ -4,6 +4,7 @@
 #include "f4se/ScaleformMovie.h"
 
 #include "SAF/adjustments.h"
+#include "SAF/io.h"
 
 #include <mutex>
 
@@ -60,6 +61,7 @@ void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup);
 bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment);
 void SetAdjustmentName(UInt32 adjustmentHandle, const char* name);
 
+MenuCategoryList* GetAdjustmentMenu();
 void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle);
 void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);
 void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
@@ -78,3 +80,5 @@ void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, 
 
 void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path);
 void GetPoseExportTypesGFx(GFxMovieRoot* root, GFxValue* result);
+
+void FindNodeIndexes(SAF::NodeKey& key, SInt32* categoryIndex, SInt32* nodeIndex);

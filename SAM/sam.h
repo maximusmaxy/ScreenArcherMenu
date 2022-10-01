@@ -29,7 +29,6 @@
 class SelectedRefr {
 public:
 	TESObjectREFR* refr;
-	UInt32 formId;
 	NiAVObject* eyeNode;
 	bool isFemale;
 	UInt32 race;

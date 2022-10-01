@@ -126,6 +126,7 @@ void SaveAdjustmentFile(const char* filename, int adjustmentHandle) {
 	if (!adjustments) return;
 
 	safMessageDispatcher.saveAdjustment(selected.refr->formID, filename, adjustmentHandle);
+	adjustments->UpdateAllAdjustments();
 }
 
 bool LoadAdjustmentFile(const char* filename) {
@@ -594,7 +595,22 @@ void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 
-	std::unordered_set<std::string> adjustmentNames = adjustments->GetAdjustmentNames();
+	//build a set of all race/skeleton adjustments to compare to
+	std::unordered_set<std::string> adjustmentNames;
+	if (race) {
+		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+			if (adjustment->type == kAdjustmentTypeRace) {
+				adjustmentNames.insert(adjustment->file);
+			}
+		});
+	}
+	else {
+		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+			if (adjustment->type == kAdjustmentTypeSkeleton) {
+				adjustmentNames.insert(adjustment->file);
+			}
+		});
+	}
 
 	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Adjustments", "*.json"); !iter.Done(); iter.Next())
 	{
@@ -605,6 +621,7 @@ void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
 		names.PushBack(&name);
 
 		bool enabled = adjustmentNames.count(noExtension.c_str());
+
 		GFxValue value(enabled);
 		values.PushBack(&value);
 	}
@@ -725,4 +742,25 @@ void GetPoseExportTypesGFx(GFxMovieRoot* root, GFxValue* result)
 
 	result->PushBack(&GFxValue("All"));
 	result->PushBack(&GFxValue("Outfit Studio"));
+}
+
+void FindNodeIndexes(NodeKey& nodeKey, SInt32* categoryIndex, SInt32* nodeIndex)
+{
+	*categoryIndex = -1;
+	*nodeIndex = -1;
+
+	auto menu = GetAdjustmentMenu();
+	if (!menu)
+		return;
+
+	for (SInt32 i = 0; i < menu->size(); ++i) {
+		for (SInt32 j = 0; j < (*menu)[i].second.size(); ++j) {
+			NodeKey menuKey = GetNodeKeyFromString((*menu)[i].second[j].second.c_str());
+			if (menuKey.key == nodeKey.key) {
+				*categoryIndex = i;
+				*nodeIndex = j;
+				return;
+			}
+		}
+	}
 }

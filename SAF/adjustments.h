@@ -16,6 +16,10 @@
 
 namespace SAF {
 
+	class Adjustment;
+	class ActorAdjustment;
+	class AdjustmentManager;
+
 	struct NodeKey {
 		BSFixedString name;
 		bool offset;
@@ -79,12 +83,24 @@ namespace SAF {
 		UInt32 version;
 	};
 
+	//Old adjustment serialization types
+	//enum {
+	//	kAdjustmentSerializeDisabled = 0,
+	//	kAdjustmentSerializeAdd,		//Adjustments that are not saved in a json file
+	//	kAdjustmentSerializeLoad,		//Adjustments saved in a json file
+	//	kAdjustmentSerializeRemove,		//Default/Unique adjustments that are removed
+	//	kAdjustmentSerializeDefault,	//v0.5 Need to store default adjustments for ordering purposes
+	//};
+
+	//Using this in version 1.0+
 	enum {
-		kAdjustmentSerializeDisabled = 0,
-		kAdjustmentSerializeAdd,		//Adjustments that are not saved in a json file
-		kAdjustmentSerializeLoad,		//Adjustments saved in a json file
-		kAdjustmentSerializeRemove,		//Default/Unique adjustments that are removed
-		kAdjustmentSerializeDefault,	//v0.5 Need to store default adjustments for ordering purposes
+		kAdjustmentTypeNone = 0,
+		kAdjustmentTypeDefault,
+		kAdjustmentTypeSkeleton,
+		kAdjustmentTypeRemovedRace,
+		kAdjustmentTypeRace,
+		kAdjustmentTypePose,
+		kAdjustmentTypeTongue
 	};
 
 	class PersistentAdjustment {
@@ -94,10 +110,13 @@ namespace SAF {
 		std::string mod;
 		float scale;
 		UInt8 type;
+		bool updated;
 		UInt8 version;
 		TransformMap map;
 
-		PersistentAdjustment() : type(kAdjustmentSerializeDisabled) {}
+		PersistentAdjustment() : type(kAdjustmentTypeNone) {}
+
+		PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 version);
 
 		PersistentAdjustment(std::string file, UInt8 type) :
 			name(file),
@@ -105,27 +124,11 @@ namespace SAF {
 			mod(std::string()),
 			scale(1.0),
 			type(type),
-			version(0)
+			version(0),
+			updated(false)
 		{}
 
-		PersistentAdjustment(std::string name, std::string file, std::string mod, float scale, UInt8 type, UInt8 version) :
-			name(name),
-			file(file),
-			mod(mod),
-			scale(scale),
-			type(type),
-			version(version)
-		{}
-
-		PersistentAdjustment(std::string name, std::string file, std::string mod, float scale, UInt8 type, UInt8 version, TransformMap map) :
-			name(name),
-			file(file),
-			mod(mod),
-			scale(scale),
-			type(type),
-			version(version),
-			map(map)
-		{}
+		bool StoreMap();
 	};
 
 	typedef std::unordered_map<UInt32, std::vector<PersistentAdjustment>> PersistentMap;
@@ -268,10 +271,10 @@ namespace SAF {
 
 	struct AdjustmentUpdateData
 	{
-		std::unordered_set<std::string>* defaults;
+		std::unordered_set<std::string>* race;
 		std::vector<PersistentAdjustment>* persistents;
 
-		AdjustmentUpdateData() : defaults(nullptr), persistents(nullptr) {};
+		AdjustmentUpdateData() : race(nullptr), persistents(nullptr) {};
 	};
 
 	struct ExportSkeleton
@@ -283,29 +286,17 @@ namespace SAF {
 		ExportSkeleton() : skeleton(nullptr), nodes(nullptr) {};
 	};
 
-	enum {
-		kAdjustmentTypeNone = 0,
-		kAdjustmentTypeDefault,
-		kAdjustmentTypeSkeleton,
-		kAdjustmentTypeRace,
-		kAdjustmentTypeRemovedRace,
-		kAdjustmentTypePose,
-		kAdjustmentTypeTongue
-	};
-
 	class Adjustment
 	{
 	private:
 		std::shared_mutex mutex;
 	
 	public:
-		
 		UInt32 handle = -1;
 
 		std::string name;
 		std::string file;
 		std::string mod;
-		bool isDefault = false;
 		bool updated = false;
 		float scale = 1.0f;
 		UInt32 type = kAdjustmentTypeDefault;
@@ -341,9 +332,9 @@ namespace SAF {
 		void Rename(std::string name);
 		void SetScale(float scale);
 
-		void Clear();
+		bool IsVisible();
 
-		PersistentAdjustment GetPersistence();
+		void Clear();
 	};
 
 	enum ActorAdjustmentState {
@@ -376,11 +367,6 @@ namespace SAF {
 		NodeMap offsetMap;
 		NodeMap* baseMap = nullptr;
 
-		std::unordered_set<std::string> removedAdjustments;
-
-		UInt32 poseHandle = 0;
-		UInt32 tongueHandle = 0;
-
 		ActorAdjustments() {}
 
 		ActorAdjustments(Actor* actor, TESNPC* npc) :
@@ -401,6 +387,9 @@ namespace SAF {
 		std::unordered_set<std::string> GetAdjustmentNames();
 		UInt32 GetAdjustmentIndex(UInt32 handle);
 		UInt32 MoveAdjustment(UInt32 fromIndex, UInt32 toIndex);
+
+		std::shared_ptr<Adjustment> GetFile(std::string filename);
+		void RemoveFile(std::string filename, UInt32 handle);
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
@@ -428,7 +417,9 @@ namespace SAF {
 		void RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& name, UInt32 type, float scalar);
 
 		void LoadRaceAdjustment(std::string filename, bool clear, bool enable);
-		void RemoveRaceAdjustments();
+		void RemoveAdjustmentsByType(UInt32 type);
+		UInt32 GetHandleByType(UInt32 type);
+		std::shared_ptr<Adjustment> GetAdjustmentByType(UInt32 type);
 
 		void SavePose(std::string filename, ExportSkeleton* nodes);
 		void SaveOutfitStudioPose(std::string filename, ExportSkeleton* nodes);
@@ -510,6 +501,7 @@ namespace SAF {
 		void StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
 		void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
 		bool IsPersistentValid(PersistentAdjustment& persistent);
+		void ValidateFilenames(std::vector<PersistentAdjustment>& persistents);
 	};
 
 	extern AdjustmentManager g_adjustmentManager;

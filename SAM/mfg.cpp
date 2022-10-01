@@ -87,7 +87,7 @@ struct TongueTransform {
 SAF::NodeKey GetTongueNodeKey(int i)
 {
 	char tongueStr[10] = "Tongue_00";
-	tongueStr[8] = std::to_string(i).c_str()[0]; //second digit
+	tongueStr[8] = static_cast<char>(i + 0x30); //int to char for second digit
 	return SAF::NodeKey(BSFixedString(tongueStr), false);
 }
 
@@ -118,8 +118,9 @@ void SaveMfg(std::string filename) {
 
 	//Get tongue transforms
 	auto adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (adjustments && adjustments->tongueHandle && adjustments->baseMap) {
-		auto adjustment = adjustments->GetAdjustment(adjustments->tongueHandle);
+	if (adjustments && adjustments->baseMap) {
+		UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
+		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (adjustment) {
 			for (int i = 0; i < 5; ++i) {
 				SAF::NodeKey nodeKey = GetTongueNodeKey(i);
@@ -250,7 +251,7 @@ bool LoadMfg(std::string filename) {
 		transformMap.emplace(GetTongueNodeKey(i), transform);
 	}
 
-	safMessageDispatcher.loadTongueAdjustment(selected.formId, &transformMap);
+	safMessageDispatcher.loadTongueAdjustment(selected.refr->formID, &transformMap);
 
 	if (blinkHack && GetBlinkState() != kHackEnabled)
 		SetBlinkState(true);
@@ -266,6 +267,9 @@ void ResetMfg() {
 	if (!ptr) return;
 
 	memset(ptr, 0, sizeof(float) * 54);
+
+	//send a nullptr to clear the tongue adjustment
+	safMessageDispatcher.loadTongueAdjustment(selected.refr->formID, nullptr);
 }
 
 void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
@@ -312,29 +316,42 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 	result->SetMember("values", &values);
 }
 
+//need to get or create the new tongue adjustment and pass back the menu info to get the correct node
 void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 tongueIndex)
 {
-	//need to get or create the new tongue adjustment and pass back the node name and adjustment handle
 	root->CreateArray(result);
 
 	if (!selected.refr)
 		return;
 
-	auto adjustments = safMessageDispatcher.GetActorAdjustments(selected.formId);
+	auto adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments)
 		return;
 
+	SAF::NodeKey nodeKey = GetTongueNodeKey(tongueIndex);
+
+	//find menu indexes for the tongue bones
+	SInt32 categoryIndex;
+	SInt32 nodeIndex;
+	FindNodeIndexes(nodeKey, &categoryIndex, &nodeIndex);
+
+	if (categoryIndex == -1 || nodeIndex == -1)
+		return;
+
 	//if no tongue handle, create
-	if (!adjustments->tongueHandle) {
-		safMessageDispatcher.createAdjustment(selected.formId, "Face Morphs Tongue");
+	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
+	if (!tongueHandle) {
+		safMessageDispatcher.createAdjustment(selected.refr->formID, "Face Morphs Tongue");
 		UInt32 handle = safMessageDispatcher.GetResult();
-		if (!handle)
+
+		auto adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment)
 			return;
 
-		adjustments->tongueHandle = handle;
+		adjustment->type = SAF::kAdjustmentTypeTongue;
 	}
 
-	SAF::NodeKey nodeKey = GetTongueNodeKey(tongueIndex);
-	result->PushBack(&GFxValue(nodeKey.name.c_str()));
-	result->PushBack(&GFxValue(adjustments->tongueHandle));
+	result->PushBack(&GFxValue(categoryIndex));
+	result->PushBack(&GFxValue(nodeIndex));
+	result->PushBack(&GFxValue(tongueHandle));
 }

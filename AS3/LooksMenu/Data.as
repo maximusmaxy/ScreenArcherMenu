@@ -1603,20 +1603,23 @@
 		public static function getMorphsTongue(id:int)
 		{
 			try {
-				var tongue:Array = sam.GetMorphsTongue();
+				var tongue:Array = sam.GetMorphsTongue(id);
 				if (tongue.length == 0) {
-					boneName = "";
-					selectedAdjustment = 0;
+					selectedCategory = -1;
+					selectedBone = -1;
+					selectedAdjustment = -1;
 				} else {
-					boneName = tongue[0];
-					selectedAdjustment = tongue[1];
+					selectedCategory = tongue[0];
+					selectedBone = tongue[1];
+					selectedAdjustment = tongue[2];
 				}
 			}
 			catch (e:Error)
 			{
 				trace("Failed to get morphs tongue");
-				boneName = "";
-				selectedAdjustment = 0;
+				selectedCategory = -1;
+				selectedBone = -1;
+				selectedAdjustment = -1;
 			}
 		}
 	}
