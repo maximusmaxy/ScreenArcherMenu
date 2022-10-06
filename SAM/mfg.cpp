@@ -330,14 +330,6 @@ void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 tongueIndex
 
 	SAF::NodeKey nodeKey = GetTongueNodeKey(tongueIndex);
 
-	//find menu indexes for the tongue bones
-	SInt32 categoryIndex;
-	SInt32 nodeIndex;
-	FindNodeIndexes(nodeKey, &categoryIndex, &nodeIndex);
-
-	if (categoryIndex == -1 || nodeIndex == -1)
-		return;
-
 	//if no tongue handle, create
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 	if (!tongueHandle) {
@@ -351,7 +343,6 @@ void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 tongueIndex
 		adjustment->type = SAF::kAdjustmentTypeTongue;
 	}
 
-	result->PushBack(&GFxValue(categoryIndex));
-	result->PushBack(&GFxValue(nodeIndex));
+	result->PushBack(&GFxValue(nodeKey.name));
 	result->PushBack(&GFxValue(tongueHandle));
 }

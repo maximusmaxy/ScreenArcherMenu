@@ -150,24 +150,28 @@ namespace SAF {
 				WriteData<UInt8>(ifc, &adjustment.type);
 				WriteData<bool>(ifc, &adjustment.updated);
 
+				//V1.0 always store size, check if needed, zero size if not necessary
+				UInt32 mapSize;
 				if (adjustment.StoreMap()) {
+					mapSize = adjustment.map.size();
+				}
+				else {
+					mapSize = 0;
+				}
 
-					UInt32 mapSize = adjustment.map.size();
-					WriteData<UInt32>(ifc, &mapSize);
-
-					for (auto& kvp : adjustment.map) {
-						WriteData<BSFixedString>(ifc, &kvp.first.name);
-						WriteData<bool>(ifc, &kvp.first.offset);
-						WriteData<float>(ifc, &kvp.second.pos.x);
-						WriteData<float>(ifc, &kvp.second.pos.y);
-						WriteData<float>(ifc, &kvp.second.pos.z);
-						float yaw, pitch, roll;
-						MatrixToEulerYPR2(kvp.second.rot, yaw, pitch, roll);
-						WriteData<float>(ifc, &yaw);
-						WriteData<float>(ifc, &pitch);
-						WriteData<float>(ifc, &roll);
-						WriteData<float>(ifc, &kvp.second.scale);
-					}
+				WriteData<UInt32>(ifc, &mapSize);
+				for (auto& kvp : adjustment.map) {
+					WriteData<BSFixedString>(ifc, &kvp.first.name);
+					WriteData<bool>(ifc, &kvp.first.offset);
+					WriteData<float>(ifc, &kvp.second.pos.x);
+					WriteData<float>(ifc, &kvp.second.pos.y);
+					WriteData<float>(ifc, &kvp.second.pos.z);
+					float yaw, pitch, roll;
+					MatrixToEulerYPR2(kvp.second.rot, yaw, pitch, roll);
+					WriteData<float>(ifc, &yaw);
+					WriteData<float>(ifc, &pitch);
+					WriteData<float>(ifc, &roll);
+					WriteData<float>(ifc, &kvp.second.scale);
 				}
 			}
 		}
@@ -204,6 +208,8 @@ namespace SAF {
 			{
 			case 'ADJU': //adjustment
 			{
+				std::unordered_map<std::string, bool> loadedMods;
+
 				UInt32 actorSize;
 				ReadData<UInt32>(ifc, &actorSize);
 
@@ -219,16 +225,20 @@ namespace SAF {
 					for (UInt32 j = 0; j < adjustmentsSize; ++j) {
 
 						PersistentAdjustment persistent;
-						persistent.version = 3;
+						persistent.version = version;
+
+						//Pre version 3, only adds map on default type
+						bool loadMap = true;
 
 						switch (version) {
 						case 0:
 							ReadData<std::string>(ifc, &persistent.name);
-							persistent.file = persistent.name;
 							ReadData<std::string>(ifc, &persistent.mod);
 							persistent.scale = 1.0f;
 							ReadData<UInt8>(ifc, &persistent.type);
+							persistent.file = persistent.type == kAdjustmentTypeDefault ? "" : persistent.name;
 							persistent.updated = false;
+							loadMap = persistent.type == kAdjustmentTypeDefault;
 							break;
 						case 1:
 						case 2:
@@ -244,6 +254,7 @@ namespace SAF {
 							}
 							else {
 								persistent.updated = false;
+								loadMap = persistent.type == kAdjustmentTypeDefault;
 							}
 							break;
 						default: //3+
@@ -258,17 +269,21 @@ namespace SAF {
 						//Accept loaded mods and adjustments that don't have a mod specified
 						bool modLoaded = persistent.mod.empty();
 						if (!modLoaded) {
-							const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
-							modLoaded = modInfo && modInfo->modIndex != 0xFF;
+							auto found = loadedMods.find(persistent.mod);
+							if (found != loadedMods.end()) {
+								modLoaded = found->second;
+							}
+							else {
+								const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
+								modLoaded = modInfo && modInfo->modIndex != 0xFF;
+								loadedMods.emplace(persistent.mod, modLoaded);
+							}
 						}
 
-						if (persistent.StoreMap()) {
-
+						if (loadMap) {
 							UInt32 transformSize;
 							ReadData<UInt32>(ifc, &transformSize);
 							if (transformSize > 0) {
-
-								TransformMap map;
 								for (UInt32 k = 0; k < transformSize; ++k) {
 									
 									std::string keyName;
@@ -309,14 +324,14 @@ namespace SAF {
 										MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
 										NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
 										if (nodeKey.key) {
-											map.emplace(nodeKey, transform);
+											persistent.map.emplace(nodeKey, transform);
 										}
 										break;
 									}
 									default:
 									{
 										MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
-										map.emplace(NodeKey(nodeName, nodeOffset), transform);
+										persistent.map.emplace(NodeKey(nodeName, nodeOffset), transform);
 										break;
 									}
 									}
@@ -329,8 +344,7 @@ namespace SAF {
 							LoadPersistentIfValid(formId, persistent, modLoaded);
 						}
 					}
-					//enforce filename uniqueness
-					ValidateFilenames(persistentAdjustments[formId]);
+					ValidatePersistents(persistentAdjustments, formId);
 				}
 				break;
 			}
@@ -362,6 +376,12 @@ namespace SAF {
 						UInt64 adjustmentKey;
 						ReadData<UInt64>(ifc, &adjustmentKey);
 
+						UInt64 isFemale = adjustmentKey & 0x100000000;
+						UInt32 oldId = adjustmentKey & 0xFFFFFFFF;
+						UInt32 formId;
+						bool resolved = ifc->ResolveFormId(oldId, &formId);
+						adjustmentKey = formId | isFemale;
+
 						UInt32 namesSize;
 						ReadData<UInt32>(ifc, &namesSize);
 
@@ -370,7 +390,8 @@ namespace SAF {
 							std::string adjustmentName;
 							ReadData<std::string>(ifc, &adjustmentName);
 
-							raceAdjustments[adjustmentKey].insert(adjustmentName);
+							if (resolved)
+								raceAdjustments[adjustmentKey].insert(adjustmentName);
 						}
 					}
 					break;
@@ -429,10 +450,18 @@ namespace SAF {
 		}
 	}
 
-	//This is to clear out any npcs with unedited adjustments, must have at least one non race adjustment
+	//This is to clear out any npcs with unedited adjustments, must have a non race adjustment, or an edited race adjustment
 	bool AdjustmentManager::IsPersistentValid(PersistentAdjustment& adjustment)
 	{
-		return (adjustment.type != kAdjustmentTypeNone && adjustment.type != kAdjustmentTypeRace);
+		switch (adjustment.type)
+		{
+		case kAdjustmentTypeNone: return false;
+		case kAdjustmentTypeDefault:
+		case kAdjustmentTypeTongue: 
+			return !TransformMapIsDefault(adjustment.map);
+		case kAdjustmentTypeRace: return adjustment.updated;
+		default: return true;
+		}
 	}
 
 	void ActorAdjustments::GetPersistentAdjustments(std::vector<PersistentAdjustment>& persistents) {
@@ -445,20 +474,31 @@ namespace SAF {
 		}
 	}
 
-	//Need to enforce file name uniqueness
-	void AdjustmentManager::ValidateFilenames(std::vector<PersistentAdjustment>& persistents) {
-		std::unordered_set<std::string> filenames;
+	
+	void AdjustmentManager::ValidatePersistents(PersistentMap& map, UInt32 formId) {
+		auto persistents = map.find(formId);
+		if (persistents == map.end())
+			return;
 
-		auto it = persistents.begin();
-		while (it != persistents.end()) {
-			//if already found, erase
-			if (filenames.count(it->file)) {
-				it = persistents.erase(it);
-			}
-			//else add to set
-			else {
-				filenames.insert(it->file);
+		//Need to enforce file name uniqueness
+		InsensitiveStringSet filenames;
+
+		auto it = persistents->second.begin();
+		while (it != persistents->second.end()) {
+			//skip empty
+			if (it->file.empty()) {
 				++it;
+			}
+			else {
+				//if already found, erase
+				if (filenames.count(it->file)) {
+					it = persistents->second.erase(it);
+				}
+				//else add to set
+				else {
+					filenames.insert(it->file);
+					++it;
+				}
 			}
 		}
 	}

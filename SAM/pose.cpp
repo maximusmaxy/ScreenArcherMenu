@@ -20,6 +20,8 @@ AdjustmentManager* safAdjustmentManager = nullptr;
 
 SafMessageDispatcher safMessageDispatcher;
 
+std::string selectedNode;
+
 std::shared_ptr<ActorAdjustments> SafMessageDispatcher::GetActorAdjustments(UInt32 formId) {
 	std::lock_guard<std::mutex> lock(mutex);
 
@@ -48,6 +50,17 @@ bool CheckSelectedSkeleton() {
 	if (!adjustments) return false;
 
 	return true;
+}
+
+NodeKey GetActorNodeKey(std::shared_ptr<ActorAdjustments> adjustments, const char* key)
+{
+	NodeKey nodeKey = GetNodeKeyFromString(key);
+
+	//If offset only, force offset to true
+	if (adjustments->IsNodeOffset(nodeKey))
+		nodeKey.SetOffset(true);
+	
+	return nodeKey;
 }
 
 void SetAdjustmentPos(const char* key, UInt32 adjustmentHandle, float x, float y, float z) {
@@ -444,31 +457,22 @@ void PushBackTransformGFx(GFxValue* result, NiTransform& transform) {
 	result->PushBack(&scale);
 }
 
-void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, int nodeIndex, int adjustmentHandle) {
+void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, const char* nodeName, int adjustmentHandle) {
 
 	root->CreateArray(result);
 
 	if (!selected.refr) return;
-
-	MenuCategoryList* categories = GetAdjustmentMenu();
-
-	if (!categories || categoryIndex >= categories->size() || nodeIndex >= (*categories)[categoryIndex].second.size()) return;
 
 	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments) return;
 	std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(adjustmentHandle);
 	if (!adjustment) return;
 
-	std::string name = (*categories)[categoryIndex].second[nodeIndex].second;
-
-	NodeKey nodeKey = GetNodeKeyFromString(name.c_str());
+	NodeKey nodeKey = GetNodeKeyFromString(nodeName);
 
 	NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
 
 	PushBackTransformGFx(result, transform);
-
-	GFxValue nodeName(name.c_str());
-	result->PushBack(&nodeName);
 }
 
 void GetPoseListGFx(GFxMovieRoot* root, GFxValue* result)
@@ -596,7 +600,7 @@ void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race)
 	if (!adjustments) return;
 
 	//build a set of all race/skeleton adjustments to compare to
-	std::unordered_set<std::string> adjustmentNames;
+	InsensitiveStringSet adjustmentNames;
 	if (race) {
 		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
 			if (adjustment->type == kAdjustmentTypeRace) {
@@ -742,6 +746,64 @@ void GetPoseExportTypesGFx(GFxMovieRoot* root, GFxValue* result)
 
 	result->PushBack(&GFxValue("All"));
 	result->PushBack(&GFxValue("Outfit Studio"));
+}
+
+void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex)
+{
+	if (selected.refr) {
+		std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+		if (adjustments != nullptr) {
+
+			MenuCategoryList* categories = GetAdjustmentMenu();
+			if (categories && categoryIndex < categories->size() && nodeIndex < (*categories)[categoryIndex].second.size()) {
+
+				NodeKey nodeKey = GetActorNodeKey(adjustments, (*categories)[categoryIndex].second[nodeIndex].second.c_str());
+
+				selectedNode = GetNodeKeyName(nodeKey);
+				result->SetString(selectedNode.c_str());
+			}
+		}
+	}
+}
+
+bool GetNodeIsOffset(const char* nodeName)
+{
+	NodeKey nodeKey = GetNodeKeyFromString(nodeName);
+
+	//If it fails assume offset to prevent toggle
+	if (!nodeKey.key)
+		return true;
+
+	if (!selected.refr) return true;
+	std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) return true;
+
+	return adjustments->IsNodeOffset(nodeKey);
+}
+
+void ToggleNodeName(GFxValue* result, const char* nodeName)
+{
+	if (selected.refr) {
+		std::shared_ptr<ActorAdjustments> adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+		if (adjustments != nullptr) {
+			NodeKey nodeKey = GetNodeKeyFromString(nodeName);
+
+			//If offset only, force to offset to prevent errors
+			if (adjustments->IsNodeOffset(nodeKey)) {
+				nodeKey.SetOffset(true);
+			}
+			else {
+				nodeKey.SetOffset(!nodeKey.offset);
+			}
+
+			selectedNode = GetNodeKeyName(nodeKey);
+			result->SetString(selectedNode.c_str());
+			return;
+		}
+	}
+	
+	//keep same node on failure
+	result->SetString(nodeName);
 }
 
 void FindNodeIndexes(NodeKey& nodeKey, SInt32* categoryIndex, SInt32* nodeIndex)

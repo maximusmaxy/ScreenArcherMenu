@@ -66,7 +66,7 @@ void GetAdjustmentGFx(GFxMovieRoot* root, GFxValue* result, int adjustmentHandle
 void GetAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result);
 void GetCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
 void GetNodesGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex);
-void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, int categoryIndex, int nodeIndex, int adjustmentHandle);
+void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, const char* nodeName, int adjustmentHandle);
 
 void GetPoseListGFx(GFxMovieRoot* rot, GFxValue* result);
 void SaveJsonPose(const char* filename, GFxValue selectedHandles, int exportType);
@@ -81,4 +81,7 @@ void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, 
 void GetSamPosesGFx(GFxMovieRoot* root, GFxValue* result, const char* path);
 void GetPoseExportTypesGFx(GFxMovieRoot* root, GFxValue* result);
 
+void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex);
+bool GetNodeIsOffset(const char* nodeName);
+void ToggleNodeName(GFxValue* result, const char* nodeName);
 void FindNodeIndexes(SAF::NodeKey& key, SInt32* categoryIndex, SInt32* nodeIndex);

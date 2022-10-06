@@ -66,6 +66,31 @@ namespace SAF {
 		g_adjustmentManager.RemoveMod(espName);
 	}
 
+	void PapyrusRemoveAllAdjustments(StaticFunctionTag*)
+	{
+		g_adjustmentManager.RemoveAllAdjustments();
+	}
+
+	UInt32 PapyrusGetAdjustmentFile(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
+	{
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return 0;
+
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetFile(filename.c_str());
+		if (!adjustment) return 0;
+
+		return adjustment->handle;
+	}
+
+	void PapyrusRemoveAdjustmentFile(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
+	{
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return;
+
+		adjustments->RemoveFile(filename.c_str(), 0);
+		adjustments->UpdateAllAdjustments();
+	}
+
 	VMArray<BSFixedString> PapyrusNodeNames(StaticFunctionTag*, TESObjectREFR* refr)
 	{
 		VMArray<BSFixedString> result;
@@ -391,8 +416,12 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, UInt32>("RemoveAdjustment", "SAF", PapyrusRemoveAdjustment, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, BSFixedString, TESObjectREFR*, UInt32>("GetAdjustmentName", "SAF", PapyrusAdjustmentName, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, VMArray<SInt32>, TESObjectREFR*, BSFixedString>("GetAdjustments", "SAF", PapyrusGetAdjustments, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, BSFixedString>("RemoveAllAdjustments", "SAF", PapyrusRemoveModAdjustments, vm));
-			
+		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, BSFixedString>("RemoveModAdjustments", "SAF", PapyrusRemoveModAdjustments, vm));
+		vm->RegisterFunction(new NativeFunction0 <StaticFunctionTag, void>("RemoveAllAdjustments", "SAF", PapyrusRemoveAllAdjustments, vm));
+
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString>("GetAdjustmentFile", "SAF", PapyrusGetAdjustmentFile, vm));
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("RemoveAdjustmentFile", "SAF", PapyrusRemoveAdjustmentFile, vm));
+
 		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<BSFixedString>, TESObjectREFR*>("GetAllNodeNames", "SAF", PapyrusNodeNames, vm));
 
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, Transform, TESObjectREFR*, BSFixedString, UInt32>("GetNodeTransform", "SAF", PapyrusGetTransform, vm));

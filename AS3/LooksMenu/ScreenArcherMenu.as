@@ -79,6 +79,8 @@
 		public var border:MovieClip;
 		public var notification:MovieClip;
 		
+		public var titleName:String = "";
+		
 		internal var buttonHintData:Vector.<BSButtonHintData > ;
 		internal var buttonHintExit:BSButtonHintData;
 		internal var buttonHintSave:BSButtonHintData;
@@ -104,6 +106,7 @@
 		public var widescreen:Boolean = false;
 		public var targetRace:Boolean = false;
 		public var order:Boolean = false;
+		public var offset:Boolean = false;
 		
 		public static const HELD_X:int = 1;
 		
@@ -212,13 +215,13 @@
 			down: 0
 		}
 		
-		public var testbutton:TextField;
+		//public var testbutton:TextField;
 		
 		public function ScreenArcherMenu()
 		{
 			super();
 			
-			Util.debug = true;
+			Util.debug = false;
 			widescreen = false;
 			
 			this.BGSCodeObj = new Object();
@@ -251,14 +254,14 @@
 //			}
 			//addEventListener("F4SE::Initialized", onF4SEInitialized);
 			
-			testbutton.addEventListener(MouseEvent.CLICK, onTestClick);
+			//testbutton.addEventListener(MouseEvent.CLICK, onTestClick);
 		}
 		
-		internal function onTestClick(event:Event):void
-		{
-			trace("test");
-			root.f4se.plugins.ScreenArcherMenu.Test();
-		}
+//		internal function onTestClick(event:Event):void
+//		{
+//			trace("test");
+//			root.f4se.plugins.ScreenArcherMenu.Test();
+//		}
 		
 		internal function initButtonHints():void
 		{
@@ -288,7 +291,7 @@
 			Data.load(data, root, this.f4seObj, stage);
 
 			if (data.title) {
-				sliderList.title.text = data.title;
+				updateTitle(data.title);
 			}
 
 			var alignment:Boolean = false;
@@ -311,6 +314,7 @@
 				textInput = data.saved.text;
 				sliderList.focused = data.saved.focused;
 				sliderList.updateState(currentState.pos);
+				offset = data.saved.offset;
 				updateState();
 			}
 			
@@ -333,7 +337,6 @@
 						Data.loadPositioning();
 						sliderList.updateValues();
 						break;
-					
 				}
 				
 				if (resetIgnore.indexOf(this.state) < 0) {
@@ -349,7 +352,7 @@
 //				hideNotification();
 //			}
 
-			sliderList.title.text = data.title;
+			updateTitle(data.title);
 		}
 		
 		public function onF4SEObjCreated(obj:Object)
@@ -792,6 +795,7 @@
 			order = false;
 			updateButtonHints();
 			updateNotification();
+			updateTitle();
 		}
 		
 		public function updateFolder():void
@@ -891,6 +895,8 @@
 		public function selectBone(id:int):void
 		{
 			Data.selectedBone = Data.menuValues[id];
+			Data.getNodeName();
+			offset = false;
 			pushState(TRANSFORM_STATE);
 		}
 		
@@ -1002,6 +1008,19 @@
 				case LIGHTSELECT_STATE: pushState(LOADLIGHT_STATE); break;
 				case POSEPLAY_STATE: //a-pose
 					Data.resetPose(2);
+					break;
+				case TRANSFORM_STATE: //offset toggle
+					//only toggle if node isn't offset only
+					if (!Data.getNodeIsOffset()) {
+						if (Data.toggleNodeName()) {
+							offset = !offset;
+							buttonHintLoad.ButtonText = offset ? "$SAM_Pose" : "$SAM_Offset";
+							Data.loadTransforms();
+							sliderList.updateValues();
+							updateTitle();
+							Util.playOk();
+						}
+					}
 					break;
 			}
 		}
@@ -1171,6 +1190,7 @@
 		internal function selectMorphTongue(id:int)
 		{
 			Data.getMorphsTongue(id);
+			offset = false;
 			pushState(TRANSFORM_STATE);
 		}
 
@@ -1417,7 +1437,8 @@
 					break;
 				case TRANSFORM_STATE :
 					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
+					buttonHintLoad.ButtonVisible = true;
+					buttonHintLoad.ButtonText = offset ? "$SAM_Pose" : "$SAM_Offset";
 					buttonHintConfirm.ButtonVisible = false;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintExtra.ButtonVisible = true;
@@ -1554,6 +1575,17 @@
 					break;
 			}
 		}
+		
+		public function updateTitle(name:String = null)
+		{
+			if (name) {
+				titleName = name;
+			}
+			switch (this.state) {
+				case TRANSFORM_STATE: sliderList.title.text = Data.boneName; break;
+				default: sliderList.title.text = titleName; break;
+			}
+		}
 
 		internal function hideButton():void
 		{
@@ -1598,7 +1630,8 @@
 					current: currentState,
 					stack: stateStack,
 					text: textInput,
-					focused: sliderList.focused
+					focused: sliderList.focused,
+					offset: offset
 				}
 				
 				Data.saveState(data);

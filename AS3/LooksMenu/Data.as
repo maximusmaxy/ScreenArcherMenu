@@ -398,7 +398,7 @@
 			{
 				menuValues = [100, 0, 0, 0];
 				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
-				if (adjustment.scale) {
+				if (adjustment.scale != null) {
 					menuValues[0] = adjustment.scale;
 				}
 				if (adjustment.groups) {
@@ -579,27 +579,54 @@
 				}
 			}
 		}
+		
+		public static function getNodeName()
+		{
+			try {
+				boneName = sam.GetNodeNameFromIndexes(selectedCategory, selectedBone);
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get node");
+				boneName = "";
+			}
+		}
+		
+		public static function getNodeIsOffset() : Boolean
+		{
+			try {
+				return sam.GetNodeIsOffset(boneName);
+			}
+			catch (e:Error) {
+				trace("Failed to check if node is offset");
+			}
+			return true;
+		}
+		
+		public static function toggleNodeName() : Boolean
+		{
+			try {
+				boneName = sam.ToggleNodeName(boneName);
+				return true;
+			}
+			catch (e:Error) {
+				trace("Failed to toggle node name");
+			}
+			return false;
+		}
 
 		public static function loadTransforms() 
 		{
 			try {
-				menuValues = sam.GetNodeTransform(selectedCategory, selectedBone, selectedAdjustment);
-				if (menuValues.length != 0) {
-					boneName = menuValues.pop();
-				} else {
-					menuValues = [
-						0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
-					];
-					boneName = "";
+				menuValues = sam.GetNodeTransform(boneName, selectedAdjustment);
+				if (menuValues.length == 0) {
+					menuValues = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ];
 				}
 			}
 			catch (e:Error)
 			{
 				trace("Failed to load bone transform");
-				menuValues = [
-					0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
-				];
-				boneName = "";
+				menuValues = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ];
 			}
 		}
 		
@@ -680,7 +707,8 @@
 						"Eyebrows",
 						"Nose",
 						"Cheek",
-						"Tongue"
+						"Tongue",
+						"Tongue Bones"
 					];
 				}
 			}
@@ -1605,21 +1633,18 @@
 			try {
 				var tongue:Array = sam.GetMorphsTongue(id);
 				if (tongue.length == 0) {
-					selectedCategory = -1;
-					selectedBone = -1;
-					selectedAdjustment = -1;
+					boneName = "";
+					selectedAdjustment = 0;
 				} else {
-					selectedCategory = tongue[0];
-					selectedBone = tongue[1];
-					selectedAdjustment = tongue[2];
+					boneName = tongue[0];
+					selectedAdjustment = tongue[1];
 				}
 			}
 			catch (e:Error)
 			{
 				trace("Failed to get morphs tongue");
-				selectedCategory = -1;
-				selectedBone = -1;
-				selectedAdjustment = -1;
+				boneName = "";
+				selectedAdjustment = 0;
 			}
 		}
 	}

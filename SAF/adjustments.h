@@ -10,6 +10,7 @@
 #include "serialization.h"
 
 #include <memory>
+#include <set>
 #include <unordered_set>
 #include <unordered_map>
 #include <shared_mutex>
@@ -33,6 +34,11 @@ namespace SAF {
 			//data is an aligned ptr so +1 should be safe?
 			key(reinterpret_cast<std::size_t>(name.data) + (offset ? 0 : 1))
 		{}
+
+		void SetOffset(bool _offset) {
+			offset = _offset;
+			key = reinterpret_cast<std::size_t>(name.data) + (offset ? 0 : 1);
+		}
 	};
 
 	const NodeKey GetNodeKeyFromString(const char*);
@@ -76,6 +82,16 @@ namespace SAF {
 	NiTransform* GetFromTransformMap(TransformMap& map, const NodeKey& key);
 	BSFixedString* GetFromBSFixedStringMap(BSFixedStringMap& map, const BSFixedString& key);
 	NiAVObject* GetFromNodeMap(NodeMap& map, const BSFixedString& key);
+
+	struct CaseInsensitiveCompare {
+		bool operator() (const std::string& a, const std::string& b) const
+		{
+			return _stricmp(a.c_str(), b.c_str()) < 0;
+		}
+	};
+
+	typedef std::set<std::string, CaseInsensitiveCompare> InsensitiveStringSet;
+	typedef std::map <std::string, TransformMap, CaseInsensitiveCompare> InsensitiveTransformMap;
 
 	struct LoadedAdjustment
 	{
@@ -271,7 +287,7 @@ namespace SAF {
 
 	struct AdjustmentUpdateData
 	{
-		std::unordered_set<std::string>* race;
+		InsensitiveStringSet* race;
 		std::vector<PersistentAdjustment>* persistents;
 
 		AdjustmentUpdateData() : race(nullptr), persistents(nullptr) {};
@@ -393,7 +409,7 @@ namespace SAF {
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
-		NiTransform GetOffsetTransform(BSFixedString name);
+		void GetOffsetTransform(BSFixedString name, NiTransform* offsetTransform);
 		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform);
 		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform,
 			std::vector<std::shared_ptr<Adjustment>> adjustmentList);
@@ -412,6 +428,7 @@ namespace SAF {
 		bool RemoveMod(BSFixedString espName);
 
 		bool HasNode(BSFixedString name);
+		bool IsNodeOffset(NodeKey& nodeKey);
 		void NegateTransform(std::shared_ptr<Adjustment> adjustment, NodeKey& name);
 		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, const NodeKey& name, NiTransform& transform);
 		void RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& name, UInt32 type, float scalar);
@@ -420,6 +437,7 @@ namespace SAF {
 		void RemoveAdjustmentsByType(UInt32 type);
 		UInt32 GetHandleByType(UInt32 type);
 		std::shared_ptr<Adjustment> GetAdjustmentByType(UInt32 type);
+		bool ShouldRemoveRace(std::shared_ptr<Adjustment> adjustment);
 
 		void SavePose(std::string filename, ExportSkeleton* nodes);
 		void SaveOutfitStudioPose(std::string filename, ExportSkeleton* nodes);
@@ -447,12 +465,12 @@ namespace SAF {
 
 		std::unordered_map<UInt64, NodeSets> nodeSets;
 
-		std::unordered_map<UInt64, std::unordered_set<std::string>> raceAdjustments;
+		std::unordered_map<UInt64, InsensitiveStringSet> raceAdjustments;
 		PersistentMap persistentAdjustments;
 
 		std::unordered_map<NiNode*, NodeMapRef> nodeMapCache;
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
-		std::unordered_map<std::string, TransformMap> adjustmentFileCache;
+		InsensitiveTransformMap adjustmentFileCache;
 
 		void LoadFiles();
 		void GameLoaded();
@@ -484,13 +502,15 @@ namespace SAF {
 		TransformMap* GetAdjustmentFile(std::string);
 		void SetAdjustmentFile(std::string filename, TransformMap map);
 
-		std::unordered_set<std::string>* GetRaceAdjustments(UInt32 race, bool isFemale);
+		InsensitiveStringSet* GetRaceAdjustments(UInt32 race, bool isFemale);
+		bool HasRaceAdjustment(UInt32 race, bool isFemale, std::string filename);
 		
 		void CreateNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings, NodeMap* poseMap, NodeMap* offsetMap);
 		NodeMap* GetCachedNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings);
 		void RemoveNodeMap(NiNode* root);
 
 		void RemoveMod(BSFixedString espName);
+		void RemoveAllAdjustments();
 		
 		void SerializeSave(const F4SESerializationInterface* ifc);
 		void SerializeLoad(const F4SESerializationInterface* ifc);
@@ -501,7 +521,7 @@ namespace SAF {
 		void StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
 		void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
 		bool IsPersistentValid(PersistentAdjustment& persistent);
-		void ValidateFilenames(std::vector<PersistentAdjustment>& persistents);
+		void ValidatePersistents(PersistentMap& map, UInt32 id);
 	};
 
 	extern AdjustmentManager g_adjustmentManager;

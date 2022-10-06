@@ -20,7 +20,7 @@ namespace SAF {
 	RelocAddr<GetBaseModelRootNode> getBaseModelRootNode(0x323BB0);
 	RelocAddr<GetRefrModelFilename> getRefrModelFilename(0x408360);
 
-#define NodeKeyBufferSize 256
+#define NodeKeyBufferSize 128
 #define NodeOffsetPostfix "_Offset"
 #define NodePosePostfix "_Pose"
 #define NodeOverridePostfix "_Override"
@@ -102,6 +102,7 @@ namespace SAF {
 	{
 		type = adjustment->type;
 		name = adjustment->name;
+		file = adjustment->file;
 		mod = adjustment->mod;
 		scale = adjustment->scale;
 		updated = adjustment->updated;
@@ -335,24 +336,22 @@ namespace SAF {
 		list.clear();
 	}
 
-	NiTransform ActorAdjustments::GetOffsetTransform(BSFixedString name)
+	void ActorAdjustments::GetOffsetTransform(BSFixedString name, NiTransform* offsetTransform)
 	{
-		NiTransform result = TransformIdentity();
-
 		for (auto& adjustment : list)
 		{
-			NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
-			if (offset) {
-				if (adjustment->scale == 1.0f) {
-					result = result * *offset;
-				}
-				else {
-					result = result * SlerpNiTransform(*offset, adjustment->scale);
+			if (adjustment->IsVisible()) {
+				NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
+				if (offset) {
+					if (adjustment->scale == 1.0f) {
+						*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
+					}
+					else {
+						*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
+					}
 				}
 			}
 		}
-
-		return result;
 	}
 
 	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform)
@@ -385,24 +384,25 @@ namespace SAF {
 	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform, std::vector<std::shared_ptr<Adjustment>> adjustmentList)
 	{
 		for (auto& adjustment : adjustmentList) {
+			if (adjustment->IsVisible()) {
+				NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
+				if (offset) {
+					if (adjustment->scale == 1.0f) {
+						*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
+					}
+					else {
+						*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
+					}
+				}
 
-			NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
-			if (offset) {
-				if (adjustment->scale == 1.0f) {
-					*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
-				}
-				else {
-					*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
-				}
-			}
-
-			NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
-			if (pose) {
-				if (adjustment->scale == 1.0f) {
-					*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
-				}
-				else {
-					*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
+				NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
+				if (pose) {
+					if (adjustment->scale == 1.0f) {
+						*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
+					}
+					else {
+						*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
+					}
 				}
 			}
 		}
@@ -434,7 +434,9 @@ namespace SAF {
 
 		//If the base node isn't found, this is an offset only node
 		else {
-			offsetNode->m_localTransform = GetOffsetTransform(name);
+			NiTransform offsets = TransformIdentity();
+			GetOffsetTransform(name, &offsets);
+			offsetNode->m_localTransform = offsets;
 		}
 	}
 
@@ -481,6 +483,8 @@ namespace SAF {
 					if (persistent.updated) {
 						adjustment = CreateAdjustment(persistent.name);
 						adjustment->map = persistent.map;
+
+						UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
 					}
 					else {
 						adjustment = LoadAdjustment(persistent.file, true);
@@ -513,6 +517,9 @@ namespace SAF {
 					adjustment->map = persistent.map;
 					adjustment->updated = persistent.updated;
 					adjustment->type = persistent.type;
+
+					UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
+					break;
 				}
 				}
 			}
@@ -528,6 +535,19 @@ namespace SAF {
 						adjustment->type = kAdjustmentTypeRace;
 					}
 				}
+			}
+		}
+
+		
+		auto it = list.begin();
+		while (it != list.end()) {
+			//If there is a removed race adjustment and it doesn't exist in the update data, remove it
+			if ((*it)->type == kAdjustmentTypeRemovedRace && !data.race->count((*it)->file)) {
+				map.erase((*it)->handle);
+				it = list.erase(it);
+			}
+			else {
+				++it;
 			}
 		}
 	}
@@ -590,8 +610,7 @@ namespace SAF {
 		}
 
 		//If removing a race adjustment, set to removed race type instead 
-		if ((*it)->type == kAdjustmentTypeRace)
-		{
+		if (ShouldRemoveRace(*it)) {
 			(*it)->type = kAdjustmentTypeRemovedRace;
 			(*it)->updated = false;
 		}
@@ -619,7 +638,7 @@ namespace SAF {
 		UInt32 handle = (*it)->handle;
 
 		//If removing a race adjustment, set to removed race type instead 
-		if ((*it)->type == kAdjustmentTypeRace)
+		if (ShouldRemoveRace(*it))
 		{
 			(*it)->type = kAdjustmentTypeRemovedRace;
 			(*it)->updated = false;
@@ -646,7 +665,7 @@ namespace SAF {
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
 		for (auto& it : list) {
-			if (it->file == filename) return it;
+			if (!_stricmp(it->file.c_str(), filename.c_str())) return it;
 		}
 
 		return nullptr;
@@ -659,7 +678,8 @@ namespace SAF {
 		auto it = list.begin();
 		while (it != list.end()) {
 			//if filenames match but adjustment does not have the keep handle
-			if ((*it)->file == filename && (*it)->handle != keepHandle) {
+			if (!_stricmp((*it)->file.c_str(), filename.c_str()) && (*it)->handle != keepHandle) {
+				map.erase((*it)->handle);
 				it = list.erase(it);
 			}
 			else {
@@ -742,7 +762,7 @@ namespace SAF {
 
 	void ActorAdjustments::UpdateAdjustmentVersion(TransformMap& map, UInt32 version)
 	{
-		//If version 0, update to new method
+		//If version is 0, update to new method
 		if (version == 0) {
 			for (auto& transform : map) {
 				if (!transform.first.offset) {
@@ -832,8 +852,12 @@ namespace SAF {
 
 	void ActorAdjustments::SaveAdjustment(std::string filename, UInt32 handle)
 	{
+		if (filename.empty())
+			return;
+
 		std::shared_ptr<Adjustment> adjustment = GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustment) 
+			return;
 
 		if (SaveAdjustmentFile(filename, adjustment)) {
 
@@ -886,7 +910,19 @@ namespace SAF {
 		if (offsetMap.count(name)) return true;
 		if (poseMap.count(name)) return true;
 
-		return true;
+		return false;
+	}
+
+	//Checks the base map for node, if not found it's an offset only node
+	bool ActorAdjustments::IsNodeOffset(NodeKey& nodeKey)
+	{
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		if (!baseMap)
+			return true;
+
+		auto found = baseMap->find(nodeKey.name);
+		return found == baseMap->end();
 	}
 
 	//Sets the override node such that it negates the base node back to the a-pose position
@@ -1018,10 +1054,12 @@ namespace SAF {
 				bool updated = false;
 
 				for (auto& adjustment : adjustments) {
-					NiTransform* transform = adjustment->GetTransform(node);
-					if (transform) {
-						offsetTransform = MultiplyNiTransform(offsetTransform, *transform);
-						updated = true;
+					if (adjustment->IsVisible()) {
+						NiTransform* transform = adjustment->GetTransform(node);
+						if (transform) {
+							offsetTransform = MultiplyNiTransform(offsetTransform, *transform);
+							updated = true;
+						}
 					}
 				}
 
@@ -1039,9 +1077,11 @@ namespace SAF {
 					NiTransform poseTransform = poseNode->m_localTransform;
 
 					for (auto& adjustment : adjustments) {
-						NiTransform* transform = adjustment->GetTransform(node);
-						if (transform) {
-							poseTransform = MultiplyNiTransform(poseTransform, *transform);
+						if (adjustment->IsVisible()) {
+							NiTransform* transform = adjustment->GetTransform(node);
+							if (transform) {
+								poseTransform = MultiplyNiTransform(poseTransform, *transform);
+							}
 						}
 					}
 
@@ -1093,7 +1133,8 @@ namespace SAF {
 
 			//There's no pose node to override so just output as is
 			else {
-				NiTransform offset = GetOffsetTransform(name);
+				NiTransform offset = TransformIdentity();
+				GetOffsetTransform(name, &offset);
 				if (!TransformIsDefault(offset)) {
 					transformMap.emplace(NodeKey(name, true), offset);
 				}
@@ -1234,6 +1275,13 @@ namespace SAF {
 		return nullptr;
 	}
 
+	bool ActorAdjustments::ShouldRemoveRace(std::shared_ptr<Adjustment> adjustment) {
+		if (adjustment->file.empty())
+			return false;
+
+		return g_adjustmentManager.HasRaceAdjustment(formId, isFemale, adjustment->file);
+	}
+
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
 		std::shared_lock<std::shared_mutex> lock(actorMutex);
 
@@ -1343,7 +1391,7 @@ namespace SAF {
 		return adjustments;
 	}
 
-	std::unordered_set<std::string>* AdjustmentManager::GetRaceAdjustments(UInt32 race, bool isFemale)
+	InsensitiveStringSet* AdjustmentManager::GetRaceAdjustments(UInt32 race, bool isFemale)
 	{
 		UInt64 key = race;
 		if (isFemale)
@@ -1353,6 +1401,21 @@ namespace SAF {
 			return &raceAdjustments[key];
 
 		return nullptr;
+	}
+
+	bool AdjustmentManager::HasRaceAdjustment(UInt32 race, bool isFemale, std::string filename)
+	{
+		UInt64 key = race;
+		if (isFemale)
+			key |= 0x100000000;
+
+		auto found = raceAdjustments.find(key);
+		if (found != raceAdjustments.end())
+		{
+			return found->second.count(filename);
+		}
+
+		return false;
 	}
 
 	void AdjustmentManager::LoadFiles()
@@ -1646,9 +1709,8 @@ namespace SAF {
 	{
 		std::shared_lock<std::shared_mutex> lock(fileMutex);
 
-		if (adjustmentFileCache.count(filename))
-			return &adjustmentFileCache[filename];
-		return nullptr;
+		auto found = adjustmentFileCache.find(filename);
+		return found != adjustmentFileCache.end() ? &found->second : nullptr;
 	}
 
 	void AdjustmentManager::SetAdjustmentFile(std::string filename, TransformMap map)
@@ -1831,24 +1893,26 @@ namespace SAF {
 
 		//if single npc target just use the regular adjustment functions
 		else { 
-			std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(formId);
-			if (!adjustments) return;
+			auto found = actorAdjustmentCache.find(formId);
+			if (found == actorAdjustmentCache.end())
+				return;
+			std::shared_ptr<ActorAdjustments> adjustments = found->second;
 
 			if (clear) 
 				adjustments->RemoveAdjustmentsByType(kAdjustmentTypeSkeleton);
 			
-			if (!filename)
-				return;
-
-			if (enable) {
-				std::shared_ptr<Adjustment> adjustment = adjustments->LoadAdjustment(filename, false);
-				if (adjustment != nullptr) {
-					adjustment->type = kAdjustmentTypeSkeleton;
+			if (filename) {
+				if (enable) {
+					std::shared_ptr<Adjustment> adjustment = adjustments->LoadAdjustment(filename, false);
+					if (adjustment != nullptr) {
+						adjustment->type = kAdjustmentTypeSkeleton;
+					}
+				}
+				else {
+					adjustments->RemoveFile(filename, 0);
 				}
 			}
-			else {
-				adjustments->RemoveFile(filename, 0);
-			}
+			adjustments->UpdateAllAdjustments();
 		}
 	}
 
@@ -1937,6 +2001,20 @@ namespace SAF {
 		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
 			bool removed = adjustments->RemoveMod(modName);
 			if (removed) adjustments->UpdateAllAdjustments();
+		});
+	}
+
+
+	void AdjustmentManager::RemoveAllAdjustments()
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		raceAdjustments.clear();
+		persistentAdjustments.clear();
+
+		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+			adjustments->Clear();
+			adjustments->UpdateAllAdjustments();
 		});
 	}
 }

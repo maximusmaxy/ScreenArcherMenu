@@ -188,7 +188,19 @@ GFxFunction(GetNodeList, {
 });
 
 GFxFunction(GetNodeTransform, {
-	GetTransformGFx(args->movie->movieRoot, args->result, args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
+	GetTransformGFx(args->movie->movieRoot, args->result, args->args[0].GetString(), args->args[1].GetInt());
+});
+
+GFxFunction(GetNodeIsOffset, {
+	args->result->SetBool(GetNodeIsOffset(args->args[0].GetString()));
+});
+
+GFxFunction(ToggleNodeName, {
+	ToggleNodeName(args->result, args->args[0].GetString());
+});
+
+GFxFunction(GetNodeNameFromIndexes, {
+	GetNodeNameFromIndexes(args->result, args->args[0].GetInt(), args->args[1].GetInt());
 });
 
 GFxFunction(SetNodePosition, {
@@ -568,6 +580,9 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(RenameAdjustment);
 	GFxRegister(GetCategoryList);
 	GFxRegister(GetNodeList);
+	GFxRegister(GetNodeIsOffset);
+	GFxRegister(ToggleNodeName);
+	GFxRegister(GetNodeNameFromIndexes);
 	GFxRegister(GetNodeTransform);
 	GFxRegister(SetNodePosition);
 	GFxRegister(SetNodeRotation);
