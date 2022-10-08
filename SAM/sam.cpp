@@ -834,10 +834,10 @@ void LoadMenuFiles() {
 
 void SamSerializeSave(const F4SESerializationInterface* ifc)
 {
-	ifc->OpenRecord('CAM', 1);
-	SerializeCamera(ifc, 1);
-	ifc->OpenRecord('LIGH', 1);
-	SerializeLights(ifc, 1);
+	ifc->OpenRecord('CAM', CAM_SERIALIZE_VERSION);
+	SerializeCamera(ifc, CAM_SERIALIZE_VERSION);
+	ifc->OpenRecord('LIGH', LIGHTS_SERIALIZE_VERSION);
+	SerializeLights(ifc, LIGHTS_SERIALIZE_VERSION);
 }
 
 void SamSerializeLoad(const F4SESerializationInterface* ifc)

@@ -679,8 +679,16 @@ namespace SAF {
 		while (it != list.end()) {
 			//if filenames match but adjustment does not have the keep handle
 			if (!_stricmp((*it)->file.c_str(), filename.c_str()) && (*it)->handle != keepHandle) {
-				map.erase((*it)->handle);
-				it = list.erase(it);
+				//if no keep handle and should remove race
+				if (!keepHandle && ShouldRemoveRace(*it)) {
+					(*it)->type = kAdjustmentTypeRemovedRace;
+					(*it)->updated = false;
+					++it;
+				}
+				else {
+					map.erase((*it)->handle);
+					it = list.erase(it);
+				}
 			}
 			else {
 				++it;
@@ -781,6 +789,18 @@ namespace SAF {
 		UpdateAdjustmentVersion(adjustment.map, adjustment.version);
 	}
 
+	std::shared_ptr<Adjustment> ActorAdjustments::GetFileOrCreate(std::string filename)
+	{
+		//If an adjustment with the same file name already exists, load over that instead
+		std::shared_ptr<Adjustment> adjustment = GetFile(filename);
+
+		if (!adjustment) {
+			adjustment = CreateAdjustment(filename);
+		}
+
+		return adjustment;
+	}
+
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(std::string filename, bool cached)
 	{
 		if (cached) {
@@ -788,12 +808,7 @@ namespace SAF {
 			auto adjustmentFile = g_adjustmentManager.GetAdjustmentFile(filename);
 			if (adjustmentFile) {
 
-				//If an adjustment with the same file name already exists, load over that instead
-				std::shared_ptr<Adjustment> adjustment = GetFile(filename);
-
-				if (!adjustment) {
-					adjustment = CreateAdjustment(filename);
-				}
+				std::shared_ptr<Adjustment> adjustment = GetFileOrCreate(filename);
 
 				if (nodeSets) {
 					adjustment->CopyMap(adjustmentFile, &nodeSets->all);
@@ -819,12 +834,7 @@ namespace SAF {
 				g_adjustmentManager.SetAdjustmentFile(filename, loadedAdjustment.map);
 			}
 
-			//If an adjustment with the same file name already exists, load over that instead
-			std::shared_ptr<Adjustment> adjustment = GetFile(filename);
-
-			if (!adjustment) {
-				adjustment = CreateAdjustment(filename);
-			}
+			std::shared_ptr<Adjustment> adjustment = GetFileOrCreate(filename);
 
 			if (nodeSets) {
 				adjustment->CopyMap(&loadedAdjustment.map, &nodeSets->all);
@@ -866,8 +876,11 @@ namespace SAF {
 
 			adjustment->name = filename;
 			adjustment->file = filename;
-			adjustment->type = kAdjustmentTypeSkeleton;
 			adjustment->updated = false;
+
+			//Only update if not a tongue adjustment
+			if (adjustment->type != kAdjustmentTypeTongue)
+				adjustment->type = kAdjustmentTypeSkeleton;
 		}
 	}
 
@@ -1220,8 +1233,8 @@ namespace SAF {
 
 	void ActorAdjustments::LoadRaceAdjustment(std::string filename, bool clear, bool enable) {
 		if (clear) {
-			RemoveAdjustmentsByType(kAdjustmentTypeRace);
-			RemoveAdjustmentsByType(kAdjustmentTypeRemovedRace);
+			RemoveAdjustmentsByType(kAdjustmentTypeRace, false);
+			RemoveAdjustmentsByType(kAdjustmentTypeRemovedRace, false);
 		}
 			
 		if (filename.empty())
@@ -1239,15 +1252,23 @@ namespace SAF {
 		}
 	}
 
-	void ActorAdjustments::RemoveAdjustmentsByType(UInt32 type) {
+	void ActorAdjustments::RemoveAdjustmentsByType(UInt32 type, bool checkRace) {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		auto it = list.begin();
 
 		while (it != list.end()) {
 			if ((*it)->type == type) {
-				map.erase((*it)->handle);
-				it = list.erase(it);
+				//If removing a non removed race adjustment, check if it should resolve to a removed race adjustment
+				if (checkRace && ShouldRemoveRace(*it)) {
+					(*it)->type = kAdjustmentTypeRemovedRace;
+					(*it)->updated = false;
+					++it;
+				}
+				else {
+					map.erase((*it)->handle);
+					it = list.erase(it);
+				}
 			}
 			else {
 				++it;
@@ -1279,7 +1300,7 @@ namespace SAF {
 		if (adjustment->file.empty())
 			return false;
 
-		return g_adjustmentManager.HasRaceAdjustment(formId, isFemale, adjustment->file);
+		return g_adjustmentManager.HasRaceAdjustment(race, isFemale, adjustment->file);
 	}
 
 	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
@@ -1898,8 +1919,8 @@ namespace SAF {
 				return;
 			std::shared_ptr<ActorAdjustments> adjustments = found->second;
 
-			if (clear) 
-				adjustments->RemoveAdjustmentsByType(kAdjustmentTypeSkeleton);
+			if (clear)
+				adjustments->RemoveAdjustmentsByType(kAdjustmentTypeSkeleton, true);
 			
 			if (filename) {
 				if (enable) {
@@ -1952,7 +1973,7 @@ namespace SAF {
 
 		//clear if no transforms
 		if (!transforms) {
-			if (!tongueHandle) {
+			if (tongueHandle) {
 				adjustments->RemoveAdjustment(tongueHandle);
 				adjustments->UpdateAllAdjustments();
 			}

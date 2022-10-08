@@ -516,21 +516,17 @@ namespace SAF {
 
 		try {
 			//If no version treat as simple key->transform map, else get map from transforms property
-			Json::Value versionValue = value["version"];
-			UInt32 version = versionValue.isNull() ? 0 : versionValue.asInt();
+			UInt32 version = value.get("version", 0).asUInt();
 			adjustment->version = version;
 
-			Json::Value transforms = value["transforms"];
-			if (version == 0 || transforms.isNull())
-				transforms = value;
+			//get transforms, or just use itself
+			Json::Value transforms = value.get("transforms", value);
 
-			Json::Value::Members members = value.getMemberNames();
-
-			for (auto& member : members) {
+			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
 				NiTransform transform;
 				//read version 2 if non zero version
-				ReadTransformJson(transform, value[member], (version > 0 ? 2 : 0));
-				NodeKey nodeKey = GetNodeKeyFromString(member.c_str());
+				ReadTransformJson(transform, *it, (version > 0 ? 2 : 0));
+				NodeKey nodeKey = GetNodeKeyFromString(it.key().asCString());
 				if (nodeKey.key) {
 					adjustment->map.emplace(nodeKey, transform);
 				}
@@ -612,19 +608,15 @@ namespace SAF {
 
 		try {
 			//If no version treat as simple key->transform map, else get map from transforms property
-			Json::Value versionValue = value["version"];
-			UInt32 version = versionValue.isNull() ? 0 : versionValue.asInt();
+			UInt32 version = value.get("version", 0).asUInt();
 
-			Json::Value transforms = value["transforms"];
-			if (version == 0 || transforms.isNull())
-				transforms = value;
+			//get transforms, or just use itself
+			Json::Value transforms = value.get("transforms", value);
 
-			Json::Value::Members members = transforms.getMemberNames();
-
-			for (auto& member : members) {
+			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
 				NiTransform transform;
-				ReadTransformJson(transform, transforms[member], version);
-				NodeKey nodeKey = GetNodeKeyFromString(member.c_str());
+				ReadTransformJson(transform, *it, version);
+				NodeKey nodeKey = GetNodeKeyFromString(it.key().asCString());
 				if (nodeKey.key) {
 					poseMap->emplace(nodeKey, transform);
 				}

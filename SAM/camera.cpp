@@ -128,7 +128,7 @@ bool LoadCamera(int index)
 
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 {
-	if (version == 1) {
+	if (version == CAM_SERIALIZE_VERSION) {
 		UInt32 size = CAM_SAVE_STATE_SLOTS;
 		WriteData<UInt32>(ifc, &size);
 
@@ -148,7 +148,7 @@ void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 
 void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 {
-	if (version == 1)
+	if (version == CAM_SERIALIZE_VERSION)
 	{
 		UInt32 size;
 		ReadData<UInt32>(ifc, &size);

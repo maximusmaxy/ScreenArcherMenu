@@ -405,7 +405,9 @@ namespace SAF {
 		UInt32 MoveAdjustment(UInt32 fromIndex, UInt32 toIndex);
 
 		std::shared_ptr<Adjustment> GetFile(std::string filename);
+		std::shared_ptr<Adjustment> GetFileOrCreate(std::string filename);
 		void RemoveFile(std::string filename, UInt32 handle);
+		
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
@@ -434,7 +436,7 @@ namespace SAF {
 		void RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& name, UInt32 type, float scalar);
 
 		void LoadRaceAdjustment(std::string filename, bool clear, bool enable);
-		void RemoveAdjustmentsByType(UInt32 type);
+		void RemoveAdjustmentsByType(UInt32 type, bool checkRace);
 		UInt32 GetHandleByType(UInt32 type);
 		std::shared_ptr<Adjustment> GetAdjustmentByType(UInt32 type);
 		bool ShouldRemoveRace(std::shared_ptr<Adjustment> adjustment);
@@ -518,8 +520,8 @@ namespace SAF {
 
 		void LoadPersistentIfValid(UInt32 formId, PersistentAdjustment persistent, bool loaded);
 		void StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
-		void StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
-		void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
+		bool StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
+		//void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
 		bool IsPersistentValid(PersistentAdjustment& persistent);
 		void ValidatePersistents(PersistentMap& map, UInt32 id);
 	};

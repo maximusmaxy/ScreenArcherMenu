@@ -310,20 +310,67 @@ void MenuLight::Erase()
 
 MenuLight* LightManager::GetLight(UInt32 id)
 {
-	if (id < 0 || id >= lights.size())
+	if (!lights || id < 0 || id >= lights->size())
 		return nullptr;
 
-	if (lights[id].GetRefr())
-		return &lights[id];
+	if ((*lights)[id].GetRefr())
+		return &(*lights)[id];
 
 	return nullptr;
 }
 
 void LightManager::ForEach(const std::function<void(MenuLight*)>& functor)
 {
-	for (auto& light : lights) {
-		if (light.GetRefr()) {
-			functor(&light);
+	if (lights) {
+		for (auto& light : *lights) {
+			if (light.GetRefr()) {
+				functor(&light);
+			}
+		}
+	}
+}
+
+//Gets the light list for the current worldspace/cell pair
+LightList* LightManager::GetLightList()
+{
+	TESObjectREFR* player = *g_player;
+	if (!player)
+		return nullptr;
+
+	TESObjectCELL* cell = player->parentCell;
+	if (!cell)
+		return nullptr;
+
+	return &lightCache[cell->formID];
+}
+
+void LightManager::UpdateLightList()
+{
+	LightList* previousLights = lights;
+	lights = GetLightList();
+
+	//If list not found just use a temp list, they will eventually get lost but it's better than nothing
+	if (!lights) {
+		lights = &tempLights;
+
+		//If it has updated, clear the list
+		if (lights != previousLights) {
+			lights->clear();
+		}
+	}
+
+	//if list is updated, get the current references for each form id, and remove if invalid
+	if (lights != previousLights) {
+		auto it = lights->begin();
+		while (it != lights->end()) {
+			TESForm* form = LookupFormByID(it->formId);
+			if (form) {
+				it->lightRefr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+				++it;
+			}
+			else {
+				it = lights->erase(it);
+			}
 		}
 	}
 }
@@ -337,7 +384,8 @@ void LightManager::Update()
 
 void LightManager::Push(MenuLight light)
 {
-	lights.push_back(light);
+	if (lights)
+		lights->push_back(light);
 }
 
 void LightManager::Erase(UInt32 id)
@@ -345,28 +393,35 @@ void LightManager::Erase(UInt32 id)
 	MenuLight* light = GetLight(id);
 	if (light)
 		light->Erase();
-
-	lights.erase(lights.begin() + id);
+	
+	if (lights)
+		lights->erase(lights->begin() + id);
 }
 
 void LightManager::Clear()
 {
-	lights.clear();
+	lights = nullptr;
+	lightCache.clear();
+	tempLights.clear();
 	pos = NiPoint3();
 	rot = 0.0f;
 }
 
 void LightManager::ValidateLights()
 {
-	auto it = lights.begin();
+	if (!lights)
+		return;
 
-	while (it != lights.end())
+	auto it = lights->begin();
+
+	while (it != lights->end())
 	{
+		//if we can get the reference, it's valid
 		if (it->GetRefr()) {
 			++it;
 		}
 		else {
-			it = lights.erase(it);
+			it = lights->erase(it);
 		}
 	}
 }
@@ -376,12 +431,14 @@ void LightManager::EraseAll()
 	ForEach([](MenuLight* light) {
 		light->Erase();
 	});
-	lights.clear();
+
+	if (lights) 
+		lights->clear();
 }
 
 bool LightManager::HasRefr(TESObjectREFR* refr)
 {
-	for (auto& light : lights) {
+	for (auto& light : *lights) {
 		TESObjectREFR* lightRefr = light.GetRefr();
 		if (lightRefr == refr)
 			return true;
@@ -391,7 +448,7 @@ bool LightManager::HasRefr(TESObjectREFR* refr)
 
 bool LightManager::GetVisible()
 {
-	for (auto& light : lights) {
+	for (auto& light : *lights) {
 		TESObjectREFR* lightRefr = light.GetRefr();
 		if (lightRefr && !light.GetVisible())
 			return false;
@@ -403,6 +460,7 @@ void GetLightSelectGFx(GFxMovieRoot* root, GFxValue* result)
 {
 	root->CreateArray(result);
 
+	lightManager.UpdateLightList();
 	lightManager.ValidateLights();
 
 	lightManager.ForEach([&](MenuLight* light) {
@@ -790,6 +848,7 @@ void LoadLightsJson(const char* filename)
 
 /*
 * LIGH Version 1
+* 
 * X
 * Y
 * Z
@@ -802,24 +861,65 @@ void LoadLightsJson(const char* filename)
 *   height
 *   xoffset
 *   yoffset
+* 
+* LIGH Version 2 - Updated to include the cell map
+* 
+* X
+* Y
+* Z
+* Rotation
+* 
+* Cell Size
+*	Cell Id
+*   Lightlist Size
+*     formId
+*     name
+*     distance
+*     rotation
+*     height
+*     xoffset
+*     yoffset
 */
+
+//convert maps into vectors for serialization, clearing out anything that is empty
+MenuLightCacheList GetValidLights()
+{
+	MenuLightCacheList lightCacheList;
+
+	for (auto& cell : lightManager.lightCache)
+	{
+		if (cell.second.size()) {
+			lightCacheList.push_back(cell);
+		}
+	}
+
+	return lightCacheList;
+}
 
 void SerializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 {
 	lightManager.ValidateLights();
 
-	if (version == 1) {
+	auto lightLists = GetValidLights();
+
+	if (version == LIGHTS_SERIALIZE_VERSION) {
 		WriteData<float>(ifc, &lightManager.pos.x);
 		WriteData<float>(ifc, &lightManager.pos.y);
 		WriteData<float>(ifc, &lightManager.pos.z);
 		WriteData<float>(ifc, &lightManager.rot);
 
-		UInt32 size = lightManager.lights.size();
-		WriteData<UInt32>(ifc, &size);
+		UInt32 cellSize = lightLists.size();
+		WriteData<UInt32>(ifc, &cellSize);
 
-		for (int i = 0; i < size; ++i) {
-			MenuLight* light = lightManager.GetLight(i);
-			if (light) {
+		for (int c = 0; c < cellSize; ++c) {
+			UInt32 cellId = lightLists[c].first;
+			WriteData<UInt32>(ifc, &cellId);
+
+			UInt32 lightListSize = lightLists[c].second.size();
+			WriteData<UInt32>(ifc, &lightListSize);
+			for (int i = 0; i < lightListSize; ++i) {
+
+				auto light = &lightLists[c].second[i];
 				WriteData<UInt32>(ifc, &light->formId);
 				WriteData<std::string>(ifc, &light->name);
 				WriteData<float>(ifc, &light->distance);
@@ -828,33 +928,26 @@ void SerializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 				WriteData<float>(ifc, &light->xOffset);
 				WriteData<float>(ifc, &light->yOffset);
 			}
-			else {
-				//if for some reason it fails after validation ??? just write anyway
-				UInt32 zero = 0;
-				WriteData<UInt32>(ifc, &zero);
-				std::string empty;
-				WriteData<std::string>(ifc, &empty);
-				float zerof = 0.0f;
-				WriteData<float>(ifc, &zerof);
-				WriteData<float>(ifc, &zerof);
-				WriteData<float>(ifc, &zerof);
-				WriteData<float>(ifc, &zerof);
-				WriteData<float>(ifc, &zerof);
-			}
 		}
 	}
 }
 
 void DeserializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 {
-	if (version == 1)
+	ReadData<float>(ifc, &lightManager.pos.x);
+	ReadData<float>(ifc, &lightManager.pos.y);
+	ReadData<float>(ifc, &lightManager.pos.z);
+	ReadData<float>(ifc, &lightManager.rot);
+
+	switch (version)
 	{
-		ReadData<float>(ifc, &lightManager.pos.x);
-		ReadData<float>(ifc, &lightManager.pos.y);
-		ReadData<float>(ifc, &lightManager.pos.z);
-		ReadData<float>(ifc, &lightManager.rot);
+	case 1:
+	{
+		LightList* lightList = lightManager.GetLightList();
+
 		UInt32 size;
 		ReadData<UInt32>(ifc, &size);
+
 		for (int i = 0; i < size; ++i)
 		{
 			MenuLight light;
@@ -867,18 +960,47 @@ void DeserializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 			ReadData<float>(ifc, &light.height);
 			ReadData<float>(ifc, &light.xOffset);
 			ReadData<float>(ifc, &light.yOffset);
-			if (ifc->ResolveFormId(oldId, &light.formId)) {
-				TESForm* form = LookupFormByID(light.formId);
-				if (form) {
-					light.lightRefr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-					if (light.lightRefr) {
-						lightManager.Push(light);
-					}
+			if (lightList && ifc->ResolveFormId(oldId, &light.formId)) {
+				lightList->push_back(light);
+			}
+		}
+		break;
+	}
+	case 2:
+	{
+		UInt32 cellSize;
+		ReadData<UInt32>(ifc, &cellSize);
+		for (int c = 0; c < cellSize; ++c) 
+		{
+			UInt32 oldCellId, cellId;
+			ReadData<UInt32>(ifc, &oldCellId);
+			bool cellResolved = ifc->ResolveFormId(oldCellId, &cellId);
+
+			UInt32 lightListSize;
+			ReadData<UInt32>(ifc, &lightListSize);
+			for (int i = 0; i < lightListSize; ++i) {
+				MenuLight light;
+				UInt32 oldId;
+
+				ReadData<UInt32>(ifc, &oldId);
+				ReadData<std::string>(ifc, &light.name);
+				ReadData<float>(ifc, &light.distance);
+				ReadData<float>(ifc, &light.rotation);
+				ReadData<float>(ifc, &light.height);
+				ReadData<float>(ifc, &light.xOffset);
+				ReadData<float>(ifc, &light.yOffset);
+
+				//if cell and light form ids resolve successfully
+				if (cellResolved && ifc->ResolveFormId(oldId, &light.formId)) {
+					lightManager.lightCache[cellId].push_back(light);
 				}
 			}
 		}
+		break;
+	}
 	}
 }
+
 
 void RevertLights()
 {

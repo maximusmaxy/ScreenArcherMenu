@@ -6,6 +6,7 @@
 #include "f4se/PluginAPI.h"
 
 #define CAM_SAVE_STATE_SLOTS 3
+#define CAM_SERIALIZE_VERSION 1
 
 class FreeCameraState : public TESCameraState
 {

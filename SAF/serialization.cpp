@@ -122,13 +122,13 @@ namespace SAF {
 		//collect currently loaded actors
 		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
 			StorePersistentIfValid(savedAdjustments, adjustments);
+			//remove from persistents
+			persistentAdjustments.erase(adjustments->formId);
 		});
 
 		//the persistence store is only updated when an actor is unloaded so only add the missing ones
 		for (auto& persistent : persistentAdjustments) {
-			if (!savedAdjustments.count(persistent.first)) {
-				savedAdjustments[persistent.first] = persistent.second;
-			}
+			savedAdjustments[persistent.first] = persistent.second;
 		}
 
 		ifc->OpenRecord('ADJU', 3); //adjustments
@@ -336,13 +336,9 @@ namespace SAF {
 									}
 									}
 								}
-								LoadPersistentIfValid(formId, persistent, modLoaded);
 							}
 						}
-						else
-						{
-							LoadPersistentIfValid(formId, persistent, modLoaded);
-						}
+						LoadPersistentIfValid(formId, persistent, modLoaded);
 					}
 					ValidatePersistents(persistentAdjustments, formId);
 				}
@@ -438,16 +434,18 @@ namespace SAF {
 		StorePersistentIfValid(persistentAdjustments, adjustments);
 	}
 
-	void AdjustmentManager::StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments) {
+	bool AdjustmentManager::StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments) {
 		std::vector<PersistentAdjustment> persistents;
 		adjustments->GetPersistentAdjustments(persistents);
 
 		for (auto& persistent : persistents) {
 			if (IsPersistentValid(persistent)) {
 				map[adjustments->formId] = persistents;
-				return;
+				return true;
 			}
 		}
+		
+		return false;
 	}
 
 	//This is to clear out any npcs with unedited adjustments, must have a non race adjustment, or an edited race adjustment

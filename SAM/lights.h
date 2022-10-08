@@ -8,6 +8,8 @@
 #include <vector>
 #include <unordered_map>
 
+#define LIGHTS_SERIALIZE_VERSION 2
+
 class MenuLight
 {
 public:
@@ -35,18 +37,27 @@ public:
 	bool IsNameUpdated();
 	void Erase();
 	void MoveTo(NiPoint3& pos, NiPoint3& rot);
-	void UpdatePosition(NiPoint3& pos, NiPoint3& rot);
 };
+
+typedef std::vector<MenuLight> LightList;
+typedef std::unordered_map<UInt32, LightList> MenuLightCache;
+typedef std::vector<std::pair<UInt32, LightList>> MenuLightCacheList;
 
 class LightManager
 {
 public:
-	std::vector<MenuLight> lights;
+	LightList* lights;
 	NiPoint3 pos;
 	float rot;
 
+	MenuLightCache lightCache;
+	LightList tempLights;
+
 	MenuLight* GetLight(UInt32 id);
 	void ForEach(const std::function<void(MenuLight*)>& functor);
+
+	LightList* GetLightList();
+	void UpdateLightList();
 
 	void Update();
 	void Push(MenuLight light);

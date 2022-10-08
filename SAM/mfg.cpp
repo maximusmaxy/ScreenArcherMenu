@@ -334,9 +334,9 @@ void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 tongueIndex
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 	if (!tongueHandle) {
 		safMessageDispatcher.createAdjustment(selected.refr->formID, "Face Morphs Tongue");
-		UInt32 handle = safMessageDispatcher.GetResult();
+		tongueHandle = safMessageDispatcher.GetResult();
 
-		auto adjustment = adjustments->GetAdjustment(handle);
+		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (!adjustment)
 			return;
 
