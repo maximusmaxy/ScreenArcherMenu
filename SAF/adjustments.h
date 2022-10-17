@@ -125,7 +125,7 @@ namespace SAF {
 		UInt32 updateType;
 
 		LoadedAdjustment() : map(nullptr), updateType(kAdjustmentUpdateNone) {}
-		LoadedAdjustment(TransformMap* map) : map(map) {}
+		LoadedAdjustment(TransformMap* map) : map(map), updateType(kAdjustmentUpdateNone) {}
 	};
 
 	class PersistentAdjustment {
@@ -512,7 +512,7 @@ namespace SAF {
 		NodeSets* GetNodeSets(UInt32 race, bool isFemale);
 
 		TransformMap* GetAdjustmentFile(std::string);
-		void SetAdjustmentFile(std::string filename, TransformMap map);
+		TransformMap* SetAdjustmentFile(std::string filename, TransformMap& map);
 
 		InsensitiveStringSet* GetRaceAdjustments(UInt32 race, bool isFemale);
 		bool HasRaceAdjustment(UInt32 race, bool isFemale, std::string filename);

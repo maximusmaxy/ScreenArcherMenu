@@ -1789,11 +1789,11 @@ namespace SAF {
 		return found != adjustmentFileCache.end() ? &found->second : nullptr;
 	}
 
-	void AdjustmentManager::SetAdjustmentFile(std::string filename, TransformMap map)
+	TransformMap* AdjustmentManager::SetAdjustmentFile(std::string filename, TransformMap& map)
 	{
 		std::lock_guard<std::shared_mutex> lock(fileMutex);
 
-		adjustmentFileCache[filename] = map;
+		return &(adjustmentFileCache[filename] = map);
 	}
 
 	UInt32 AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod) {
@@ -1937,7 +1937,8 @@ namespace SAF {
 					raceAdjustments[key].insert(name);
 
 					if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
-						SetAdjustmentFile(filename, *loadedAdjustment.map);
+						//get the ref to the current map
+						loadedAdjustment.map = SetAdjustmentFile(filename, *loadedAdjustment.map);
 					}
 				}
 				else {

@@ -542,6 +542,7 @@ namespace SAF {
 		}
 		catch (...) {
 			_DMESSAGE("Failed to read ", filename);
+			adjustment->updateType = kAdjustmentUpdateNone;
 			return false;
 		}
 
