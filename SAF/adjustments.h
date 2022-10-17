@@ -93,12 +93,6 @@ namespace SAF {
 	typedef std::set<std::string, CaseInsensitiveCompare> InsensitiveStringSet;
 	typedef std::map <std::string, TransformMap, CaseInsensitiveCompare> InsensitiveTransformMap;
 
-	struct LoadedAdjustment
-	{
-		TransformMap map;
-		UInt32 version;
-	};
-
 	//Old adjustment serialization types
 	//enum {
 	//	kAdjustmentSerializeDisabled = 0,
@@ -119,6 +113,21 @@ namespace SAF {
 		kAdjustmentTypeTongue
 	};
 
+	enum {
+		kAdjustmentUpdateNone = 0,
+		kAdjustmentUpdateSerialization,	//Update adjustment serialization to version 1.0+
+		kAdjustmentUpdateFile			//Update adjustment file to version 1.0+
+	};
+
+	struct LoadedAdjustment
+	{
+		TransformMap* map;
+		UInt32 updateType;
+
+		LoadedAdjustment() : map(nullptr), updateType(kAdjustmentUpdateNone) {}
+		LoadedAdjustment(TransformMap* map) : map(map) {}
+	};
+
 	class PersistentAdjustment {
 	public:
 		std::string name;
@@ -127,12 +136,12 @@ namespace SAF {
 		float scale;
 		UInt8 type;
 		bool updated;
-		UInt8 version;
+		UInt8 updateType;
 		TransformMap map;
 
 		PersistentAdjustment() : type(kAdjustmentTypeNone) {}
 
-		PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 version);
+		PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 updateType);
 
 		PersistentAdjustment(std::string file, UInt8 type) :
 			name(file),
@@ -140,14 +149,15 @@ namespace SAF {
 			mod(std::string()),
 			scale(1.0),
 			type(type),
-			version(0),
+			updateType(kAdjustmentUpdateNone),
 			updated(false)
 		{}
 
 		bool StoreMap();
+		bool IsValid();
 	};
 
-	typedef std::unordered_map<UInt32, std::vector<PersistentAdjustment>> PersistentMap;
+	typedef std::unordered_map<UInt32, std::unordered_map<UInt64, std::vector<PersistentAdjustment>>> PersistentMap;
 
 	struct NodeMapRef {
 		NodeMap map;
@@ -392,6 +402,7 @@ namespace SAF {
 		{}
 
 		ActorAdjustmentState IsValid();
+		UInt64 GetRaceGender();
 
 		std::shared_ptr<Adjustment> CreateAdjustment(std::string name);
 		UInt32 CreateAdjustment(std::string name, std::string esp);
@@ -407,7 +418,6 @@ namespace SAF {
 		std::shared_ptr<Adjustment> GetFile(std::string filename);
 		std::shared_ptr<Adjustment> GetFileOrCreate(std::string filename);
 		void RemoveFile(std::string filename, UInt32 handle);
-		
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
@@ -419,11 +429,11 @@ namespace SAF {
 		void UpdateAllAdjustments();
 		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);
 		
-		void UpdateAdjustmentVersion(TransformMap& map, UInt32 version);
-		void UpdateLoadedAdjustmentVersion(LoadedAdjustment& adjustment);
+		void UpdateAdjustmentVersion(TransformMap* map, UInt32 updateType);
 		std::shared_ptr<Adjustment> LoadAdjustment(std::string filename, bool cached = false);
 		UInt32 LoadAdjustmentHandle(std::string filename, std::string espName, bool cached = false);
 		void SaveAdjustment(std::string filename, UInt32 handle);
+		bool LoadUpdatedAdjustment(std::string filename, TransformMap* map);
 
 		void ForEachAdjustment(const std::function<void(std::shared_ptr<Adjustment>)>& functor);
 
@@ -506,6 +516,7 @@ namespace SAF {
 
 		InsensitiveStringSet* GetRaceAdjustments(UInt32 race, bool isFemale);
 		bool HasRaceAdjustment(UInt32 race, bool isFemale, std::string filename);
+		std::vector<PersistentAdjustment>* GetPersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
 		
 		void CreateNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings, NodeMap* poseMap, NodeMap* offsetMap);
 		NodeMap* GetCachedNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings);
@@ -518,12 +529,12 @@ namespace SAF {
 		void SerializeLoad(const F4SESerializationInterface* ifc);
 		void SerializeRevert(const F4SESerializationInterface* ifc);
 
-		void LoadPersistentIfValid(UInt32 formId, PersistentAdjustment persistent, bool loaded);
+		void LoadPersistentIfValid(UInt32 formId, UInt64 raceGenderId, PersistentAdjustment persistent, bool loaded);
 		void StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
 		bool StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
 		//void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
 		bool IsPersistentValid(PersistentAdjustment& persistent);
-		void ValidatePersistents(PersistentMap& map, UInt32 id);
+		void ValidatePersistents(PersistentMap& map, UInt32 formId, UInt64 raceGenderId);
 	};
 
 	extern AdjustmentManager g_adjustmentManager;

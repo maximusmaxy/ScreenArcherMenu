@@ -107,24 +107,18 @@ namespace SAF {
 	}
 
 	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs) {
-		NiTransform tmp;
-		tmp.scale = lhs.scale * rhs.scale;
-		tmp.rot = MultiplyNiMatrix(lhs.rot, rhs.rot);
-		tmp.pos = lhs.pos + RotateMatrix(lhs.rot, rhs.pos) * lhs.scale;
-		return tmp;
+		NiTransform res;
+		res.scale = lhs.scale * rhs.scale;
+		res.rot = MultiplyNiMatrix(lhs.rot, rhs.rot);
+		res.pos = lhs.pos + RotateMatrix(lhs.rot, rhs.pos) * lhs.scale;
+		return res;
 	}
 
-	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
+	NiTransform InvertNiTransform(NiTransform& t) {
 		NiTransform res;
-
-		float srcScale = src.scale == 0 ? 1.0f : src.scale;
-		res.scale = dst.scale / srcScale;
-
-		NiMatrix43 inverted = src.rot.Transpose();
-		res.rot = inverted * dst.rot;
-
-		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
-
+		res.scale = t.scale == 0 ? 1 / t.scale : 1.0f;
+		res.rot = t.rot.Transpose();
+		res.pos = RotateMatrix(res.rot, (-t.pos / res.scale));
 		return res;
 	}
 
@@ -136,7 +130,9 @@ namespace SAF {
 		);
 	}
 
-	NiTransform NegateNiTransform2(NiTransform& src, NiTransform& dst) {
+
+
+	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
 		NiTransform res;
 
 		float srcScale = src.scale == 0 ? 1.0f : src.scale;
@@ -146,6 +142,21 @@ namespace SAF {
 		res.rot = MultiplyNiMatrix(inverted, dst.rot);
 
 		res.pos = RotateMatrix(inverted, (dst.pos - src.pos) / srcScale);
+
+		return res;
+	}
+	
+	//Need this for support of older versions
+	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dst) {
+		NiTransform res;
+
+		float srcScale = src.scale == 0 ? 1.0f : src.scale;
+		res.scale = dst.scale / srcScale;
+
+		NiMatrix43 inverted = src.rot.Transpose();
+		res.rot = inverted * dst.rot;
+
+		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
 
 		return res;
 	}

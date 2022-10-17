@@ -393,6 +393,12 @@ namespace SAF {
 	//	return true;
 	//}
 
+	enum {
+		kTransformJsonTranspose = 0,
+		kTransformJsonPose,
+		kTransformJsonAdjustment
+	};
+
 	void ReadTransformJson(NiTransform& transform, Json::Value& value, UInt32 version) {
 		transform.pos.x = ReadJsonFloat(value["x"]);
 		transform.pos.y = ReadJsonFloat(value["y"]);
@@ -404,13 +410,13 @@ namespace SAF {
 		roll = ReadJsonFloat(value["roll"]);
 
 		switch (version) {
-		case 0:
+		case kTransformJsonTranspose:
 			MatrixFromDegree(transform.rot, yaw, pitch, roll);
 			break;
-		case 1:
+		case kTransformJsonPose:
 			MatrixFromPose(transform.rot, yaw, pitch, roll);
 			break;
-		case 2:
+		case kTransformJsonAdjustment:
 			MatrixFromEulerYPR2(transform.rot, yaw * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, roll * DEGREE_TO_RADIAN);
 			break;
 		}
@@ -426,13 +432,13 @@ namespace SAF {
 
 		float yaw, pitch, roll;
 		switch (version) {
-		case 0: 
+		case kTransformJsonTranspose:
 			MatrixToDegree(transform->rot, yaw, pitch, roll);
 			break;
-		case 1:
+		case kTransformJsonPose:
 			MatrixToPose(transform->rot, yaw, pitch, roll);
 			break;
-		case 2:
+		case kTransformJsonAdjustment:
 			MatrixToEulerYPR2(transform->rot, yaw, pitch, roll);
 			yaw *= RADIAN_TO_DEGREE;
 			pitch *= RADIAN_TO_DEGREE;
@@ -464,7 +470,7 @@ namespace SAF {
 		adjustment->ForEachTransform([&](const NodeKey* nodeKey, NiTransform* transform) {
 			if (!TransformIsDefault(*transform)) {
 				Json::Value member;
-				WriteTransformJson(transform, member, 2);
+				WriteTransformJson(transform, member, kTransformJsonAdjustment);
 				transforms[GetNodeKeyName(*nodeKey)] = member;
 			}
 		});
@@ -517,7 +523,9 @@ namespace SAF {
 		try {
 			//If no version treat as simple key->transform map, else get map from transforms property
 			UInt32 version = value.get("version", 0).asUInt();
-			adjustment->version = version;
+
+			//if prior to version 1 it needs to be updated
+			adjustment->updateType = version < 1 ? kAdjustmentUpdateFile : kAdjustmentUpdateNone;
 
 			//get transforms, or just use itself
 			Json::Value transforms = value.get("transforms", value);
@@ -525,10 +533,10 @@ namespace SAF {
 			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
 				NiTransform transform;
 				//read version 2 if non zero version
-				ReadTransformJson(transform, *it, (version > 0 ? 2 : 0));
+				ReadTransformJson(transform, *it, (version > 0 ? kTransformJsonPose : kTransformJsonTranspose));
 				NodeKey nodeKey = GetNodeKeyFromString(it.key().asCString());
 				if (nodeKey.key) {
-					adjustment->map.emplace(nodeKey, transform);
+					adjustment->map->emplace(nodeKey, transform);
 				}
 			}
 		}
@@ -560,7 +568,7 @@ namespace SAF {
 
 		for (auto& kvp : *poseMap) {
 			Json::Value member;
-			WriteTransformJson(&kvp.second, member, 1);
+			WriteTransformJson(&kvp.second, member, kTransformJsonPose);
 			transforms[GetNodeKeyName(kvp.first)] = member;
 		}
 
@@ -615,7 +623,7 @@ namespace SAF {
 
 			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
 				NiTransform transform;
-				ReadTransformJson(transform, *it, version);
+				ReadTransformJson(transform, *it, version > 0 ? kTransformJsonPose : kTransformJsonTranspose);
 				NodeKey nodeKey = GetNodeKeyFromString(it.key().asCString());
 				if (nodeKey.key) {
 					poseMap->emplace(nodeKey, transform);

@@ -98,7 +98,7 @@ namespace SAF {
 		return found->second;
 	}
 
-	PersistentAdjustment::PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 _version)
+	PersistentAdjustment::PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 _updateType)
 	{
 		type = adjustment->type;
 		name = adjustment->name;
@@ -106,18 +106,11 @@ namespace SAF {
 		mod = adjustment->mod;
 		scale = adjustment->scale;
 		updated = adjustment->updated;
-		version = _version;
+		updateType = _updateType;
 
 		if (StoreMap()) {
 			map = adjustment->map;
 		}
-	}
-
-	bool PersistentAdjustment::StoreMap()
-	{
-		if (!type) return false;
-		//Store map if a non file type or if a file type is updated
-		return (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue || updated);
 	}
 
 	NiTransform* Adjustment::GetTransform(const NodeKey& key)
@@ -328,6 +321,18 @@ namespace SAF {
 		return result;
 	}
 
+	UInt64 ActorAdjustments::GetRaceGender()
+	{
+		if (!race)
+			return 0;
+
+		UInt64 key = race;
+		if (isFemale)
+			key |= 0x100000000;
+
+		return key;
+	}
+
 	void ActorAdjustments::Clear()
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
@@ -426,8 +431,7 @@ namespace SAF {
 			GetPoseTransforms(name, &offsets, &poses);
 
 			NiTransform result = MultiplyNiTransform(offsets, poses);
-			NiTransform negate = NegateNiTransform2(baseNode->m_localTransform, TransformIdentity());
-			result = MultiplyNiTransform(result, negate);
+			result = MultiplyNiTransform(result, InvertNiTransform(baseNode->m_localTransform));
 
 			offsetNode->m_localTransform = result;
 		}
@@ -472,7 +476,7 @@ namespace SAF {
 					adjustment->updated = persistent.updated;
 					
 					//if version < 2 treat as 0
-					UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
+					UpdateAdjustmentVersion(&adjustment->map, persistent.updateType);
 					break;
 				}
 				case kAdjustmentTypeSkeleton:
@@ -484,7 +488,7 @@ namespace SAF {
 						adjustment = CreateAdjustment(persistent.name);
 						adjustment->map = persistent.map;
 
-						UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
+						UpdateAdjustmentVersion(&adjustment->map, persistent.updateType);
 					}
 					else {
 						adjustment = LoadAdjustment(persistent.file, true);
@@ -518,7 +522,7 @@ namespace SAF {
 					adjustment->updated = persistent.updated;
 					adjustment->type = persistent.type;
 
-					UpdateAdjustmentVersion(adjustment->map, persistent.version < 2 ? 0 : 1);
+					UpdateAdjustmentVersion(&adjustment->map, persistent.updateType);
 					break;
 				}
 				}
@@ -768,25 +772,24 @@ namespace SAF {
 		return 1;
 	}
 
-	void ActorAdjustments::UpdateAdjustmentVersion(TransformMap& map, UInt32 version)
+	void ActorAdjustments::UpdateAdjustmentVersion(TransformMap* map, UInt32 updateType)
 	{
-		//If version is 0, update to new method
-		if (version == 0) {
-			for (auto& transform : map) {
+		switch (updateType) {
+		case kAdjustmentUpdateSerialization:
+		case kAdjustmentUpdateFile:
+		{
+			for (auto& transform : *map) {
 				if (!transform.first.offset) {
 					auto baseNode = GetFromNodeMap(*baseMap, transform.first.name);
 					if (baseNode) {
 						NiTransform dst = baseNode->m_localTransform * transform.second;
-						transform.second = NegateNiTransform2(baseNode->m_localTransform, dst);
+						transform.second = NegateNiTransform(baseNode->m_localTransform, dst);
 					}
 				}
 			}
+			break;
 		}
-	}
-
-	void ActorAdjustments::UpdateLoadedAdjustmentVersion(LoadedAdjustment& adjustment)
-	{
-		UpdateAdjustmentVersion(adjustment.map, adjustment.version);
+		}
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::GetFileOrCreate(std::string filename)
@@ -799,6 +802,20 @@ namespace SAF {
 		}
 
 		return adjustment;
+	}
+
+	bool ActorAdjustments::LoadUpdatedAdjustment(std::string filename, TransformMap* map)
+	{
+		LoadedAdjustment loadedAdjustment(map);
+
+		if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
+
+			UpdateAdjustmentVersion(loadedAdjustment.map, loadedAdjustment.updateType);
+
+			return true;
+		}
+
+		return false;
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(std::string filename, bool cached)
@@ -823,21 +840,19 @@ namespace SAF {
 			}
 		}
 
-		LoadedAdjustment loadedAdjustment;
+		TransformMap map;
 
-		if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
-
-			UpdateLoadedAdjustmentVersion(loadedAdjustment);
+		if (LoadUpdatedAdjustment(filename, &map)) {
 
 			//add to cache
 			if (cached) {
-				g_adjustmentManager.SetAdjustmentFile(filename, loadedAdjustment.map);
+				g_adjustmentManager.SetAdjustmentFile(filename, map);
 			}
 
 			std::shared_ptr<Adjustment> adjustment = GetFileOrCreate(filename);
 
 			if (nodeSets) {
-				adjustment->CopyMap(&loadedAdjustment.map, &nodeSets->all);
+				adjustment->CopyMap(&map, &nodeSets->all);
 			}
 			
 			adjustment->name = filename;
@@ -959,7 +974,7 @@ namespace SAF {
 			if (!baseNode)
 				return;
 
-			result = NegateNiTransform2(poseNode->m_localTransform, baseNode->m_localTransform);
+			result = NegateNiTransform(poseNode->m_localTransform, baseNode->m_localTransform);
 		}
 
 		adjustment->SetTransform(key, result);
@@ -987,9 +1002,9 @@ namespace SAF {
 			if (!baseNode)
 				return;
 
-			result = MultiplyNiTransform(transform, NegateNiTransform2(poseNode->m_localTransform, TransformIdentity()));
+			result = MultiplyNiTransform(transform, InvertNiTransform(poseNode->m_localTransform));
 			result = MultiplyNiTransform(result, baseNode->m_localTransform);
-			result = NegateNiTransform2(baseNode->m_localTransform, result);
+			result = NegateNiTransform(baseNode->m_localTransform, result);
 		}
 
 		adjustment->SetTransform(key, result);
@@ -1005,7 +1020,7 @@ namespace SAF {
 		if (key.offset) {
 			result = adjustment->GetTransformOrDefault(key);
 			result.rot = MultiplyNiMatrix(result.rot, GetXYZRotation(type, scalar));
-			result = NegateNiTransform2(TransformIdentity(), result);
+			//result = NegateNiTransform(TransformIdentity(), result);
 		}
 		else {
 			NiAVObject* baseNode = GetFromNodeMap(*baseMap, key.name);
@@ -1016,24 +1031,20 @@ namespace SAF {
 			if (!baseNode)
 				return;
 
-			//NiTransform transform = baseNode->m_localTransform * adjustment->GetTransformOrDefault(name);
-			//RotateMatrixXYZ(transform.rot, type, scalar);
-			//adjustment->SetTransform(name, NegateNiTransform(baseNode->m_localTransform, transform));
-
 			//Get Current position
 			result = MultiplyNiTransform(baseNode->m_localTransform, adjustment->GetTransformOrDefault(key));
-			result = MultiplyNiTransform(result, NegateNiTransform2(baseNode->m_localTransform, TransformIdentity()));
+			result = MultiplyNiTransform(result, InvertNiTransform(baseNode->m_localTransform));
 			result = MultiplyNiTransform(result, poseNode->m_localTransform);
 
 			//Apply rotation to current position
 			result.rot = MultiplyNiMatrix(result.rot, GetXYZRotation(type, scalar));
 
 			//Trace back the pose/negation
-			result = MultiplyNiTransform(result, NegateNiTransform2(poseNode->m_localTransform, TransformIdentity()));
+			result = MultiplyNiTransform(result, InvertNiTransform(poseNode->m_localTransform));
 			result = MultiplyNiTransform(result, baseNode->m_localTransform);
 
 			//Get the difference
-			result = NegateNiTransform2(baseNode->m_localTransform, result);
+			result = NegateNiTransform(baseNode->m_localTransform, result);
 		}
 
 		adjustment->SetTransform(key, result);
@@ -1086,19 +1097,24 @@ namespace SAF {
 
 				NiAVObject* poseNode = GetFromNodeMap(poseMap, node.name);
 				if (poseNode) {
+					NiAVObject* baseNode = GetFromNodeMap(*baseMap, node.name);
+					if (baseNode) {
 
-					NiTransform poseTransform = poseNode->m_localTransform;
+						NiTransform result = baseNode->m_localTransform;
 
-					for (auto& adjustment : adjustments) {
-						if (adjustment->IsVisible()) {
-							NiTransform* transform = adjustment->GetTransform(node);
-							if (transform) {
-								poseTransform = MultiplyNiTransform(poseTransform, *transform);
+						for (auto& adjustment : adjustments) {
+							if (adjustment->IsVisible()) {
+								NiTransform* transform = adjustment->GetTransform(node);
+								if (transform) {
+									result = MultiplyNiTransform(result, *transform);
+								}
 							}
 						}
-					}
 
-					transformMap.emplace(node, poseTransform);
+						result = MultiplyNiTransform(result, InvertNiTransform(baseNode->m_localTransform));
+						result = MultiplyNiTransform(result, poseNode->m_localTransform);
+						transformMap.emplace(node, result);
+					}
 				}
 			}
 		}
@@ -1133,9 +1149,9 @@ namespace SAF {
 					GetPoseTransforms(name, &offsets, &poses, adjustments);
 
 					NiTransform result = MultiplyNiTransform(offsets, poses); //get offset + pose
-					result = MultiplyNiTransform(result, NegateNiTransform2(baseNode->m_localTransform, TransformIdentity())); //negate base node
+					result = MultiplyNiTransform(result, InvertNiTransform(baseNode->m_localTransform)); //negate base node
 					result = MultiplyNiTransform(result, poseNode->m_localTransform); //apply base node
-					result = NegateNiTransform2(result, baseNode->m_localTransform); //get difference from virtual result to the base position
+					result = NegateNiTransform(result, baseNode->m_localTransform); //get difference from virtual result to the base position
 
 					//insert if non zero
 					if (!TransformIsDefault(result)) {
@@ -1207,9 +1223,9 @@ namespace SAF {
 							//base -> adjust = transform -> ipose -> base
 							//adjust = (transform -> ipose -> base) / base
 
-							NiTransform dst = MultiplyNiTransform(kvp.second, NegateNiTransform2(poseNode->m_localTransform, TransformIdentity()));
+							NiTransform dst = MultiplyNiTransform(kvp.second, InvertNiTransform(poseNode->m_localTransform));
 							dst = MultiplyNiTransform(dst, baseNode->m_localTransform);
-							dst = NegateNiTransform2(baseNode->m_localTransform, dst);
+							dst = NegateNiTransform(baseNode->m_localTransform, dst);
 
 							adjustment->SetTransform(kvp.first, dst);
 						}
@@ -1439,6 +1455,28 @@ namespace SAF {
 		return false;
 	}
 
+	std::vector<PersistentAdjustment>* AdjustmentManager::GetPersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments)
+	{
+		auto raceGender = persistentAdjustments.find(adjustments->formId);
+		if (raceGender == persistentAdjustments.end())
+			return nullptr;
+
+		//For compatibility with versions prior to 1.0.3, need to check 0 and if it exists move it to the current race/gender
+		auto persistents = raceGender->second.find(0);
+		if (persistents != raceGender->second.end()) {
+			UInt64 key = adjustments->GetRaceGender();
+			auto it = raceGender->second.emplace(key, persistents->second);
+			raceGender->second.erase(persistents);
+			return &it.first->second;
+		}
+
+		persistents = raceGender->second.find(adjustments->GetRaceGender());
+		if (persistents != raceGender->second.end())
+			return &persistents->second;
+
+		return nullptr;
+	}
+
 	void AdjustmentManager::LoadFiles()
 	{
 		if (!filesLoaded) {
@@ -1486,8 +1524,9 @@ namespace SAF {
 
 		std::shared_ptr<ActorAdjustments> adjustments = nullptr;
 
-		if (actorAdjustmentCache.count(actor->formID))
-			adjustments = actorAdjustmentCache[actor->formID];
+		auto found = actorAdjustmentCache.find(actor->formID);
+		if (found != actorAdjustmentCache.end())
+			adjustments = found->second;
 		
 		if (!loaded) {
 			if (adjustments) {
@@ -1516,14 +1555,10 @@ namespace SAF {
 
 	bool AdjustmentManager::UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments) {
 		if (UpdateActor(adjustments)) {
-			if (!actorAdjustmentCache.count(adjustments->formId)) {
-				actorAdjustmentCache.emplace(adjustments->formId, adjustments);
-			}
+			actorAdjustmentCache.emplace(adjustments->formId, adjustments);
 		}
 		else {
-			if (actorAdjustmentCache.count(adjustments->formId)) {
-				actorAdjustmentCache.erase(adjustments->formId);
-			}
+			actorAdjustmentCache.erase(adjustments->formId);
 			return false;
 		}
 		
@@ -1550,35 +1585,56 @@ namespace SAF {
 	}
 
 	bool AdjustmentManager::UpdateActor(std::shared_ptr<ActorAdjustments> adjustments) {
-		adjustments->Clear();
-
 		if (adjustments->baseRoot)
 			RemoveNodeMap(adjustments->baseRoot);
 
 		auto valid = adjustments->IsValid();
 
-		if (valid == kActorInvalid)
+		switch (valid) {
+		case kActorInvalid:
+		{
+			adjustments->Clear();
 			return false;
-		else if (valid == kActorUpdated) {
+		}
+		case kActorValid:
+		{
+			adjustments->Clear();
+		}
+		case kActorUpdated:
+		{
 			TESForm* actorForm = LookupFormByID(adjustments->formId);
 			if (!actorForm)
 				return false;
 
-			adjustments->actor = DYNAMIC_CAST(actorForm, TESForm, Actor);
-			if (!adjustments->actor)
+			Actor* actor = adjustments->actor = DYNAMIC_CAST(actorForm, TESForm, Actor);
+			if (!actor)
 				return false;
 
-			adjustments->npc = DYNAMIC_CAST(adjustments->actor->baseForm, TESForm, TESNPC);
-			if (!adjustments->npc)
+			TESNPC* npc = adjustments->npc = DYNAMIC_CAST(adjustments->actor->baseForm, TESForm, TESNPC);
+			if (!npc)
 				return false;
 
-			adjustments->isFemale = (CALL_MEMBER_FN(adjustments->npc, GetSex)() == 1 ? true : false);
-
+			bool isFemale = (CALL_MEMBER_FN(adjustments->npc, GetSex)() == 1 ? true : false);
+			
 			TESRace* actorRace = adjustments->actor->GetActorRace();
 			if (!actorRace)
 				return false;
 
-			adjustments->race = actorRace->formID;
+			UInt32 raceId = actorRace->formID;
+			
+			//if there was a previous race/gender, the actor is persistent and it is now updated. Persist the previous adjustments
+			if (adjustments->race && adjustments->actor->flags & TESForm::kFlag_Persistent &&
+				(raceId != adjustments->race || isFemale != adjustments->isFemale)) {
+				StorePersistentAdjustments(adjustments);
+			}
+
+			adjustments->actor = actor;
+			adjustments->npc = npc;
+			adjustments->isFemale = isFemale;
+			adjustments->race = raceId;
+
+			adjustments->Clear();
+		}
 		}
 
 		adjustments->root = adjustments->actor->GetActorRootNode(false);
@@ -1609,10 +1665,7 @@ namespace SAF {
 
 		AdjustmentUpdateData data;
 		data.race = GetRaceAdjustments(adjustments->race, adjustments->isFemale);
-
-		auto foundPersistents = persistentAdjustments.find(adjustments->formId);
-		if (foundPersistents != persistentAdjustments.end())
-			data.persistents = &foundPersistents->second;
+		data.persistents = GetPersistentAdjustments(adjustments);
 
 		adjustments->UpdatePersistentAdjustments(data);
 
@@ -1674,8 +1727,6 @@ namespace SAF {
 			return false;
 		});
 
-		if (remainingNodes.size() <= 0) return;
-
 		for (auto& nodeName : remainingNodes) {
 			//Search flattened bone trees for remaining nodes
 			NiPointer<NiAVObject> flattenedBone = GetNodeFromFlattenedTrees(boneTrees, nodeName);
@@ -1720,8 +1771,12 @@ namespace SAF {
 	void AdjustmentManager::RemoveNodeMap(NiNode* root) {
 		std::lock_guard<std::shared_mutex> lock(nodeMapMutex);
 
-		if (nodeMapCache.count(root)) {
-			if (--nodeMapCache[root].refs <= 0)
+		if (!root)
+			return;
+
+		auto it = nodeMapCache.find(root);
+		if (it != nodeMapCache.end()) {
+			if (--it->second.refs <= 0)
 				nodeMapCache.erase(root);
 		}
 	}
@@ -1874,21 +1929,15 @@ namespace SAF {
 				raceAdjustments.erase(key);
 			}
 
-			bool updateVersion = false;
-			LoadedAdjustment loadedAdjustment;
+			TransformMap map;
+			LoadedAdjustment loadedAdjustment(&map);
 
 			if (!name.empty()) {
 				if (enable) {
 					raceAdjustments[key].insert(name);
 
 					if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
-
-						//we need a reference actor to update the version so mark it to be updated using the first actor found
-						if (loadedAdjustment.version == 0) {
-							updateVersion = true;
-						}
-
-						SetAdjustmentFile(filename, loadedAdjustment.map);
+						SetAdjustmentFile(filename, *loadedAdjustment.map);
 					}
 				}
 				else {
@@ -1900,10 +1949,12 @@ namespace SAF {
 			ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
 				if (adjustments->race == formId && adjustments->isFemale == isFemale)
 				{
-					//we need a reference actor to update the version so use the first actor found as a reference
-					if (updateVersion) {
-						adjustments->UpdateLoadedAdjustmentVersion(loadedAdjustment);
-						updateVersion = false;
+					//we need a reference actor to update the version so use the first actor found as a reference to update the file
+					if (loadedAdjustment.updateType == kAdjustmentUpdateFile) {
+						adjustments->UpdateAdjustmentVersion(loadedAdjustment.map, loadedAdjustment.updateType);
+
+						//clear the update type to only update once
+						loadedAdjustment.updateType = kAdjustmentUpdateNone;
 					}
 
 					adjustments->LoadRaceAdjustment(name, clear, enable);

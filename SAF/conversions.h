@@ -68,7 +68,8 @@ namespace SAF {
 	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs);
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
-	NiTransform NegateNiTransform2(NiTransform& src, NiTransform& dest);
+	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dest);
+	NiTransform InvertNiTransform(NiTransform& t);
 	NiMatrix43 GetXYZRotation(int type, float scalar);
 	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixXYZ2(NiMatrix43& matrix, int type, float scalar);

@@ -91,6 +91,30 @@ namespace SAF {
 	*			pitch
 	*			roll
 	*			scale
+	* 
+	* 	Version 4 (1.0.3) //Need to store adjustments seperately for each race/gender per actor
+	*                 
+	* 	Actors length
+	*	FormId
+	*   RaceGender length
+	*		RaceGender Id
+	*		Adjustments length
+	*			Name
+	*			File
+	*			Mod
+	*			Scale
+	*			Type
+	*			Updated
+	*			Transforms length (Only if add type)
+	*				NodeKey name
+	*			    NodeKey offset
+	*				x
+	*				y
+	*				z
+	*				yaw
+	*				pitch
+	*				roll
+	*				scale
 	*/
 
 	/*
@@ -123,55 +147,68 @@ namespace SAF {
 		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
 			StorePersistentIfValid(savedAdjustments, adjustments);
 			//remove from persistents
-			persistentAdjustments.erase(adjustments->formId);
+			auto it = persistentAdjustments.find(adjustments->formId);
+			if (it != persistentAdjustments.end()) {
+				it->second.erase(adjustments->GetRaceGender());
+			}
 		});
 
 		//the persistence store is only updated when an actor is unloaded so only add the missing ones
-		for (auto& persistent : persistentAdjustments) {
-			savedAdjustments[persistent.first] = persistent.second;
+		for (auto& raceGender : persistentAdjustments) {
+			for (auto& adjustment : raceGender.second) {
+				savedAdjustments[raceGender.first][adjustment.first] = adjustment.second;
+			}
 		}
 
-		ifc->OpenRecord('ADJU', 3); //adjustments
+		ifc->OpenRecord('ADJU', 4); //adjustments
 
 		UInt32 size = savedAdjustments.size();
 		WriteData<UInt32>(ifc, &size);
-		for (auto& adjustmentKvp : savedAdjustments) {
+		for (auto& actorKvp : savedAdjustments) {
 
-			WriteData<UInt32>(ifc, &adjustmentKvp.first);
-			UInt32 adjustmentsSize = adjustmentKvp.second.size();
+			WriteData<UInt32>(ifc, &actorKvp.first);
 
-			WriteData<UInt32>(ifc, &adjustmentsSize);
-			for (auto& adjustment : adjustmentKvp.second) {
+			UInt32 raceGenderSize = actorKvp.second.size();
+			WriteData<UInt32>(ifc, &raceGenderSize);
 
-				WriteData<std::string>(ifc, &adjustment.name);
-				WriteData<std::string>(ifc, &adjustment.file);
-				WriteData<std::string>(ifc, &adjustment.mod);
-				WriteData<float>(ifc, &adjustment.scale);
-				WriteData<UInt8>(ifc, &adjustment.type);
-				WriteData<bool>(ifc, &adjustment.updated);
+			for (auto& raceGenderKvp : actorKvp.second) {
 
-				//V1.0 always store size, check if needed, zero size if not necessary
-				UInt32 mapSize;
-				if (adjustment.StoreMap()) {
-					mapSize = adjustment.map.size();
-				}
-				else {
-					mapSize = 0;
-				}
+				WriteData<UInt64>(ifc, &raceGenderKvp.first);
 
-				WriteData<UInt32>(ifc, &mapSize);
-				for (auto& kvp : adjustment.map) {
-					WriteData<BSFixedString>(ifc, &kvp.first.name);
-					WriteData<bool>(ifc, &kvp.first.offset);
-					WriteData<float>(ifc, &kvp.second.pos.x);
-					WriteData<float>(ifc, &kvp.second.pos.y);
-					WriteData<float>(ifc, &kvp.second.pos.z);
-					float yaw, pitch, roll;
-					MatrixToEulerYPR2(kvp.second.rot, yaw, pitch, roll);
-					WriteData<float>(ifc, &yaw);
-					WriteData<float>(ifc, &pitch);
-					WriteData<float>(ifc, &roll);
-					WriteData<float>(ifc, &kvp.second.scale);
+				UInt32 adjustmentSize = raceGenderKvp.second.size();
+				WriteData<UInt32>(ifc, &adjustmentSize);
+
+				for (auto& adjustment : raceGenderKvp.second) {
+					WriteData<std::string>(ifc, &adjustment.name);
+					WriteData<std::string>(ifc, &adjustment.file);
+					WriteData<std::string>(ifc, &adjustment.mod);
+					WriteData<float>(ifc, &adjustment.scale);
+					WriteData<UInt8>(ifc, &adjustment.type);
+					WriteData<bool>(ifc, &adjustment.updated);
+
+					//V1.0 always store size, check if needed, zero size if not necessary
+					UInt32 mapSize;
+					if (adjustment.StoreMap()) {
+						mapSize = adjustment.map.size();
+					}
+					else {
+						mapSize = 0;
+					}
+
+					WriteData<UInt32>(ifc, &mapSize);
+					for (auto& kvp : adjustment.map) {
+						WriteData<BSFixedString>(ifc, &kvp.first.name);
+						WriteData<bool>(ifc, &kvp.first.offset);
+						WriteData<float>(ifc, &kvp.second.pos.x);
+						WriteData<float>(ifc, &kvp.second.pos.y);
+						WriteData<float>(ifc, &kvp.second.pos.z);
+						float yaw, pitch, roll;
+						MatrixToEulerYPR2(kvp.second.rot, yaw, pitch, roll);
+						WriteData<float>(ifc, &yaw);
+						WriteData<float>(ifc, &pitch);
+						WriteData<float>(ifc, &roll);
+						WriteData<float>(ifc, &kvp.second.scale);
+					}
 				}
 			}
 		}
@@ -217,130 +254,155 @@ namespace SAF {
 
 					UInt32 oldId, formId;
 					ReadData<UInt32>(ifc, &oldId);
-					ifc->ResolveFormId(oldId, &formId);
+					bool actorResolved = ifc->ResolveFormId(oldId, &formId);
 
-					UInt32 adjustmentsSize;
-					ReadData<UInt32>(ifc, &adjustmentsSize);
+					//in version 4 onward, need to store a raceGender key as well
+					UInt32 raceGenderSize = 1;
+					if (version >= 4) {
+						ReadData<UInt32>(ifc, &raceGenderSize);
+					}
 
-					for (UInt32 j = 0; j < adjustmentsSize; ++j) {
+					for (UInt32 j = 0; j < raceGenderSize; ++j) {
 
-						PersistentAdjustment persistent;
-						persistent.version = version;
+						//If version is not 4+, Use a key of 0 and it will be handled later
+						UInt64 raceGenderId = 0;
+						bool raceGenderResolved = true;
 
-						//Pre version 3, only adds map on default type
-						bool loadMap = true;
+						if (version >= 4) {
+							UInt64 oldRaceGender;
+							ReadData<UInt64>(ifc, &oldRaceGender);
 
-						switch (version) {
-						case 0:
-							ReadData<std::string>(ifc, &persistent.name);
-							ReadData<std::string>(ifc, &persistent.mod);
-							persistent.scale = 1.0f;
-							ReadData<UInt8>(ifc, &persistent.type);
-							persistent.file = persistent.type == kAdjustmentTypeDefault ? "" : persistent.name;
-							persistent.updated = false;
-							loadMap = persistent.type == kAdjustmentTypeDefault;
-							break;
-						case 1:
-						case 2:
-							ReadData<std::string>(ifc, &persistent.name);
-							ReadData<std::string>(ifc, &persistent.file);
-							ReadData<std::string>(ifc, &persistent.mod);
-							ReadData<float>(ifc, &persistent.scale);
-							ReadData<UInt8>(ifc, &persistent.type);
-							//if file isn't empty and add type, change type to skeleton and set updated to true
-							if (!persistent.file.empty() && persistent.type == kAdjustmentTypeDefault) {
-								persistent.type = kAdjustmentTypeSkeleton;
-								persistent.updated = true;
-							}
-							else {
+							UInt64 isFemale = oldRaceGender & 0x100000000;
+							UInt32 oldId = oldRaceGender & 0xFFFFFFFF;
+							UInt32 formId;
+							raceGenderResolved = ifc->ResolveFormId(oldId, &formId);
+							raceGenderId = formId | isFemale;
+						}
+
+						UInt32 adjustmentSize;
+						ReadData<UInt32>(ifc, &adjustmentSize);
+
+						for (UInt32 k = 0; k < adjustmentSize; ++k) {
+							PersistentAdjustment persistent;
+
+							//need to update serialization of types prior to version 3
+							persistent.updateType = version < 3 ? kAdjustmentUpdateSerialization : kAdjustmentUpdateNone;
+
+							//Pre version 3, only adds map on default type
+							bool loadMap = true;
+
+							switch (version) {
+							case 0:
+								ReadData<std::string>(ifc, &persistent.name);
+								ReadData<std::string>(ifc, &persistent.mod);
+								persistent.scale = 1.0f;
+								ReadData<UInt8>(ifc, &persistent.type);
+								persistent.file = persistent.type == kAdjustmentTypeDefault ? "" : persistent.name;
 								persistent.updated = false;
 								loadMap = persistent.type == kAdjustmentTypeDefault;
+								break;
+							case 1:
+							case 2:
+								ReadData<std::string>(ifc, &persistent.name);
+								ReadData<std::string>(ifc, &persistent.file);
+								ReadData<std::string>(ifc, &persistent.mod);
+								ReadData<float>(ifc, &persistent.scale);
+								ReadData<UInt8>(ifc, &persistent.type);
+								//if file isn't empty and add type, change type to skeleton and set updated to true
+								if (!persistent.file.empty() && persistent.type == kAdjustmentTypeDefault) {
+									persistent.type = kAdjustmentTypeSkeleton;
+									persistent.updated = true;
+								}
+								else {
+									persistent.updated = false;
+									loadMap = persistent.type == kAdjustmentTypeDefault;
+								}
+								break;
+							default: //3+
+								ReadData<std::string>(ifc, &persistent.name);
+								ReadData<std::string>(ifc, &persistent.file);
+								ReadData<std::string>(ifc, &persistent.mod);
+								ReadData<float>(ifc, &persistent.scale);
+								ReadData<UInt8>(ifc, &persistent.type);
+								ReadData<bool>(ifc, &persistent.updated);
 							}
-							break;
-						default: //3+
-							ReadData<std::string>(ifc, &persistent.name);
-							ReadData<std::string>(ifc, &persistent.file);
-							ReadData<std::string>(ifc, &persistent.mod);
-							ReadData<float>(ifc, &persistent.scale);
-							ReadData<UInt8>(ifc, &persistent.type);
-							ReadData<bool>(ifc, &persistent.updated);
-						}
 
-						//Accept loaded mods and adjustments that don't have a mod specified
-						bool modLoaded = persistent.mod.empty();
-						if (!modLoaded) {
-							auto found = loadedMods.find(persistent.mod);
-							if (found != loadedMods.end()) {
-								modLoaded = found->second;
+							//Accept loaded mods and adjustments that don't have a mod specified
+							bool modLoaded = persistent.mod.empty();
+							if (!modLoaded) {
+								auto found = loadedMods.find(persistent.mod);
+								if (found != loadedMods.end()) {
+									modLoaded = found->second;
+								}
+								else {
+									const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
+									modLoaded = modInfo && modInfo->modIndex != 0xFF;
+									loadedMods.emplace(persistent.mod, modLoaded);
+								}
 							}
-							else {
-								const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
-								modLoaded = modInfo && modInfo->modIndex != 0xFF;
-								loadedMods.emplace(persistent.mod, modLoaded);
-							}
-						}
 
-						if (loadMap) {
-							UInt32 transformSize;
-							ReadData<UInt32>(ifc, &transformSize);
-							if (transformSize > 0) {
-								for (UInt32 k = 0; k < transformSize; ++k) {
-									
-									std::string keyName;
-									BSFixedString nodeName;
-									bool nodeOffset;
+							if (loadMap) {
+								UInt32 transformSize;
+								ReadData<UInt32>(ifc, &transformSize);
+								if (transformSize > 0) {
+									for (UInt32 l = 0; l < transformSize; ++l) {
 
-									switch (version) {
-									case 0:
-									case 1:
-									{
-										ReadData<std::string>(ifc, &keyName);
-										break;
-									}
-									default:
-									{
-										ReadData<BSFixedString>(ifc, &nodeName);
-										ReadData<bool>(ifc, &nodeOffset);
-										break;
-									}
-									}
+										std::string keyName;
+										BSFixedString nodeName;
+										bool nodeOffset;
 
-									NiTransform transform;
-									ReadData<float>(ifc, &transform.pos.x);
-									ReadData<float>(ifc, &transform.pos.y);
-									ReadData<float>(ifc, &transform.pos.z);
-
-									float yaw, pitch, roll;
-									ReadData<float>(ifc, &yaw);
-									ReadData<float>(ifc, &pitch);
-									ReadData<float>(ifc, &roll);
-
-									ReadData<float>(ifc, &transform.scale);
-
-									switch (version) {
-									case 0:
-									case 1:
-									{
-										MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
-										NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
-										if (nodeKey.key) {
-											persistent.map.emplace(nodeKey, transform);
+										switch (version) {
+										case 0:
+										case 1:
+										{
+											ReadData<std::string>(ifc, &keyName);
+											break;
 										}
-										break;
-									}
-									default:
-									{
-										MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
-										persistent.map.emplace(NodeKey(nodeName, nodeOffset), transform);
-										break;
-									}
+										default:
+										{
+											ReadData<BSFixedString>(ifc, &nodeName);
+											ReadData<bool>(ifc, &nodeOffset);
+											break;
+										}
+										}
+
+										NiTransform transform;
+										ReadData<float>(ifc, &transform.pos.x);
+										ReadData<float>(ifc, &transform.pos.y);
+										ReadData<float>(ifc, &transform.pos.z);
+
+										float yaw, pitch, roll;
+										ReadData<float>(ifc, &yaw);
+										ReadData<float>(ifc, &pitch);
+										ReadData<float>(ifc, &roll);
+
+										ReadData<float>(ifc, &transform.scale);
+
+										switch (version) {
+										case 0:
+										case 1:
+										{
+											MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
+											NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
+											if (nodeKey.key) {
+												persistent.map.emplace(nodeKey, transform);
+											}
+											break;
+										}
+										default:
+										{
+											MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
+											persistent.map.emplace(NodeKey(nodeName, nodeOffset), transform);
+											break;
+										}
+										}
 									}
 								}
 							}
+							LoadPersistentIfValid(formId, raceGenderId, persistent, modLoaded);
 						}
-						LoadPersistentIfValid(formId, persistent, modLoaded);
+						ValidatePersistents(persistentAdjustments, formId, raceGenderId);
 					}
-					ValidatePersistents(persistentAdjustments, formId);
 				}
 				break;
 			}
@@ -398,18 +460,16 @@ namespace SAF {
 		}
 	}
 
-	void AdjustmentManager::LoadPersistentIfValid(UInt32 formId, PersistentAdjustment persistent, bool loaded) {
+	void AdjustmentManager::LoadPersistentIfValid(UInt32 formId, UInt64 raceGenderId, PersistentAdjustment persistent, bool loaded) {
 		//if mod not loaded
 		if (!loaded)
 			return;
 
 		//if default or tongue type, check if transform is unedited
-		if (persistent.type == kAdjustmentTypeDefault || persistent.type == kAdjustmentTypeTongue) {
-			if (TransformMapIsDefault(persistent.map))
-				return;
-		}
+		if (!persistent.IsValid())
+			return;
 
-		persistentAdjustments[formId].push_back(persistent);
+		persistentAdjustments[formId][raceGenderId].push_back(persistent);
 	}
 
 	void AdjustmentManager::SerializeRevert(const F4SESerializationInterface* ifc) {
@@ -429,7 +489,10 @@ namespace SAF {
 	void AdjustmentManager::StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
 		std::lock_guard<std::shared_mutex> persistenceLock(persistenceMutex);
 
-		persistentAdjustments.erase(adjustments->formId);
+		auto raceGender = persistentAdjustments.find(adjustments->formId);
+		if (raceGender != persistentAdjustments.end()) {
+			raceGender->second.erase(adjustments->GetRaceGender());
+		}
 
 		StorePersistentIfValid(persistentAdjustments, adjustments);
 	}
@@ -440,7 +503,7 @@ namespace SAF {
 
 		for (auto& persistent : persistents) {
 			if (IsPersistentValid(persistent)) {
-				map[adjustments->formId] = persistents;
+				map[adjustments->formId][adjustments->GetRaceGender()] = persistents;
 				return true;
 			}
 		}
@@ -466,16 +529,20 @@ namespace SAF {
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
 		for (auto& adjustment : map) {
-			PersistentAdjustment persistentAdjustment(adjustment.second, 3);
-			if (persistentAdjustment.type != kAdjustmentTypeNone)
+			PersistentAdjustment persistentAdjustment(adjustment.second, kAdjustmentUpdateNone);
+			if (persistentAdjustment.IsValid())
 				persistents.push_back(persistentAdjustment);
 		}
 	}
 
 	
-	void AdjustmentManager::ValidatePersistents(PersistentMap& map, UInt32 formId) {
-		auto persistents = map.find(formId);
-		if (persistents == map.end())
+	void AdjustmentManager::ValidatePersistents(PersistentMap& map, UInt32 formId, UInt64 raceGenderId) {
+		auto raceGender = map.find(formId);
+		if (raceGender == map.end())
+			return;
+
+		auto persistents = raceGender->second.find(raceGenderId);
+		if (persistents == raceGender->second.end())
 			return;
 
 		//Need to enforce file name uniqueness
@@ -499,5 +566,26 @@ namespace SAF {
 				}
 			}
 		}
+	}
+
+	bool PersistentAdjustment::StoreMap()
+	{
+		if (!type)
+			return false;
+		//Store map if a non file type or if a file type is updated
+		return (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue || updated);
+	}
+
+	bool PersistentAdjustment::IsValid()
+	{
+		if (!type)
+			return false;
+
+		if (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue) {
+			if (TransformMapIsDefault(map))
+				return false;
+		}
+
+		return true;
 	}
 }
