@@ -15,6 +15,7 @@
   </Imports>
   <Scripts>
     <Script>ScreenArcherMenu</Script>
+    <Script>SAM</Script>
     <Script>SAF</Script>
   </Scripts>
 </PapyrusProject>

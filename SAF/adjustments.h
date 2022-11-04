@@ -424,7 +424,7 @@ namespace SAF {
 		void GetOffsetTransform(BSFixedString name, NiTransform* offsetTransform);
 		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform);
 		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform,
-			std::vector<std::shared_ptr<Adjustment>> adjustmentList);
+			std::vector<std::shared_ptr<Adjustment>>& adjustmentList);
 		void UpdateNode(BSFixedString name);
 		void UpdateAllAdjustments();
 		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);

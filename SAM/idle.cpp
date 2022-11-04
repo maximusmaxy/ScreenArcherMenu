@@ -7,6 +7,7 @@
 
 #include "sam.h"
 #include "SAF/util.h"
+#include "SAF/adjustments.h"
 
 #include "strnatcmp.h"
 
@@ -16,7 +17,8 @@
 
 std::unordered_map<UInt32, IdleData> raceIdleData;
 
-std::unordered_map<UInt32, IdleMenu> idleMenus;
+typedef std::unordered_map<BSFixedString, IdleMenu, SAF::BSFixedStringHash, SAF::BSFixedStringKeyEqual> IdleMenuMap;
+IdleMenuMap idleMenus;
 bool idleMenuLoaded = false;
 
 std::unordered_map<const char*, const char*> idlePathToEditorIdMap;
@@ -28,8 +30,8 @@ std::unordered_set<std::string> idleExclude = {
 	"DLCworkshop02.esm",
 	"DLCworkshop03.esm",
 	"DLCCoast.esm",
-	"DLCNukaWorld.esm",
-	"ScreenArcherMenu.esp"
+	"DLCNukaWorld.esm"//,
+	//"ScreenArcherMenu.esp"
 };
 
 //0x58D0AA0 struct* ->
@@ -83,13 +85,13 @@ RelocAddr<_GetFormArrayFromName> GetFormArrayFromName(0x5AAC80);
 
 typedef std::map<std::string, std::map<std::string, UInt32, NaturalSort>, NaturalSort> SortedIdles;
 
-bool IdleValid(TESIdleForm* form, IdleData& data) {
+bool IdleValid(TESIdleForm* form, BSFixedString behavior, BSFixedString event) {
 	if (!form) return false;
 	if (*(UInt64*)form != TESIdleFormVFTable) return false;
 	if (!form->formID) return false;
 	if (!form->editorID) return false;
-	if (!(form->behaviorGraph == data.behavior)) return false;
-	if (!(form->animationEvent == data.event)) return false;
+	if (!(form->behaviorGraph == behavior)) return false;
+	if (!(form->animationEvent == event)) return false;
 	return true;
 }
 
@@ -113,16 +115,22 @@ void LoadIdleMenus() {
 	GetLoadedModNames(modNames, (*g_dataHandler)->modList.loadedMods, false);
 	GetLoadedModNames(modNames, (*g_dataHandler)->modList.lightMods, true);
 
-	for (auto& dataKvp : raceIdleData) {
+	//Need to group idles by behavior so make a set to prevent duplicates
+	SAF::BSFixedStringMap behaviorSet; //TODO: this will break if the same behavior with a different event exists
+	for (auto& data : raceIdleData) {
+		behaviorSet.emplace(data.second.behavior, data.second.event);
+	}
+
+	for (auto& behavior : behaviorSet) {
 		SortedIdles idles;
 
-		NiFormArrayTESIdle* idleFormArray = GetFormArrayFromName((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), dataKvp.second.behavior.c_str());
+		NiFormArrayTESIdle* idleFormArray = GetFormArrayFromName((BSTCaseInsensitiveStringMapIdle*)idleStringMap.GetUIntPtr(), behavior.first.c_str());
 		idleFormArray++;
 
 		for (TESIdleForm** idlePtr = idleFormArray->forms; idlePtr < idleFormArray->forms + idleFormArray->count; ++idlePtr) {
 			TESIdleForm* form = *idlePtr;
 
-			if (IdleValid(form, dataKvp.second)) {
+			if (IdleValid(form, behavior.first, behavior.second)) {
 				UInt32 modIndex = form->formID & (((form->formID & 0xFF000000) == 0xFE000000) ? 0xFFFFF000 : 0xFF000000);
 				if (modNames.count(modIndex)) {
 					idles[modNames[modIndex]][form->editorID] = form->formID;
@@ -132,21 +140,28 @@ void LoadIdleMenus() {
 		}
 
 		for (auto& modKvp : idles) {
-			idleMenus[dataKvp.first].push_back(std::make_pair(modKvp.first, std::vector<std::pair<std::string, UInt32>>()));
+			idleMenus[behavior.first].push_back(std::make_pair(modKvp.first, std::vector<std::pair<std::string, UInt32>>()));
 			for (auto& formKvp : modKvp.second) {
-				idleMenus[dataKvp.first].back().second.push_back(formKvp);
+				idleMenus[behavior.first].back().second.push_back(formKvp);
 			}
 		}
 	}
 }
 
-UInt32 GetIdleDataId(UInt32 raceId) {
-	if (raceIdleData.count(raceId)) return raceId;
+IdleData* GetIdleData(UInt32 raceId) {
+	auto foundRace = raceIdleData.find(raceId);
+	if (foundRace != raceIdleData.end())
+		return &foundRace->second;
+
 	//Default to human if missing
-	if (raceIdleData.count(0x13746)) return 0x13746;
+	auto foundHuman = raceIdleData.find(0x13746);
+	if (foundHuman != raceIdleData.end())
+		return &foundHuman->second;
+
 	//Human really shouldn't be missing
 	_DMESSAGE("Human idle data not found");
-	return 0;
+
+	return nullptr;
 }
 
 IdleMenu* GetIdleMenu(UInt32 raceId) {
@@ -155,65 +170,82 @@ IdleMenu* GetIdleMenu(UInt32 raceId) {
 		idleMenuLoaded = true;
 	}
 	
-	UInt32 dataId = GetIdleDataId(raceId);
-	if (!dataId) return nullptr;
+	IdleData* idleData = GetIdleData(raceId);
+	if (!idleData) 
+		return nullptr;
 
-	return &idleMenus[dataId];
+	auto it = idleMenus.find(idleData->behavior);
+	if (it == idleMenus.end())
+		return nullptr;
+
+	return &it->second;
 }
 
 typedef bool (*_PlayIdleInternal)(Actor::MiddleProcess* middleProcess, Actor* actor, UInt32 param3, TESIdleForm* idleForm, UInt64 param5, UInt64 param6);
 RelocAddr<_PlayIdleInternal> PlayIdleInternal(0xE35510);
 
 void PlayIdleAnimation(UInt32 formId) {
-	if (!selected.refr) return;
+	if (!selected.refr) 
+		return;
 
 	Actor* actor = (Actor*)selected.refr;
 
 	TESForm* form = LookupFormByID(formId);
-	if (!form) return;
+	if (!form) 
+		return;
 
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
-	if (!idleForm) return;
+	if (!idleForm)
+		return;
 
 	bool result = PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
 
 void ResetIdleAnimation() {
-	if (!selected.refr) return;
+	if (!selected.refr) 
+		return;
 
 	Actor* actor = (Actor*)selected.refr;
 	
-	UInt32 dataId = GetIdleDataId(selected.race);
-	if (!dataId) return;
+	IdleData* idleData = GetIdleData(selected.race);
+	if (!idleData) 
+		return;
 
-	UInt32 resetId = raceIdleData[dataId].resetId;
-	if (!resetId) return;
+	UInt32 resetId = idleData->resetId;
+	if (!resetId) 
+		return;
 
 	TESForm* form = LookupFormByID(resetId);
-	if (!form) return;
+	if (!form) 
+		return;
 
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
-	if (!idleForm) return;
+	if (!idleForm) 
+		return;
 
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
 
 void PlayAPose() {
-	if (!selected.refr) return;
+	if (!selected.refr) 
+		return;
 
 	Actor* actor = (Actor*)selected.refr;
 
-	UInt32 dataId = GetIdleDataId(selected.race);
-	if (!dataId) return;
+	IdleData* idleData = GetIdleData(selected.race);
+	if (!idleData) return;
 
-	UInt32 aposeId = raceIdleData[dataId].aposeId;
-	if (!aposeId) return;
+	UInt32 aposeId = idleData->aposeId;
+	if (!aposeId) 
+		return;
 
 	TESForm* form = LookupFormByID(aposeId);
-	if (!form) return;
+	if (!form) 
+		return;
 
 	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
-	if (!idleForm) return;
+	if (!idleForm) 
+		return;
 
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
@@ -222,10 +254,12 @@ void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
 	root->CreateArray(result);
 
-	if (!selected.refr) return;
+	if (!selected.refr) 
+		return;
 
 	IdleMenu* menu = GetIdleMenu(selected.race);
-	if (!menu) return;
+	if (!menu) 
+		return;
 
 	for (auto& category : *menu) {
 		GFxValue name(category.first.c_str());
@@ -242,7 +276,8 @@ void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategor
 	root->CreateArray(&values);
 
 	IdleMenu* menu = GetIdleMenu(selected.race);
-	if (!menu || selectedCategory >= menu->size()) return;
+	if (!menu || selectedCategory >= menu->size()) 
+		return;
 
 	for (auto& category : (*menu)[selectedCategory].second) {
 		GFxValue name(category.first.c_str());

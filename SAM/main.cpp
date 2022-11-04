@@ -86,6 +86,7 @@ public:
 	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
 	{
 		//RegisterSam();
+		StartSamQuest();
 		return kEvent_Continue;
 	}
 };

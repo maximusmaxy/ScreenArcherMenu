@@ -756,7 +756,7 @@ namespace SAF {
 			Vector3 v(m.data[1][2] - m.data[2][1], m.data[2][0] - m.data[0][2], m.data[0][1] - m.data[1][0]);
 			double sin2ang = v.Magnitude();
 			if (sin2ang == 0.0)
-				return Vector3();
+				return Vector3(0.0f, 0.0f, 0.0f);
 			v.Scale(static_cast<float>(std::asin(sin2ang * 0.5) / sin2ang));
 			return v;
 		}

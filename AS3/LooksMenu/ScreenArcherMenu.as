@@ -1221,9 +1221,11 @@
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					Data.resetSkeletonAdjustment(false);
+					Data.getSkeletonAdjustments(false);
 					break;
 				case RACEADJUSTMENT_STATE:
 					Data.resetSkeletonAdjustment(true);
+					Data.getSkeletonAdjustments(true);
 					break;
 				case POSITIONING_STATE:
 					Data.resetPositioning();

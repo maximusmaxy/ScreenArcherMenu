@@ -35,6 +35,8 @@ struct IdleData
 
 extern std::unordered_map<UInt32, IdleData> raceIdleData;
 
+IdleData* GetIdleData(UInt32 raceId);
+
 void PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();
 void PlayAPose();

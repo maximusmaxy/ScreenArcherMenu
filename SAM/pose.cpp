@@ -7,6 +7,7 @@
 #include <unordered_set>
 
 #include "sam.h"
+#include "idle.h"
 
 #include "common/IDirectoryIterator.h"
 
@@ -540,7 +541,6 @@ void SaveJsonPose(const char* filename, GFxValue selectedAdjustments, int export
 
 	NodeSet nodeSet;
 
-	//Types out of range will be considered as exporting all
 	if (exportType < menu->size()) 
 	{
 		for (auto& node : (*menu)[exportType].second) {
@@ -550,7 +550,16 @@ void SaveJsonPose(const char* filename, GFxValue selectedAdjustments, int export
 		exports.skeleton = (*menu)[exportType].first.c_str();
 	}
 	else {
+		//Will be assigned all nodes if null
 		exports.nodes = nullptr;
+
+		//Get the first skeleton or Vanilla if none exist
+		if (menu->size() < 3) {
+			exports.skeleton = "Vanilla";
+		}
+		else {
+			exports.skeleton = menu->front().first.c_str();
+		}
 	}
 
 	adjustments->SavePose(exportPath, &exports);

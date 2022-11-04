@@ -68,12 +68,27 @@ namespace SAF {
 		return NodeKey(BSFixedString(str), false);
 	}
 
+	std::unordered_map<BSFixedString, const char*, BSFixedStringHash, BSFixedStringKeyEqual> toUpperMap;
+
 	std::string GetNodeKeyName(const NodeKey& nodeKey)
 	{
-		std::string str(nodeKey.name);
+		//Force certain strings to upper to prevent case sensitivity errors of external programs
+		//TODO: should make this an external file and force lower as well
+		if (toUpperMap.empty()) {
+			toUpperMap.emplace(BSFixedString("COM"), "COM");
+			toUpperMap.emplace(BSFixedString("HEAD"), "HEAD");
+			toUpperMap.emplace(BSFixedString("SPINE1"), "SPINE1");
+			toUpperMap.emplace(BSFixedString("SPINE2"), "SPINE2");
+			toUpperMap.emplace(BSFixedString("WEAPON"), "WEAPON");
+		}
+
+		auto it = toUpperMap.find(nodeKey.name);
+		std::string str((it != toUpperMap.end()) ? it->second : nodeKey.name);
+
 		if (nodeKey.offset) {
 			str += g_adjustmentManager.offsetPostfix;
 		}
+
 		return str;
 	}
 
@@ -361,32 +376,10 @@ namespace SAF {
 
 	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform)
 	{
-		for (auto& adjustment : list) {
-			if (adjustment->IsVisible()) {
-				NiTransform* offset = adjustment->GetTransform(NodeKey(name, true));
-				if (offset) {
-					if (adjustment->scale == 1.0f) {
-						*offsetTransform = MultiplyNiTransform(*offsetTransform, *offset);
-					}
-					else {
-						*offsetTransform = MultiplyNiTransform(*offsetTransform, SlerpNiTransform(*offset, adjustment->scale));
-					}
-				}
-
-				NiTransform* pose = adjustment->GetTransform(NodeKey(name, false));
-				if (pose) {
-					if (adjustment->scale == 1.0f) {
-						*poseTransform = MultiplyNiTransform(*poseTransform, *pose);
-					}
-					else {
-						*poseTransform = MultiplyNiTransform(*poseTransform, SlerpNiTransform(*pose, adjustment->scale));
-					}
-				}
-			}
-		}
+		GetPoseTransforms(name, offsetTransform, poseTransform, list);
 	}
 
-	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform, std::vector<std::shared_ptr<Adjustment>> adjustmentList)
+	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform, std::vector<std::shared_ptr<Adjustment>>& adjustmentList)
 	{
 		for (auto& adjustment : adjustmentList) {
 			if (adjustment->IsVisible()) {
@@ -1065,7 +1058,6 @@ namespace SAF {
 		//If no nodeset specified, grab everything and assume vanilla skeleton
 		if (!exports->nodes) {
 			exports->nodes = &nodeSets->all;
-			exports->skeleton = "Vanilla";
 		}
 
 		TransformMap transformMap;
@@ -1151,8 +1143,9 @@ namespace SAF {
 					NiTransform result = MultiplyNiTransform(offsets, poses); //get offset + pose
 					result = MultiplyNiTransform(result, InvertNiTransform(baseNode->m_localTransform)); //negate base node
 					result = MultiplyNiTransform(result, poseNode->m_localTransform); //apply base node
-					result = NegateNiTransform(result, baseNode->m_localTransform); //get difference from virtual result to the base position
-
+					//result = NegateNiTransform(result, baseNode->m_localTransform); //get difference from the base position to the virtual result
+					result = NegateNiTransform(baseNode->m_localTransform, result); 
+					
 					//insert if non zero
 					if (!TransformIsDefault(result)) {
 						transformMap.emplace(NodeKey(name, false), result);

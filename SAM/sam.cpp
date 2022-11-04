@@ -30,6 +30,7 @@
 #include "options.h"
 #include "camera.h"
 #include "lights.h"
+#include "papyrus.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -150,6 +151,34 @@ bool NaturalSort::operator() (const std::string& a, const std::string& b) const
 //	}
 //}
 
+void StartSamQuest()
+{
+	//UInt32 id = GetFormId("ScreenArcherMenu.esp", 0x800); //ScreenArcherMenu Quest Form
+	//if (id) {
+	//	TESForm* form = LookupFormByID(id);
+	//	TESQuest* quest = DYNAMIC_CAST(form, TESForm, TESQuest);
+
+	//	//if the quest is completed or not running, restart it
+	//	if (quest && (quest->IsCompleted() || !(quest->flags & 0x1))) {
+
+	//		//Clear the run once flag on the quest
+	//		UInt64 runOnce = quest->unk0F8[(0x2B0 - 0xF8) >> 3];
+	//		UInt64 cleared = (runOnce & (~(0x0001000000000000)));
+	//		quest->unk0F8[(0x2B0 - 0xF8) >> 3] = cleared;
+
+	//		static BSFixedString startQuest("StartQuest");
+	//		CallSamGlobal(startQuest);
+
+	//		//Reenabled the run once flag
+	//		quest->unk0F8[(0x2B0 - 0xF8) >> 3] = runOnce;
+	//	}
+	//}
+
+	//If sam still isn't registered, force register it
+	static BSFixedString forceRegister("ForceRegister");
+	CallSamGlobal(forceRegister);
+}
+
 GFxMovieRoot* GetRoot(BSFixedString name)
 {
 	IMenu* menu = (*g_ui)->GetMenu(name);
@@ -165,7 +194,8 @@ GFxMovieRoot* GetRoot(BSFixedString name)
 
 MenuCategoryList* GetMenu(MenuCache* cache)
 {
-	if (!selected.refr) return nullptr;
+	if (!selected.refr) 
+		return nullptr;
 
 	if (cache->count(selected.key))
 		return &(*cache)[selected.key];
@@ -774,18 +804,18 @@ bool LoadIdleFile(std::string path) {
 			Json::Value member = value[memberStr];
 			IdleData data;
 
-			data.raceId = GetFormId(member["mod"].asString(), member["race"].asString());
-			data.resetId = GetFormId(member["reset"]["mod"].asString(), member["reset"]["idle"].asString());
-			data.behavior = BSFixedString(member["filter"]["behavior"].asCString());
-			data.event = BSFixedString(member["filter"]["event"].asCString());
+			data.raceId = GetFormId(member.get("mod", "").asString(), member.get("race", "").asString());
 
-			if (member["apose"].isObject()) {
-				data.aposeId = GetFormId(member["apose"]["mod"].asString(), member["apose"]["idle"].asString());
-			}
-			else {
-				//human a pose
-				data.aposeId = GetFormId("ScreenArcherMenu.esp", 0x802);
-			}
+			Json::Value reset = member.get("reset", Json::Value());
+			data.resetId = GetFormId(reset.get("mod", "").asString(), reset.get("idle", "").asString());
+
+			Json::Value filter = member.get("filter", Json::Value());
+			data.behavior = BSFixedString(filter.get("behavior", "").asCString());
+			data.event = BSFixedString(filter.get("event", "").asCString());
+
+			//default to human a pose
+			Json::Value apose = member.get("apose", Json::Value());
+			data.aposeId = GetFormId(apose.get("mod", "ScreenArcherMenu.esp").asString(), apose.get("idle", "802").asString());
 
 			raceIdleData[data.raceId] = data;
 		}

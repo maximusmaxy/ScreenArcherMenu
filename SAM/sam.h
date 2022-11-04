@@ -24,8 +24,6 @@
 //	virtual void	Invoke(Args* args) override final;
 //};
 
-
-
 class SelectedRefr {
 public:
 	TESObjectREFR* refr;
@@ -70,6 +68,7 @@ GFxMovieRoot* GetRoot(BSFixedString name);
 MenuCategoryList* GetMenu(MenuCache* cache);
 
 //void RegisterSam();
+void StartSamQuest();
 
 void OpenMenu(const char* name);
 void CloseMenu(const char* name);

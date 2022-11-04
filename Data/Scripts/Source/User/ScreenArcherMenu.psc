@@ -57,3 +57,17 @@ function ToggleMenu() global
         UI.OpenMenu("ScreenArcherMenu")
     endif
 endfunction
+
+function ForceRegister() global
+    Quest samQuest = Game.GetFormFromFile(0x800, "ScreenArcherMenu.esp") as Quest
+    ScreenArcherMenu playerRef = samQuest.GetAlias(0) as ScreenArcherMenu
+    playerRef.RegisterMenu()
+endfunction
+
+function StartQuest() global
+    Quest samQuest = Game.GetFormFromFile(0x800, "ScreenArcherMenu.esp") as Quest
+    samQuest.Reset()
+    ReferenceAlias playerRef = samQuest.GetAlias(0) as ReferenceAlias
+    playerRef.ForceRefTo(Game.GetPlayer())
+    samQuest.Start()
+endfunction

@@ -36,7 +36,9 @@ namespace SAF {
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments) return;
+
 		adjustments->RemoveAdjustment(handle);
+		adjustments->UpdateAllAdjustments();
 	}
 
 	BSFixedString PapyrusAdjustmentName(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle) {
@@ -304,6 +306,7 @@ namespace SAF {
 		if (!adjustments) return 0;
 
 		UInt32 handle = adjustments->LoadAdjustmentHandle(std::string(filename), std::string(espName));
+		adjustments->UpdateAllAdjustments();
 		
 		return handle;
 	}

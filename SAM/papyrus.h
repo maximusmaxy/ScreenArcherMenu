@@ -1,8 +1,10 @@
 #pragma once
 
 #include "f4se/PapyrusVM.h"
+#include "f4se/PapyrusEvents.h"
 
 bool RegisterPapyrus(VirtualMachine* vm);
+void CallSamGlobal(BSFixedString function);
 
 typedef void (*_PapyrusDeleteInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr);
 extern RelocAddr<_PapyrusDeleteInternal> PapyrusDeleteInternal;

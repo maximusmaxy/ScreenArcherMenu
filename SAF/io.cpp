@@ -43,30 +43,6 @@ namespace SAF {
 		return 0.0f;
 	}
 
-	enum {
-		kNodeTypeOffset = 1,
-		kNodeTypePose
-	};
-
-	//UInt32 GetNodeType(const char* name) {
-	//	if (!name)
-	//		return 0;
-	//	
-	//	if (ComparePostfix(name, offsetPostfix, 7))
-	//	{
-	//		return kNodeTypeOffset;
-	//	}
-
-	//	static const char* posePostfix = "_Pose";
-	//	static const char* overridePostfix = "_Override";
-	//	if (ComparePostfix(name, posePostfix, 5) || ComparePostfix(name, overridePostfix, 9))
-	//	{
-	//		return kNodeTypePose;
-	//	}
-
-	//	return 0;
-	//}
-
 	void InsertNode(NodeSets* nodeSet, const char* name, bool offset)
 	{
 		BSFixedString baseStr(name);
@@ -172,6 +148,12 @@ namespace SAF {
 		kMenuTypeNodes = 1,
 	};
 
+	enum {
+		kNodeTypeOffset = 1,
+		kNodeTypePose,
+		kNodeTypeRoot
+	};
+
 	std::unordered_map<std::string, UInt32> menuTypeMap = {
 		{"nodes", kMenuTypeNodes},
 	};
@@ -179,7 +161,8 @@ namespace SAF {
 	std::unordered_map<std::string, UInt32> nodeTypeMap = {
 		{ "offset", kNodeTypeOffset },
 		{ "pose", kNodeTypePose },
-		{ "override", kNodeTypePose }
+		{ "override", kNodeTypePose },
+		{ "root", kNodeTypeRoot }
 	};
 
 	bool LoadNodeSetsTsv(std::string path)
@@ -226,7 +209,7 @@ namespace SAF {
 
 							nodeSet = &g_adjustmentManager.nodeSets[key];
 
-							//TODO This probably shouldn't be hard coded
+							//These are defaults and will get replaced by Category Root
 							if (key == 0x1D698) { //DogmeatRace
 								nodeSet->rootName = BSFixedString("Dogmeat_Root");
 							}
@@ -281,6 +264,9 @@ namespace SAF {
 							break;
 						case kNodeTypePose:
 							InsertNode(nodeSet, match[1].str().c_str(), false);
+							break;
+						case kNodeTypeRoot:
+							nodeSet->rootName = BSFixedString(match[1].str().c_str());
 							break;
 						}
 					}
@@ -678,9 +664,9 @@ namespace SAF {
 			bone->append_attribute(doc.allocate_attribute("name", doc.allocate_string(GetNodeKeyName(node.first).c_str())));
 
 			Vector3 rot = MatrixToOutfitStudioVector(node.second.rot);
-			bone->append_attribute(doc.allocate_attribute("rotX", doc.allocate_string(std::to_string(rot.x).c_str())));
-			bone->append_attribute(doc.allocate_attribute("rotY", doc.allocate_string(std::to_string(rot.y).c_str())));
-			bone->append_attribute(doc.allocate_attribute("rotZ", doc.allocate_string(std::to_string(rot.z).c_str())));
+			bone->append_attribute(doc.allocate_attribute("rotX", doc.allocate_string(std::to_string(-rot.x).c_str())));
+			bone->append_attribute(doc.allocate_attribute("rotY", doc.allocate_string(std::to_string(-rot.y).c_str())));
+			bone->append_attribute(doc.allocate_attribute("rotZ", doc.allocate_string(std::to_string(-rot.z).c_str())));
 
 			bone->append_attribute(doc.allocate_attribute("transX", doc.allocate_string(std::to_string(node.second.pos.x).c_str())));
 			bone->append_attribute(doc.allocate_attribute("transY", doc.allocate_string(std::to_string(node.second.pos.y).c_str())));
