@@ -2,6 +2,14 @@ Standard 16x9
 1280x720
 x = 646.95
 
+Alt 16x10
+1280x800
+y = 401
+
 Wide 21x9
 1680x720
 x = 846.95
+
+Ultra Wide 32x9
+2560x720
+x = ?

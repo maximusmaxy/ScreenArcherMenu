@@ -787,7 +787,7 @@
 					sliderList.updateLightSettings(selectLightSettings);
 					break;
 				case MORPHTONGUE_STATE:
-					Data.menuOptions = Data.TONGUEBONES_NAMES;
+					Data.getMorphsTongueNodes();
 					sliderList.updateList(selectMorphTongue);
 					break;
 			}
@@ -911,11 +911,12 @@
 		public function selectMorphCategory(id:int):void
 		{
 			Data.selectedCategory = id;
-			//If selected tongue bones
-			if (id == Data.menuOptions.length - 1) {
-				pushState(MORPHTONGUE_STATE);
-			} else {
+
+			//If index less than 0 then it's not a tongue
+			if (Data.selectedValues[id] < 0) {
 				pushState(MORPH_STATE);
+			} else {
+				pushState(MORPHTONGUE_STATE);
 			}
 		}
 		
@@ -1265,25 +1266,25 @@
 			Util.playCancel();
 		}
 		
-		internal function exit():void
+		public function exit():void
 		{
 			Util.unselectText();
 			if (!saved) {
 				Data.clearState();
 			}
-			if (Data.delayClose)
-			{
+//			if (Data.delayClose)
+//			{
 				//delay close event so it doesn't close multiple menus at once
 				closeTimer = new Timer(100,1);
 				closeTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) {
 					close();
 				});
 				closeTimer.start();
-			}
-			else
-			{
-				close();
-			}
+//			}
+//			else
+//			{
+//				close();
+//			}
 		}
 		
 		public function close()
@@ -1620,10 +1621,12 @@
 			}
 		}
 
-		public function tryClose():void
+		public function tryClose():Boolean
 		{
 			if (!filenameInput.visible)
 			{
+				Util.unselectText();
+				
 				sliderList.getState(currentState);
 				currentState.menu = this.state;
 
@@ -1638,8 +1641,9 @@
 				
 				Data.saveState(data);
 				saved = true;
-				exit();
+				return true;
 			}
+			return false;
 		}
 	}
 }

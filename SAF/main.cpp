@@ -17,189 +17,10 @@
 #include "serialization.h"
 #include "adjustments.h"
 #include "util.h"
+#include "messaging.h"
 
 #include <shlobj.h>
 #include <string>
-
-PluginHandle g_pluginHandle = kPluginHandle_Invalid;
-
-F4SEMessagingInterface* g_messaging = nullptr;
-F4SEPapyrusInterface* g_papyrus = nullptr;
-F4SESerializationInterface* g_serialization = nullptr;
-
-class SAFEventReciever :
-	public BSTEventSink<TESObjectLoadedEvent>,
-	public BSTEventSink<TESLoadGameEvent>,
-	public BSTEventSink< TESInitScriptEvent>
-{
-public:
-	EventResult	ReceiveEvent(TESObjectLoadedEvent* evn, void* dispatcher) 
-	{
-		if (!SAF::g_adjustmentManager.gameLoaded) return kEvent_Continue;
-
-		TESForm* form = LookupFormByID(evn->formId);
-		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
-		if (!actor)
-			return kEvent_Continue;
-
-		SAF::g_adjustmentManager.ActorLoaded(actor, evn->loaded);
-
-		return kEvent_Continue;
-	}
-
-	EventResult	ReceiveEvent(TESInitScriptEvent* evn, void* dispatcher)
-	{
-		Actor* actor = DYNAMIC_CAST(evn->reference, TESForm, Actor);
-		if (!actor)
-			return kEvent_Continue;
-
-		SAF::g_adjustmentManager.ActorLoaded(actor, true);
-
-		return kEvent_Continue;
-	}
-
-	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
-	{
-		SAF::g_adjustmentManager.GameLoaded();
-		
-		//_DMESSAGE("Game loaded");
-
-		return kEvent_Continue;
-	}
-};
-
-SAFEventReciever safEventReciever;
-
-void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
-{
-	switch (msg->type)
-	{
-	case SAF::kSafAdjustmentCreate:
-	{
-		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		UInt32 result = SAF::g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
-		break;
-	}
-	case SAF::kSafAdjustmentSave:
-	{
-		auto data = (SAF::AdjustmentSaveMessage*)msg->data;
-		SAF::g_adjustmentManager.SaveAdjustment(data->formId, data->filename, data->handle);
-		break;
-	}
-	case SAF::kSafAdjustmentLoad:
-	{
-		auto data = (SAF::AdjustmentCreateMessage*)msg->data;
-		UInt32 result = SAF::g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
-		break;
-	}
-	case SAF::kSafAdjustmentErase:
-	{
-		auto data = (SAF::AdjustmentMessage*)msg->data;
-		SAF::g_adjustmentManager.RemoveAdjustment(data->formId, data->handle);
-		break;
-	}
-	case SAF::kSafAdjustmentReset:
-	{
-		auto data = (SAF::AdjustmentMessage*)msg->data;
-		SAF::g_adjustmentManager.ResetAdjustment(data->formId, data->handle);
-		break;
-	}
-	case SAF::kSafAdjustmentTransform:
-	{
-		auto data = (SAF::AdjustmentTransformMessage*)msg->data;
-		SAF::g_adjustmentManager.SetTransform(data);
-		break;
-	}
-	case SAF::kSafAdjustmentActor:
-	{
-		auto data = (SAF::AdjustmentActorMessage*)msg->data;
-		std::shared_ptr<SAF::ActorAdjustments> adjustments = SAF::g_adjustmentManager.CreateActorAdjustment(data->formId);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), msg->sender);
-		break;
-	}
-	//case SAF::kSafAdjustmentNegate:
-	//{
-	//	auto data = (SAF::AdjustmentNegateMessage*)msg->data;
-	//	SAF::g_adjustmentManager.NegateAdjustments(data->formId, data->handle, data->group);
-	//	break;
-	//}
-	case SAF::kSafPoseLoad:
-	{
-		auto data = (SAF::PoseMessage*)msg->data;
-		UInt32 result = SAF::g_adjustmentManager.LoadPose(data->formId, data->filename);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
-		break;
-	}
-	case SAF::kSafPoseReset:
-	{
-		auto data = (SAF::PoseMessage*)msg->data;
-		SAF::g_adjustmentManager.ResetPose(data->formId);
-		break;
-	}
-	case SAF::kSafDefaultAdjustmentLoad:
-	{
-		auto data = (SAF::SkeletonMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadRaceAdjustment(data->raceId, data->isFemale, data->filename, data->npc, data->clear, data->enable);
-		break;
-	}
-	case SAF::kSafAdjustmentMove:
-	{
-		auto data = (SAF::MoveMessage*)msg->data;
-		UInt32 result = SAF::g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafResult, &result, sizeof(uintptr_t), msg->sender);
-		break;
-	}
-	case SAF::kSafAdjustmentRename:
-	{
-		auto data = (SAF::AdjustmentSaveMessage*)msg->data;
-		SAF::g_adjustmentManager.RenameAdjustment(data->formId, data->handle, data->filename);
-		break;
-	}
-	case SAF::kSafAdjustmentTongue:
-	{
-		auto data = (SAF::TransformMapMessage*)msg->data;
-		SAF::g_adjustmentManager.LoadTongueAdjustment(data->formId, data->transforms);
-		break;
-	}
-	}
-}
-
-void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
-{
-	switch (msg->type)
-	{
-	case F4SEMessagingInterface::kMessage_PostLoad:
-		if (g_messaging)
-			g_messaging->RegisterListener(g_pluginHandle, nullptr, SAFMessageHandler);
-		break;
-	case F4SEMessagingInterface::kMessage_GameLoaded:
-		GetEventDispatcher<TESObjectLoadedEvent>()->AddEventSink(&safEventReciever);
-		GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&safEventReciever);
-		//GetEventDispatcher<TESInitScriptEvent>()->AddEventSink(&safEventReciever);
-		break;
-	case F4SEMessagingInterface::kMessage_GameDataReady:
-		SAF::g_adjustmentManager.LoadFiles();
-		g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentManager, &SAF::g_adjustmentManager, sizeof(uintptr_t), nullptr);
-		break;
-	}
-}
-
-void SAFSaveCallback(const F4SESerializationInterface* ifc) {
-	//_DMESSAGE("Serializing save");
-	SAF::g_adjustmentManager.SerializeSave(ifc);
-}
-
-void SAFLoadCallback(const F4SESerializationInterface* ifc) {
-	//_DMESSAGE("Serializing load");
-	SAF::g_adjustmentManager.SerializeLoad(ifc);
-}
-
-void SAFRevertCallback(const F4SESerializationInterface* ifc) {
-	//_DMESSAGE("Serializing revert");
-	SAF::g_adjustmentManager.SerializeRevert(ifc);
-}
 
 extern "C"
 {
@@ -209,13 +30,11 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 	gLog.OpenRelative(CSIDL_MYDOCUMENTS, "\\My Games\\Fallout4\\F4SE\\saf.log");
 	_DMESSAGE("SAF");
 
-	// populate info structure
 	info->infoVersion =	PluginInfo::kInfoVersion;
 	info->name =		"SAF";
 	info->version =		1;
 
-	// store plugin handle so we can identify ourselves later
-	g_pluginHandle = f4se->GetPluginHandle();
+	SAF::safMessaging.pluginHandle = f4se->GetPluginHandle();
 
 	if(f4se->isEditor)
 	{
@@ -223,43 +42,43 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 		return false;
 	}
 
-	g_messaging = (F4SEMessagingInterface*)f4se->QueryInterface(kInterface_Messaging);
-	if(!g_messaging)
+	SAF::safMessaging.messaging = (F4SEMessagingInterface*)f4se->QueryInterface(kInterface_Messaging);
+
+	if(!SAF::safMessaging.messaging)
 	{
 		_FATALERROR("couldn't get messaging interface");
 		return false;
 	}
 
-	g_papyrus = (F4SEPapyrusInterface *)f4se->QueryInterface(kInterface_Papyrus);
-	if(!g_papyrus)
+	SAF::safMessaging.papyrus = (F4SEPapyrusInterface*)f4se->QueryInterface(kInterface_Papyrus);
+	if(!SAF::safMessaging.papyrus)
 	{
 		_FATALERROR("couldn't get papyrus interface");
 		return false;
 	}
 
-	g_serialization = (F4SESerializationInterface*)f4se->QueryInterface(kInterface_Serialization);
-	if (!g_serialization) {
+	SAF::safMessaging.serialization = (F4SESerializationInterface*)f4se->QueryInterface(kInterface_Serialization);
+	if (!SAF::safMessaging.serialization) {
 		_FATALERROR("couldn't get serialization interface");
 		return false;
 	}
 
-	// supported runtime version
 	return true;
 }
 
 bool F4SEPlugin_Load(const F4SEInterface* f4se)
 {
-	if (g_messaging)
-		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
+	if (SAF::safMessaging.messaging)
+		SAF::safMessaging.messaging->RegisterListener(SAF::safMessaging.pluginHandle, "F4SE", SAF::F4SEMessageHandler);
 	
-	if (g_papyrus)
-		g_papyrus->Register(SAF::RegisterPapyrus);
+	if (SAF::safMessaging.papyrus)
+		SAF::safMessaging.papyrus->Register(SAF::RegisterPapyrus);
 
-	if (g_serialization) {
-		g_serialization->SetUniqueID(g_pluginHandle, 'SAF'); 
-		g_serialization->SetSaveCallback(g_pluginHandle, SAFSaveCallback);
-		g_serialization->SetLoadCallback(g_pluginHandle, SAFLoadCallback);
-		g_serialization->SetRevertCallback(g_pluginHandle, SAFRevertCallback);
+	if (SAF::safMessaging.serialization) {
+		SAF::safMessaging.serialization->SetUniqueID(SAF::safMessaging.pluginHandle, 'SAF');
+		SAF::safMessaging.serialization->SetSaveCallback(SAF::safMessaging.pluginHandle, SAF::SaveCallback);
+		SAF::safMessaging.serialization->SetLoadCallback(SAF::safMessaging.pluginHandle, SAF::LoadCallback);
+		SAF::safMessaging.serialization->SetRevertCallback(SAF::safMessaging.pluginHandle, SAF::RevertCallback);
 	}
 
 	_DMESSAGE("SAF Loaded");

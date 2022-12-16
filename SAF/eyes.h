@@ -23,8 +23,10 @@ struct EyeUpdateData
 	UInt64 unk12[30];
 };
 
-NiAVObject* GetEyeNode(TESObjectREFR* refr);
-bool GetEyecoords(TESObjectREFR* refr, float* coords);
-bool GetEyecoords(NiAVObject* eyeNode, float* ret);
-void SetEyecoords(TESObjectREFR* refr, float x, float y);
-void SetEyecoords(NiAVObject* eyeNode, float x, float y);
+namespace SAF {
+	NiAVObject* GetEyeNode(TESObjectREFR* refr);
+	bool GetEyecoords(TESObjectREFR* refr, float* coords);
+	bool GetEyecoords(NiAVObject* eyeNode, float* ret);
+	void SetEyecoords(TESObjectREFR* refr, float x, float y);
+	void SetEyecoords(NiAVObject* eyeNode, float x, float y);
+}

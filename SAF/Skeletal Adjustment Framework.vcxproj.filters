@@ -10,6 +10,8 @@
     <ClCompile Include="eyes.cpp" />
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="serialization.cpp" />
+    <ClCompile Include="settings.cpp" />
+    <ClCompile Include="messaging.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
@@ -20,6 +22,8 @@
     <ClInclude Include="eyes.h" />
     <ClInclude Include="hacks.h" />
     <ClInclude Include="serialization.h" />
+    <ClInclude Include="settings.h" />
+    <ClInclude Include="messaging.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

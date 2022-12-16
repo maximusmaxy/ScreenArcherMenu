@@ -21,4 +21,5 @@ bool LoadMfg(std::string filename);
 void ResetMfg();
 void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* morphArray);
 void GetMorphsGFx(GFxMovieRoot* root, GFxValue* morphArray, UInt32 categoryIndex);
-void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* morphArray, UInt32 categoryIndex);
+void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex);
+void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex);

@@ -6,89 +6,92 @@
 #include "f4se/BSGeometry.h"
 #include "f4se/GameRTTI.h"
 
-NiAVObject* GetEyeNode(TESObjectREFR* refr)
-{
-	if (!refr) return nullptr;
+namespace SAF {
 
-	TESNPC* npc = (TESNPC*)refr->baseForm;
-	BGSHeadPart* eyePart = npc->GetHeadPartByType(BGSHeadPart::kTypeEyes);
-	if (!eyePart) return nullptr;
-	BSFixedString eyeName = eyePart->partName;
+	NiAVObject* GetEyeNode(TESObjectREFR* refr)
+	{
+		if (!refr) return nullptr;
 
-	NiNode* rootNode = refr->GetActorRootNode(false);
-	if (!rootNode) return nullptr;
-	NiAVObject* eyeNode = rootNode->GetObjectByName(&eyeName);
-	if (!eyeNode) return nullptr;
+		TESNPC* npc = (TESNPC*)refr->baseForm;
+		BGSHeadPart* eyePart = npc->GetHeadPartByType(BGSHeadPart::kTypeEyes);
+		if (!eyePart) return nullptr;
+		BSFixedString eyeName = eyePart->partName;
 
-	return eyeNode;
-}
+		NiNode* rootNode = refr->GetActorRootNode(false);
+		if (!rootNode) return nullptr;
+		NiAVObject* eyeNode = rootNode->GetObjectByName(&eyeName);
+		if (!eyeNode) return nullptr;
 
-BSShaderMaterial* GetEyeMaterial(NiAVObject* eyeNode)
-{
-	if (!eyeNode) return nullptr;
+		return eyeNode;
+	}
 
-	BSGeometry* eyeGeometry = eyeNode->GetAsBSGeometry();
-	NiPointer<NiProperty> niProperty = eyeGeometry->shaderProperty;
-	BSShaderProperty* shaderProperty = (BSShaderProperty*)niProperty.get();
-	if (!shaderProperty) return nullptr;
+	BSShaderMaterial* GetEyeMaterial(NiAVObject* eyeNode)
+	{
+		if (!eyeNode) return nullptr;
 
-	BSShaderMaterial* eyeMaterial = shaderProperty->shaderMaterial;
-	return eyeMaterial;
-}
+		BSGeometry* eyeGeometry = eyeNode->GetAsBSGeometry();
+		NiPointer<NiProperty> niProperty = eyeGeometry->shaderProperty;
+		BSShaderProperty* shaderProperty = (BSShaderProperty*)niProperty.get();
+		if (!shaderProperty) return nullptr;
 
-bool GetEyecoords(NiAVObject* eyeNode, float* ret)
-{
-	if (!eyeNode) return false;
+		BSShaderMaterial* eyeMaterial = shaderProperty->shaderMaterial;
+		return eyeMaterial;
+	}
 
-	BSShaderMaterial* eyeMaterial = GetEyeMaterial(eyeNode);
-	if (!eyeMaterial) return false;
+	bool GetEyecoords(NiAVObject* eyeNode, float* ret)
+	{
+		if (!eyeNode) return false;
 
-	float u, v;
-	eyeMaterial->GetOffsetUV(&u, &v);
-	ret[0] = u;
-	ret[1] = v;
+		BSShaderMaterial* eyeMaterial = GetEyeMaterial(eyeNode);
+		if (!eyeMaterial) return false;
 
-	return true;
-}
+		float u, v;
+		eyeMaterial->GetOffsetUV(&u, &v);
+		ret[0] = u;
+		ret[1] = v;
 
-bool GetEyecoords(TESObjectREFR* refr, float* ret)
-{
-	NiAVObject* eyeNode = GetEyeNode(refr);
-	if (!eyeNode) return false;
+		return true;
+	}
 
-	return GetEyecoords(eyeNode, ret);
-}
+	bool GetEyecoords(TESObjectREFR* refr, float* ret)
+	{
+		NiAVObject* eyeNode = GetEyeNode(refr);
+		if (!eyeNode) return false;
 
-void SetEyecoords(NiAVObject* eyeNode, float x, float y)
-{
-	if (!eyeNode) return;
+		return GetEyecoords(eyeNode, ret);
+	}
 
-	BSGeometry* eyeGeometry = eyeNode->GetAsBSGeometry();
-	NiPointer<NiProperty> niProperty = eyeGeometry->shaderProperty;
-	BSShaderProperty* shaderProperty = (BSShaderProperty*)niProperty.get();
+	void SetEyecoords(NiAVObject* eyeNode, float x, float y)
+	{
+		if (!eyeNode) return;
 
-	if (!shaderProperty)
-		return;
+		BSGeometry* eyeGeometry = eyeNode->GetAsBSGeometry();
+		NiPointer<NiProperty> niProperty = eyeGeometry->shaderProperty;
+		BSShaderProperty* shaderProperty = (BSShaderProperty*)niProperty.get();
 
-	//Setting this value makes sure the eye uv map updates
-	//It only needs to be done once but haven't figured out how to check if it's already been applied
-	//so we do it every time to make sure
-	shaderProperty->iLastRenderPassState = 0x7FFFFFFF;
+		if (!shaderProperty)
+			return;
 
-	BSShaderMaterial* eyeMaterial = shaderProperty->shaderMaterial;
+		//Setting this value makes sure the eye uv map updates
+		//It only needs to be done once but haven't figured out how to check if it's already been applied
+		//so we do it every time to make sure
+		shaderProperty->iLastRenderPassState = 0x7FFFFFFF;
 
-	if (!eyeMaterial)
-		return;
+		BSShaderMaterial* eyeMaterial = shaderProperty->shaderMaterial;
 
-	eyeMaterial->SetOffsetUV(x, y);
-}
+		if (!eyeMaterial)
+			return;
 
-void SetEyecoords(TESObjectREFR* refr, float x, float y)
-{
-	if (!refr) return;
+		eyeMaterial->SetOffsetUV(x, y);
+	}
 
-	NiAVObject* eyeNode = GetEyeNode(refr);
-	if (!eyeNode) return;
+	void SetEyecoords(TESObjectREFR* refr, float x, float y)
+	{
+		if (!refr) return;
 
-	SetEyecoords(eyeNode, x, y);
+		NiAVObject* eyeNode = GetEyeNode(refr);
+		if (!eyeNode) return;
+
+		SetEyecoords(eyeNode, x, y);
+	}
 }

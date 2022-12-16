@@ -830,11 +830,14 @@ void LoadLightsJson(const char* filename)
 
 	for (auto& light : lights)
 	{
-		UInt32 formId = GetFormId(light["mod"].asString(), light["id"].asString());
+		std::string mod = light.get("mod", "").asString();
+		std::string id = light.get("id", "").asString();
+
+		UInt32 formId = GetFormId(mod.c_str(), id.c_str());
 		MenuLight menuLight = CreateLightFromId(formId);
 		
 		if (menuLight.formId != 0) {
-			menuLight.name = light["name"].asString();
+			menuLight.name = light.get("name", "Light").asString();
 			menuLight.distance = ReadJsonFloat(light["distance"]);
 			menuLight.rotation = ReadJsonFloat(light["rotation"]);
 			menuLight.height = ReadJsonFloat(light["height"]);
@@ -1006,37 +1009,3 @@ void RevertLights()
 {
 	lightManager.Clear();
 }
-
-//void ExportLights()
-//{
-//	IFileStream file;
-//	std::string path = "Data\\F4SE\\Plugins\\SAM\\lights.txt";
-//	IFileStream::MakeAllDirs(path.c_str());
-//
-//	if (!file.Create(path.c_str())) {
-//		_DMESSAGE("Failed to create file");
-//		return;
-//	}
-//
-//	std::stringstream stream;
-//	for (auto& category : lightsMenuCache) {
-//		stream << "Category\t" << category.first << std::endl;
-//		for (auto& light : category.second) {
-//			UInt32 formId = std::stoul(light.first, nullptr, 16); 
-//			TESForm* form = LookupFormByID(formId);
-//			if (form && form->GetFullName()) {
-//				std::string fullname(form->GetFullName());
-//				int firstof = fullname.find_first_of("-");
-//				std::string afterHyphen = fullname.substr(firstof + 2);
-//				std::string key = HexToString(formId & 0xFFFFFF);
-//				stream << key << "\t" << afterHyphen << std::endl;
-//			}
-//			else {
-//				stream << light.first << "\t" << "Error" << std::endl;
-//			}
-//		}
-//	}
-//
-//	file.WriteString(stream.str().c_str());
-//	file.Close();
-//}

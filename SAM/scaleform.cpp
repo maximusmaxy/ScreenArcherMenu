@@ -37,13 +37,13 @@ Func \
 };
 
 GFxFunction(SaveState, {
-	saveData.Save(&args->args[0]);
-	args->args[0];
+	samManager.SaveData(&args->args[0]);
+	//saveData.Save(&args->args[0]);
 });
 
 GFxFunction(ClearState, {
-	saveData.Clear();
-	int i = 0;
+	samManager.ClearData();
+	//saveData.Clear();
 });
 
 enum {
@@ -59,7 +59,7 @@ GFxFunction(CheckError, {
 		case kSamTargetError: args->result->SetBool(selected.refr); break;
 		case kSamSkeletonError: args->result->SetBool(CheckSelectedSkeleton()); break;
 		case kSamMorphsError: args->result->SetBool(GetMorphPointer()); break;
-		case kSamEyesError: args->result->SetBool(selected.eyeNode); break;
+		case kSamEyesError: args->result->SetBool(SAF::GetEyeNode(selected.refr)); break;
 		case kSamCameraError: args->result->SetBool(GetFreeCameraState()); break;
 	}
 });
@@ -101,7 +101,11 @@ GFxFunction(ResetMorphs, {
 });
 
 GFxFunction(GetMorphsTongue, {
-	GetMorphsTongueGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
+	GetMorphsTongueGFx(args->movie->movieRoot, args->result, args->args[0].GetInt(), args->args[1].GetInt());
+});
+
+GFxFunction(GetMorphsTongueNodes, {
+	GetMorphsTongueNodesGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
 });
 
 GFxFunction(SamPlaySound, {
@@ -109,11 +113,11 @@ GFxFunction(SamPlaySound, {
 });
 
 GFxFunction(SamOpenMenu, {
-	OpenMenu(args->args[0].GetString());
+	samManager.OpenMenu(args->args[0].GetString());
 });
 
 GFxFunction(SamCloseMenu, {
-	CloseMenu(args->args[0].GetString());
+	samManager.CloseMenu(args->args[0].GetString());
 });
 
 GFxFunction(SamIsMenuOpen, {
@@ -151,20 +155,20 @@ GFxFunction(SetEyeTrackingHack, {
 GFxFunction(GetEyeCoords, {
 	args->movie->movieRoot->CreateArray(args->result);
 	float coords[2];
-	if (GetEyecoords(selected.eyeNode, coords)) {
+	if (SAF::GetEyecoords(SAF::GetEyeNode(selected.refr), coords)) {
 		args->result->PushBack(&GFxValue(coords[0] * -4));
 		args->result->PushBack(&GFxValue(coords[1] * 5));
 	}
-	 else {
-	  args->result->PushBack(&GFxValue(0.0));
-	  args->result->PushBack(&GFxValue(0.0));
+	else {
+		args->result->PushBack(&GFxValue(0.0));
+		args->result->PushBack(&GFxValue(0.0));
 	}
 });
 
 GFxFunction(SetEyeCoords, {
 	if (GetDisableEyecoordUpdate() != kHackEnabled)
 		SetDisableEyecoordUpdate(true);
-	SetEyecoords(selected.eyeNode, args->args[0].GetNumber() * -0.25, args->args[1].GetNumber() * 0.2);
+	SAF::SetEyecoords(SAF::GetEyeNode(selected.refr), args->args[0].GetNumber() * -0.25, args->args[1].GetNumber() * 0.2);
 });
 
 GFxFunction(GetAdjustment, {
@@ -490,43 +494,11 @@ GFxFunction(GetPoseExportTypes, {
 });
 
 void testFunc() {
-	auto adjustments = safAdjustmentManager->GetActorAdjustments(*g_player);
-	NiTransform s1 = (*adjustments->baseMap)[BSFixedString("SPINE1")]->m_localTransform;
-	NiTransform s2 = (*adjustments->baseMap)[BSFixedString("SPINE2")]->m_localTransform;
-	
+
 }
 
 void testFunc2() {
-	auto adjustments = safAdjustmentManager->GetActorAdjustments(*g_player);
-	NiTransform t = (*adjustments->baseMap)[BSFixedString("SPINE2")]->m_localTransform;
 
-	NiTransform offset;
-	offset.pos = NiPoint3(2, 0, 0);
-	offset.scale = 1.0f;
-	SAF::MatrixFromEulerYPR2(offset.rot, 0, 0, 45 * SAF::DEGREE_TO_RADIAN);
-	NiTransform pose;
-	pose.pos = NiPoint3(10.673931, -0.349279, 0);
-	pose.scale = 1.0f;
-	SAF::MatrixFromEulerYPR2(pose.rot, 0, 0, 34.94 * SAF::DEGREE_TO_RADIAN);
-	NiTransform negation;
-	negation.pos = NiPoint3(-8.570897, -1.520177, 0);
-	negation.scale = 1.0f;
-	SAF::MatrixFromEulerYPR2(negation.rot, 0, 0, 10.06 * SAF::DEGREE_TO_RADIAN);
-
-	float x, y, z;
-	NiTransform result = SAF::MultiplyNiTransform(offset, pose);
-	SAF::MatrixToEulerYPR2(result.rot, x, y, z);
-	x *= SAF::RADIAN_TO_DEGREE;
-	y *= SAF::RADIAN_TO_DEGREE;
-	z *= SAF::RADIAN_TO_DEGREE;
-
-	NiTransform result2 = SAF::MultiplyNiTransform(result, negation);
-	SAF::MatrixToEulerYPR2(result2.rot, x, y, z);
-	x *= SAF::RADIAN_TO_DEGREE;
-	y *= SAF::RADIAN_TO_DEGREE;
-	z *= SAF::RADIAN_TO_DEGREE;
-
-	_DMESSAGE("lol");
 }
 
 GFxFunction(Test, {
@@ -534,7 +506,7 @@ GFxFunction(Test, {
 });
 
 GFxFunction(Test2, {
-
+	testFunc2();
 });
 
 #define GFxRegister(T) RegisterFunction<T ## Scaleform>(value, view->movieRoot, #T)
@@ -553,6 +525,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(LoadMorphsPreset);
 	GFxRegister(ResetMorphs);
 	GFxRegister(GetMorphsTongue);
+	GFxRegister(GetMorphsTongueNodes);
 	GFxRegister(SamPlaySound);
 	GFxRegister(SamOpenMenu);
 	GFxRegister(SamCloseMenu);

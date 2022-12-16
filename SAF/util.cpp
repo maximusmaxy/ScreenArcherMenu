@@ -6,7 +6,12 @@
 #include <algorithm>
 #include <sstream>
 
-void _Log(std::string msg, UInt64 num) {
+void _Logs(std::string msg, std::string msg2)
+{
+	_DMESSAGE((msg + msg2).c_str());
+}
+
+void _Logi(std::string msg, UInt64 num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
 }
 
@@ -14,8 +19,8 @@ void _Logf(std::string msg, float num) {
 	_DMESSAGE((msg + std::to_string(num)).c_str());
 }
 
-UInt32 GetFormId(std::string modName, UInt32 formId) {
-	const ModInfo* mod = (*g_dataHandler)->LookupModByName(modName.c_str());
+UInt32 GetFormId(const char* modName, UInt32 formId) {
+	const ModInfo* mod = (*g_dataHandler)->LookupModByName(modName);
 
 	if (mod && mod->modIndex != 0xFF) {
 		
@@ -33,7 +38,7 @@ UInt32 GetFormId(std::string modName, UInt32 formId) {
 	return 0;
 }
 
-UInt32 GetFormId(std::string modName, std::string idString) {
+UInt32 GetFormId(const char* modName, const char* idString) {
 	UInt32 formId = std::stoul(idString, nullptr, 16) & 0xFFFFFF;
 	return GetFormId(modName, formId);
 }
@@ -46,28 +51,6 @@ UInt32 GetModId(UInt32 formId)
 UInt32 GetBaseId(UInt32 formId)
 {
 	return (formId & 0xFE000000) == 0xFE000000 ? (formId & 0xFFF) : (formId & 0xFFFFFF);
-}
-
-bool TransformIsDefault(NiTransform& transform) {
-	if (FloatEqual(transform.pos.x, 0.0f) &&
-		FloatEqual(transform.pos.y, 0.0f) &&
-		FloatEqual(transform.pos.z, 0.0f) &&
-		FloatEqual(transform.rot.arr[0], 1.0f) &&
-		FloatEqual(transform.rot.arr[5], 1.0f) &&
-		FloatEqual(transform.rot.arr[10], 1.0f) &&
-		FloatEqual(transform.scale, 1.0f))
-		return true;
-	return false;
-}
-
-bool TransformMapIsDefault(SAF::TransformMap& map)
-{
-	for (auto& kvp : map) {
-		if (!TransformIsDefault(kvp.second)) {
-			return false;
-		}
-	}
-	return true;
 }
 
 float Modulo(float a, float b) {

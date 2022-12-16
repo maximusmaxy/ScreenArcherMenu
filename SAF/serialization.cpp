@@ -8,6 +8,9 @@ using namespace Serialization;
 #include "util.h"
 #include "io.h"
 
+#define ADJU_VERSION 4
+#define SKEL_VERSION 1
+
 namespace SAF {
 
 	/*
@@ -160,7 +163,7 @@ namespace SAF {
 			}
 		}
 
-		ifc->OpenRecord('ADJU', 4); //adjustments
+		ifc->OpenRecord('ADJU', ADJU_VERSION); //adjustments
 
 		UInt32 size = savedAdjustments.size();
 		WriteData<UInt32>(ifc, &size);
@@ -213,7 +216,7 @@ namespace SAF {
 			}
 		}
 
-		ifc->OpenRecord('SKEL', 1); //skeleton adjustments
+		ifc->OpenRecord('SKEL', SKEL_VERSION); //skeleton adjustments
 
 		size = raceAdjustments.size();
 		WriteData<UInt32>(ifc, &size);
@@ -245,215 +248,220 @@ namespace SAF {
 			{
 			case 'ADJU': //adjustment
 			{
-				std::unordered_map<std::string, bool> loadedMods;
+				if (version <= ADJU_VERSION) {
+					std::unordered_map<std::string, bool> loadedMods;
 
-				UInt32 actorSize;
-				ReadData<UInt32>(ifc, &actorSize);
+					UInt32 actorSize;
+					ReadData<UInt32>(ifc, &actorSize);
 
-				for (UInt32 i = 0; i < actorSize; ++i) {
+					for (UInt32 i = 0; i < actorSize; ++i) {
 
-					UInt32 oldId, formId;
-					ReadData<UInt32>(ifc, &oldId);
-					bool actorResolved = ifc->ResolveFormId(oldId, &formId);
+						UInt32 oldId, formId;
+						ReadData<UInt32>(ifc, &oldId);
+						bool actorResolved = ifc->ResolveFormId(oldId, &formId);
 
-					//in version 4 onward, need to store a raceGender key as well
-					UInt32 raceGenderSize = 1;
-					if (version >= 4) {
-						ReadData<UInt32>(ifc, &raceGenderSize);
-					}
-
-					for (UInt32 j = 0; j < raceGenderSize; ++j) {
-
-						//If version is not 4+, Use a key of 0 and it will be handled later
-						UInt64 raceGenderId = 0;
-						bool raceGenderResolved = true;
-
+						//in version 4 onward, need to store a raceGender key as well
+						UInt32 raceGenderSize = 1;
 						if (version >= 4) {
-							UInt64 oldRaceGender;
-							ReadData<UInt64>(ifc, &oldRaceGender);
-
-							UInt64 isFemale = oldRaceGender & 0x100000000;
-							UInt32 oldId = oldRaceGender & 0xFFFFFFFF;
-							UInt32 formId;
-							raceGenderResolved = ifc->ResolveFormId(oldId, &formId);
-							raceGenderId = formId | isFemale;
+							ReadData<UInt32>(ifc, &raceGenderSize);
 						}
 
-						UInt32 adjustmentSize;
-						ReadData<UInt32>(ifc, &adjustmentSize);
+						for (UInt32 j = 0; j < raceGenderSize; ++j) {
 
-						for (UInt32 k = 0; k < adjustmentSize; ++k) {
-							PersistentAdjustment persistent;
+							//If version is not 4+, Use a key of 0 and it will be handled later
+							UInt64 raceGenderId = 0;
+							bool raceGenderResolved = true;
 
-							//need to update serialization of types prior to version 3
-							persistent.updateType = version < 3 ? kAdjustmentUpdateSerialization : kAdjustmentUpdateNone;
+							if (version >= 4) {
+								UInt64 oldRaceGender;
+								ReadData<UInt64>(ifc, &oldRaceGender);
 
-							//Pre version 3, only adds map on default type
-							bool loadMap = true;
+								UInt64 isFemale = oldRaceGender & 0x100000000;
+								UInt32 oldId = oldRaceGender & 0xFFFFFFFF;
+								UInt32 formId;
+								raceGenderResolved = ifc->ResolveFormId(oldId, &formId);
+								raceGenderId = formId | isFemale;
+							}
 
-							switch (version) {
-							case 0:
-								ReadData<std::string>(ifc, &persistent.name);
-								ReadData<std::string>(ifc, &persistent.mod);
-								persistent.scale = 1.0f;
-								ReadData<UInt8>(ifc, &persistent.type);
-								persistent.file = persistent.type == kAdjustmentTypeDefault ? "" : persistent.name;
-								persistent.updated = false;
-								loadMap = persistent.type == kAdjustmentTypeDefault;
-								break;
-							case 1:
-							case 2:
-								ReadData<std::string>(ifc, &persistent.name);
-								ReadData<std::string>(ifc, &persistent.file);
-								ReadData<std::string>(ifc, &persistent.mod);
-								ReadData<float>(ifc, &persistent.scale);
-								ReadData<UInt8>(ifc, &persistent.type);
-								//if file isn't empty and add type, change type to skeleton and set updated to true
-								if (!persistent.file.empty() && persistent.type == kAdjustmentTypeDefault) {
-									persistent.type = kAdjustmentTypeSkeleton;
-									persistent.updated = true;
-								}
-								else {
+							UInt32 adjustmentSize;
+							ReadData<UInt32>(ifc, &adjustmentSize);
+
+							for (UInt32 k = 0; k < adjustmentSize; ++k) {
+								PersistentAdjustment persistent;
+
+								//need to update serialization of types prior to version 3
+								persistent.updateType = version < 3 ? kAdjustmentUpdateSerialization : kAdjustmentUpdateNone;
+
+								//Pre version 3, only adds map on default type
+								bool loadMap = true;
+
+								switch (version) {
+								case 0:
+									ReadData<std::string>(ifc, &persistent.name);
+									ReadData<std::string>(ifc, &persistent.mod);
+									persistent.scale = 1.0f;
+									ReadData<UInt8>(ifc, &persistent.type);
+									persistent.file = persistent.type == kAdjustmentTypeDefault ? "" : persistent.name;
 									persistent.updated = false;
 									loadMap = persistent.type == kAdjustmentTypeDefault;
+									break;
+								case 1:
+								case 2:
+									ReadData<std::string>(ifc, &persistent.name);
+									ReadData<std::string>(ifc, &persistent.file);
+									ReadData<std::string>(ifc, &persistent.mod);
+									ReadData<float>(ifc, &persistent.scale);
+									ReadData<UInt8>(ifc, &persistent.type);
+									//if file isn't empty and add type, change type to skeleton and set updated to true
+									if (!persistent.file.empty() && persistent.type == kAdjustmentTypeDefault) {
+										persistent.type = kAdjustmentTypeSkeleton;
+										persistent.updated = true;
+									}
+									else {
+										persistent.updated = false;
+										loadMap = persistent.type == kAdjustmentTypeDefault;
+									}
+									break;
+								default: //3+
+									ReadData<std::string>(ifc, &persistent.name);
+									ReadData<std::string>(ifc, &persistent.file);
+									ReadData<std::string>(ifc, &persistent.mod);
+									ReadData<float>(ifc, &persistent.scale);
+									ReadData<UInt8>(ifc, &persistent.type);
+									ReadData<bool>(ifc, &persistent.updated);
 								}
-								break;
-							default: //3+
-								ReadData<std::string>(ifc, &persistent.name);
-								ReadData<std::string>(ifc, &persistent.file);
-								ReadData<std::string>(ifc, &persistent.mod);
-								ReadData<float>(ifc, &persistent.scale);
-								ReadData<UInt8>(ifc, &persistent.type);
-								ReadData<bool>(ifc, &persistent.updated);
-							}
 
-							//Accept loaded mods and adjustments that don't have a mod specified
-							bool modLoaded = persistent.mod.empty();
-							if (!modLoaded) {
-								auto found = loadedMods.find(persistent.mod);
-								if (found != loadedMods.end()) {
-									modLoaded = found->second;
+								//Accept loaded mods and adjustments that don't have a mod specified
+								bool modLoaded = persistent.mod.empty();
+								if (!modLoaded) {
+									auto found = loadedMods.find(persistent.mod);
+									if (found != loadedMods.end()) {
+										modLoaded = found->second;
+									}
+									else {
+										const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
+										modLoaded = modInfo && modInfo->modIndex != 0xFF;
+										loadedMods.emplace(persistent.mod, modLoaded);
+									}
 								}
-								else {
-									const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(persistent.mod.c_str());
-									modLoaded = modInfo && modInfo->modIndex != 0xFF;
-									loadedMods.emplace(persistent.mod, modLoaded);
-								}
-							}
 
-							if (loadMap) {
-								UInt32 transformSize;
-								ReadData<UInt32>(ifc, &transformSize);
-								if (transformSize > 0) {
-									for (UInt32 l = 0; l < transformSize; ++l) {
+								if (loadMap) {
+									UInt32 transformSize;
+									ReadData<UInt32>(ifc, &transformSize);
+									if (transformSize > 0) {
+										for (UInt32 l = 0; l < transformSize; ++l) {
 
-										std::string keyName;
-										BSFixedString nodeName;
-										bool nodeOffset;
+											std::string keyName;
+											BSFixedString nodeName;
+											bool nodeOffset;
 
-										switch (version) {
-										case 0:
-										case 1:
-										{
-											ReadData<std::string>(ifc, &keyName);
-											break;
-										}
-										default:
-										{
-											ReadData<BSFixedString>(ifc, &nodeName);
-											ReadData<bool>(ifc, &nodeOffset);
-											break;
-										}
-										}
-
-										NiTransform transform;
-										ReadData<float>(ifc, &transform.pos.x);
-										ReadData<float>(ifc, &transform.pos.y);
-										ReadData<float>(ifc, &transform.pos.z);
-
-										float yaw, pitch, roll;
-										ReadData<float>(ifc, &yaw);
-										ReadData<float>(ifc, &pitch);
-										ReadData<float>(ifc, &roll);
-
-										ReadData<float>(ifc, &transform.scale);
-
-										switch (version) {
-										case 0:
-										case 1:
-										{
-											MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
-											NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
-											if (nodeKey.key) {
-												persistent.map.emplace(nodeKey, transform);
+											switch (version) {
+											case 0:
+											case 1:
+											{
+												ReadData<std::string>(ifc, &keyName);
+												break;
 											}
-											break;
-										}
-										default:
-										{
-											MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
-											persistent.map.emplace(NodeKey(nodeName, nodeOffset), transform);
-											break;
-										}
+											default:
+											{
+												ReadData<BSFixedString>(ifc, &nodeName);
+												ReadData<bool>(ifc, &nodeOffset);
+												break;
+											}
+											}
+
+											NiTransform transform;
+											ReadData<float>(ifc, &transform.pos.x);
+											ReadData<float>(ifc, &transform.pos.y);
+											ReadData<float>(ifc, &transform.pos.z);
+
+											float yaw, pitch, roll;
+											ReadData<float>(ifc, &yaw);
+											ReadData<float>(ifc, &pitch);
+											ReadData<float>(ifc, &roll);
+
+											ReadData<float>(ifc, &transform.scale);
+
+											switch (version) {
+											case 0:
+											case 1:
+											{
+												MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
+												NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
+												if (nodeKey.key) {
+													persistent.map.emplace(nodeKey, transform);
+												}
+												break;
+											}
+											default:
+											{
+												MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
+												persistent.map.emplace(NodeKey(nodeName, nodeOffset), transform);
+												break;
+											}
+											}
 										}
 									}
 								}
+								LoadPersistentIfValid(formId, raceGenderId, persistent, modLoaded);
 							}
-							LoadPersistentIfValid(formId, raceGenderId, persistent, modLoaded);
+							ValidatePersistents(persistentAdjustments, formId, raceGenderId);
 						}
-						ValidatePersistents(persistentAdjustments, formId, raceGenderId);
 					}
 				}
+				
 				break;
 			}
 			case 'SKEL':
 			{
-				switch (version) {
-				case 0:
-				{
-					UInt32 adjustmentSize;
-					ReadData<UInt32>(ifc, &adjustmentSize);
+				if (version <= SKEL_VERSION) {
+					switch (version) {
+					case 0:
+					{
+						UInt32 adjustmentSize;
+						ReadData<UInt32>(ifc, &adjustmentSize);
 
-					for (UInt32 i = 0; i < adjustmentSize; ++i) {
-						UInt64 adjustmentKey;
-						ReadData<UInt64>(ifc, &adjustmentKey);
-
-						std::string adjustmentName;
-						ReadData<std::string>(ifc, &adjustmentName);
-
-						raceAdjustments[adjustmentKey].insert(adjustmentName);
-					}
-					break;
-				}
-				case 1:
-				{
-					UInt32 adjustmentSize;
-					ReadData<UInt32>(ifc, &adjustmentSize);
-
-					for (UInt32 i = 0; i < adjustmentSize; ++i) {
-						UInt64 adjustmentKey;
-						ReadData<UInt64>(ifc, &adjustmentKey);
-
-						UInt64 isFemale = adjustmentKey & 0x100000000;
-						UInt32 oldId = adjustmentKey & 0xFFFFFFFF;
-						UInt32 formId;
-						bool resolved = ifc->ResolveFormId(oldId, &formId);
-						adjustmentKey = formId | isFemale;
-
-						UInt32 namesSize;
-						ReadData<UInt32>(ifc, &namesSize);
-
-						for (UInt32 k = 0; k < namesSize; ++k) {
+						for (UInt32 i = 0; i < adjustmentSize; ++i) {
+							UInt64 adjustmentKey;
+							ReadData<UInt64>(ifc, &adjustmentKey);
 
 							std::string adjustmentName;
 							ReadData<std::string>(ifc, &adjustmentName);
 
-							if (resolved)
-								raceAdjustments[adjustmentKey].insert(adjustmentName);
+							raceAdjustments[adjustmentKey].insert(adjustmentName);
 						}
+						break;
 					}
-					break;
-				}
+					case 1:
+					{
+						UInt32 adjustmentSize;
+						ReadData<UInt32>(ifc, &adjustmentSize);
+
+						for (UInt32 i = 0; i < adjustmentSize; ++i) {
+							UInt64 adjustmentKey;
+							ReadData<UInt64>(ifc, &adjustmentKey);
+
+							UInt64 isFemale = adjustmentKey & 0x100000000;
+							UInt32 oldId = adjustmentKey & 0xFFFFFFFF;
+							UInt32 formId;
+							bool resolved = ifc->ResolveFormId(oldId, &formId);
+							adjustmentKey = formId | isFemale;
+
+							UInt32 namesSize;
+							ReadData<UInt32>(ifc, &namesSize);
+
+							for (UInt32 k = 0; k < namesSize; ++k) {
+
+								std::string adjustmentName;
+								ReadData<std::string>(ifc, &adjustmentName);
+
+								if (resolved)
+									raceAdjustments[adjustmentKey].insert(adjustmentName);
+							}
+						}
+						break;
+					}
+					}
 				}
 			}
 			}
@@ -520,7 +528,10 @@ namespace SAF {
 		case kAdjustmentTypeDefault:
 		case kAdjustmentTypeTongue: 
 			return !TransformMapIsDefault(adjustment.map);
-		case kAdjustmentTypeRace: return adjustment.updated;
+		case kAdjustmentTypeRace: 
+		case kAdjustmentTypeAutoSkeleton:
+		case kAdjustmentTypeAutoRace:
+			return adjustment.updated;
 		default: return true;
 		}
 	}

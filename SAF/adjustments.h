@@ -2,12 +2,15 @@
 
 #include "f4se/NiObjects.h"
 #include "f4se/NiNodes.h"
+#include "f4se/NiTypes.h"
 #include "f4se/GameReferences.h"
 #include "f4se/GameObjects.h"
 #include "f4se/GameTypes.h"
 #include "f4se/PluginAPI.h"
 
 #include "serialization.h"
+#include "conversions.h"
+#include "util.h"
 
 #include <memory>
 #include <set>
@@ -74,14 +77,16 @@ namespace SAF {
 
 	typedef std::unordered_set<NodeKey, NodeKeyHash, NodeKeyEqual> NodeSet;
 	typedef std::unordered_set<BSFixedString, BSFixedStringHash, BSFixedStringKeyEqual> BSFixedStringSet;
-	typedef std::unordered_map<NodeKey, NiTransform, NodeKeyHash, NodeKeyEqual> TransformMap;
+	typedef std::unordered_map<NodeKey, SamTransform, NodeKeyHash, NodeKeyEqual> TransformMap;
 	typedef std::unordered_map<BSFixedString, BSFixedString, BSFixedStringHash, BSFixedStringKeyEqual> BSFixedStringMap;
 	typedef std::unordered_map<BSFixedString, NiAVObject*, BSFixedStringHash, BSFixedStringKeyEqual> NodeMap;
 	typedef std::unordered_map<BSFixedString, NodeKey, BSFixedStringHash, BSFixedStringKeyEqual> NodeKeyMap;
 
-	NiTransform* GetFromTransformMap(TransformMap& map, const NodeKey& key);
+	SamTransform* GetFromTransformMap(TransformMap& map, const NodeKey& key);
 	BSFixedString* GetFromBSFixedStringMap(BSFixedStringMap& map, const BSFixedString& key);
 	NiAVObject* GetFromNodeMap(NodeMap& map, const BSFixedString& key);
+
+	bool TransformMapIsDefault(SAF::TransformMap& map);
 
 	struct CaseInsensitiveCompare {
 		bool operator() (const std::string& a, const std::string& b) const
@@ -90,8 +95,9 @@ namespace SAF {
 		}
 	};
 
+	typedef std::map<std::string, TransformMap, CaseInsensitiveCompare> InsensitiveTransformMap;
 	typedef std::set<std::string, CaseInsensitiveCompare> InsensitiveStringSet;
-	typedef std::map <std::string, TransformMap, CaseInsensitiveCompare> InsensitiveTransformMap;
+	typedef std::map<std::string, UInt32, CaseInsensitiveCompare> InsensitiveUInt32Map;
 
 	//Old adjustment serialization types
 	//enum {
@@ -107,104 +113,18 @@ namespace SAF {
 		kAdjustmentTypeNone = 0,
 		kAdjustmentTypeDefault,
 		kAdjustmentTypeSkeleton,
-		kAdjustmentTypeRemovedRace,
+		kAdjustmentTypeRemovedFile,
 		kAdjustmentTypeRace,
 		kAdjustmentTypePose,
-		kAdjustmentTypeTongue
+		kAdjustmentTypeTongue,
+		kAdjustmentTypeAutoSkeleton,	//Added in 1.1
+		kAdjustmentTypeAutoRace			//Added in 1.1
 	};
 
 	enum {
 		kAdjustmentUpdateNone = 0,
 		kAdjustmentUpdateSerialization,	//Update adjustment serialization to version 1.0+
 		kAdjustmentUpdateFile			//Update adjustment file to version 1.0+
-	};
-
-	struct LoadedAdjustment
-	{
-		TransformMap* map;
-		UInt32 updateType;
-
-		LoadedAdjustment() : map(nullptr), updateType(kAdjustmentUpdateNone) {}
-		LoadedAdjustment(TransformMap* map) : map(map), updateType(kAdjustmentUpdateNone) {}
-	};
-
-	class PersistentAdjustment {
-	public:
-		std::string name;
-		std::string file;
-		std::string mod;
-		float scale;
-		UInt8 type;
-		bool updated;
-		UInt8 updateType;
-		TransformMap map;
-
-		PersistentAdjustment() : type(kAdjustmentTypeNone) {}
-
-		PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 updateType);
-
-		PersistentAdjustment(std::string file, UInt8 type) :
-			name(file),
-			file(file),
-			mod(std::string()),
-			scale(1.0),
-			type(type),
-			updateType(kAdjustmentUpdateNone),
-			updated(false)
-		{}
-
-		bool StoreMap();
-		bool IsValid();
-	};
-
-	typedef std::unordered_map<UInt32, std::unordered_map<UInt64, std::vector<PersistentAdjustment>>> PersistentMap;
-
-	struct NodeMapRef {
-		NodeMap map;
-		UInt32 refs;
-
-		NodeMapRef() {}
-		NodeMapRef(NodeMap map) : map(map), refs(1) {}
-	};
-
-	typedef NiNode* (*GetBaseModelRootNode)(TESNPC* npc, TESObjectREFR* refr);
-	extern RelocAddr<GetBaseModelRootNode> getBaseModelRootNode;
-
-	typedef const char* (*GetRefrModelFilename)(TESObjectREFR* refr);
-	extern RelocAddr<GetRefrModelFilename> getRefrModelFilename;
-
-	struct ProcessListsActor {
-		UInt64 unk1;	//0
-		UInt64 unk2;	
-		UInt64 unk3;	//10
-		UInt64 unk4;
-		UInt64 unk5;	//20
-		UInt64 unk6;
-		UInt64 unk7;	//30
-		UInt64 unk8;
-		UInt32* handles;	//40
-		UInt64 unk10;
-		UInt32 count;	//50
-	};
-
-	enum {
-		kSafAdjustmentManager = 1,
-		kSafAdjustmentCreate,
-		kSafAdjustmentSave,
-		kSafAdjustmentLoad,
-		kSafAdjustmentErase,
-		kSafAdjustmentReset,
-		kSafAdjustmentTransform,
-		kSafAdjustmentActor,
-		kSafAdjustmentNegate,
-		kSafPoseLoad,
-		kSafPoseReset,
-		kSafResult,
-		kSafDefaultAdjustmentLoad,
-		kSafAdjustmentRotate,
-		kSafAdjustmentMove,
-		kSafAdjustmentRename,
-		kSafAdjustmentTongue
 	};
 
 	struct AdjustmentMessage {
@@ -278,6 +198,95 @@ namespace SAF {
 		TransformMap* transforms;
 	};
 
+	struct LoadedAdjustment
+	{
+		TransformMap* map;
+		UInt32 updateType;
+
+		LoadedAdjustment() : map(nullptr), updateType(kAdjustmentUpdateNone) {}
+		LoadedAdjustment(TransformMap* map) : map(map), updateType(kAdjustmentUpdateNone) {}
+	};
+
+	class PersistentAdjustment {
+	public:
+		std::string name;
+		std::string file;
+		std::string mod;
+		float scale;
+		UInt8 type;
+		bool updated;
+		UInt8 updateType;
+		TransformMap map;
+
+		PersistentAdjustment() : type(kAdjustmentTypeNone) {}
+
+		PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 updateType);
+
+		PersistentAdjustment(std::string file, UInt8 type) :
+			name(file),
+			file(file),
+			mod(std::string()),
+			scale(1.0),
+			type(type),
+			updateType(kAdjustmentUpdateNone),
+			updated(false)
+		{}
+
+		bool StoreMap();
+		bool IsValid();
+	};
+
+	typedef std::unordered_map<UInt32, std::unordered_map<UInt64, std::vector<PersistentAdjustment>>> PersistentMap;
+
+	struct NodeMapRef {
+		NodeMap map;
+		TransformMap transforms;
+		UInt32 refs;
+
+		NodeMapRef() {}
+		NodeMapRef(NodeMap map) : map(map), refs(1) {}
+	};
+
+	typedef NiNode* (*GetBaseModelRootNode)(TESNPC* npc, TESObjectREFR* refr);
+	extern RelocAddr<GetBaseModelRootNode> getBaseModelRootNode;
+
+	typedef const char* (*GetRefrModelFilename)(TESObjectREFR* refr);
+	extern RelocAddr<GetRefrModelFilename> getRefrModelFilename;
+
+	struct ProcessListsActor {
+		UInt64 unk1;	//0
+		UInt64 unk2;	
+		UInt64 unk3;	//10
+		UInt64 unk4;
+		UInt64 unk5;	//20
+		UInt64 unk6;
+		UInt64 unk7;	//30
+		UInt64 unk8;
+		UInt32* handles;	//40
+		UInt64 unk10;
+		UInt32 count;	//50
+	};
+
+	enum {
+		kSafAdjustmentManager = 1,
+		kSafAdjustmentCreate,
+		kSafAdjustmentSave,
+		kSafAdjustmentLoad,
+		kSafAdjustmentErase,
+		kSafAdjustmentReset,
+		kSafAdjustmentTransform,
+		kSafAdjustmentActor,
+		kSafAdjustmentNegate,
+		kSafPoseLoad,
+		kSafPoseReset,
+		kSafResult,
+		kSafDefaultAdjustmentLoad,
+		kSafAdjustmentRotate,
+		kSafAdjustmentMove,
+		kSafAdjustmentRename,
+		kSafAdjustmentTongue
+	};
+
 	class NodeSets
 	{
 	public:
@@ -298,9 +307,11 @@ namespace SAF {
 	struct AdjustmentUpdateData
 	{
 		InsensitiveStringSet* race;
+		InsensitiveStringSet* autoRace;
+		InsensitiveStringSet* autoActor;
 		std::vector<PersistentAdjustment>* persistents;
 
-		AdjustmentUpdateData() : race(nullptr), persistents(nullptr) {};
+		AdjustmentUpdateData() : race(nullptr), persistents(nullptr), autoRace(nullptr), autoActor(nullptr) {};
 	};
 
 	struct ExportSkeleton
@@ -328,6 +339,7 @@ namespace SAF {
 		UInt32 type = kAdjustmentTypeDefault;
 		
 		TransformMap map;
+		TransformMap scaled;
 		
 		Adjustment() {}
 
@@ -336,13 +348,15 @@ namespace SAF {
 			name(name)
 		{}
 
-		NiTransform* GetTransform(const NodeKey& key);
-		NiTransform GetTransformOrDefault(const NodeKey& key);
+		SamTransform* GetTransform(const NodeKey& key);
+		SamTransform GetTransformOrDefault(const NodeKey& key);
 
-		void SetTransform(const NodeKey& name, NiTransform& transform);
+		SamTransform* GetScaledTransform(const NodeKey& key);
+		SamTransform GetScaledTransformOrDefault(const NodeKey& key);
+
+		void SetTransform(const NodeKey& name, SamTransform& transform);
 		bool HasTransform(const NodeKey& name);
 		void ResetTransform(const NodeKey& name);
-		NiTransform GetScaledTransform(const NodeKey& name, float scale);
 
 		void SetTransformPos(const NodeKey& name, float x, float y, float z);
 		void SetTransformRot(const NodeKey& name, float yaw, float pitch, float roll);
@@ -352,11 +366,12 @@ namespace SAF {
 		void SetMap(TransformMap map);
 		void CopyMap(TransformMap* map, NodeSet* set);
 
-		void ForEachTransform(const std::function<void(const NodeKey*, NiTransform*)>& functor);
-		void ForEachTransformOrDefault(const std::function<void(const NodeKey*, NiTransform*)>& functor, NodeSet* nodeset);
+		void ForEachTransform(const std::function<void(const NodeKey*, SamTransform*)>& functor);
+		void ForEachTransformOrDefault(const std::function<void(const NodeKey*, SamTransform*)>& functor, NodeSet* nodeset);
 
 		void Rename(std::string name);
 		void SetScale(float scale);
+		void UpdateScale(const NodeKey& name, SamTransform& transform);
 
 		bool IsVisible();
 
@@ -391,7 +406,7 @@ namespace SAF {
 		NodeSets* nodeSets = nullptr;
 		NodeMap poseMap;
 		NodeMap offsetMap;
-		NodeMap* baseMap = nullptr;
+		TransformMap* baseMap = nullptr;
 
 		ActorAdjustments() {}
 
@@ -421,9 +436,9 @@ namespace SAF {
 
 		void Clear();
 		void UpdatePersistentAdjustments(AdjustmentUpdateData& data);
-		void GetOffsetTransform(BSFixedString name, NiTransform* offsetTransform);
-		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform);
-		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform,
+		void GetOffsetTransform(BSFixedString name, SamTransform* offsetTransform);
+		void GetPoseTransforms(BSFixedString name, SamTransform* offsetTransform, SamTransform* poseTransform);
+		void GetPoseTransforms(BSFixedString name, SamTransform* offsetTransform, SamTransform* poseTransform,
 			std::vector<std::shared_ptr<Adjustment>>& adjustmentList);
 		void UpdateNode(BSFixedString name);
 		void UpdateAllAdjustments();
@@ -442,14 +457,14 @@ namespace SAF {
 		bool HasNode(BSFixedString name);
 		bool IsNodeOffset(NodeKey& nodeKey);
 		void NegateTransform(std::shared_ptr<Adjustment> adjustment, NodeKey& name);
-		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, const NodeKey& name, NiTransform& transform);
+		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, const NodeKey& name, SamTransform& transform);
 		void RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& name, UInt32 type, float scalar);
 
 		void LoadRaceAdjustment(std::string filename, bool clear, bool enable);
 		void RemoveAdjustmentsByType(UInt32 type, bool checkRace);
 		UInt32 GetHandleByType(UInt32 type);
 		std::shared_ptr<Adjustment> GetAdjustmentByType(UInt32 type);
-		bool ShouldRemoveRace(std::shared_ptr<Adjustment> adjustment);
+		bool ShouldRemoveFile(std::shared_ptr<Adjustment> adjustment);
 
 		void SavePose(std::string filename, ExportSkeleton* nodes);
 		void SaveOutfitStudioPose(std::string filename, ExportSkeleton* nodes);
@@ -472,9 +487,6 @@ namespace SAF {
 	public:
 		bool gameLoaded = false;
 
-		std::string offsetPostfix = "_Offset";
-		std::string overridePostfix = "_Pose";
-
 		std::unordered_map<UInt64, NodeSets> nodeSets;
 
 		std::unordered_map<UInt64, InsensitiveStringSet> raceAdjustments;
@@ -484,11 +496,17 @@ namespace SAF {
 		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
 		InsensitiveTransformMap adjustmentFileCache;
 
+		std::unordered_map<UInt64, InsensitiveStringSet> autoRaceCache;
+		std::unordered_map<UInt64, InsensitiveStringSet> autoActorCache;
+
 		void LoadFiles();
 		void GameLoaded();
 		void ActorLoaded(Actor* actor, bool loaded);
 		bool UpdateActor(std::shared_ptr<ActorAdjustments> adjustments);
 		bool UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments);
+		bool UpdateActorNodes(std::shared_ptr<ActorAdjustments> adjustments);
+		bool CopyActor(std::shared_ptr<ActorAdjustments> src, std::shared_ptr<ActorAdjustments> dst);
+		bool CopyActorCache(std::shared_ptr<ActorAdjustments> adjustments);
 
 		UInt32 CreateNewAdjustment(UInt32 formId, const char* name, const char* mod);
 		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
@@ -515,13 +533,17 @@ namespace SAF {
 		TransformMap* SetAdjustmentFile(std::string filename, TransformMap& map);
 
 		InsensitiveStringSet* GetRaceAdjustments(UInt32 race, bool isFemale);
-		bool HasRaceAdjustment(UInt32 race, bool isFemale, std::string filename);
-		std::vector<PersistentAdjustment>* GetPersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
-		
-		void CreateNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings, NodeMap* poseMap, NodeMap* offsetMap);
-		NodeMap* GetCachedNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings);
-		void RemoveNodeMap(NiNode* root);
+		InsensitiveStringSet* GetAutoRaceAdjustments(UInt32 race, bool isFemale);
+		InsensitiveStringSet* GetAutoActorAdjustments(UInt32 formId);
 
+		bool HasFile(UInt32 race, bool isFemale, UInt32 formId, std::string filename);
+
+		std::vector<PersistentAdjustment>* GetPersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
+
+		void CreateNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings, NodeMap* poseMap, NodeMap* offsetMap);
+		TransformMap* GetCachedTransformMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings);
+		void RemoveNodeMap(NiNode* root);
+		
 		void RemoveMod(BSFixedString espName);
 		void RemoveAllAdjustments();
 		
@@ -538,4 +560,62 @@ namespace SAF {
 	};
 
 	extern AdjustmentManager g_adjustmentManager;
+
+	class SAFMessaging
+	{
+	public:
+		PluginHandle pluginHandle;
+		F4SEMessagingInterface* messaging;
+		F4SEPapyrusInterface* papyrus;
+		F4SESerializationInterface* serialization;
+
+		SAFMessaging() :
+			pluginHandle(kPluginHandle_Invalid),
+			messaging(nullptr),
+			papyrus(nullptr),
+			serialization(nullptr)
+		{};
+	};
+
+	extern SAFMessaging safMessaging;
+
+	void F4SEMessageHandler(F4SEMessagingInterface::Message* msg);
+
+	void SaveCallback(const F4SESerializationInterface* ifc);
+	void LoadCallback(const F4SESerializationInterface* ifc);
+	void RevertCallback(const F4SESerializationInterface* ifc);
+
+	class SAFDispatcher
+	{
+	private:
+		std::mutex mutex;
+	public:
+		AdjustmentManager* manager;
+		std::shared_ptr<ActorAdjustments> actorAdjustments;
+		UInt32 result = 0;
+
+		PluginHandle handle;
+		F4SEMessagingInterface* messaging;
+		const char* modName;
+
+		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
+		UInt32 GetResult();
+
+		void Recieve(F4SEMessagingInterface::Message* msg);
+
+		void CreateAdjustment(UInt32 formId, const char* name);
+		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
+		void LoadAdjustment(UInt32 formId, const char* filename);
+		void RemoveAdjustment(UInt32 formId, UInt32 handle);
+		void ResetAdjustment(UInt32 formId, UInt32 handle);
+		void TransformAdjustment(UInt32 formId, UInt32 handle, const NodeKey nodeKey, UInt32 type, float a, float b, float c);
+		void CreateActorAdjustments(UInt32 formId);
+		void NegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group);
+		void LoadPose(UInt32 formId, const char* filename);
+		void ResetPose(UInt32 formId);
+		void LoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
+		void MoveAdjustment(UInt32 formId, UInt32 from, UInt32 to);
+		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
+		void LoadTongueAdjustment(UInt32 formId, TransformMap* transforms);
+	};
 }

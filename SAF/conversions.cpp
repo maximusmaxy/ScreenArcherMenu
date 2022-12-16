@@ -35,7 +35,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace SAF {
 
 	float niMatrix43Identity[12]{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
-	float niTransformIdentity[16]{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 	float quatIdentity[4]{ 1.0f, 0.0f, 0.0f, 0.0f };
 
 	NiMatrix43 MatrixIdentity() {
@@ -44,19 +43,22 @@ namespace SAF {
 		return m;
 	}
 
-	NiTransform TransformIdentity() {
-		NiTransform t;
-		memcpy(&t, niTransformIdentity, sizeof(niTransformIdentity));
-		return t;
-	}
-
 	Quat QuaternionIdentity() {
 		Quat q;
 		memcpy(&q, quatIdentity, sizeof(quatIdentity));
 		return q;
 	}
 
-	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt) {
+	SamTransform::operator NiTransform() const {
+		NiTransform res;
+		res.pos = pos;
+		res.rot = rot;
+		res.scale = scale;
+		return res;
+	}
+
+	const NiPoint3 RotateMatrix(const NiMatrix43& m, const NiPoint3& pt)
+	{
 		return NiPoint3(
 			m.data[0][0] * pt.x + m.data[1][0] * pt.y + m.data[2][0] * pt.z,
 			m.data[0][1] * pt.x + m.data[1][1] * pt.y + m.data[2][1] * pt.z,
@@ -64,7 +66,7 @@ namespace SAF {
 		);
 	}
 
-	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs)
+	NiMatrix43 MultiplyNiMatrix(const NiMatrix43& lhs, const NiMatrix43& rhs)
 	{
 		NiMatrix43 tmp;
 		tmp.data[0][0] =
@@ -106,59 +108,73 @@ namespace SAF {
 		return tmp;
 	}
 
-	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs) {
+	SamTransform SamTransform::operator* (const SamTransform& rhs) const
+	{
 		NiTransform res;
-		res.scale = lhs.scale * rhs.scale;
-		res.rot = MultiplyNiMatrix(lhs.rot, rhs.rot);
-		res.pos = lhs.pos + RotateMatrix(lhs.rot, rhs.pos) * lhs.scale;
+		res.scale = scale * rhs.scale;
+		res.rot = MultiplyNiMatrix(rot, rhs.rot);
+		res.pos = pos + RotateMatrix(rot, rhs.pos) * scale;
 		return res;
 	}
 
-	NiTransform InvertNiTransform(NiTransform& t) {
+	SamTransform& SamTransform::operator*= (const SamTransform& rhs)
+	{
+		scale *= rhs.scale;
+		rot = MultiplyNiMatrix(rot, rhs.rot);
+		pos += RotateMatrix(rot, rhs.pos) * scale;
+		return *this;
+	}
+
+	SamTransform SamTransform::Invert() const
+	{
 		NiTransform res;
-		res.scale = t.scale == 0 ? 1 / t.scale : 1.0f;
-		res.rot = t.rot.Transpose();
-		res.pos = RotateMatrix(res.rot, (-t.pos / res.scale));
+		res.scale = scale == 0 ? 1 / scale : 1.0f;
+		res.rot = rot.Transpose();
+		res.pos = RotateMatrix(res.rot, (-pos / res.scale));
 		return res;
 	}
 
-	NiPoint3 Rotate(NiMatrix43& m, NiPoint3& pt) {
-		return NiPoint3(
-			m.data[0][0] * pt.x + m.data[1][0] * pt.y + m.data[2][0] * pt.z,
-			m.data[0][1] * pt.x + m.data[1][1] * pt.y + m.data[2][1] * pt.z,
-			m.data[0][2] * pt.x + m.data[1][2] * pt.y + m.data[2][2] * pt.z
-		);
-	}
-
-
-
-	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
+	SamTransform SamTransform::operator/ (const SamTransform& rhs) const
+	{
 		NiTransform res;
 
-		float srcScale = src.scale == 0 ? 1.0f : src.scale;
-		res.scale = dst.scale / srcScale;
+		float srcScale = scale == 0 ? 1.0f : scale;
+		res.scale = rhs.scale / srcScale;
 
-		NiMatrix43 inverted = src.rot.Transpose();
-		res.rot = MultiplyNiMatrix(inverted, dst.rot);
+		NiMatrix43 inverted = rot.Transpose();
+		res.rot = MultiplyNiMatrix(inverted, rhs.rot);
 
-		res.pos = RotateMatrix(inverted, (dst.pos - src.pos) / srcScale);
+		res.pos = RotateMatrix(inverted, (rhs.pos - pos) / srcScale);
 
 		return res;
 	}
-	
+
 	//Need this for support of older versions
-	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dst) {
-		NiTransform res;
+	SamTransform SamTransform::NegateTransposed(SamTransform& dst) {
+		SamTransform res;
 
-		float srcScale = src.scale == 0 ? 1.0f : src.scale;
+		float srcScale = scale == 0 ? 1.0f : scale;
 		res.scale = dst.scale / srcScale;
 
-		NiMatrix43 inverted = src.rot.Transpose();
+		NiMatrix43 inverted = rot.Transpose();
 		res.rot = inverted * dst.rot;
 
-		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
+		res.pos = inverted * ((dst.pos - pos) / srcScale);
 
 		return res;
+	}
+
+	//Is almost equal to the identity transform
+	bool SamTransform::IsDefault() {
+		if (FloatEqual(pos.x, 0.0f) &&
+			FloatEqual(pos.y, 0.0f) &&
+			FloatEqual(pos.z, 0.0f) &&
+			FloatEqual(rot.arr[0], 1.0f) &&
+			FloatEqual(rot.arr[5], 1.0f) &&
+			FloatEqual(rot.arr[10], 1.0f) &&
+			FloatEqual(scale, 1.0f))
+			return true;
+		return false;
 	}
 
 	NiMatrix43 GetXYZRotation(int type, float scalar) {
@@ -731,8 +747,8 @@ namespace SAF {
 		return result;
 	}
 
-	NiTransform SlerpNiTransform(NiTransform& transform, float scalar) {
-		NiTransform res;
+	SamTransform SlerpNiTransform(SamTransform& transform, float scalar) {
+		SamTransform res;
 
 		res.pos = transform.pos * scalar;
 		res.scale = 1.0f + ((transform.scale - 1.0f) * scalar);

@@ -396,7 +396,15 @@ const char* GetCurrentIdleName() {
 	
 	Actor* actor = (Actor*)selected.refr;
 
-	auto animGraphHolder = (BShkbAnimationGraphHolder*)actor->middleProcess->unk08->unk00[0x260 >> 3];
+	auto middleProcess = actor->middleProcess;
+	if (!middleProcess)
+		return nullptr;
+
+	auto unk08 = middleProcess->unk08;
+	if (!unk08)
+		return nullptr;
+
+	auto animGraphHolder = (BShkbAnimationGraphHolder*)unk08->unk00[0x260 >> 3];
 	if (!animGraphHolder)
 		return nullptr;
 

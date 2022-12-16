@@ -7,22 +7,22 @@
 
 #include "util.h"
 #include "conversions.h"
+#include "settings.h"
 
 #include "rapidxml/rapidxml.hpp"
 #include "rapidxml/rapidxml_print.hpp"
 using namespace rapidxml;
 
-std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
-std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
-
-std::unordered_map<std::string, UInt32> menuHeaderMap = {
-	{"race", kMenuHeaderRace},
-	{"mod", kMenuHeaderMod},
-	{"sex", kMenuHeaderSex},
-	{"type", kMenuHeaderType},
-};
-
 namespace SAF {
+	std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
+	std::regex tabOptionalRegex("([^\\t]+)(?:\\t+([^\\t]+))?");	//matches (1) or (1)\t(2)
+
+	InsensitiveUInt32Map menuHeaderMap = {
+		{"race", kMenuHeaderRace},
+		{"mod", kMenuHeaderMod},
+		{"sex", kMenuHeaderSex},
+		{"type", kMenuHeaderType},
+	};
 
 	void ReadAll(IFileStream* file, std::string* str)
 	{
@@ -46,7 +46,7 @@ namespace SAF {
 	void InsertNode(NodeSets* nodeSet, const char* name, bool offset)
 	{
 		BSFixedString baseStr(name);
-		BSFixedString offsetStr((name + g_adjustmentManager.offsetPostfix).c_str());
+		BSFixedString offsetStr((name + g_settings.offset).c_str());
 		
 		NodeKey offsetKey(baseStr, true);
 		nodeSet->offsets.insert(offsetKey);
@@ -73,7 +73,7 @@ namespace SAF {
 		IFileStream file;
 
 		if (!file.Open(path.c_str())) {
-			_DMESSAGE("Could not open ", path);
+			_Logs("Could not open ", path);
 			return false;
 		}
 
@@ -86,7 +86,7 @@ namespace SAF {
 
 		if (!reader.parse(nodeMap, value))
 		{
-			_DMESSAGE("Failed to parse ", path);
+			_Logs("Failed to parse ", path);
 			return false;
 		}
 
@@ -94,7 +94,7 @@ namespace SAF {
 			std::string mod = value["mod"].asString();
 			std::string race = value["race"].asString();
 
-			UInt32 formId = GetFormId(mod, race);
+			UInt32 formId = GetFormId(mod.c_str(), race.c_str());
 			if (!formId) return false;
 
 			const char* sex = value["sex"].asCString();
@@ -137,7 +137,7 @@ namespace SAF {
 			}
 		}
 		catch (...) {
-			_DMESSAGE("Failed to read ", path);
+			_Logs("Failed to read ", path);
 			return false;
 		}
 
@@ -146,6 +146,14 @@ namespace SAF {
 
 	enum {
 		kMenuTypeNodes = 1,
+		kMenuTypeRace,
+		kMenuTypeActor
+	};
+
+	InsensitiveUInt32Map safTypeMap = {
+		{ "nodes", kMenuTypeNodes },
+		{ "race", kMenuTypeRace },
+		{ "actor", kMenuTypeActor }
 	};
 
 	enum {
@@ -154,139 +162,189 @@ namespace SAF {
 		kNodeTypeRoot
 	};
 
-	std::unordered_map<std::string, UInt32> menuTypeMap = {
-		{"nodes", kMenuTypeNodes},
-	};
-
-	std::unordered_map<std::string, UInt32> nodeTypeMap = {
+	InsensitiveUInt32Map nodeTypeMap = {
 		{ "offset", kNodeTypeOffset },
 		{ "pose", kNodeTypePose },
 		{ "override", kNodeTypePose },
 		{ "root", kNodeTypeRoot }
 	};
 
-	bool LoadNodeSetsTsv(std::string path)
-	{
+	enum {
+		kAutoTypeAdjustment = 1
+	};
+
+	InsensitiveUInt32Map autoTypeMap = {
+		{ "adjustment", kAutoTypeAdjustment },
+		{ "adjustments", kAutoTypeAdjustment }
+	};
+
+	bool TsvReader::Read() {
 		IFileStream file;
 
 		if (!file.Open(path.c_str())) {
-			_DMESSAGE(path.c_str(), " not found");
+			_Logs(path.c_str(), " not found");
 			return false;
 		}
 
 		char buf[512];
 		std::cmatch match;
-		std::string categoryIdentifier = "Category";
-		MenuHeader header;
-		UInt32 categoryIndex = 0;
-		NodeSets* nodeSet = nullptr;
+		bool finalized = false;
 
 		try {
 			while (!file.HitEOF()) {
 				file.ReadString(buf, 512, '\n', '\r');
 				if (std::regex_search(buf, match, tabOptionalRegex)) {
-					if (match[1].str() == categoryIdentifier) {
-
-						//After reaching the first category, validate the header and either break or continue
-						if (!nodeSet)
-						{
-							if (!header.type)
-							{
-								_DMESSAGE("Failed to read header type", path);
+					if (!_stricmp(match[1].str().c_str(), "category")) {
+						if (!finalized) {
+							if (!FinalizeHeader(match[1].str(), match[2].str()))
 								return false;
-							}
-
-							UInt32 key = 0;
-
-							key = GetFormId(header.mod, header.race);
-							if (!key)
-							{
-								_DMESSAGE("Failed to read header race or mod", path);
-								return false;
-							}
-							if (header.isFemale)
-								key |= 0x100000000;
-
-							nodeSet = &g_adjustmentManager.nodeSets[key];
-
-							//These are defaults and will get replaced by Category Root
-							if (key == 0x1D698) { //DogmeatRace
-								nodeSet->rootName = BSFixedString("Dogmeat_Root");
-							}
-							else {
-								nodeSet->rootName = BSFixedString("Root");
-							}
+							finalized = true;
 						}
-
-						//set category index
-						std::string lowerNode = toLower(match[2].str());
-						if (nodeTypeMap.count(lowerNode)) {
-							categoryIndex = nodeTypeMap[lowerNode];
-						}
-						else {
-							categoryIndex = 0;
-						}
+						ReadCategory(match[1].str(), match[2].str());
 					}
-
-					//Continue reading header
-					else if (!nodeSet)
-					{
-						std::string lowerHeader = toLower(match[1].str());
-						if (match[2].str().size() && menuHeaderMap.count(lowerHeader))
-						{
-							switch (menuHeaderMap[lowerHeader])
-							{
-							case kMenuHeaderRace:
-								header.race = match[2].str();
-								break;
-							case kMenuHeaderMod:
-								header.mod = match[2].str();
-								break;
-							case kMenuHeaderSex:
-								header.isFemale = !_stricmp(match[2].str().c_str(), "female");
-								break;
-							case kMenuHeaderType:
-								std::string lowerType = toLower(match[2].str());
-								if (menuTypeMap.count(lowerType)) {
-									header.type = menuTypeMap[lowerType];
-								}
-								break;
-							}
-						}
+					else if (!finalized) {
+						ReadHeader(match[1].str(), match[2].str());
 					}
-
-					//Add to category
-					else 
-					{
-						switch (categoryIndex) {
-						case kNodeTypeOffset:
-							InsertNode(nodeSet, match[1].str().c_str(), true);
-							break;
-						case kNodeTypePose:
-							InsertNode(nodeSet, match[1].str().c_str(), false);
-							break;
-						case kNodeTypeRoot:
-							nodeSet->rootName = BSFixedString(match[1].str().c_str());
-							break;
-						}
+					else {
+						ReadLine(match[1].str(), match[2].str());
 					}
 				}
 			}
 		}
 		catch (...) {
-			_DMESSAGE("Failed to read ", path);
+			_Logs("Failed to read ", path);
 			return false;
 		}
 
 		return true;
 	}
 
-	bool LoadDefaultAdjustmentFile(std::string path)
+	void TsvReader::ReadHeader(std::string m1, std::string m2)
+	{
+		auto it = menuHeaderMap.find(m1);
+		if (m2.size() && it != menuHeaderMap.end())
+		{
+			switch (it->second)
+			{
+			case kMenuHeaderRace:
+				header.race = m2;
+				break;
+			case kMenuHeaderMod:
+				header.mod = m2;
+				break;
+			case kMenuHeaderSex:
+				header.isFemale = !_stricmp(m2.c_str(), "female");
+				break;
+			case kMenuHeaderType:
+				auto value = typeMap->find(m2);
+				if (value != typeMap->end())
+				{
+					header.type = value->second;
+				}
+				break;
+			}
+		}
+	}
+
+	class SafTsvReader : public TsvReader {
+	public:
+		SafTsvReader(std::string path, InsensitiveUInt32Map* typeMap) :
+			TsvReader(path, typeMap),
+			nodeSet(nullptr)
+		{};
+
+		NodeSets* nodeSet;
+
+		bool FinalizeHeader(std::string m1, std::string m2) 
+		{
+			if (!header.type)
+			{
+				_Logs("Failed to read header type", path);
+				return false;
+			}
+
+			key = GetFormId(header.mod.c_str(), header.race.c_str());
+
+			if (!key)
+			{
+				_Logs("Failed to read header race or mod", path);
+				return false;
+			}
+			if (header.isFemale)
+				key |= 0x100000000;
+
+			nodeSet = &g_adjustmentManager.nodeSets[key];
+
+			//These are defaults and will get replaced by Category Root
+			if (key == 0x1D698) { //DogmeatRace
+				nodeSet->rootName = BSFixedString("Dogmeat_Root");
+			}
+			else {
+				nodeSet->rootName = BSFixedString("Root");
+			}
+
+			return true;
+		}
+
+		void ReadCategory(std::string m1, std::string m2) 
+		{
+			switch (header.type) {
+			case kMenuTypeNodes:
+			{
+				auto it = nodeTypeMap.find(m2);
+				categoryIndex = it != nodeTypeMap.end() ? it->second : 0;
+				break;
+			}
+			case kMenuTypeRace:
+			case kMenuTypeActor:
+			{
+				auto it = autoTypeMap.find(m2);
+				categoryIndex = it != autoTypeMap.end() ? it->second : 0;
+				break;
+			}
+			}
+		}
+
+		void ReadLine(std::string m1, std::string m2) 
+		{
+			switch (header.type) {
+			case kMenuTypeNodes: 
+			{
+				switch (categoryIndex) {
+				case kNodeTypeOffset:
+					InsertNode(nodeSet, m1.c_str(), true);
+					break;
+				case kNodeTypePose:
+					InsertNode(nodeSet, m1.c_str(), false);
+					break;
+				case kNodeTypeRoot:
+					nodeSet->rootName = BSFixedString(m1.c_str());
+					break;
+				}
+				break;
+			}
+			case kMenuTypeRace:
+				g_adjustmentManager.autoRaceCache[key].emplace(m1);
+				break;
+			case kMenuTypeActor:
+				g_adjustmentManager.autoActorCache[key].emplace(m1);
+				break;
+			}
+		}
+	};
+
+	bool LoadNodeSetsTsv(std::string path)
+	{
+		SafTsvReader reader(path, &safTypeMap);
+		return reader.Read();
+	}
+
+	bool LoadRaceAdjustmentFile(std::string path)
 	{
 		//IFileStream file;
 
 		//if (!file.Open(path.c_str())) {
-		//	_DMESSAGE("Could not open ", path);
+		//	_Logs("Could not open ", path);
 		//	return false;
 		//}
 
@@ -299,7 +357,7 @@ namespace SAF {
 
 		//if (!reader.parse(defaultAdjustment, value))
 		//{
-		//	_DMESSAGE("Failed to parse ", path);
+		//	_Logs("Failed to parse ", path);
 		//	return false;
 		//}
 
@@ -328,7 +386,7 @@ namespace SAF {
 		//	g_adjustmentManager.defaultAdjustments[key] =  adjustmentList;
 		//}
 		//catch (...) {
-		//	_DMESSAGE("Failed to read ", path);
+		//	_Logs("Failed to read ", path);
 		//	return false;
 		//}
 
@@ -339,7 +397,7 @@ namespace SAF {
 	//	IFileStream file;
 
 	//	if (!file.Open(path.c_str())) {
-	//		_DMESSAGE(path.c_str(), " not found");
+	//		_Logs(path.c_str(), " not found");
 	//		return false;
 	//	}
 
@@ -351,7 +409,7 @@ namespace SAF {
 	//	Json::Value value;
 
 	//	if (!reader.parse(actorString, value)) {
-	//		_DMESSAGE("Failed to parse ", path);
+	//		_Logs("Failed to parse ", path);
 	//		return false;
 	//	}
 
@@ -372,7 +430,7 @@ namespace SAF {
 	//		g_adjustmentManager.uniqueAdjustments[formId] = adjustments;
 	//	}
 	//	catch (...) {
-	//		_DMESSAGE("Failed to read ", path);
+	//		_Logs("Failed to read ", path);
 	//		return false;
 	//	}
 
@@ -385,7 +443,7 @@ namespace SAF {
 		kTransformJsonAdjustment
 	};
 
-	void ReadTransformJson(NiTransform& transform, Json::Value& value, UInt32 version) {
+	void ReadTransformJson(SamTransform& transform, Json::Value& value, UInt32 version) {
 		transform.pos.x = ReadJsonFloat(value["x"]);
 		transform.pos.y = ReadJsonFloat(value["y"]);
 		transform.pos.z = ReadJsonFloat(value["z"]);
@@ -410,7 +468,7 @@ namespace SAF {
 		transform.scale = ReadJsonFloat(value["scale"]);
 	}
 
-	void WriteTransformJson(NiTransform* transform, Json::Value& value, UInt32 version) {
+	void WriteTransformJson(SamTransform* transform, Json::Value& value, UInt32 version) {
 		char buffer[32];
 		WriteJsonFloat(value["x"], transform->pos.x, "%.06f");
 		WriteJsonFloat(value["y"], transform->pos.y, "%.06f");
@@ -453,8 +511,8 @@ namespace SAF {
 
 		Json::Value transforms(Json::ValueType::objectValue);
 
-		adjustment->ForEachTransform([&](const NodeKey* nodeKey, NiTransform* transform) {
-			if (!TransformIsDefault(*transform)) {
+		adjustment->ForEachTransform([&](const NodeKey* nodeKey, SamTransform* transform) {
+			if (!transform->IsDefault()) {
 				Json::Value member;
 				WriteTransformJson(transform, member, kTransformJsonAdjustment);
 				transforms[GetNodeKeyName(*nodeKey)] = member;
@@ -471,7 +529,7 @@ namespace SAF {
 
 		IFileStream::MakeAllDirs(path.c_str());
 		if (!file.Create(path.c_str())) {
-			_DMESSAGE("Failed to create file ", filename);
+			_Logs("Failed to create file ", filename);
 			return false;
 		}
 
@@ -490,7 +548,7 @@ namespace SAF {
 		path += ".json";
 
 		if (!file.Open(path.c_str())) {
-			_DMESSAGE(filename.c_str(), " not found");
+			_Logs(filename.c_str(), " not found");
 			return false;
 		}
 
@@ -502,7 +560,7 @@ namespace SAF {
 		Json::Value value;
 
 		if (!reader.parse(adjustmentString, value)) {
-			_DMESSAGE("Failed to parse ", filename);
+			_Logs("Failed to parse ", filename);
 			return false;
 		}
 
@@ -517,7 +575,7 @@ namespace SAF {
 			Json::Value transforms = value.get("transforms", value);
 
 			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
-				NiTransform transform;
+				SamTransform transform;
 				//read version 2 if non zero version
 				ReadTransformJson(transform, *it, (version > 0 ? kTransformJsonPose : kTransformJsonTranspose));
 				NodeKey nodeKey = GetNodeKeyFromString(it.key().asCString());
@@ -527,7 +585,7 @@ namespace SAF {
 			}
 		}
 		catch (...) {
-			_DMESSAGE("Failed to read ", filename);
+			_Logs("Failed to read ", filename);
 			adjustment->updateType = kAdjustmentUpdateNone;
 			return false;
 		}
@@ -569,7 +627,7 @@ namespace SAF {
 
 		IFileStream::MakeAllDirs(path.c_str());
 		if (!file.Create(path.c_str())) {
-			_DMESSAGE("Failed to create file ", filename);
+			_Logs("Failed to create file ", filename);
 			return false;
 		}
 
@@ -585,7 +643,7 @@ namespace SAF {
 		IFileStream file;
 
 		if (!file.Open(path.c_str())) {
-			_DMESSAGE(path.c_str(), " not found");
+			_Logs(path.c_str(), " not found");
 			return false;
 		}
 
@@ -597,7 +655,7 @@ namespace SAF {
 		Json::Value value;
 
 		if (!reader.parse(adjustmentString, value)) {
-			_DMESSAGE("Failed to parse ", path);
+			_Logs("Failed to parse ", path);
 			return false;
 		}
 
@@ -609,7 +667,7 @@ namespace SAF {
 			Json::Value transforms = value.get("transforms", value);
 
 			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
-				NiTransform transform;
+				SamTransform transform;
 				ReadTransformJson(transform, *it, version > 0 ? kTransformJsonPose : kTransformJsonTranspose);
 				NodeKey nodeKey = GetNodeKeyFromString(it.key().asCString());
 				if (nodeKey.key) {
@@ -618,7 +676,7 @@ namespace SAF {
 			}
 		}
 		catch (...) {
-			_DMESSAGE("Failed to read ", path);
+			_Logs("Failed to read ", path);
 			return false;
 		}
 
@@ -631,7 +689,7 @@ namespace SAF {
 		path += filename;
 		path += ".json";
 
-		return LoadPosePath(filename, poseMap);
+		return LoadPosePath(path, poseMap);
 	}
 
 	bool SaveOutfitStudioXml(std::string filename, TransformMap* poseMap)
@@ -644,7 +702,7 @@ namespace SAF {
 
 		IFileStream::MakeAllDirs(path.c_str());
 		if (!file.Create(path.c_str())) {
-			_DMESSAGE("Failed to create file ", filename);
+			_Logs("Failed to create file ", filename);
 			return false;
 		}
 
@@ -685,43 +743,45 @@ namespace SAF {
 			file.Close();
 		}
 		catch (...) {
-			_DMESSAGE("Failed to write ", path);
+			_Logs("Failed to write ", path);
 			return false;
 		}
 
 		return true;
 	}
 
+	void SaveSettingsFile(const char* path)
+	{
+		IFileStream file;
+
+		try {
+			Json::StyledWriter writer;
+			Json::Value value;
+
+			g_settings.ToJson(value);
+
+			std::string jsonString = writer.write(value);
+
+			if (file.Create(path))
+			{
+				file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
+				file.Close();
+			}
+		}
+		catch (...) {
+			_DMESSAGE("Failed to create settings json");
+		}
+	}
+
 	void LoadSettingsFile(const char* path)
 	{
-		//defaults
-		g_adjustmentManager.overridePostfix = "_Pose";
-		g_adjustmentManager.offsetPostfix = "_Offset";
-
 		IFileStream file;
 
 		//if settings doesn't exist generate it
 		if (!file.Open(path)) {
-			try {
-				Json::StyledWriter writer;
-				Json::Value value;
 
-				value["override"] = Json::Value("_Pose");
-				value["offset"] = Json::Value("_Offset");
-
-
-				std::string jsonString = writer.write(value);
-
-				if (file.Create(path))
-				{
-					file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
-					file.Close();
-				}
-			}
-			catch (...) {
-				_DMESSAGE("Failed to create settings json");
-				return;
-			}
+			g_settings.Initialize();
+			SaveSettingsFile(path);
 
 			return;
 		}
@@ -735,11 +795,14 @@ namespace SAF {
 
 		if (!reader.parse(settingString, value)) {
 			_DMESSAGE("Failed to parse settings json");
+			g_settings.Initialize();
 			return;
 		}
 
-		g_adjustmentManager.overridePostfix = value["override"].isString() ? value["override"].asString() : "_Pose";
-		g_adjustmentManager.offsetPostfix = value["offset"].isString() ? value["offset"].asString() : "_Offset";
+		g_settings.FromJson(value);
+
+		//new settings might have been added so resave the json
+		SaveSettingsFile(path);
 	}
 
 	void LoadAllFiles() {
@@ -759,10 +822,10 @@ namespace SAF {
 			LoadNodeSetsTsv(path);
 		}
 
-		//for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\DefaultAdjustments", "*.json"); !iter.Done(); iter.Next())
+		//for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Race", "*.json"); !iter.Done(); iter.Next())
 		//{
 		//	std::string	path = iter.GetFullPath();
-		//	LoadDefaultAdjustmentFile(path);
+		//	LoadRaceAdjustmentFile(path);
 		//}
 		//for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAF\\Actors", "*.json"); !iter.Done(); iter.Next())
 		//{

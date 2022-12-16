@@ -11,9 +11,11 @@
 #include "json.h"
 #include "strnatcmp.h"
 #include "SAF/io.h"
+#include "SAF/messaging.h"
 
 #include <unordered_map>
 #include <regex>
+#include <mutex>
 
 //class SamMenu : public GameMenuBase
 //{
@@ -27,40 +29,73 @@
 class SelectedRefr {
 public:
 	TESObjectREFR* refr;
-	NiAVObject* eyeNode;
 	bool isFemale;
 	UInt32 race;
 	UInt64 key;
 
 	//virtual TESObjectREFR* Refr();
-	virtual void Update(TESObjectREFR* refr);
-	virtual void Clear();
+	void Update(TESObjectREFR* refr);
+	void Clear();
 };
 
 extern SelectedRefr selected;
 
-class SavedMenuData {
+extern MenuCache poseMenuCache;
+extern MenuCache morphsMenuCache;
+extern MenuCache groupsMenuCache;
+extern MenuCache exportMenuCache;
+
+extern MenuCategoryList lightsMenuCache;
+extern MenuCategoryList tongueMenuCache;
+
+struct NaturalSort {
+	bool operator()(const std::string& a, const std::string& b) const;
+};
+
+class SamManager {
+private:
+	std::mutex mutex;
+	bool menuOpened;
 public:
 	TESObjectREFR* refr;
 	Json::Value data;
 
-	void Save(GFxValue* data);
-	bool Load(GFxMovieRoot* root, GFxValue* res);
-	void Clear();
+	SamManager() : menuOpened(false) {}
+
+	void SetOpen(bool isOpen);
+	void OpenMenu(BSFixedString menuName);
+	void CloseMenu(BSFixedString menuName);
+	void TryClose(BSFixedString menuName);
+	void Invoke(BSFixedString menuName, const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
+	void SetVariable(BSFixedString menuName, const char* pVarPath, const GFxValue* value, UInt32 setType = 0);
+
+	void SaveData(GFxValue* data);
+	bool LoadData(GFxMovieRoot* root, GFxValue* res);
+	void ClearData();
 
 	void GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value);
 };
 
-extern SavedMenuData saveData;
+extern SamManager samManager;
 
-extern MenuCache poseMenuCache;
-extern MenuCache morphsMenuCache;
-extern MenuCache groupsMenuCache;
-extern MenuCategoryList lightsMenuCache;
-extern MenuCache exportMenuCache;
+class SavedDataObjVisitor : public GFxValue::ObjectInterface::ObjVisitor
+{
+public:
+	Json::Value& json;
 
-struct NaturalSort {
-	bool operator()(const std::string& a, const std::string& b) const;
+	SavedDataObjVisitor(Json::Value& json) : json(json) {};
+
+	void Visit(const char* member, GFxValue* value);
+};
+
+class SavedDataArrVisitor : public GFxValue::ObjectInterface::ArrayVisitor
+{
+public:
+	Json::Value& json;
+
+	SavedDataArrVisitor(Json::Value& json) : json(json) {};
+
+	void Visit(UInt32 idx, GFxValue* val);
 };
 
 TESObjectREFR* GetRefr();
@@ -70,8 +105,6 @@ MenuCategoryList* GetMenu(MenuCache* cache);
 //void RegisterSam();
 void StartSamQuest();
 
-void OpenMenu(const char* name);
-void CloseMenu(const char* name);
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 
 bool GetCursor(SInt32* pos);
@@ -84,6 +117,32 @@ void OnConsoleUpdate();
 
 void ToggleMenu();
 bool OpenSamFile(std::string filename);
+
+extern SAF::SAFDispatcher safDispatcher;
+
+class SAMMessaging {
+public:
+	PluginHandle pluginHandle;
+
+	F4SEScaleformInterface* scaleform;
+	F4SEMessagingInterface* messaging;
+	F4SEPapyrusInterface* papyrus;
+	F4SESerializationInterface* serialization;
+	F4SEInterface* f4se;
+
+	SAMMessaging() :
+		pluginHandle(kPluginHandle_Invalid),
+		scaleform(nullptr),
+		messaging(nullptr),
+		papyrus(nullptr),
+		serialization(nullptr),
+		f4se(nullptr)
+	{};
+};
+
+void F4SEMessageHandler(F4SEMessagingInterface::Message* msg);
+
+extern SAMMessaging samMessaging;
 
 void LoadMenuFiles();
 

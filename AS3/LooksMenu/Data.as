@@ -148,14 +148,6 @@
 			"$SAM_DeleteAll"
 		];
 		
-		public static const TONGUEBONES_NAMES:Vector.<String> = new <String>[
-			"$BONE_Tongue0",
-			"$BONE_Tongue1",
-			"$BONE_Tongue2",
-			"$BONE_Tongue3",
-			"$BONE_Tongue4"
-		];
-		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
 		{
 			sam = root.f4se.plugins.ScreenArcherMenu;
@@ -693,8 +685,9 @@
 		{
 			try
 			{
-				menuOptions = sam.GetMorphCategories();
-				menuOptions.push("$SAM_TongueBones");
+				var categories:Object = sam.GetMorphCategories();
+				menuOptions = categories.names;
+				menuValues = categories.values;
 			}
 			catch (e:Error)
 			{
@@ -1628,10 +1621,26 @@
 			}
 		}
 		
+		public static function getMorphsTongueNodes()
+		{
+			try 
+			{
+				var nodes:Object = sam.GetMorphsTongueNodes(selectedCategory);
+				menuOptions = nodes.names;
+				menuValues = nodes.values;
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get tongue nodes");
+				menuOptions = [];
+				menuValues = [];
+			}
+		}
+		
 		public static function getMorphsTongue(id:int)
 		{
 			try {
-				var tongue:Array = sam.GetMorphsTongue(id);
+				var tongue:Array = sam.GetMorphsTongue(selectedCategory, menuValues[id]);
 				if (tongue.length == 0) {
 					boneName = "";
 					selectedAdjustment = 0;

@@ -107,7 +107,7 @@ namespace SAF {
 		return result;
 	}
 
-	Transform TransformToPapyrus(NiTransform& transform, BSFixedString name, bool offset) {
+	Transform TransformToPapyrus(SamTransform& transform, BSFixedString name, bool offset) {
 		Transform result;
 
 		result.Set<BSFixedString>("name", name);
@@ -125,8 +125,8 @@ namespace SAF {
 		return result;
 	}
 
-	NiTransform TransformFromPapyrus(Transform& transform) {
-		NiTransform result;
+	SamTransform TransformFromPapyrus(Transform& transform) {
+		SamTransform result;
 
 		transform.Get<float>("x", &result.pos.x);
 		transform.Get<float>("y", &result.pos.y);
@@ -141,7 +141,7 @@ namespace SAF {
 		return result;
 	}
 
-	const NodeKey GetPapyrusKeyTransform(BSFixedString name, Transform& transform, NiTransform* out)
+	const NodeKey GetPapyrusKeyTransform(BSFixedString name, Transform& transform, SamTransform* out)
 	{
 		NodeKey nodeKey = GetNodeKeyFromString(name);
 		if (!nodeKey.key)
@@ -164,7 +164,7 @@ namespace SAF {
 
 		const NodeKey nodeKey = GetNodeKeyFromString(name);
 
-		NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
+		SamTransform transform = adjustment->GetTransformOrDefault(nodeKey);
 
 		return TransformToPapyrus(transform, name, nodeKey.offset);
 	}
@@ -176,7 +176,7 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
 
-		NiTransform papyrusTransform;
+		SamTransform papyrusTransform;
 		NodeKey nodeKey = GetPapyrusKeyTransform(name, transform, &papyrusTransform);
 		if (nodeKey.key && adjustments->HasNode(nodeKey.name)) {
 			adjustment->SetTransform(nodeKey, papyrusTransform);
@@ -191,7 +191,7 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return;
 
-		NiTransform papyrusTransform;
+		SamTransform papyrusTransform;
 		NodeKey nodeKey = GetPapyrusKeyTransform(name, transform, &papyrusTransform);
 		if (nodeKey.key && adjustments->HasNode(nodeKey.name)) {
 			if (nodeKey.offset) {
@@ -227,7 +227,7 @@ namespace SAF {
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
 		if (!adjustment) return result;
 
-		adjustment->ForEachTransformOrDefault([&](const NodeKey* nodeKey, NiTransform* transform) {
+		adjustment->ForEachTransformOrDefault([&](const NodeKey* nodeKey, SamTransform* transform) {
 			result.Push(&TransformToPapyrus(*transform, nodeKey->name, nodeKey->offset));
 		}, &adjustments->nodeSets->all);
 
@@ -249,7 +249,7 @@ namespace SAF {
 			BSFixedString name;
 			result.Get<BSFixedString>("name", &name);
 
-			NiTransform papyrusTransform;
+			SamTransform papyrusTransform;
 			NodeKey nodeKey = GetPapyrusKeyTransform(name, result, &papyrusTransform);
 			if (nodeKey.key && adjustments->HasNode(nodeKey.name))
 			{
@@ -274,7 +274,7 @@ namespace SAF {
 			BSFixedString name;
 			result.Get<BSFixedString>("name", &name);
 
-			NiTransform papyrusTransform;
+			SamTransform papyrusTransform;
 			NodeKey nodeKey = GetPapyrusKeyTransform(name, result, &papyrusTransform);
 			if (nodeKey.key && adjustments->HasNode(nodeKey.name))
 			{
@@ -318,6 +318,42 @@ namespace SAF {
 
 		adjustments->SaveAdjustment(std::string(filename), handle);
 		adjustments->UpdateAllAdjustments();
+	}
+
+	SInt32 PapyrusGetAdjustmentScale(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
+	{
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return 100;
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) return 100;
+
+		return adjustment->scale;
+	}
+
+	void PapyrusSetAdjustmentScale(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, SInt32 scale)
+	{
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return;
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) return;
+
+		adjustment->SetScale(scale * 0.01);
+		adjustments->UpdateAllAdjustments();
+	}
+
+	Transform PapyrusGetTransformScaled(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
+	{
+		Transform result;
+		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		if (!adjustments) return result;
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) return result;
+
+		const NodeKey nodeKey = GetNodeKeyFromString(name);
+		
+		SamTransform transform = adjustment->GetScaledTransformOrDefault(nodeKey);
+
+		return TransformToPapyrus(transform, name, nodeKey.offset);
 	}
 
 	void PapyrusLoadPose(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
@@ -431,6 +467,10 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction4 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString, UInt32, Transform>("SetNodeTransform", "SAF", PapyrusSetTransform, vm));
 		vm->RegisterFunction(new NativeFunction4 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString, UInt32, Transform>("OverrideNodeTransform", "SAF", PapyrusOverrideTransform, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString, UInt32>("ResetNodeTransform", "SAF", PapyrusResetTransform, vm));
+
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, SInt32, TESObjectREFR*, UInt32>("GetAdjustmentScale", "SAF", PapyrusGetAdjustmentScale, vm));
+		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, UInt32, SInt32>("SetAdjustmentScale", "SAF", PapyrusSetAdjustmentScale, vm));
+		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, Transform, TESObjectREFR*, BSFixedString, UInt32>("GetNodeTransformScaled", "SAF", PapyrusGetTransformScaled, vm));
 
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, VMArray<Transform>, TESObjectREFR*, UInt32>("GetAllNodeTransforms", "SAF", PapyrusGetAll, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, UInt32, VMArray<Transform>>("SetAllNodeTransforms", "SAF", PapyrusSetAll, vm));

@@ -1,231 +1,13 @@
 #include "f4se/PluginAPI.h"
-#include "f4se/PapyrusNativeFunctions.h"
-
-#include "f4se/GameData.h"
-#include "f4se/GameSettings.h"
-#include "f4se/GameReferences.h"
-#include "f4se/GameTypes.h"
-#include "f4se/GameMenus.h"
-#include "f4se/NiNodes.h"
-#include "f4se/NiTypes.h"
-#include "f4se/NiObjects.h"
-#include "f4se/InputMap.h"
-#include "f4se/PluginManager.h"
-#include "f4se_common/f4se_version.h"
 
 #include "sam.h"
-#include "scaleform.h"
-#include "pose.h"
-#include "idle.h"
 #include "console.h"
-#include "compatibility.h"
+#include "scaleform.h"
 #include "papyrus.h"
-#include "input.h"
 
-#include "SAF/util.h"
-#include "SAF/adjustments.h"
+#include "f4se_common/f4se_version.h"
 
 #include <shlobj.h>
-#include <string>
-#include <mutex>
-
-PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
-
-F4SEScaleformInterface* g_scaleform = nullptr;
-F4SEMessagingInterface* g_messaging = nullptr;
-F4SEPapyrusInterface* g_papyrus = nullptr;
-F4SESerializationInterface* g_serialization = nullptr;
-F4SEInterface* g_f4se = nullptr;
-
-class SamOpenCloseHandler : public BSTEventSink<MenuOpenCloseEvent>
-{
-public:
-	virtual ~SamOpenCloseHandler() { };
-	virtual	EventResult	ReceiveEvent(MenuOpenCloseEvent * evn, void * dispatcher) override
-	{
-		BSFixedString samMenu("ScreenArcherMenu");
-		BSFixedString photoMenu("PhotoMenu");
-		BSFixedString consoleMenu("Console");
-
-		if (evn->menuName == samMenu) {
-			if (evn->isOpen) {
-				inputHandler.enabled = true;
-				BSInputEventUser* handlerPtr = &inputHandler;
-				int idx = (*g_menuControls)->inputEvents.GetItemIndex(handlerPtr);
-				if (idx == -1) {
-					_DMESSAGE("ScreenArcherMenu Registered for input");
-					(*g_menuControls)->inputEvents.Push(handlerPtr);
-				}
-				OnMenuOpen();
-			} else {
-				OnMenuClose();
-				inputHandler.enabled = false;
-			}
-		} else {
-			if ((*g_ui)->IsMenuOpen(samMenu)) {
-				if (evn->menuName == consoleMenu) {
-					if (evn->isOpen) {
-						inputHandler.enabled = false;
-					} else {
-						OnConsoleUpdate();
-						inputHandler.enabled = true;
-					}
-				}
-			}
-		}
-		return kEvent_Continue;
-	};
-};
-
-SamOpenCloseHandler openCloseHandler;
-
-class SAMEventReciever :
-	public BSTEventSink<TESLoadGameEvent>
-{
-public:
-	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
-	{
-		//RegisterSam();
-		StartSamQuest();
-		return kEvent_Continue;
-	}
-};
-
-SAMEventReciever samEventReciever;
-
-void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
-{
-	switch (msg->type)
-	{
-	case SAF::kSafAdjustmentManager:
-		safAdjustmentManager = static_cast<SAF::AdjustmentManager*>(msg->data);
-		LoadMenuFiles();
-		break;
-	case SAF::kSafAdjustmentActor:
-		safMessageDispatcher.actorAdjustments = *(std::shared_ptr<SAF::ActorAdjustments>*)msg->data;
-		break;
-	case SAF::kSafResult:
-		safMessageDispatcher.result = *(UInt32*)msg->data;
-		break;
-	}
-}
-
-void SafCreateAdjustment(UInt32 formId, const char* name) {
-	SAF::AdjustmentCreateMessage message{ formId, name, "ScreenArcherMenu.esp" };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentCreate, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafSaveAdjustment(UInt32 formId, const char* filename, UInt32 handle)
-{
-	SAF::AdjustmentSaveMessage message{ formId, filename, handle };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentSave, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafLoadAdjustment(UInt32 formId, const char* filename) {
-	SAF::AdjustmentCreateMessage message{ formId, filename, "ScreenArcherMenu.esp" };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafRemoveAdjustment(UInt32 formId, UInt32 handle) {
-	SAF::AdjustmentMessage message{ formId, handle };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentErase, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafResetAdjustment(UInt32 formId, UInt32 handle) {
-	SAF::AdjustmentMessage message{ formId, handle };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentReset, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafTransformAdjustment(UInt32 formId, UInt32 handle, const SAF::NodeKey nodeKey, UInt32 type, float a, float b, float c) {
-	SAF::AdjustmentTransformMessage message{ formId, handle, nodeKey, type, a, b, c };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTransform, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafCreateActorAdjustments(UInt32 formId) {
-	SAF::AdjustmentActorMessage message{ formId };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentActor, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafNegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
-	SAF::AdjustmentNegateMessage message{ formId, handle, group };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentNegate, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafLoadPose(UInt32 formId, const char* filename) {
-	SAF::PoseMessage message{ formId, filename };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseLoad, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafResetPose(UInt32 formId) {
-	SAF::PoseMessage message{ formId, nullptr };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafPoseReset, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafLoadDefaultAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable) {
-	SAF::SkeletonMessage message { raceId, isFemale, filename, npc, clear, enable };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafDefaultAdjustmentLoad, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafMoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) {
-	SAF::MoveMessage message { formId, fromIndex, toIndex };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentMove, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafRenameAdjustment(UInt32 formId, UInt32 handle, const char* name) {
-	SAF::AdjustmentSaveMessage message{ formId, name, handle };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentRename, &message, sizeof(uintptr_t), "SAF");
-}
-
-void SafLoadTongueAdjustment(UInt32 formId, SAF::TransformMap* transforms) {
-	SAF::TransformMapMessage message{ formId, transforms };
-	g_messaging->Dispatch(g_pluginHandle, SAF::kSafAdjustmentTongue, &message, sizeof(uintptr_t), "SAF");
-}
-
-void RegisterSafMessageDispatcher()
-{
-	g_messaging->RegisterListener(g_pluginHandle, "SAF", SAFMessageHandler);
-	safMessageDispatcher.createActorAdjustments = SafCreateActorAdjustments;
-	safMessageDispatcher.createAdjustment = SafCreateAdjustment;
-	safMessageDispatcher.saveAdjustment = SafSaveAdjustment;
-	safMessageDispatcher.loadAdjustment = SafLoadAdjustment;
-	safMessageDispatcher.removeAdjustment = SafRemoveAdjustment;
-	safMessageDispatcher.resetAdjustment = SafResetAdjustment;
-	safMessageDispatcher.transformAdjustment = SafTransformAdjustment;
-	safMessageDispatcher.negateAdjustments = SafNegateAdjustmentGroup;
-	safMessageDispatcher.loadPose = SafLoadPose;
-	safMessageDispatcher.resetPose = SafResetPose;
-	safMessageDispatcher.loadDefaultAdjustment = SafLoadDefaultAdjustment;
-	safMessageDispatcher.moveAdjustment = SafMoveAdjustment;
-	safMessageDispatcher.renameAdjustment = SafRenameAdjustment;
-	safMessageDispatcher.loadTongueAdjustment = SafLoadTongueAdjustment;
-}
-
-void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
-{
-	switch (msg->type)
-	{
-	case F4SEMessagingInterface::kMessage_PostLoad:
-	{
-		if (g_messaging)
-			RegisterSafMessageDispatcher();
-
-		if (g_f4se) {
-			RegisterCompatibility(g_f4se);
-		}
-		break;
-	}
-	case F4SEMessagingInterface::kMessage_GameDataReady:
-	{
-		if (msg->data)
-			(*g_ui)->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
-		break;
-	}
-	case F4SEMessagingInterface::kMessage_GameLoaded:
-	{
-		GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&samEventReciever);
-	}
-	}
-}
 
 extern "C"
 {
@@ -235,13 +17,11 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 	gLog.OpenRelative(CSIDL_MYDOCUMENTS, "\\My Games\\Fallout4\\F4SE\\sam.log");
 	_DMESSAGE("Screen Archer Menu");
 
-	// populate info structure
 	info->infoVersion =	PluginInfo::kInfoVersion;
 	info->name =		"ScreenArcherMenu";
 	info->version =		1;
 
-	// store plugin handle so we can identify ourselves later
-	g_pluginHandle = f4se->GetPluginHandle();
+	samMessaging.pluginHandle = f4se->GetPluginHandle();
 
 	if(f4se->isEditor)
 	{
@@ -254,57 +34,62 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 		return false;
 	}
 
-	g_f4se = (F4SEInterface*)f4se;
+	samMessaging.f4se = (F4SEInterface*)f4se;
 
-	g_scaleform = (F4SEScaleformInterface *)f4se->QueryInterface(kInterface_Scaleform);
-	if (!g_scaleform)
+	samMessaging.scaleform = (F4SEScaleformInterface *)f4se->QueryInterface(kInterface_Scaleform);
+	if (!samMessaging.scaleform)
 	{
 		_FATALERROR("couldn't get scaleform interface");
 		return false;
 	}
 
-	g_messaging = (F4SEMessagingInterface*)f4se->QueryInterface(kInterface_Messaging);
-	if(!g_messaging)
+	samMessaging.messaging = (F4SEMessagingInterface*)f4se->QueryInterface(kInterface_Messaging);
+	if(!samMessaging.messaging)
 	{
 		_FATALERROR("couldn't get messaging interface");
 		return false;
 	}
+	else {
+		safDispatcher.messaging = samMessaging.messaging;
+	}
 
-	g_papyrus = (F4SEPapyrusInterface *)f4se->QueryInterface(kInterface_Papyrus);
-	if(!g_papyrus)
+	samMessaging.papyrus = (F4SEPapyrusInterface *)f4se->QueryInterface(kInterface_Papyrus);
+	if(!samMessaging.papyrus)
 	{
 		_WARNING("couldn't get papyrus interface");
 	}
 
-	g_serialization = (F4SESerializationInterface*)f4se->QueryInterface(kInterface_Serialization);
-	if (!g_serialization) {
+	samMessaging.serialization = (F4SESerializationInterface*)f4se->QueryInterface(kInterface_Serialization);
+	if (!samMessaging.serialization) {
 		_FATALERROR("couldn't get serialization interface");
 		return false;
 	}
 
 	samObScriptInit();
 
-	// supported runtime version
 	return true;
 }
 
 bool F4SEPlugin_Load(const F4SEInterface* f4se)
 {
-	if (g_scaleform) 
-		g_scaleform->Register("ScreenArcherMenu", RegisterScaleform);
+	if (samMessaging.scaleform)
+		samMessaging.scaleform->Register("ScreenArcherMenu", RegisterScaleform);
 
-	if (g_messaging)
-		g_messaging->RegisterListener(g_pluginHandle, "F4SE", F4SEMessageHandler);
+	if (samMessaging.messaging)
+		samMessaging.messaging->RegisterListener(samMessaging.pluginHandle, "F4SE", F4SEMessageHandler);
 
-	if (g_papyrus)
-		g_papyrus->Register(RegisterPapyrus);
+	if (samMessaging.papyrus)
+		samMessaging.papyrus->Register(RegisterPapyrus);
 
-	if (g_serialization) {
-		g_serialization->SetUniqueID(g_pluginHandle, 'SAM');
-		g_serialization->SetSaveCallback(g_pluginHandle, SamSerializeSave);
-		g_serialization->SetLoadCallback(g_pluginHandle, SamSerializeLoad);
-		g_serialization->SetRevertCallback(g_pluginHandle, SamSerializeRevert);
+	if (samMessaging.serialization) {
+		samMessaging.serialization->SetUniqueID(samMessaging.pluginHandle, 'SAM');
+		samMessaging.serialization->SetSaveCallback(samMessaging.pluginHandle, SamSerializeSave);
+		samMessaging.serialization->SetLoadCallback(samMessaging.pluginHandle, SamSerializeLoad);
+		samMessaging.serialization->SetRevertCallback(samMessaging.pluginHandle, SamSerializeRevert);
 	}
+
+	safDispatcher.handle = samMessaging.pluginHandle;
+	safDispatcher.modName = "ScreenArcherMenu.esp";
 
 	samObScriptCommit();
 		

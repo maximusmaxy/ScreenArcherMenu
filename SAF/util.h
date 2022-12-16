@@ -1,18 +1,18 @@
 #pragma once
 
 #include "f4se/NiTypes.h"
+
+#include "conversions.h"
 #include "adjustments.h"
 
-void _Log(std::string msg, UInt64 num);
+void _Logs(std::string msg, std::string msg2);
+void _Logi(std::string msg, UInt64 num);
 void _Logf(std::string msg, float num);
 
-UInt32 GetFormId(std::string modName, UInt32 formId);
-UInt32 GetFormId(std::string modName, std::string idString);
+UInt32 GetFormId(const char* modName, UInt32 formId);
+UInt32 GetFormId(const char* modName, const char* idString);
 UInt32 GetModId(UInt32 formId);
 UInt32 GetBaseId(UInt32 formId);
-
-bool TransformIsDefault(NiTransform& transform);
-bool TransformMapIsDefault(SAF::TransformMap& map);
 
 float Modulo(float a, float b);
 

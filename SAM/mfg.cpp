@@ -23,26 +23,39 @@ RelocAddr<UInt64> faceGenAnimDataVfTable(0x2CE9C58);
 std::regex mfgRegex("\\s*mfg\\s+morphs\\s+(\\d+)\\s+(\\d+).*"); //mfg morphs (n) (n)
 std::regex tongueRegex("\\s*;tongue\\s+(\\d+)\\s+(\\w+)\\s+(\\S+)"); //;tongue (n) (w) (f)
 
+#define TONGUE_NODES_SIZE 5
+#define MORPH_MAX 54
+
 float* GetMorphPointer() {
-	if (!selected.refr) return nullptr;
+	if (!selected.refr) 
+		return nullptr;
+
 	Actor::MiddleProcess* middleProcess = ((Actor*)selected.refr)->middleProcess;
-	if (!middleProcess) return nullptr;
+	if (!middleProcess) 
+		return nullptr;
+
 	Actor::MiddleProcess::Data08* middleProcessData = middleProcess->unk08;
-	if (!middleProcessData) return nullptr;
+	if (!middleProcessData) 
+		return nullptr;
+
 	BSFaceGenAnimationData* faceGenAnimData = (BSFaceGenAnimationData*)middleProcessData->unk3B0[3];
-	if (!faceGenAnimData || faceGenAnimData->vfTable != faceGenAnimDataVfTable) return nullptr;
+	if (!faceGenAnimData || faceGenAnimData->vfTable != faceGenAnimDataVfTable) 
+		return nullptr;
+
 	return faceGenAnimData->mfgMorphs;
 }
 
 void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale)
 {
 	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
-	if (!menu) return;
+	if (!menu) 
+		return;
 
 	float* ptr = GetMorphPointer();
-	if (!ptr) return;
+	if (!ptr) 
+		return;
 
-	UInt32 key = std::stoul((*menu)[categoryIndex].second[morphIndex].second);
+	UInt32 key = std::stoul((*menu)[categoryIndex].second[morphIndex].first);
 
 	ptr[key] = scale * 0.0099999998f;
 
@@ -86,9 +99,24 @@ struct TongueTransform {
 
 SAF::NodeKey GetTongueNodeKey(int i)
 {
-	char tongueStr[10] = "Tongue_00";
-	tongueStr[8] = static_cast<char>(i + 0x30); //int to char for second digit
-	return SAF::NodeKey(BSFixedString(tongueStr), false);
+	if (!selected.refr || i < 0 || i >= TONGUE_NODES_SIZE)
+		return SAF::NodeKey();
+
+	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments)
+		return SAF::NodeKey();
+
+	//Find the first available tongue category
+	for (auto& tongue : tongueMenuCache) {
+		if (CheckMenuHasNode(adjustments, tongue.second)) 
+		{
+			if (i < tongue.second.size()) {
+				return SAF::NodeKey(tongue.second[i].first.c_str(), false);
+			}
+		}
+	}
+
+	return SAF::NodeKey();
 }
 
 void SaveMfg(std::string filename) {
@@ -108,7 +136,7 @@ void SaveMfg(std::string filename) {
 
 	std::stringstream ss;
 
-	for (int i = 0; i < 54; ++i) {
+	for (int i = 0; i < MORPH_MAX; ++i) {
 		UInt32 scale = std::round(ptr[i] * 100);
 		scale = max(0, min(100, scale));
 		if (scale != 0) {
@@ -117,22 +145,22 @@ void SaveMfg(std::string filename) {
 	}
 
 	//Get tongue transforms
-	auto adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (adjustments && adjustments->baseMap) {
 		UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (adjustment) {
-			for (int i = 0; i < 5; ++i) {
+			for (int i = 0; i < TONGUE_NODES_SIZE; ++i) {
 				SAF::NodeKey nodeKey = GetTongueNodeKey(i);
 
 				//Save as pose instead of adjustment to prevent errors caused by underlying animation
-				NiTransform* transform = adjustment->GetTransform(nodeKey);
+				SAF::SamTransform* transform = adjustment->GetTransform(nodeKey);
 
-				if (transform && !TransformIsDefault(*transform)) {
-					NiAVObject* baseNode = SAF::GetFromNodeMap(*adjustments->baseMap, nodeKey.name);
+				if (transform && !transform->IsDefault()) {
+					SAF::SamTransform* baseNode = SAF::GetFromTransformMap(*adjustments->baseMap, nodeKey);
 					if (baseNode) {
 
-						NiTransform result = SAF::MultiplyNiTransform(baseNode->m_localTransform, *transform);
+						SAF::SamTransform result = *baseNode * *transform;
 
 						ss << ";tongue " << i << " x " << result.pos.x << std::endl;
 						ss << ";tongue " << i << " y " << result.pos.y << std::endl;
@@ -153,7 +181,6 @@ void SaveMfg(std::string filename) {
 	file.Close();
 }
 
-
 bool LoadMfg(std::string filename) {
 	float* ptr = GetMorphPointer();
 	if (!ptr) return false;
@@ -165,14 +192,14 @@ bool LoadMfg(std::string filename) {
 	IFileStream file;
 
 	if (!file.Open(path.c_str())) {
-		_DMESSAGE("File not found");
+		_Logs(path, " file not found");
 		return false;
 	}
 
 	char buf[512];
 	std::cmatch match;
 
-	float morphs[54];
+	float morphs[MORPH_MAX];
 	std::memset(morphs, 0, sizeof(morphs));
 
 	bool blinkHack = false;
@@ -184,7 +211,7 @@ bool LoadMfg(std::string filename) {
 		file.ReadString(buf, 512, '\n', '\r');
 		if (std::regex_match(buf, match, mfgRegex)) {
 			try {
-				int id = max(0, min(53, std::stoi(match[1].str())));
+				int id = max(0, min(MORPH_MAX - 1, std::stoi(match[1].str())));
 				int scale = max(0, min(100, std::stoi(match[2].str())));
 
 				morphs[id] = scale * 0.0099999998f;
@@ -209,8 +236,8 @@ bool LoadMfg(std::string filename) {
 
 					std::string lower = toLower(match[2].str());
 					auto tongueProperty = tonguePropertyMap.find(lower);
-					if (tongueProperty != tonguePropertyMap.end()) {
-
+					if (tongueProperty != tonguePropertyMap.end()) 
+					{
 						float value = std::stof(match[3].str());
 
 						switch (tongueProperty->second) {
@@ -234,14 +261,14 @@ bool LoadMfg(std::string filename) {
 	file.Close();
 
 	//set the morphs
-	for (int i = 0; i < 54; ++i) {
+	for (int i = 0; i < MORPH_MAX; ++i) {
 		ptr[i] = morphs[i];
 	}
 
 	//build the transform map
 	SAF::TransformMap transformMap;
 
-	for (int i = 0; i < 5; ++i) {
+	for (int i = 0; i < TONGUE_NODES_SIZE; ++i) {
 		NiTransform transform;
 		transform.pos = NiPoint3(tongues[i].x, tongues[i].y, tongues[i].z);
 		SAF::MatrixFromEulerYPR2(transform.rot,
@@ -251,7 +278,7 @@ bool LoadMfg(std::string filename) {
 		transformMap.emplace(GetTongueNodeKey(i), transform);
 	}
 
-	safMessageDispatcher.loadTongueAdjustment(selected.refr->formID, &transformMap);
+	safDispatcher.LoadTongueAdjustment(selected.refr->formID, &transformMap);
 
 	if (blinkHack && GetBlinkState() != kHackEnabled)
 		SetBlinkState(true);
@@ -266,22 +293,50 @@ void ResetMfg() {
 	float* ptr = GetMorphPointer();
 	if (!ptr) return;
 
-	memset(ptr, 0, sizeof(float) * 54);
+	memset(ptr, 0, sizeof(float) * MORPH_MAX);
 
 	//send a nullptr to clear the tongue adjustment
-	safMessageDispatcher.loadTongueAdjustment(selected.refr->formID, nullptr);
+	safDispatcher.LoadTongueAdjustment(selected.refr->formID, nullptr);
 }
 
 void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 {
-	root->CreateArray(result);
-	
-	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
-	if (!menu) return;
+	root->CreateObject(result);
 
-	for (auto& kvp : *menu) {
-		GFxValue category(kvp.first.c_str());
-		result->PushBack(&category);
+	GFxValue names;
+	root->CreateArray(&names);
+	result->SetMember("names", &names);
+
+	GFxValue values;
+	root->CreateArray(&values);
+	result->SetMember("values", &values);
+
+	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
+	if (!menu) 
+		return;
+
+	for (auto& kvp : *menu) 
+	{
+		names.PushBack(&GFxValue(kvp.first.c_str()));
+		values.PushBack(&GFxValue((SInt32)-1));
+	}
+
+	//Need to check actors skeleton to see if the menu has 
+	if (!selected.refr) 
+		return;
+
+	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) 
+		return;
+
+	for (SInt32 i = 0; i < tongueMenuCache.size(); i++) 
+	{
+		auto tongue = &tongueMenuCache[i];
+		if (CheckMenuHasNode(adjustments, tongue->second)) 
+		{
+			names.PushBack(&GFxValue(tongue->first.c_str()));
+			values.PushBack(&GFxValue(i));
+		}
 	}
 }
 
@@ -291,9 +346,11 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 
 	GFxValue names;
 	root->CreateArray(&names);
+	result->SetMember("names", &names);
 	
 	GFxValue values;
 	root->CreateArray(&values);
+	result->SetMember("values", &values);
 
 	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
 	if (!menu || categoryIndex >= menu->size()) return;
@@ -302,39 +359,78 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 	if (!ptr) return;
 
 	for (auto& kvp : (*menu)[categoryIndex].second) {
-		GFxValue name(kvp.first.c_str());
+		GFxValue name(kvp.second.c_str());
 		names.PushBack(&name);
 
 		UInt32 key = std::stoul(kvp.second);
-		key = max(0, min(53, key));
+		key = max(0, min(MORPH_MAX - 1, key));
 
 		GFxValue value((SInt32)std::round(ptr[key] * 100));
 		values.PushBack(&value);
 	}
+}
+
+void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
+{
+	root->CreateArray(result);
+
+	GFxValue names;
+	root->CreateArray(&names);
+
+	GFxValue values;
+	root->CreateArray(&values);
 
 	result->SetMember("names", &names);
 	result->SetMember("values", &values);
+
+	if (!selected.refr) 
+		return;
+
+	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!adjustments) 
+		return;
+
+	auto category = &(tongueMenuCache)[categoryIndex].second;
+
+	int size = category->size();
+	for (SInt32 i = 0; i < size; ++i)
+	{
+		if (adjustments->HasNode((*category)[i].first.c_str())) {
+			GFxValue node((*category)[i].second.c_str());
+			names.PushBack(&node);
+			GFxValue index(i);
+			values.PushBack(&index);
+		}
+	}
 }
 
 //need to get or create the new tongue adjustment and pass back the menu info to get the correct node
-void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 tongueIndex)
+void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex)
 {
 	root->CreateArray(result);
 
 	if (!selected.refr)
 		return;
 
-	auto adjustments = safMessageDispatcher.GetActorAdjustments(selected.refr->formID);
+	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
 	if (!adjustments)
 		return;
 
-	SAF::NodeKey nodeKey = GetTongueNodeKey(tongueIndex);
+	if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
+		return;
+
+	auto category = &tongueMenuCache[categoryIndex].second;
+
+	if (tongueIndex < 0 || tongueIndex >= category->size())
+		return;
+
+	SAF::NodeKey nodeKey((*category)[tongueIndex].first.c_str(), false);
 
 	//if no tongue handle, create
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 	if (!tongueHandle) {
-		safMessageDispatcher.createAdjustment(selected.refr->formID, "Face Morphs Tongue");
-		tongueHandle = safMessageDispatcher.GetResult();
+		safDispatcher.CreateAdjustment(selected.refr->formID, "Face Morphs Tongue");
+		tongueHandle = safDispatcher.GetResult();
 
 		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (!adjustment)

@@ -2,10 +2,11 @@
 
 #include "f4se/GameMenus.h"
 #include "f4se/GameData.h"
+#include "f4se/GameTypes.h"
+#include "f4se/GameRTTI.h"
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformLoader.h"
-#include "f4se/GameRTTI.h"
 #include "f4se/PluginManager.h"
 #include "f4se/CustomMenu.h"
 #include "f4se/Serialization.h"
@@ -31,6 +32,8 @@
 #include "camera.h"
 #include "lights.h"
 #include "papyrus.h"
+#include "scripts.h"
+#include "input.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -40,140 +43,22 @@ SelectedRefr selected;
 MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
 MenuCache groupsMenuCache;
-MenuCategoryList lightsMenuCache;
 MenuCache exportMenuCache;
 
-SavedMenuData saveData;
+MenuCategoryList lightsMenuCache;
+MenuCategoryList tongueMenuCache;
 
-bool menuOpened = false;
+SamManager samManager;
+
+RelocPtr <BSReadWriteLock> uiMessageLock(0x65774B0);
 
 bool NaturalSort::operator() (const std::string& a, const std::string& b) const 
 {
 	return strnatcasecmp(a.c_str(), b.c_str()) < 0;
 }	
 
-//SamMenu::SamMenu() : GameMenuBase() {
-//	static BSFixedString menuName("ScreenArcherMenu");
-//	static BSFixedString menuRoot("root1.Menu_mc");
-//
-//	UInt32 flags = 0x8018494;
-//	UInt32 movieFlags = 3;
-//	UInt32 extFlags = 3;
-//	UInt32 depth = 6;
-//
-//	if ((flags & IMenu::kFlag_UsesCursor) && (extFlags & CustomMenuData::kExtFlag_CheckForGamepad))
-//	{
-//		if ((*g_inputDeviceMgr)->IsGamepadEnabled())
-//			flags &= ~IMenu::kFlag_UsesCursor;
-//	}
-//
-//	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, menuName.c_str(), menuRoot.c_str(), movieFlags))
-//	{
-//		stage.SetMember("menuFlags", &GFxValue(flags));
-//		stage.SetMember("movieFlags", &GFxValue(movieFlags));
-//		stage.SetMember("extendedFlags", &GFxValue(extFlags));
-//
-//		CreateBaseShaderTarget(filterHolder, stage);
-//
-//		if (extFlags & CustomMenuData::kExtFlag_InheritColors)
-//		{
-//			filterHolder->SetFilterColor(false);
-//			(*g_colorUpdateDispatcher)->eventDispatcher.AddEventSink(filterHolder);
-//		}
-//
-//		if (flags & IMenu::kFlag_CustomRendering)
-//		{
-//			shaderFXObjects.Push(filterHolder);
-//		}
-//	}
-//}
-//
-//void SamMenu::RegisterFunctions()
-//{
-//	RegisterNativeFunction("PlaySound", 0);
-//	RegisterNativeFunction("OpenMenu", 1);
-//	RegisterNativeFunction("CloseMenu", 2);
-//}
-//
-//void SamMenu::Invoke(Args* args)
-//{
-//	switch (args->optionID)
-//	{
-//	case 0:
-//	{
-//		if (args->numArgs >= 1)
-//		{
-//			if (args->args[0].IsString())
-//				PlayUISound(args->args[0].GetString());
-//		}
-//	}
-//	break;
-//	case 1:
-//	{
-//		if (args->numArgs >= 1)
-//		{
-//			if (args->args[0].IsString())
-//			{
-//				BSFixedString menuName(args->args[0].GetString());
-//				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
-//			}
-//		}
-//	}
-//	break;
-//	case 2:
-//	{
-//		if (args->numArgs >= 1)
-//		{
-//			if (args->args[0].IsString())
-//			{
-//				BSFixedString menuName(args->args[0].GetString());
-//				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
-//			}
-//		}
-//	}
-//	break;
-//	default:
-//		break;
-//	}
-//}
-//
-//IMenu* CreateSamMenu() {
-//	return new SamMenu();
-//}
-//
-//void RegisterSam()
-//{
-//	static BSFixedString menuName("ScreenArcherMenu");
-//
-//	if (!(*g_ui)->IsMenuRegistered(menuName))
-//	{
-//		(*g_ui)->Register(menuName.c_str(), CreateSamMenu);
-//	}
-//}
-
 void StartSamQuest()
 {
-	//UInt32 id = GetFormId("ScreenArcherMenu.esp", 0x800); //ScreenArcherMenu Quest Form
-	//if (id) {
-	//	TESForm* form = LookupFormByID(id);
-	//	TESQuest* quest = DYNAMIC_CAST(form, TESForm, TESQuest);
-
-	//	//if the quest is completed or not running, restart it
-	//	if (quest && (quest->IsCompleted() || !(quest->flags & 0x1))) {
-
-	//		//Clear the run once flag on the quest
-	//		UInt64 runOnce = quest->unk0F8[(0x2B0 - 0xF8) >> 3];
-	//		UInt64 cleared = (runOnce & (~(0x0001000000000000)));
-	//		quest->unk0F8[(0x2B0 - 0xF8) >> 3] = cleared;
-
-	//		static BSFixedString startQuest("StartQuest");
-	//		CallSamGlobal(startQuest);
-
-	//		//Reenabled the run once flag
-	//		quest->unk0F8[(0x2B0 - 0xF8) >> 3] = runOnce;
-	//	}
-	//}
-
 	//If sam still isn't registered, force register it
 	static BSFixedString forceRegister("ForceRegister");
 	CallSamGlobal(forceRegister);
@@ -190,6 +75,221 @@ GFxMovieRoot* GetRoot(BSFixedString name)
 		return nullptr;
 
 	return view->movieRoot;
+}
+
+void SamManager::SetOpen(bool isOpen)
+{
+	//BSWriteLocker locker(g_menuTableLock);
+	std::lock_guard<std::mutex> lock(mutex);
+
+	menuOpened = isOpen;
+}
+
+void SamManager::OpenMenu(BSFixedString menuName)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	if ((*g_ui)->IsMenuRegistered(menuName) && !(*g_ui)->IsMenuOpen(menuName)) {
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
+	}
+}
+
+void SamManager::CloseMenu(BSFixedString menuName)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	if ((*g_ui)->IsMenuRegistered(menuName)) {
+		menuOpened = false;
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+	}
+}
+
+void SamManager::TryClose(BSFixedString menuName)
+{
+	//BSWriteLocker locker(g_menuTableLock);
+	std::lock_guard<std::mutex> lock(mutex);
+
+	bool result = false;
+	if (menuOpened) {
+
+		IMenu* menu = (*g_ui)->GetMenu(menuName);
+		if (menu) {
+
+			GFxMovieView* view = menu->movie;
+			if (view) {
+
+				GFxMovieRoot* root = view->movieRoot;
+				if (root) {
+
+					GFxValue gfxResult;
+					root->Invoke("root1.Menu_mc.tryClose", &gfxResult, nullptr, 0);
+					result = gfxResult.GetBool();
+				}
+			}
+		}
+
+		if (result) {
+			menuOpened = false;
+			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+		}
+	}
+}
+
+void SamManager::Invoke(BSFixedString menuName, const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs)
+{
+	//BSReadLocker locker(g_menuTableLock);
+	std::lock_guard<std::mutex> lock(mutex);
+
+	if (menuOpened) {
+		GFxMovieRoot* root = GetRoot(menuName);
+		if (root)
+			root->Invoke(name, result, args, numArgs);
+	}
+}
+
+void SamManager::SetVariable(BSFixedString menuName, const char* pVarPath, const GFxValue* value, UInt32 setType)
+{
+	//BSReadLocker locker(g_menuTableLock);
+	std::lock_guard<std::mutex> lock(mutex);
+
+	if (menuOpened) {
+		GFxMovieRoot* root = GetRoot(menuName);
+		if (root)
+			root->SetVariable(pVarPath, value, setType);
+	}
+}
+
+Json::Value GetJsonValue(GFxValue* value)
+{
+	switch (value->GetType()) {
+	case GFxValue::kType_Bool:
+		return Json::Value(value->GetBool());
+	case GFxValue::kType_Int:
+		return Json::Value(value->GetInt());
+	case GFxValue::kType_UInt:
+	{
+		UInt64 uint = value->GetUInt();
+		return Json::Value(uint);
+	}
+	case GFxValue::kType_Number:
+		return Json::Value(value->GetNumber());
+	case GFxValue::kType_String:
+		return Json::Value(value->GetString());
+	case GFxValue::kType_Array:
+	{
+		Json::Value arr;
+		SavedDataArrVisitor arrVisitor(arr);
+		value->VisitElements(&arrVisitor, 0, value->GetArraySize());
+		return arr;
+	}
+	case GFxValue::kType_Object:
+	{
+		Json::Value obj;
+		SavedDataObjVisitor visitor(obj);
+		value->VisitMembers(&visitor);
+		return obj;
+	}
+	default:
+		return Json::Value(Json::ValueType::nullValue);
+	}
+}
+
+void SavedDataObjVisitor::Visit(const char* member, GFxValue* value) {
+	json[member] = GetJsonValue(value);
+}
+
+void SavedDataArrVisitor::Visit(UInt32 idx, GFxValue* value) {
+	json[(int)idx] = GetJsonValue(value);
+}
+
+void SamManager::SaveData(GFxValue* saveData)
+{
+	BSReadLocker locker(g_menuTableLock);
+	//std::lock_guard<std::mutex> lock(mutex);
+
+	if (!selected.refr) return;
+
+	//copying to a json for saved menu data instead of trying to understand how GFx managed memory works
+	data.clear();
+	SavedDataObjVisitor visitor(data);
+	saveData->VisitMembers(&visitor);
+
+	refr = selected.refr;
+}
+
+bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
+{
+	BSReadLocker locker(g_menuTableLock);
+	//std::lock_guard<std::mutex> lock(mutex);
+
+	//if ref updated save data is invalidated so ignore
+	if (!refr || selected.refr != refr) {
+		ClearData();
+		return false;
+	}
+
+	root->CreateObject(result);
+
+	Json::Value::Members memberNames = data.getMemberNames();
+
+	for (auto& name : memberNames) {
+		GFxValue GFxMember;
+		GetGFxValue(root, &GFxMember, data[name]);
+		result->SetMember(name.c_str(), &GFxMember);
+	}
+
+	ClearData();
+	return true;
+}
+
+void SamManager::ClearData()
+{
+	refr = nullptr;
+}
+
+void SamManager::GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value) {
+	switch (value.type()) {
+	case Json::ValueType::booleanValue:
+		result->SetBool(value.asBool());
+		break;
+	case Json::ValueType::intValue:
+		result->SetInt((SInt32)value.asInt());
+		break;
+	case Json::ValueType::uintValue:
+		result->SetUInt((UInt32)value.asUInt());
+		break;
+	case Json::ValueType::realValue:
+		result->SetNumber(value.asDouble());
+		break;
+	case Json::ValueType::stringValue:
+		result->SetString(value.asCString());
+		break;
+	case Json::ValueType::arrayValue:
+	{
+		root->CreateArray(result);
+
+		for (auto& member : value) {
+			GFxValue arrValue;
+			GetGFxValue(root, &arrValue, member);
+			result->PushBack(&arrValue);
+		}
+
+		break;
+	}
+	case Json::ValueType::objectValue:
+	{
+		root->CreateObject(result);
+
+		Json::Value::Members memberNames = value.getMemberNames();
+		for (auto& member : memberNames) {
+			GFxValue  objValue;
+			GetGFxValue(root, &objValue, value[member]);
+			result->SetMember(member.c_str(), &objValue);
+		}
+
+		break;
+	}
+	}
 }
 
 MenuCategoryList* GetMenu(MenuCache* cache)
@@ -214,22 +314,6 @@ MenuCategoryList* GetMenu(MenuCache* cache)
 		return &(*cache)[race];
 
 	return nullptr;
-}
-
-void OpenMenu(const char* name)
-{
-	BSFixedString menuName(name);
-	if ((*g_ui)->IsMenuRegistered(menuName) && !(*g_ui)->IsMenuOpen(menuName)) {
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
-	}
-}
-
-void CloseMenu(const char* name)
-{
-	BSFixedString menuName(name);
-	if ((*g_ui)->IsMenuRegistered(menuName) && (*g_ui)->IsMenuOpen(menuName)) {
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
-	}
 }
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
@@ -297,7 +381,6 @@ void SelectedRefr::Update(TESObjectREFR* newRefr) {
 		return;
 	}
 	refr = newRefr;
-	eyeNode = GetEyeNode(refr);
 	TESNPC* npc = (TESNPC*)refr->baseForm;
 	if (npc) {
 		isFemale = (CALL_MEMBER_FN(npc, GetSex)() == 1 ? true : false);
@@ -315,7 +398,6 @@ void SelectedRefr::Update(TESObjectREFR* newRefr) {
 
 void SelectedRefr::Clear() {
 	refr = nullptr;
-	eyeNode = nullptr;
 }
 
 void GetMenuTarget(GFxValue& data) {
@@ -335,23 +417,16 @@ void GetMenuTarget(GFxValue& data) {
 }
 
 void OnMenuOpen() {
-	//_DMESSAGE("Menu opened");
-
 	static BSFixedString samMenu("ScreenArcherMenu");
 	static BSFixedString photoMenu("PhotoMenu");
 
-	if (menuOpened) {
-		_DMESSAGE("Tried to open an already open menu");
-		return;
-	}
+	samManager.SetOpen(true);
 
 	GFxMovieRoot* root = GetRoot(samMenu);
 	if (!root) {
 		_DMESSAGE("Could not find screen archer menu");
 		return;
 	}
-
-	menuOpened = true;
 
 	//Store ffc lock state and lock screen
 	LockFfc(true);
@@ -374,7 +449,7 @@ void OnMenuOpen() {
 	GetMenuTarget(data);
 
 	GFxValue saved;
-	if (saveData.Load(root, &saved)) {
+	if (samManager.LoadData(root, &saved)) {
 		data.SetMember("saved", &saved);
 	}
 
@@ -384,18 +459,11 @@ void OnMenuOpen() {
 	GFxValue alignment(GetMenuOption(kOptionAlignment));
 	data.SetMember("swap", &alignment);
 
-	root->Invoke("root1.Menu_mc.menuOpened", nullptr, &data, 1);
+	samManager.Invoke(samMenu, "root1.Menu_mc.menuOpened", nullptr, &data, 1);
 }
 
 void OnMenuClose() {
-	//_DMESSAGE("Menu closed");
-
 	static BSFixedString photoMenu("PhotoMenu");
-
-	if (!menuOpened) {
-		_DMESSAGE("Tried to close an unopened menu");
-		return;
-	}
 
 	//Restore ffc lock
 	LockFfc(false);
@@ -405,9 +473,9 @@ void OnMenuClose() {
 
 	selected.Clear();
 
-	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
+	SetMenusHidden(false);
 
-	menuOpened = false;
+	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
 }
 
 void OnConsoleUpdate() {
@@ -449,7 +517,7 @@ void OnConsoleUpdate() {
 
 	GetMenuTarget(data);
 
-	root->Invoke("root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
+	samManager.Invoke(samMenu, "root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
 }
 
 void ToggleMenu() {
@@ -457,13 +525,10 @@ void ToggleMenu() {
 
 	if ((*g_ui)->IsMenuRegistered(menuName)) {
 		if ((*g_ui)->IsMenuOpen(menuName)) {
-			GFxMovieRoot* root = GetRoot(menuName);
-			if (root) {
-				root->Invoke("root1.Menu_mc.tryClose", nullptr, nullptr, 0);
-			}
+			samManager.TryClose(menuName);
 		}
 		else {
-			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
+			samManager.OpenMenu(menuName);
 		}
 	}
 }
@@ -478,136 +543,101 @@ bool OpenSamFile(std::string filename) {
 	return false;
 }
 
-class SavedDataVisitor : public GFxValue::ObjectInterface::ObjVisitor
+SAMMessaging samMessaging;
+SAF::SAFDispatcher safDispatcher;
+
+class SamOpenCloseHandler : public BSTEventSink<MenuOpenCloseEvent>
 {
 public:
-	SavedDataVisitor(Json::Value& json) : json(json) {};
+	virtual ~SamOpenCloseHandler() { };
+	virtual	EventResult	ReceiveEvent(MenuOpenCloseEvent* evn, void* dispatcher) override
+	{
+		BSFixedString samMenu("ScreenArcherMenu");
+		BSFixedString photoMenu("PhotoMenu");
+		BSFixedString consoleMenu("Console");
 
-	Json::Value& json;
-
-	void Visit(const char* member, GFxValue* value) {
-		json[member] = GetJsonValue(value);
-	}
-
-private:
-	Json::Value GetJsonValue(GFxValue* value) {
-		switch (value->GetType()) {
-		case GFxValue::kType_Bool:
-			return Json::Value(value->GetBool());
-		case GFxValue::kType_Int:
-			return Json::Value(value->GetInt());
-		case GFxValue::kType_UInt:
-		{
-			UInt64 uint = value->GetUInt();
-			return Json::Value(uint);
-		}
-		case GFxValue::kType_Number:
-			return Json::Value(value->GetNumber());
-		case GFxValue::kType_String:
-			return Json::Value(value->GetString());
-		case GFxValue::kType_Array:
-		{
-			Json::Value arr(Json::ValueType::arrayValue);
-			UInt32 size = value->GetArraySize();
-			for (int i = 0; i < size; ++i) {
-				GFxValue arrValue;
-				value->GetElement(i, &arrValue);
-				arr[i] = GetJsonValue(&arrValue);
+		if (evn->menuName == samMenu) {
+			if (evn->isOpen) {
+				inputHandler.enabled = true;
+				BSInputEventUser* handlerPtr = &inputHandler;
+				int idx = (*g_menuControls)->inputEvents.GetItemIndex(handlerPtr);
+				if (idx == -1) {
+					_DMESSAGE("ScreenArcherMenu Registered for input");
+					(*g_menuControls)->inputEvents.Push(handlerPtr);
+				}
+				OnMenuOpen();
 			}
-			return arr;
+			else {
+				OnMenuClose();
+				inputHandler.enabled = false;
+			}
 		}
-		case GFxValue::kType_Object:
-		{
-			Json::Value obj;
-			SavedDataVisitor visitor(obj);
-			value->VisitMembers(&visitor);
-			return obj;
+		else {
+			if ((*g_ui)->IsMenuOpen(samMenu)) {
+				if (evn->menuName == consoleMenu) {
+					if (evn->isOpen) {
+						inputHandler.enabled = false;
+					}
+					else {
+						OnConsoleUpdate();
+						inputHandler.enabled = true;
+					}
+				}
+			}
 		}
-		default:
-			return Json::Value(Json::ValueType::nullValue);
-		}
+		return kEvent_Continue;
+	};
+};
+
+SamOpenCloseHandler openCloseHandler;
+
+class SAMEventReciever :
+	public BSTEventSink<TESLoadGameEvent>
+{
+public:
+	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
+	{
+		//RegisterSam();
+		StartSamQuest();
+		return kEvent_Continue;
 	}
 };
 
-void SavedMenuData::Save(GFxValue* saveData) {
-	if (!selected.refr) return;
+SAMEventReciever samEventReciever;
 
-	//copying to a json for saved menu data instead of trying to understand how GFx managed memory works
-	data.clear();
-	SavedDataVisitor visitor(data);
-	saveData->VisitMembers(&visitor);
-
-	refr = selected.refr;
+void SAFDispatchReciever(F4SEMessagingInterface::Message* msg)
+{
+	safDispatcher.Recieve(msg);
+	if (msg->type == SAF::kSafAdjustmentManager) {
+		LoadMenuFiles();
+	}
 }
 
-bool SavedMenuData::Load(GFxMovieRoot* root, GFxValue* result) {
-	//if ref updated save data is invalidated so ignore
-	if (!refr || selected.refr != refr) {
-		Clear();
-		return false;
-	}
-
-	root->CreateObject(result);
-	
-	Json::Value::Members memberNames = data.getMemberNames();
-
-	for (auto& name : memberNames) {
-		GFxValue GFxMember;
-		GetGFxValue(root, &GFxMember, data[name]);
-		result->SetMember(name.c_str(), &GFxMember);
-	}
-
-	Clear();
-	return true;
-}
-
-void SavedMenuData::GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value) {
-	switch (value.type()) {
-	case Json::ValueType::booleanValue:
-		result->SetBool(value.asBool());
-		break;
-	case Json::ValueType::intValue:
-		result->SetInt((SInt32)value.asInt());
-		break;
-	case Json::ValueType::uintValue:
-		result->SetUInt((UInt32)value.asUInt());
-		break;
-	case Json::ValueType::realValue:
-		result->SetNumber(value.asDouble());
-		break;
-	case Json::ValueType::stringValue:
-		result->SetString(value.asCString());
-		break;
-	case Json::ValueType::arrayValue:
+void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
+{
+	switch (msg->type)
 	{
-		root->CreateArray(result);
-
-		for (auto& member : value) {
-			GFxValue arrValue;
-			GetGFxValue(root, &arrValue, member);
-			result->PushBack(&arrValue);
-		}
-
-		break;
-	}
-	case Json::ValueType::objectValue:
+	case F4SEMessagingInterface::kMessage_PostLoad:
 	{
-		root->CreateObject(result);
+		if (samMessaging.messaging)
+			samMessaging.messaging->RegisterListener(samMessaging.pluginHandle, "SAF", SAFDispatchReciever);
 
-		Json::Value::Members memberNames = value.getMemberNames();
-		for (auto& member : memberNames) {
-			GFxValue  objValue;
-			GetGFxValue(root, &objValue, value[member]);
-			result->SetMember(member.c_str(), &objValue);
+		if (samMessaging.f4se) {
+			RegisterCompatibility(samMessaging.f4se);
 		}
-
 		break;
 	}
+	case F4SEMessagingInterface::kMessage_GameDataReady:
+	{
+		if (msg->data)
+			(*g_ui)->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
+		break;
 	}
-}
-
-void SavedMenuData::Clear() {
-	refr = nullptr;
+	case F4SEMessagingInterface::kMessage_GameLoaded:
+	{
+		GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&samEventReciever);
+	}
+	}
 }
 
 enum {
@@ -615,173 +645,139 @@ enum {
 	kMenuTypeMorphs,
 	kMenuTypeGroups,
 	kMenuTypeLights,
-	kMenuTypeExport
+	kMenuTypeExport,
+	kMenuTypeTongue
 };
 
-std::unordered_map<std::string, UInt32> menuTypeMap = {
+SAF::InsensitiveUInt32Map samTypeMap = {
 	{"pose", kMenuTypePose},
 	{"morphs", kMenuTypeMorphs},
 	{"groups", kMenuTypeGroups},
 	{"lights", kMenuTypeLights},
-	{"export", kMenuTypeExport}
+	{"export", kMenuTypeExport},
+	{"tongue", kMenuTypeTongue},
 };
 
-bool ParseMenuFile(std::string path, IFileStream& file) {
+class SamTsvReader : public SAF::TsvReader {
+public:
 
-	char buf[512];
-	std::cmatch match;
-	std::string categoryIdentifier = "Category";
-	MenuCategoryList* menu = nullptr;
-	MenuHeader header;
-	UInt32 categoryIndex = 0;
-	const ModInfo* mod; 
+	const ModInfo* mod;
+	MenuCategoryList* menu;
 
-	try {
-		while (!file.HitEOF()) {
-			file.ReadString(buf, 512, '\n', '\r');
-			if (std::regex_search(buf, match, tabOptionalRegex)) {
-				if (match[1].str() == categoryIdentifier) {
+	SamTsvReader(std::string path, SAF::InsensitiveUInt32Map* typeMap) :
+		SAF::TsvReader(path, typeMap),
+		mod(nullptr),
+		menu(nullptr)
+	{};
 
-					//After reaching the first category, validate the header and either break or continue
-					if (!menu) 
-					{
-						if (!header.type) 
-						{
-							_DMESSAGE("Failed to read header type", path);
-							return false;
-						}
-
-						UInt32 key = 0;
-
-						if (header.type == kMenuTypeLights)
-						{
-							mod = (*g_dataHandler)->LookupModByName(header.mod.c_str());
-							if (!mod || mod->modIndex == 0xFF) 
-							{
-								_DMESSAGE("Failed to read header mod", path);
-								return false;
-							}
-
-							UInt32 modId = (mod->recordFlags & (1 << 9)) ? ((0xFE << 24) | (mod->lightIndex << 12)) : (mod->modIndex << 24);
-							lightModMap.emplace(modId, mod->name);
-						}
-						else
-						{
-							key = GetFormId(header.mod, header.race);
-							if (!key)
-							{
-								_DMESSAGE("Failed to read header race or mod", path);
-								return false;
-							}
-							if (header.isFemale)
-								key |= 0x100000000;
-						}
-
-						switch (header.type) {
-							case kMenuTypePose: menu = &poseMenuCache[key]; break;
-							case kMenuTypeMorphs: menu = &morphsMenuCache[key]; break;
-							case kMenuTypeGroups: menu = &groupsMenuCache[key]; break;
-							case kMenuTypeLights: menu = &lightsMenuCache; break;
-							case kMenuTypeExport: menu = &exportMenuCache[key]; break;
-						}
-					}
-
-					//Try find existing category
-					UInt32 size = menu->size();
-					for (categoryIndex = 0; categoryIndex < size; categoryIndex++) {
-						if ((*menu)[categoryIndex].first == match[2].str()) {
-							break;
-						}
-					}
-
-					//if category not found add it
-					if (categoryIndex >= size) {
-						MenuList list;
-						menu->push_back(std::make_pair(match[2].str(), list));
-						categoryIndex = menu->size() - 1;
-					}
-				}
-
-				//Continue reading header
-				else if (!menu)
-				{
-					std::string lowerHeader = toLower(match[1].str());
-					if (match[2].str().size() && menuHeaderMap.count(lowerHeader))
-					{
-						switch (menuHeaderMap[lowerHeader])
-						{
-						case kMenuHeaderRace:
-							header.race = match[2].str();
-							break;
-						case kMenuHeaderMod:
-							header.mod = match[2].str();
-							break;
-						case kMenuHeaderSex:
-							header.isFemale = !_stricmp(match[2].str().c_str(), "female");
-							break;
-						case kMenuHeaderType:
-							std::string lowerType = toLower(match[2].str());
-							if (menuTypeMap.count(lowerType)) {
-								header.type = menuTypeMap[lowerType];
-							}
-							break;
-						}
-					}
-				}
-				//Add to category
-				else
-				{
-					if (header.type == kMenuTypeLights) {
-						//merge the mod id in now
-						UInt32 formId = std::stoul(match[1].str(), nullptr, 16) & 0xFFFFFF;
-
-						UInt32 flags = mod->recordFlags;
-						if (flags & (1 << 9)) {
-							formId &= 0xFFF;
-							formId |= 0xFE << 24;
-							formId |= mod->lightIndex << 12;
-						}
-						else {
-							formId |= mod->modIndex << 24;
-						}
-
-						(*menu)[categoryIndex].second.push_back(std::make_pair(HexToString(formId), match[2].str()));
-					}
-					else {
-						(*menu)[categoryIndex].second.push_back(std::make_pair(match[2].str(), match[1].str()));
-					}
-				}
+	void ReadCategory(std::string m1, std::string m2)
+	{
+		//Try find existing category
+		UInt32 size = menu->size();
+		for (categoryIndex = 0; categoryIndex < size; categoryIndex++) {
+			if ((*menu)[categoryIndex].first == m2) {
+				break;
 			}
 		}
-	}
-	catch (...) {
-		_DMESSAGE("Failed to read ", path);
-		return false;
-	}
 
-	return true;
-}
-
-bool LoadMenuFile(std::string path) {
-	IFileStream file;
-
-	if (!file.Open(path.c_str())) {
-		_DMESSAGE("File not found");
-		return false;
+		//if category not found add it
+		if (categoryIndex >= size) {
+			MenuList list;
+			menu->push_back(std::make_pair(m2, list));
+			categoryIndex = menu->size() - 1;
+		}
 	}
 
-	bool result = ParseMenuFile(path, file);
+	bool FinalizeHeader(std::string m1, std::string m2) 
+	{ 
+		if (!header.type)
+		{
+			_Logs("Failed to read header type", path);
+			return false;
+		}
 
-	file.Close();
+		//verify header
+		switch (header.type)
+		{
+		case kMenuTypeLights:
+		{
+			mod = (*g_dataHandler)->LookupModByName(header.mod.c_str());
+			if (!mod || mod->modIndex == 0xFF)
+			{
+				_Logs("Failed to read header mod", path);
+				return false;
+			}
 
-	return result;
+			UInt32 modId = (mod->recordFlags & (1 << 9)) ? ((0xFE << 24) | (mod->lightIndex << 12)) : (mod->modIndex << 24);
+			lightModMap.emplace(modId, mod->name);
+			break;
+		}
+		case kMenuTypeTongue:
+		{
+			//no verification needed
+			break;
+		}
+		default: {
+			key = GetFormId(header.mod.c_str(), header.race.c_str());
+			if (!key)
+			{
+				_Logs("Failed to read header race or mod", path);
+				return false;
+			}
+			if (header.isFemale)
+				key |= 0x100000000;
+			break;
+		}
+		}
+
+		switch (header.type)
+		{
+		case kMenuTypePose: menu = &poseMenuCache[key]; break;
+		case kMenuTypeMorphs: menu = &morphsMenuCache[key]; break;
+		case kMenuTypeGroups: menu = &groupsMenuCache[key]; break;
+		case kMenuTypeLights: menu = &lightsMenuCache; break;
+		case kMenuTypeExport: menu = &exportMenuCache[key]; break;
+		case kMenuTypeTongue: menu = &tongueMenuCache; break;
+		}
+
+		return true;
+	}
+
+	void ReadLine(std::string m1, std::string m2) 
+	{
+		if (header.type == kMenuTypeLights) {
+			//merge the mod id in now
+			UInt32 formId = std::stoul(m1, nullptr, 16) & 0xFFFFFF;
+
+			UInt32 flags = mod->recordFlags;
+			if (flags & (1 << 9)) {
+				formId &= 0xFFF;
+				formId |= 0xFE << 24;
+				formId |= mod->lightIndex << 12;
+			}
+			else {
+				formId |= mod->modIndex << 24;
+			}
+
+			(*menu)[categoryIndex].second.push_back(std::make_pair(HexToString(formId), m2));
+		}
+		else {
+			(*menu)[categoryIndex].second.push_back(std::make_pair(m1, m2));
+		}
+	}
+};
+
+bool LoadMenuFile(std::string path) 
+{
+	SamTsvReader reader(path, &samTypeMap);
+	return reader.Read();
 }
 
 bool LoadIdleFile(std::string path) {
 	IFileStream file;
 
 	if (!file.Open(path.c_str())) {
-		_DMESSAGE(path.c_str(), " not found");
+		_Logs(path.c_str(), " not found");
 		return false;
 	}
 
@@ -793,7 +789,7 @@ bool LoadIdleFile(std::string path) {
 	Json::Value value;
 
 	if (!reader.parse(jsonString, value)) {
-		_DMESSAGE("Failed to parse ", path);
+		_Logs("Failed to parse ", path);
 		return false;
 	}
 
@@ -804,10 +800,14 @@ bool LoadIdleFile(std::string path) {
 			Json::Value member = value[memberStr];
 			IdleData data;
 
-			data.raceId = GetFormId(member.get("mod", "").asString(), member.get("race", "").asString());
+			std::string mod = member.get("mod", "").asString();
+			std::string id = member.get("race", "").asString();
+			data.raceId = GetFormId(mod.c_str(), id.c_str());
 
 			Json::Value reset = member.get("reset", Json::Value());
-			data.resetId = GetFormId(reset.get("mod", "").asString(), reset.get("idle", "").asString());
+			mod = reset.get("mod", "").asString();
+			id = reset.get("idle", "").asString();
+			data.resetId = GetFormId(mod.c_str(), id.c_str());
 
 			Json::Value filter = member.get("filter", Json::Value());
 			data.behavior = BSFixedString(filter.get("behavior", "").asCString());
@@ -815,13 +815,15 @@ bool LoadIdleFile(std::string path) {
 
 			//default to human a pose
 			Json::Value apose = member.get("apose", Json::Value());
-			data.aposeId = GetFormId(apose.get("mod", "ScreenArcherMenu.esp").asString(), apose.get("idle", "802").asString());
+			mod = apose.get("mod", "ScreenArcherMenu.esp").asString();
+			id = apose.get("idle", "802").asString();
+			data.aposeId = GetFormId(mod.c_str(), id.c_str());
 
 			raceIdleData[data.raceId] = data;
 		}
 	}
 	catch (...) {
-		_DMESSAGE("Failed to read ", path);
+		_Logs("Failed to read ", path);
 		return false;
 	}
 

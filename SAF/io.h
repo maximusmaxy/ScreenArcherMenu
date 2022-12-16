@@ -1,7 +1,9 @@
 #pragma once
 
 #include "common/IFileStream.h"
+
 #include "adjustments.h"
+#include "util.h"
 
 #include "json/json.h"
 
@@ -17,24 +19,48 @@ typedef std::vector<std::pair<std::string, std::string>> MenuList;
 typedef std::vector<std::pair<std::string, MenuList>> MenuCategoryList;
 typedef std::unordered_map<UInt64, MenuCategoryList> MenuCache;
 
-struct MenuHeader
-{
-	std::string race;
-	std::string mod;
-	bool isFemale = false;
-	UInt32 type = 0;
-};
-
-enum {
-	kMenuHeaderRace = 0,
-	kMenuHeaderMod,
-	kMenuHeaderSex,
-	kMenuHeaderType
-};
-
-extern std::unordered_map<std::string, UInt32> menuHeaderMap;
-
 namespace SAF {
+
+	struct MenuHeader
+	{
+		std::string race;
+		std::string mod;
+		bool isFemale = false;
+		UInt32 type = 0;
+	};
+
+	class TsvReader {
+	public:
+
+		MenuHeader header;
+		std::string path;
+		UInt32 categoryIndex;
+		InsensitiveUInt32Map* typeMap;
+		UInt64 key;
+
+		TsvReader(std::string p, InsensitiveUInt32Map* t) :
+			path(p),
+			categoryIndex(0),
+			typeMap(t),
+			key(0)
+		{};
+
+		bool Read();
+
+		virtual void ReadHeader(std::string m1, std::string m2);
+		virtual bool FinalizeHeader(std::string m1, std::string m2) { return true; }
+		virtual void ReadCategory(std::string m1, std::string m2) {}
+		virtual void ReadLine(std::string m1, std::string m2) {}
+	};
+
+	enum {
+		kMenuHeaderRace = 0,
+		kMenuHeaderMod,
+		kMenuHeaderSex,
+		kMenuHeaderType
+	};
+
+	extern InsensitiveUInt32Map menuHeaderMap;
 
 	void ReadAll(IFileStream* file, std::string* str);
 	float ReadJsonFloat(Json::Value& value);
