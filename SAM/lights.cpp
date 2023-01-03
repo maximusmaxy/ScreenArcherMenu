@@ -254,6 +254,7 @@ bool MenuLight::GetVisible()
 	if (!root)
 		return false;
 
+	//TODO: Should rework this so it isn't hard coded to work only with SOE lights
 	static const BSFixedString markerStr("Marker");
 	NiAVObject* marker = root->GetObjectByName(&markerStr);
 	if (!marker)
@@ -746,21 +747,20 @@ void DeleteAllLights()
 	lightManager.EraseAll();
 }
 
-#define LIGHTS_PATH "Data\\F4SE\\Plugins\\SAM\\Lights\\"
-
-void SaveLightsJson(const char* filename)
+bool SaveLightsJson(const char* filename)
 {
 	IFileStream file;
 
-	std::string path = LIGHTS_PATH;
-	path += filename;
-	path += ".json";
+	std::string path = GetPathWithExtension(LIGHTS_PATH, filename, ".json");
 
-	IFileStream::MakeAllDirs(path.c_str());
+	const char* pathStr = path.c_str();
 
-	if (!file.Create(path.c_str())) {
-		_DMESSAGE("Failed to create file");
-		return;
+
+	IFileStream::MakeAllDirs(pathStr);
+
+	if (!file.Create(pathStr)) {
+		_Log("Failed to create file ", pathStr);
+		return false;
 	}
 
 	Json::Value value;
@@ -793,21 +793,30 @@ void SaveLightsJson(const char* filename)
 	Json::String jsonString = writer.write(value);
 	file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
 	file.Close();
+
+	return true;
 }
 
-void LoadLightsJson(const char* filename)
+bool LoadLightsFile(const char* filename)
+{
+	std::string path = GetPathWithExtension(LIGHTS_PATH, filename, ".json");
+
+	return LoadLightsPath(path.c_str());
+}
+
+bool LoadLightsPath(const char* path)
 {
 	if (!selected.refr)
-		return;
+		return false;
 
 	IFileStream file;
 
-	std::string path = LIGHTS_PATH;
-	path += filename;
-	path += ".json";
-
-	if (!file.Open(path.c_str()))
-		return;
+	if (!file.Open(path)) 
+	{
+		_Log("Failed to open lights json ", path);
+		return false;
+	}
+		
 
 	std::string jsonString;
 	ReadAll(&file, &jsonString);
@@ -816,8 +825,10 @@ void LoadLightsJson(const char* filename)
 	Json::Reader reader;
 	Json::Value value;
 	
-	if (!reader.parse(jsonString, value))
-		return;
+	if (!reader.parse(jsonString, value)) {
+		_Log("Failed to parse lights json ", path);
+		return false;
+	}
 
 	lightManager.EraseAll();
 
@@ -847,6 +858,8 @@ void LoadLightsJson(const char* filename)
 			lightManager.Push(menuLight);
 		}
 	}
+
+	return true;
 }
 
 /*

@@ -3,6 +3,8 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 
+#define FACEMORPHS_PATH "Data\\F4SE\\Plugins\\SAM\\FaceMorphs"
+
 class BSFaceGenAnimationData {
 public:
 	UInt64 vfTable;				//0
@@ -16,8 +18,9 @@ public:
 
 float* GetMorphPointer();
 void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale);
-void SaveMfg(std::string filename);
-bool LoadMfg(std::string filename);
+void SaveMfg(const char* filename);
+bool LoadMfgFile(const char* filename);
+bool LoadMfgPath(const char* filename);
 void ResetMfg();
 void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* morphArray);
 void GetMorphsGFx(GFxMovieRoot* root, GFxValue* morphArray, UInt32 categoryIndex);

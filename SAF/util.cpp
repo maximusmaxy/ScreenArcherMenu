@@ -1,23 +1,10 @@
 #include "util.h"
 
 #include "f4se/GameData.h"
-#include "conversions.h"
 
 #include <algorithm>
 #include <sstream>
-
-void _Logs(std::string msg, std::string msg2)
-{
-	_DMESSAGE((msg + msg2).c_str());
-}
-
-void _Logi(std::string msg, UInt64 num) {
-	_DMESSAGE((msg + std::to_string(num)).c_str());
-}
-
-void _Logf(std::string msg, float num) {
-	_DMESSAGE((msg + std::to_string(num)).c_str());
-}
+#include <filesystem>
 
 UInt32 GetFormId(const char* modName, UInt32 formId) {
 	const ModInfo* mod = (*g_dataHandler)->LookupModByName(modName);
@@ -57,22 +44,6 @@ float Modulo(float a, float b) {
 	return fmodf((fmodf(a, b) + b), b);
 }
 
-std::string toLower(std::string& str) {
-	std::string result(str.size(), '\0');
-	std::transform(str.begin(), str.end(), result.begin(), std::tolower);
-	return result;
-}
-
-std::string getFilename(std::string& path) {
-	int lastSlash = path.find_last_of('\\') + 1;
-	if (!lastSlash)
-		lastSlash = path.find_last_of('/') + 1;
-
-	int lastPeriod = path.find_last_of('.');
-
-	return std::string(path.substr(lastSlash, (path.size() - lastSlash) - (path.size() - lastPeriod)));
-}
-
 std::string HexToString(UInt32 hex)
 {
 	std::stringstream stream;
@@ -92,4 +63,13 @@ UInt32 ComparePostfix(const char* comparer,  UInt32 cLength, const char* postFix
 		return preLength;
 	}
 	return 0;
+}
+
+std::string GetPathWithExtension(const char* folder, const char* path, const char* ext)
+{
+	std::filesystem::path result(folder);
+	result.append(path);
+	result.concat(ext);
+
+	return result.string();
 }

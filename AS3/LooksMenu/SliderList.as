@@ -38,6 +38,7 @@
 		public static const CAMERA = 10;
 		public static const LIGHT = 11;
 		public static const LIGHTSETTINGS = 12;
+		public static const FOLDERCHECKBOX = 13;
 		
 		public static const LEFT = 1;
 		public static const UP = 2;
@@ -486,6 +487,7 @@
 				case CAMERA: updateCameraEntry(entry); break;
 				case LIGHT: updateLightEntry(entry); break;
 				case LIGHTSETTINGS: updateLightSettingsEntry(entry); break;
+				case FOLDERCHECKBOX: updateFolderCheckboxEntry(entry); break;
 			}
 		}
 		
@@ -750,6 +752,21 @@
 				default: //functions
 					entry.updateList(Data.LIGHTSETTINGS_NAMES[entry.id]);
 					break;
+			}
+		}
+		
+		public function updateFolderCheckbox(func:Function):void
+		{
+			this.type = FOLDERCHECKBOX;
+			update(Data.menuOptions.length, LIST_MAX, func);
+		}
+		
+		public function updateFolderCheckboxEntry(entry:SliderListEntry):void
+		{
+			if (Data.menuFolder[entry.id].folder) {
+				entry.updateFolder(Data.menuOptions[entry.id]);
+			} else {
+				entry.updateCheckbox(Data.menuOptions[entry.id], Data.menuValues[entry.id]);
 			}
 		}
 	}

@@ -12,6 +12,7 @@
     <ClCompile Include="serialization.cpp" />
     <ClCompile Include="settings.cpp" />
     <ClCompile Include="messaging.cpp" />
+    <ClCompile Include="types.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
@@ -24,6 +25,7 @@
     <ClInclude Include="serialization.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="messaging.h" />
+    <ClInclude Include="types.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

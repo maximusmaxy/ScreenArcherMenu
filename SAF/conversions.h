@@ -46,11 +46,12 @@ namespace SAF {
 	constexpr double DOUBLE_PI = MATH_PI * 2;
 
 	NiMatrix43 MatrixIdentity();
+	NiTransform TransformIdentity();
 
+	void MatrixFromEulerYPRTransposed(NiMatrix43& matrix, float x, float y, float z);
 	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z);
-	void MatrixFromEulerYPR2(NiMatrix43& matrix, float x, float y, float z);
+	void MatrixToEulerYPRTransposed(NiMatrix43& matrix, float& x, float& y, float& z);
 	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z);
-	void MatrixToEulerYPR2(NiMatrix43& matrix, float& x, float& y, float& z);
 	void MatrixFromEulerRPY(NiMatrix43& matrix, float x, float y, float z);
 	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z);
 	void MatrixFromDegree(NiMatrix43& matrix, float x, float y, float z);
@@ -62,61 +63,21 @@ namespace SAF {
 	NiPoint3 YPRToRPY(NiPoint3& rot);
 	NiPoint3 RPYToYPR(NiPoint3& rot);
 
-	NiMatrix43 MultiplyNiMatrix(const NiMatrix43& lhs, const NiMatrix43& rhs);
+	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt);
+	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs);
+	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs);
+	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
+	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
+	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dest);
+	NiTransform InvertNiTransform(NiTransform& t);
+
+	bool TransformIsDefault(NiTransform& t);
+	bool TransformEqual(NiTransform& lhs, NiTransform& rhs);
 
 	NiMatrix43 GetXYZRotation(int type, float scalar);
 	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixXYZ2(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar);
-	
-	class SamTransform {
-	public:
-		NiMatrix43	rot;
-		NiPoint3	pos;
-		float		scale;
-
-		SamTransform() {
-			rot.arr[0] = 1.0f;
-			rot.arr[1] = 0.0f;
-			rot.arr[2] = 0.0f;
-			rot.arr[3] = 0.0f;
-			rot.arr[4] = 0.0f;
-			rot.arr[5] = 1.0f;
-			rot.arr[6] = 0.0f;
-			rot.arr[7] = 0.0f;
-			rot.arr[8] = 0.0f;
-			rot.arr[9] = 0.0f;
-			rot.arr[10] = 1.0f;
-			rot.arr[11] = 0.0f;
-			pos = NiPoint3();
-			scale = 1.0f;
-		}
-
-		SamTransform(NiTransform t) {
-			rot = t.rot;
-			pos = t.pos;
-			scale = t.scale;
-		}
-
-		SamTransform(NiMatrix43 r, NiPoint3 p, float s) {
-			rot = r;
-			pos = p;
-			scale = s;
-		}
-
-		operator NiTransform() const;
-
-		SamTransform operator*(const SamTransform& rhs) const;
-		SamTransform& operator*=(const SamTransform& rhs);
-		NiPoint3 operator*(const NiPoint3& pt) const;
-		SamTransform operator/(const SamTransform& rhs) const;
-
-		SamTransform Invert() const;
-		SamTransform NegateTransposed(SamTransform& dst);
-		bool IsDefault();
-	};
-
-	SamTransform SlerpNiTransform(SamTransform& transform, float scalar);
 
 	class Quat {
 	public:

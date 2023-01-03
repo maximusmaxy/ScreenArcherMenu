@@ -35,8 +35,9 @@
 		public static const DRAG = 4;
 		public static const FOLDER = 5;
 		
-		public static const INT = 0;
-		public static const FLOAT = 1;
+		public static const NONE = 0;
+		public static const INT = 1;
+		public static const FLOAT = 2;
 		
 		public var type:int;
 		public var valueType:int;
@@ -78,6 +79,7 @@
 						Util.playOk();
 						break;
 					case CHECKBOX:
+					case FOLDERCHECKBOX:
 						checkbox.confirm();
 						break;
 				}
@@ -178,6 +180,7 @@
 			{
 				case LIST:
 				case ADJUSTMENT:
+				case FOLDER:
 					return;
 				case DRAG:
 					if (!value.visible) return;
@@ -241,6 +244,7 @@
 			checkbox2.disable();
 			Util.setRect(background, -2, -3.25, 290, 32);
 			this.type = LIST;
+			this.valueType = NONE;
 		}
 		
 		public function updateSlider(name:String, valueType:int)
@@ -271,6 +275,7 @@
 			checkbox2.disable();
 			Util.setRect(background, 31, -3.25, 258, 32);
 			this.type = CHECKBOX;
+			this.valueType = NONE;
 		}
 		
 		public function updateAdjustment(name:String) 
@@ -283,6 +288,7 @@
 			checkbox2.init(256, this.id, Checkbox.RECYCLE, true, func3);
 			Util.setRect(background, -2, -3.25, 218, 32);
 			this.type = ADJUSTMENT;
+			this.valueType = NONE;
 		}
 		
 		public function updateAdjustmentOrder(name:String) 
@@ -295,6 +301,7 @@
 			checkbox2.init(256, this.id, Checkbox.UP, true, func3);
 			Util.setRect(background, -2, -3.25, 218, 32);
 			this.type = ADJUSTMENT;
+			this.valueType = NONE;
 		}
 		
 		public function updateDrag(name:String)
@@ -307,6 +314,7 @@
 			checkbox2.disable();
 			Util.setRect(background, 31, -3.25, 188, 32);
 			this.type = DRAG;
+			this.valueType = NONE;
 		}
 		
 		public function updateDragValue(name:String)
@@ -339,6 +347,7 @@
 			checkbox2.disable();
 			Util.setRect(background, -2, -3.25, 290, 32);
 			this.type = FOLDER;
+			this.valueType = NONE;
 		}
 		
 		public function updateSliderData(min:Number, max:Number, step:Number, stepPad:Number, mod:Number, fixed:int = 0)

@@ -17,7 +17,6 @@
 #include "json/json.h"
 
 #include "SAF/util.h"
-#include "SAF/adjustments.h"
 #include "SAF/io.h"
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
@@ -37,6 +36,8 @@
 
 #include <WinUser.h>
 #include <libloaderapi.h>
+
+#include <filesystem>
 
 SelectedRefr selected;
 
@@ -177,14 +178,14 @@ Json::Value GetJsonValue(GFxValue* value)
 		return Json::Value(value->GetString());
 	case GFxValue::kType_Array:
 	{
-		Json::Value arr;
+		Json::Value arr(Json::ValueType::arrayValue);
 		SavedDataArrVisitor arrVisitor(arr);
 		value->VisitElements(&arrVisitor, 0, value->GetArraySize());
 		return arr;
 	}
 	case GFxValue::kType_Object:
 	{
-		Json::Value obj;
+		Json::Value obj(Json::ValueType::objectValue);
 		SavedDataObjVisitor visitor(obj);
 		value->VisitMembers(&visitor);
 		return obj;
@@ -207,7 +208,8 @@ void SamManager::SaveData(GFxValue* saveData)
 	BSReadLocker locker(g_menuTableLock);
 	//std::lock_guard<std::mutex> lock(mutex);
 
-	if (!selected.refr) return;
+	if (!selected.refr) 
+		return;
 
 	//copying to a json for saved menu data instead of trying to understand how GFx managed memory works
 	data.clear();
@@ -230,12 +232,10 @@ bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 
 	root->CreateObject(result);
 
-	Json::Value::Members memberNames = data.getMemberNames();
-
-	for (auto& name : memberNames) {
+	for (auto it = data.begin(); it != data.end(); ++it) {
 		GFxValue GFxMember;
-		GetGFxValue(root, &GFxMember, data[name]);
-		result->SetMember(name.c_str(), &GFxMember);
+		GetGFxValue(root, &GFxMember, *it);
+		result->SetMember(it.key().asCString(), &GFxMember);
 	}
 
 	ClearData();
@@ -280,11 +280,10 @@ void SamManager::GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::V
 	{
 		root->CreateObject(result);
 
-		Json::Value::Members memberNames = value.getMemberNames();
-		for (auto& member : memberNames) {
-			GFxValue  objValue;
-			GetGFxValue(root, &objValue, value[member]);
-			result->SetMember(member.c_str(), &objValue);
+		for (auto it = value.begin(); it != value.end(); ++it) {
+			GFxValue objValue;
+			GetGFxValue(root, &objValue, *it);
+			result->SetMember(it.key().asCString(), &objValue);
 		}
 
 		break;
@@ -533,16 +532,6 @@ void ToggleMenu() {
 	}
 }
 
-bool OpenSamFile(std::string filename) {
-	if (!selected.refr) return false;
-
-	if (LoadJsonPose(filename.c_str())) return true;
-	if (LoadMfg(filename)) return true;
-	if (LoadAdjustmentFile(filename.c_str())) return true;
-
-	return false;
-}
-
 SAMMessaging samMessaging;
 SAF::SAFDispatcher safDispatcher;
 
@@ -692,7 +681,7 @@ public:
 	{ 
 		if (!header.type)
 		{
-			_Logs("Failed to read header type", path);
+			_Log("Failed to read header type", path.c_str());
 			return false;
 		}
 
@@ -704,7 +693,7 @@ public:
 			mod = (*g_dataHandler)->LookupModByName(header.mod.c_str());
 			if (!mod || mod->modIndex == 0xFF)
 			{
-				_Logs("Failed to read header mod", path);
+				_Log("Failed to read header mod", path.c_str());
 				return false;
 			}
 
@@ -718,10 +707,10 @@ public:
 			break;
 		}
 		default: {
-			key = GetFormId(header.mod.c_str(), header.race.c_str());
+			key = GetFormId(header.mod.c_str(), header.form.c_str());
 			if (!key)
 			{
-				_Logs("Failed to read header race or mod", path);
+				_Log("Failed to read header race or mod", path.c_str());
 				return false;
 			}
 			if (header.isFemale)
@@ -767,17 +756,17 @@ public:
 	}
 };
 
-bool LoadMenuFile(std::string path) 
+bool LoadMenuFile(const char* path) 
 {
 	SamTsvReader reader(path, &samTypeMap);
 	return reader.Read();
 }
 
-bool LoadIdleFile(std::string path) {
+bool LoadIdleFile(const char* path) {
 	IFileStream file;
 
-	if (!file.Open(path.c_str())) {
-		_Logs(path.c_str(), " not found");
+	if (!file.Open(path)) {
+		_Log("Failed to open", path);
 		return false;
 	}
 
@@ -789,32 +778,30 @@ bool LoadIdleFile(std::string path) {
 	Json::Value value;
 
 	if (!reader.parse(jsonString, value)) {
-		_Logs("Failed to parse ", path);
+		_Log("Failed to parse ", path);
 		return false;
 	}
 
 	try {
-		Json::Value::Members members = value.getMemberNames();
 
-		for (auto& memberStr : members) {
-			Json::Value member = value[memberStr];
+		for (auto it = value.begin(); it != value.end(); ++it) {
 			IdleData data;
 
-			std::string mod = member.get("mod", "").asString();
-			std::string id = member.get("race", "").asString();
+			std::string mod = it->get("mod", "").asString();
+			std::string id = it->get("race", "").asString();
 			data.raceId = GetFormId(mod.c_str(), id.c_str());
 
-			Json::Value reset = member.get("reset", Json::Value());
+			Json::Value reset = it->get("reset", Json::Value());
 			mod = reset.get("mod", "").asString();
 			id = reset.get("idle", "").asString();
 			data.resetId = GetFormId(mod.c_str(), id.c_str());
 
-			Json::Value filter = member.get("filter", Json::Value());
+			Json::Value filter = it->get("filter", Json::Value());
 			data.behavior = BSFixedString(filter.get("behavior", "").asCString());
 			data.event = BSFixedString(filter.get("event", "").asCString());
 
 			//default to human a pose
-			Json::Value apose = member.get("apose", Json::Value());
+			Json::Value apose = it->get("apose", Json::Value());
 			mod = apose.get("mod", "ScreenArcherMenu.esp").asString();
 			id = apose.get("idle", "802").asString();
 			data.aposeId = GetFormId(mod.c_str(), id.c_str());
@@ -823,7 +810,7 @@ bool LoadIdleFile(std::string path) {
 		}
 	}
 	catch (...) {
-		_Logs("Failed to read ", path);
+		_Log("Failed to read ", path);
 		return false;
 	}
 
@@ -852,7 +839,7 @@ void LoadMenuFiles() {
 	{
 		std::string	path = iter.GetFullPath();
 		if (!loadedMenus.count(path)) {
-			LoadMenuFile(path);
+			LoadMenuFile(path.c_str());
 			loadedMenus.insert(path);
 		}
 	}
@@ -860,7 +847,76 @@ void LoadMenuFiles() {
 	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Idles", "*.json"); !iter.Done(); iter.Next())
 	{
 		std::string	path = iter.GetFullPath();
-		LoadIdleFile(path);
+		LoadIdleFile(path.c_str());
+	}
+}
+
+bool isDotOrDotDot(const char* cstr) {
+	if (cstr[0] != '.') return false;
+	if (cstr[1] == 0) return true;
+	if (cstr[1] != '.') return false;
+	return (cstr[2] == 0);
+}
+
+void GetSubFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path, const char* ext) {
+	root->CreateArray(result);
+
+	std::map<std::string, std::string, NaturalSort> folders;
+	std::map<std::string, std::string, NaturalSort> files;
+
+	int extLen = strlen(ext);
+
+	for (IDirectoryIterator iter(path, "*"); !iter.Done(); iter.Next())
+	{
+		const char* cFileName = iter.Get()->cFileName;
+		if (!isDotOrDotDot(cFileName)) {
+
+			std::string filename(iter.Get()->cFileName);
+			std::string filepath = iter.GetFullPath();
+
+			if (std::filesystem::is_directory(filepath)) {
+				folders[filename] = filepath;
+			}
+			else {
+				UInt32 size = filename.size();
+				if (size >= extLen) {
+					if (!_stricmp(&filename.c_str()[size - extLen], ext)) {
+						std::string noExtension = filename.substr(0, filename.length() - extLen);
+						files[noExtension] = filepath;
+					}
+				}
+			}
+		}
+	}
+
+	for (auto& folder : folders) {
+		GFxValue value;
+		root->CreateObject(&value);
+
+		std::string folderName = folder.first;
+		GFxValue name(folderName.c_str());
+		value.SetMember("name", &name);
+
+		GFxValue isFolder(true);
+		value.SetMember("folder", &isFolder);
+
+		GFxValue pathname(folder.second.c_str());
+		value.SetMember("path", &pathname);
+
+		result->PushBack(&value);
+	}
+
+	for (auto& file : files) {
+		GFxValue value;
+		root->CreateObject(&value);
+
+		GFxValue name(file.first.c_str());
+		value.SetMember("name", &name);
+
+		GFxValue pathname(file.second.c_str());
+		value.SetMember("path", &pathname);
+
+		result->PushBack(&value);
 	}
 }
 

@@ -88,7 +88,7 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 		samMessaging.serialization->SetRevertCallback(samMessaging.pluginHandle, SamSerializeRevert);
 	}
 
-	safDispatcher.handle = samMessaging.pluginHandle;
+	safDispatcher.pluginHandle = samMessaging.pluginHandle;
 	safDispatcher.modName = "ScreenArcherMenu.esp";
 
 	samObScriptCommit();

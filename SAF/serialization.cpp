@@ -84,7 +84,7 @@ namespace SAF {
 	*		Scale
 	*		Type
 	*		Updated
-	*		Transforms length (Only if add type)
+	*		Transforms length
 	*			NodeKey name
 	*           NodeKey offset
 	*			x
@@ -108,7 +108,7 @@ namespace SAF {
 	*			Scale
 	*			Type
 	*			Updated
-	*			Transforms length (Only if add type)
+	*			Transforms length
 	*				NodeKey name
 	*			    NodeKey offset
 	*				x
@@ -118,6 +118,8 @@ namespace SAF {
 	*				pitch
 	*				roll
 	*				scale
+	* 
+	* 
 	*/
 
 	/*
@@ -206,7 +208,7 @@ namespace SAF {
 						WriteData<float>(ifc, &kvp.second.pos.y);
 						WriteData<float>(ifc, &kvp.second.pos.z);
 						float yaw, pitch, roll;
-						MatrixToEulerYPR2(kvp.second.rot, yaw, pitch, roll);
+						MatrixToEulerYPR(kvp.second.rot, yaw, pitch, roll);
 						WriteData<float>(ifc, &yaw);
 						WriteData<float>(ifc, &pitch);
 						WriteData<float>(ifc, &roll);
@@ -386,7 +388,7 @@ namespace SAF {
 											case 0:
 											case 1:
 											{
-												MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
+												MatrixFromEulerYPRTransposed(transform.rot, yaw, pitch, roll);
 												NodeKey nodeKey = GetNodeKeyFromString(keyName.c_str());
 												if (nodeKey.key) {
 													persistent.map.emplace(nodeKey, transform);
@@ -395,7 +397,7 @@ namespace SAF {
 											}
 											default:
 											{
-												MatrixFromEulerYPR2(transform.rot, yaw, pitch, roll);
+												MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
 												persistent.map.emplace(NodeKey(nodeName, nodeOffset), transform);
 												break;
 											}
@@ -483,12 +485,15 @@ namespace SAF {
 	void AdjustmentManager::SerializeRevert(const F4SESerializationInterface* ifc) {
 		std::unique_lock<std::shared_mutex> persistenceLock(persistenceMutex, std::defer_lock);
 		std::unique_lock<std::shared_mutex> actorLock(actorMutex, std::defer_lock);
+		std::unique_lock<std::shared_mutex> fileLock(fileMutex, std::defer_lock);
+		std::unique_lock<std::shared_mutex> nodeMapLock(nodeMapMutex, std::defer_lock);
 
-		std::lock(actorLock, persistenceLock);
+		std::lock(actorLock, persistenceLock, fileLock, nodeMapLock);
 
-		persistentAdjustments.clear();
+		adjustmentFileCache.clear();
 		raceAdjustments.clear();
 		actorAdjustmentCache.clear();
+		persistentAdjustments.clear();
 		nodeMapCache.clear();
 
 		gameLoaded = false;
@@ -529,8 +534,6 @@ namespace SAF {
 		case kAdjustmentTypeTongue: 
 			return !TransformMapIsDefault(adjustment.map);
 		case kAdjustmentTypeRace: 
-		case kAdjustmentTypeAutoSkeleton:
-		case kAdjustmentTypeAutoRace:
 			return adjustment.updated;
 		default: return true;
 		}
@@ -583,6 +586,7 @@ namespace SAF {
 	{
 		if (!type)
 			return false;
+
 		//Store map if a non file type or if a file type is updated
 		return (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue || updated);
 	}

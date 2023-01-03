@@ -20,8 +20,8 @@ bool GetMenusHidden() {
 }
 
 void SetMenusHidden(bool hidden) {
-	*uiVisible = !hidden;
-	SetMenusDisabledInternal(hidden);
+	if (hidden != GetMenusHidden())
+		ToggleMenusInternal();
 }
 
 bool ToggleMenusHidden() {

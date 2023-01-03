@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 
+#define LIGHTS_PATH "Data\\F4SE\\Plugins\\SAM\\Lights"
 #define LIGHTS_SERIALIZE_VERSION 2
 
 class MenuLight
@@ -96,8 +97,10 @@ bool ToggleAllLightsVisible();
 void DeleteAllLights();
 void ResetLightSettings();
 
-void SaveLightsJson(const char* filename);
-void LoadLightsJson(const char* filename);
+bool SaveLightsJson(const char* filename);
+
+bool LoadLightsFile(const char* filename);
+bool LoadLightsPath(const char* path);
 
 void SerializeLights(const F4SESerializationInterface* ifc, UInt32 version);
 void DeserializeLights(const F4SESerializationInterface* ifc, UInt32 version);

@@ -24,6 +24,7 @@ void SetScale(UInt32 adjustmentHandle, int scale);
 
 void SaveAdjustmentFile(const char* filename, int adjustmentHandle);
 bool LoadAdjustmentFile(const char* filename);
+bool LoadAdjustmentPath(const char* path);
 void PushNewAdjustment(const char* name);
 void EraseAdjustment(UInt32 adjustmentHandle);
 void ClearAdjustment(UInt32 adjustmentHandle);
@@ -42,10 +43,11 @@ void GetTransformGFx(GFxMovieRoot* root, GFxValue* result, const char* nodeName,
 
 void GetPoseListGFx(GFxMovieRoot* rot, GFxValue* result);
 void SaveJsonPose(const char* filename, GFxValue selectedHandles, int exportType);
-bool LoadJsonPose(const char* filename);
+bool LoadPoseFile(const char* filename);
+bool LoadPosePath(const char* path);
 void ResetJsonPose();
 
-void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, bool race);
+void GetSkeletonAdjustmentsGFx(GFxMovieRoot* root, GFxValue* result, const char* path, bool race);
 void LoadSkeletonAdjustment(const char* filename, bool npc, bool clear, bool enable);
 
 void RotateAdjustmentXYZ(GFxMovieRoot* root, GFxValue* result, const char* key, int adjustmentHandle, int type, int scalar);

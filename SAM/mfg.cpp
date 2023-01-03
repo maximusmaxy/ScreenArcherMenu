@@ -23,7 +23,7 @@ RelocAddr<UInt64> faceGenAnimDataVfTable(0x2CE9C58);
 std::regex mfgRegex("\\s*mfg\\s+morphs\\s+(\\d+)\\s+(\\d+).*"); //mfg morphs (n) (n)
 std::regex tongueRegex("\\s*;tongue\\s+(\\d+)\\s+(\\w+)\\s+(\\S+)"); //;tongue (n) (w) (f)
 
-#define TONGUE_NODES_SIZE 5
+//#define TONGUE_NODES_SIZE 5
 #define MORPH_MAX 54
 
 float* GetMorphPointer() {
@@ -76,7 +76,7 @@ enum {
 	kTonguePropScale
 };
 
-std::unordered_map<std::string, UInt32> tonguePropertyMap = {
+SAF::InsensitiveUInt32Map tonguePropertyMap = {
 	{"x", kTonguePropX},
 	{"y", kTonguePropY},
 	{"z", kTonguePropZ},
@@ -97,36 +97,42 @@ struct TongueTransform {
 	float scale = 1.0f;
 };
 
-SAF::NodeKey GetTongueNodeKey(int i)
-{
-	if (!selected.refr || i < 0 || i >= TONGUE_NODES_SIZE)
-		return SAF::NodeKey();
-
-	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments)
-		return SAF::NodeKey();
-
-	//Find the first available tongue category
+MenuList* FindFirstTongueMenu(std::shared_ptr<SAF::ActorAdjustments> adjustments) {
 	for (auto& tongue : tongueMenuCache) {
-		if (CheckMenuHasNode(adjustments, tongue.second)) 
+		if (CheckMenuHasNode(adjustments, tongue.second))
 		{
-			if (i < tongue.second.size()) {
-				return SAF::NodeKey(tongue.second[i].first.c_str(), false);
-			}
+			return &tongue.second;
 		}
 	}
 
-	return SAF::NodeKey();
+	return nullptr;
 }
 
-void SaveMfg(std::string filename) {
+//SAF::NodeKey GetTongueNodeKey(int i)
+//{
+//	if (!selected.refr || i < 0 || i >= TONGUE_NODES_SIZE)
+//		return SAF::NodeKey();
+//
+//	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+//	if (!adjustments)
+//		return SAF::NodeKey();
+//
+//	//Find the first available tongue category
+//	auto tongueMenu = FindFirstTongueMenu(adjustments);
+//	if (!tongueMenu)
+//		return SAF::NodeKey();
+//
+//	return SAF::NodeKey((*tongueMenu)[i].first.c_str(), false);
+//}
+
+void SaveMfg(const char* filename) {
 	float* ptr = GetMorphPointer();
 	if (!ptr) return;
 
 	IFileStream file;
-	std::string path = "Data\\F4SE\\Plugins\\SAM\\FaceMorphs\\";
-	path += filename;
-	path += ".txt";
+
+	std::string path = GetPathWithExtension(FACEMORPHS_PATH, filename, ".txt");
+
 	IFileStream::MakeAllDirs(path.c_str());
 
 	if (!file.Create(path.c_str())) {
@@ -150,27 +156,35 @@ void SaveMfg(std::string filename) {
 		UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (adjustment) {
-			for (int i = 0; i < TONGUE_NODES_SIZE; ++i) {
-				SAF::NodeKey nodeKey = GetTongueNodeKey(i);
 
-				//Save as pose instead of adjustment to prevent errors caused by underlying animation
-				SAF::SamTransform* transform = adjustment->GetTransform(nodeKey);
+			auto tongueMenu = FindFirstTongueMenu(adjustments);
 
-				if (transform && !transform->IsDefault()) {
-					SAF::SamTransform* baseNode = SAF::GetFromTransformMap(*adjustments->baseMap, nodeKey);
-					if (baseNode) {
+			if (tongueMenu) {
+				for (int i = 0; i < tongueMenu->size(); ++i) {
 
-						SAF::SamTransform result = *baseNode * *transform;
+					SAF::NodeKey nodeKey = SAF::NodeKey((*tongueMenu)[i].first.c_str(), false);
 
-						ss << ";tongue " << i << " x " << result.pos.x << std::endl;
-						ss << ";tongue " << i << " y " << result.pos.y << std::endl;
-						ss << ";tongue " << i << " z " << result.pos.z << std::endl;
-						float yaw, pitch, roll;
-						SAF::MatrixToEulerYPR2(result.rot, yaw, pitch, roll);
-						ss << ";tongue " << i << " yaw " << yaw * SAF::RADIAN_TO_DEGREE << std::endl;
-						ss << ";tongue " << i << " pitch " << pitch * SAF::RADIAN_TO_DEGREE << std::endl;
-						ss << ";tongue " << i << " roll " << roll * SAF::RADIAN_TO_DEGREE << std::endl;
-						ss << ";tongue " << i << " scale " << result.scale << std::endl;
+					//Save as pose instead of adjustment to prevent errors caused by underlying animation
+					NiTransform* transform = adjustment->GetTransform(nodeKey);
+
+					if (transform && !SAF::TransformIsDefault(*transform)) {
+						NiTransform* baseNode = SAF::GetFromBaseMap(*adjustments->baseMap, nodeKey.name);
+						if (baseNode) {
+
+							NiTransform result = SAF::MultiplyNiTransform(*baseNode, *transform);
+
+							ss << ";tongue " << i << " x " << result.pos.x << std::endl;
+							ss << ";tongue " << i << " y " << result.pos.y << std::endl;
+							ss << ";tongue " << i << " z " << result.pos.z << std::endl;
+
+							float yaw, pitch, roll;
+							SAF::MatrixToEulerYPR(result.rot, yaw, pitch, roll);
+							ss << ";tongue " << i << " yaw " << yaw * SAF::RADIAN_TO_DEGREE << std::endl;
+							ss << ";tongue " << i << " pitch " << pitch * SAF::RADIAN_TO_DEGREE << std::endl;
+							ss << ";tongue " << i << " roll " << roll * SAF::RADIAN_TO_DEGREE << std::endl;
+
+							ss << ";tongue " << i << " scale " << result.scale << std::endl;
+						}
 					}
 				}
 			}
@@ -181,18 +195,21 @@ void SaveMfg(std::string filename) {
 	file.Close();
 }
 
-bool LoadMfg(std::string filename) {
+bool LoadMfgFile(const char* filename) 
+{
+	std::string path = GetPathWithExtension(FACEMORPHS_PATH, filename, ".txt");
+
+	return LoadMfgPath(path.c_str());
+}
+
+bool LoadMfgPath(const char* path) {
 	float* ptr = GetMorphPointer();
 	if (!ptr) return false;
 
-	std::string path = "Data\\F4SE\\Plugins\\SAM\\FaceMorphs\\";
-	path += filename;
-	path += ".txt";
-
 	IFileStream file;
 
-	if (!file.Open(path.c_str())) {
-		_Logs(path, " file not found");
+	if (!file.Open(path)) {
+		_Log("Failed to open ", path);
 		return false;
 	}
 
@@ -234,8 +251,7 @@ bool LoadMfg(std::string filename) {
 				int id = std::stoi(match[1].str());
 				if (id >= 0 && id < 5) {
 
-					std::string lower = toLower(match[2].str());
-					auto tongueProperty = tonguePropertyMap.find(lower);
+					auto tongueProperty = tonguePropertyMap.find(match[2].str().c_str());
 					if (tongueProperty != tonguePropertyMap.end()) 
 					{
 						float value = std::stof(match[3].str());
@@ -265,17 +281,25 @@ bool LoadMfg(std::string filename) {
 		ptr[i] = morphs[i];
 	}
 
-	//build the transform map
+	//build the tongue transform map
 	SAF::TransformMap transformMap;
 
-	for (int i = 0; i < TONGUE_NODES_SIZE; ++i) {
-		NiTransform transform;
-		transform.pos = NiPoint3(tongues[i].x, tongues[i].y, tongues[i].z);
-		SAF::MatrixFromEulerYPR2(transform.rot,
-			tongues[i].yaw * SAF::DEGREE_TO_RADIAN, tongues[i].pitch * SAF::DEGREE_TO_RADIAN, tongues[i].roll * SAF::DEGREE_TO_RADIAN);
-		transform.scale = tongues[i].scale;
+	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (adjustments) {
+		auto tongueMenu = FindFirstTongueMenu(adjustments);
+		if (tongueMenu) {
+			for (int i = 0; i < tongueMenu->size(); ++i) {
+				NiTransform transform;
+				transform.pos = NiPoint3(tongues[i].x, tongues[i].y, tongues[i].z);
+				SAF::MatrixFromEulerYPR(transform.rot,
+					tongues[i].yaw * SAF::DEGREE_TO_RADIAN, tongues[i].pitch * SAF::DEGREE_TO_RADIAN, tongues[i].roll * SAF::DEGREE_TO_RADIAN);
+				transform.scale = tongues[i].scale;
 
-		transformMap.emplace(GetTongueNodeKey(i), transform);
+				SAF::NodeKey nodeKey = SAF::NodeKey((*tongueMenu)[i].first.c_str(), false);
+				
+				transformMap.emplace(nodeKey, transform);
+			}
+		}
 	}
 
 	safDispatcher.LoadTongueAdjustment(selected.refr->formID, &transformMap);
@@ -291,7 +315,8 @@ bool LoadMfg(std::string filename) {
 
 void ResetMfg() {
 	float* ptr = GetMorphPointer();
-	if (!ptr) return;
+	if (!ptr) 
+		return;
 
 	memset(ptr, 0, sizeof(float) * MORPH_MAX);
 
@@ -329,14 +354,12 @@ void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 	if (!adjustments) 
 		return;
 
-	for (SInt32 i = 0; i < tongueMenuCache.size(); i++) 
-	{
-		auto tongue = &tongueMenuCache[i];
-		if (CheckMenuHasNode(adjustments, tongue->second)) 
-		{
-			names.PushBack(&GFxValue(tongue->first.c_str()));
-			values.PushBack(&GFxValue(i));
-		}
+	//TODO: We're just taking the first available for now
+	MenuList* tongueMenu = FindFirstTongueMenu(adjustments);
+
+	if (tongueMenu) {
+		names.PushBack(&GFxValue("$SAM_TongueBones"));
+		values.PushBack(&GFxValue(0));
 	}
 }
 
@@ -353,16 +376,18 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 	result->SetMember("values", &values);
 
 	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
-	if (!menu || categoryIndex >= menu->size()) return;
+	if (!menu || categoryIndex >= menu->size()) 
+		return;
 
 	float* ptr = GetMorphPointer();
-	if (!ptr) return;
+	if (!ptr) 
+		return;
 
 	for (auto& kvp : (*menu)[categoryIndex].second) {
 		GFxValue name(kvp.second.c_str());
 		names.PushBack(&name);
 
-		UInt32 key = std::stoul(kvp.second);
+		UInt32 key = std::stoul(kvp.first);
 		key = max(0, min(MORPH_MAX - 1, key));
 
 		GFxValue value((SInt32)std::round(ptr[key] * 100));
@@ -390,16 +415,22 @@ void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 catego
 	if (!adjustments) 
 		return;
 
-	auto category = &(tongueMenuCache)[categoryIndex].second;
+	//TODO: We're just taking the first available for now
+	auto tongueMenu = FindFirstTongueMenu(adjustments);
 
-	int size = category->size();
-	for (SInt32 i = 0; i < size; ++i)
-	{
-		if (adjustments->HasNode((*category)[i].first.c_str())) {
-			GFxValue node((*category)[i].second.c_str());
-			names.PushBack(&node);
-			GFxValue index(i);
-			values.PushBack(&index);
+	//if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
+	//	return;
+
+	//auto& category = tongueMenuCache[categoryIndex].second;
+
+	if (tongueMenu) {
+		for (SInt32 i = 0; i < tongueMenu->size(); ++i) {
+			if (adjustments->HasNode((*tongueMenu)[i].first.c_str())) {
+				GFxValue node((*tongueMenu)[i].second.c_str());
+				names.PushBack(&node);
+				GFxValue index(i);
+				values.PushBack(&index);
+			}
 		}
 	}
 }
@@ -416,15 +447,18 @@ void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryInd
 	if (!adjustments)
 		return;
 
-	if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
+	//TODO: We're just taking the first available for now
+	auto tongueMenu = FindFirstTongueMenu(adjustments);
+
+	//if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
+	//	return;
+
+	//auto& category = tongueMenuCache[categoryIndex].second;
+
+	if (tongueIndex < 0 || tongueIndex >= tongueMenu->size())
 		return;
 
-	auto category = &tongueMenuCache[categoryIndex].second;
-
-	if (tongueIndex < 0 || tongueIndex >= category->size())
-		return;
-
-	SAF::NodeKey nodeKey((*category)[tongueIndex].first.c_str(), false);
+	SAF::NodeKey nodeKey((*tongueMenu)[tongueIndex].first.c_str(), false);
 
 	//if no tongue handle, create
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);

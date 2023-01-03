@@ -9,6 +9,12 @@
 
 #include <regex>
 
+#define ADJUSTMENTS_PATH "Data\\F4SE\\Plugins\\SAF\\Adjustments"
+#define POSES_PATH "Data\\F4SE\\Plugins\\SAF\\Poses"
+#define SETTINGS_PATH "Data\\F4SE\\Plugins\\SAF\\settings.json"
+#define NODEMAPS_PATH "Data\\F4SE\\Plugins\\SAF\\NodeMaps"
+#define DEFAULT_PATH "Data\\F4SE\\Plugins\\SAF\\Default"
+
 #define WriteJsonFloat(K, V, D) sprintf_s(buffer, D, V); \
 K = Json::Value(buffer);
 
@@ -23,7 +29,7 @@ namespace SAF {
 
 	struct MenuHeader
 	{
-		std::string race;
+		std::string form;
 		std::string mod;
 		bool isFemale = false;
 		UInt32 type = 0;
@@ -54,7 +60,7 @@ namespace SAF {
 	};
 
 	enum {
-		kMenuHeaderRace = 0,
+		kMenuHeaderForm = 1,
 		kMenuHeaderMod,
 		kMenuHeaderSex,
 		kMenuHeaderType
@@ -62,13 +68,21 @@ namespace SAF {
 
 	extern InsensitiveUInt32Map menuHeaderMap;
 
+	enum {
+		kGenderMale = 0,
+		kGenderFemale
+	};
+
+	extern InsensitiveUInt32Map genderMap;
+
 	void ReadAll(IFileStream* file, std::string* str);
 	float ReadJsonFloat(Json::Value& value);
 	void LoadAllFiles();
-	bool SaveAdjustmentFile(std::string filename, std::shared_ptr<Adjustment> adjustment);
-	bool LoadAdjustmentFile(std::string filename, LoadedAdjustment* map);
-	bool SavePoseFile(std::string filename, TransformMap* poseMap, const char* skeleton);
-	bool LoadPoseFile(std::string filename, TransformMap* poseMap);
-	bool LoadPosePath(std::string filename, TransformMap* poseMap);
-	bool SaveOutfitStudioXml(std::string name, TransformMap* poseMap);
+	bool SaveAdjustmentFile(const char* filename, std::shared_ptr<Adjustment> adjustment);
+	bool LoadAdjustmentFile(const char* filename, LoadedAdjustment* map);
+	bool LoadAdjustmentPath(const char* path, LoadedAdjustment* map);
+	bool SavePoseFile(const char* file, TransformMap* poseMap, const char* skeleton);
+	bool LoadPoseFile(const char* file, TransformMap* poseMap);
+	bool LoadPosePath(const char* path, TransformMap* poseMap);
+	bool SaveOutfitStudioXml(const char* path, TransformMap* poseMap);
 }

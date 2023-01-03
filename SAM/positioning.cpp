@@ -159,7 +159,7 @@ void SetRefrCollision(TESObjectREFR* refr, bool enabled) {
 //Rotate around axis as opposed to yaw pitch roll
 NiPoint3 RotateObjectAxis(NiPoint3& rot, UInt32 axis, float step) {
 	NiMatrix43 matrix;
-	SAF::MatrixFromEulerYPR(matrix, rot.x, rot.y, rot.z);
+	SAF::MatrixFromEulerYPRTransposed(matrix, rot.x, rot.y, rot.z);
 	SAF::RotateMatrixXYZ(matrix, axis - kAdjustRotationX + 1, step);
 
 	float x, y, z;

@@ -35,6 +35,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace SAF {
 
 	float niMatrix43Identity[12]{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
+	float niTransformIdentity[16]{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 	float quatIdentity[4]{ 1.0f, 0.0f, 0.0f, 0.0f };
 
 	NiMatrix43 MatrixIdentity() {
@@ -43,22 +44,19 @@ namespace SAF {
 		return m;
 	}
 
+	NiTransform TransformIdentity() {
+		NiTransform t;
+		memcpy(&t, niTransformIdentity, sizeof(niTransformIdentity));
+		return t;
+	}
+
 	Quat QuaternionIdentity() {
 		Quat q;
 		memcpy(&q, quatIdentity, sizeof(quatIdentity));
 		return q;
 	}
 
-	SamTransform::operator NiTransform() const {
-		NiTransform res;
-		res.pos = pos;
-		res.rot = rot;
-		res.scale = scale;
-		return res;
-	}
-
-	const NiPoint3 RotateMatrix(const NiMatrix43& m, const NiPoint3& pt)
-	{
+	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt) {
 		return NiPoint3(
 			m.data[0][0] * pt.x + m.data[1][0] * pt.y + m.data[2][0] * pt.z,
 			m.data[0][1] * pt.x + m.data[1][1] * pt.y + m.data[2][1] * pt.z,
@@ -66,7 +64,7 @@ namespace SAF {
 		);
 	}
 
-	NiMatrix43 MultiplyNiMatrix(const NiMatrix43& lhs, const NiMatrix43& rhs)
+	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs)
 	{
 		NiMatrix43 tmp;
 		tmp.data[0][0] =
@@ -108,73 +106,78 @@ namespace SAF {
 		return tmp;
 	}
 
-	SamTransform SamTransform::operator* (const SamTransform& rhs) const
-	{
+	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs) {
 		NiTransform res;
-		res.scale = scale * rhs.scale;
-		res.rot = MultiplyNiMatrix(rot, rhs.rot);
-		res.pos = pos + RotateMatrix(rot, rhs.pos) * scale;
+		res.scale = lhs.scale * rhs.scale;
+		res.rot = MultiplyNiMatrix(lhs.rot, rhs.rot);
+		res.pos = lhs.pos + RotateMatrix(lhs.rot, rhs.pos) * lhs.scale;
 		return res;
 	}
 
-	SamTransform& SamTransform::operator*= (const SamTransform& rhs)
-	{
-		scale *= rhs.scale;
-		rot = MultiplyNiMatrix(rot, rhs.rot);
-		pos += RotateMatrix(rot, rhs.pos) * scale;
-		return *this;
-	}
-
-	SamTransform SamTransform::Invert() const
-	{
+	NiTransform InvertNiTransform(NiTransform& t) {
 		NiTransform res;
-		res.scale = scale == 0 ? 1 / scale : 1.0f;
-		res.rot = rot.Transpose();
-		res.pos = RotateMatrix(res.rot, (-pos / res.scale));
+		res.scale = t.scale == 0 ? 1.0f : 1.0f / t.scale;
+		res.rot = t.rot.Transpose();
+		res.pos = RotateMatrix(res.rot, (-t.pos / res.scale));
 		return res;
 	}
 
-	SamTransform SamTransform::operator/ (const SamTransform& rhs) const
-	{
+	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
 		NiTransform res;
 
-		float srcScale = scale == 0 ? 1.0f : scale;
-		res.scale = rhs.scale / srcScale;
+		float srcScale = src.scale == 0 ? 1.0f : src.scale;
+		res.scale = dst.scale / srcScale;
 
-		NiMatrix43 inverted = rot.Transpose();
-		res.rot = MultiplyNiMatrix(inverted, rhs.rot);
+		NiMatrix43 inverted = src.rot.Transpose();
+		res.rot = MultiplyNiMatrix(inverted, dst.rot);
 
-		res.pos = RotateMatrix(inverted, (rhs.pos - pos) / srcScale);
+		res.pos = RotateMatrix(inverted, (dst.pos - src.pos) / srcScale);
 
 		return res;
 	}
 
 	//Need this for support of older versions
-	SamTransform SamTransform::NegateTransposed(SamTransform& dst) {
-		SamTransform res;
+	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dst) {
+		NiTransform res;
 
-		float srcScale = scale == 0 ? 1.0f : scale;
+		float srcScale = src.scale == 0 ? 1.0f : src.scale;
 		res.scale = dst.scale / srcScale;
 
-		NiMatrix43 inverted = rot.Transpose();
+		NiMatrix43 inverted = src.rot.Transpose();
 		res.rot = inverted * dst.rot;
 
-		res.pos = inverted * ((dst.pos - pos) / srcScale);
+		res.pos = inverted * ((dst.pos - src.pos) / srcScale);
 
 		return res;
 	}
 
 	//Is almost equal to the identity transform
-	bool SamTransform::IsDefault() {
-		if (FloatEqual(pos.x, 0.0f) &&
-			FloatEqual(pos.y, 0.0f) &&
-			FloatEqual(pos.z, 0.0f) &&
-			FloatEqual(rot.arr[0], 1.0f) &&
-			FloatEqual(rot.arr[5], 1.0f) &&
-			FloatEqual(rot.arr[10], 1.0f) &&
-			FloatEqual(scale, 1.0f))
-			return true;
-		return false;
+	bool TransformIsDefault(NiTransform &t) {
+		return (FloatEqual(t.pos.x, 0.0f) &&
+			FloatEqual(t.pos.y, 0.0f) &&
+			FloatEqual(t.pos.z, 0.0f) &&
+			FloatEqual(t.rot.arr[0], 1.0f) &&
+			FloatEqual(t.rot.arr[5], 1.0f) &&
+			FloatEqual(t.rot.arr[10], 1.0f) &&
+			FloatEqual(t.scale, 1.0f));
+	}
+
+	//Is almost equal to another transform
+	bool TransformEqual(NiTransform& lhs, NiTransform& rhs)
+	{
+		return (FloatEqual(lhs.pos.x, rhs.pos.x) &&
+			FloatEqual(lhs.pos.y, rhs.pos.y) &&
+			FloatEqual(lhs.pos.z, rhs.pos.z) &&
+			FloatEqual(lhs.rot.data[0][0], rhs.rot.data[0][0]) &&
+			FloatEqual(lhs.rot.data[1][0], rhs.rot.data[1][0]) &&
+			FloatEqual(lhs.rot.data[2][0], rhs.rot.data[2][0]) &&
+			FloatEqual(lhs.rot.data[0][1], rhs.rot.data[0][1]) &&
+			FloatEqual(lhs.rot.data[1][1], rhs.rot.data[1][1]) &&
+			FloatEqual(lhs.rot.data[2][1], rhs.rot.data[2][1]) &&
+			FloatEqual(lhs.rot.data[0][2], rhs.rot.data[0][2]) &&
+			FloatEqual(lhs.rot.data[1][2], rhs.rot.data[1][2]) &&
+			FloatEqual(lhs.rot.data[2][2], rhs.rot.data[2][2]) &&
+			FloatEqual(lhs.scale, rhs.scale));
 	}
 
 	NiMatrix43 GetXYZRotation(int type, float scalar) {
@@ -392,7 +395,7 @@ namespace SAF {
 		matrix = matrix * rot;
 	}
 
-	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z) {
+	void MatrixFromEulerYPRTransposed(NiMatrix43& matrix, float x, float y, float z) {
 		float sinX = sin(x);
 		float cosX = cos(x);
 		float sinY = sin(y);
@@ -411,7 +414,7 @@ namespace SAF {
 		matrix.data[2][2] = cosX * cosY;
 	}
 
-	void MatrixFromEulerYPR2(NiMatrix43& matrix, float x, float y, float z) {
+	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z) {
 		float sinX = sin(x);
 		float cosX = cos(x);
 		float sinY = sin(y);
@@ -430,7 +433,8 @@ namespace SAF {
 		matrix.data[2][2] = cosX * cosY;
 	}
 
-	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z) {
+	//Need this for legacy support
+	void MatrixToEulerYPRTransposed(NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[0][2] < 1.0) {
 			if (matrix.data[0][2] > -1.0) {
 				x = atan2(-matrix.data[1][2], matrix.data[2][2]);
@@ -450,7 +454,7 @@ namespace SAF {
 		}
 	}
 
-	void MatrixToEulerYPR2(NiMatrix43& matrix, float& x, float& y, float& z) {
+	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[2][0] < 1.0) {
 			if (matrix.data[2][0] > -1.0) {
 				x = atan2(-matrix.data[2][1], matrix.data[2][2]);
@@ -510,22 +514,22 @@ namespace SAF {
 	}
 
 	void MatrixFromDegree(NiMatrix43& matrix, float x, float y, float z) {
-		MatrixFromEulerYPR(matrix, x * -DEGREE_TO_RADIAN, y * -DEGREE_TO_RADIAN, z * -DEGREE_TO_RADIAN);
+		MatrixFromEulerYPRTransposed(matrix, x * -DEGREE_TO_RADIAN, y * -DEGREE_TO_RADIAN, z * -DEGREE_TO_RADIAN);
 	}
 
 	void MatrixToDegree(NiMatrix43& matrix, float& x, float& y, float& z) {
-		MatrixToEulerYPR(matrix, x, y, z);
+		MatrixToEulerYPRTransposed(matrix, x, y, z);
 		x *= -RADIAN_TO_DEGREE;
 		y *= -RADIAN_TO_DEGREE;
 		z *= -RADIAN_TO_DEGREE;
 	}
 
 	void MatrixFromPose(NiMatrix43& matrix, float x, float y, float z) {
-		MatrixFromEulerYPR2(matrix, x * DEGREE_TO_RADIAN, y * DEGREE_TO_RADIAN, z * DEGREE_TO_RADIAN);
+		MatrixFromEulerYPR(matrix, x * DEGREE_TO_RADIAN, y * DEGREE_TO_RADIAN, z * DEGREE_TO_RADIAN);
 	}
 
 	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z) {
-		MatrixToEulerYPR2(matrix, x, y, z);
+		MatrixToEulerYPR(matrix, x, y, z);
 		x *= RADIAN_TO_DEGREE;
 		y *= RADIAN_TO_DEGREE;
 		z *= RADIAN_TO_DEGREE;
@@ -534,7 +538,7 @@ namespace SAF {
 	NiPoint3 YPRToRPY(NiPoint3& rot)
 	{
 		NiMatrix43 matrix;
-		MatrixFromEulerYPR(matrix, -rot.x, -rot.y, -rot.z);
+		MatrixFromEulerYPRTransposed(matrix, -rot.x, -rot.y, -rot.z);
 
 		NiPoint3 newRot;
 		MatrixToEulerRPY(matrix, newRot.x, newRot.y, newRot.z);
@@ -548,7 +552,7 @@ namespace SAF {
 		MatrixFromEulerRPY(matrix, rot.x, rot.y, rot.z);
 
 		NiPoint3 newRot;
-		MatrixToEulerYPR(matrix, newRot.x, newRot.y, newRot.z);
+		MatrixToEulerYPRTransposed(matrix, newRot.x, newRot.y, newRot.z);
 		newRot.x *= -1;
 		newRot.y *= -1;
 		newRot.z *= -1;
@@ -747,8 +751,13 @@ namespace SAF {
 		return result;
 	}
 
-	SamTransform SlerpNiTransform(SamTransform& transform, float scalar) {
-		SamTransform res;
+	NiTransform SlerpNiTransform(NiTransform& transform, float scalar) {
+		if (scalar == 1.0f)
+			return transform;
+		else if (scalar == 0.0f)
+			return TransformIdentity();
+
+		NiTransform res;
 
 		res.pos = transform.pos * scalar;
 		res.scale = 1.0f + ((transform.scale - 1.0f) * scalar);

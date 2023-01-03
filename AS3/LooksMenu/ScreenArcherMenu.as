@@ -618,6 +618,7 @@
 			currentState.x = 0;
 			currentState.y = 0;
 			stateStack.length = 0;
+			Data.folderStack.length = 0;
 
 			if (filenameInput.visible) {
 				setTextInput(false);
@@ -640,6 +641,44 @@
 			sliderList.updateState(currentState.pos);
 			sliderList.updateFolder(func);
 			sliderList.updateSelected(currentState.x, currentState.y);
+		}
+		
+		public function pushFolderCheckbox(id:int, func:Function)
+		{
+			stateStack.push(getState());
+			sliderList.updateState(0);
+			if (multi) {
+				sliderList.updateFolderCheckbox(func);
+			} else {
+				sliderList.updateFolder(func);
+			}
+			sliderList.updateSelected(0, 0);
+		}
+		
+		public function popFolderCheckbox(func:Function)
+		{
+			currentState = stateStack.pop();
+			sliderList.updateState(currentState.pos);
+			if (multi) {
+				sliderList.updateFolderCheckbox(func);
+			} else {
+				sliderList.updateFolder(func);
+			}
+			sliderList.updateSelected(currentState.x, currentState.y);
+		}
+		
+		public function clearFolder()
+		{
+			//go to first folder then pop to get current state
+			stateStack.length = stateStack.length - Data.folderStack.length;
+			currentState = stateStack.pop();
+			
+			Data.folderStack.length = 0;
+			
+			this.state = currentState.menu;
+			sliderList.updateState(currentState.pos);
+			
+			updateState();
 		}
 		
 		internal function updateState()
@@ -680,14 +719,12 @@
 					sliderList.updateMorphs(selectMorph);
 					break;
 				case LOADADJUSTMENT_STATE:
-					Data.loadAdjustmentFiles();
-					Data.menuOptions = Data.menuFiles;
-					sliderList.updateList(selectAdjustmentFile);
+					Data.loadSubFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
+					sliderList.updateFolder(selectAdjustmentFile);
 					break;
 				case LOADMFG_STATE:
-					Data.loadMfgFiles();
-					Data.menuOptions = Data.menuFiles;
-					sliderList.updateList(selectMfgFile);
+					Data.loadSubFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
+					sliderList.updateFolder(selectMfgFile);
 					break;
 				case SAVEMFG_STATE:
 				case SAVEADJUSTMENT_STATE:
@@ -723,29 +760,17 @@
 					sliderList.updateList(selectExportType);
 					break;
 				case POSEPLAY_STATE:
-					Data.loadSamPoses();
-					sliderList.updateFolder(selectPosePlay);
-					break;
 				case LOADPOSE_STATE:
-					Data.loadPoseFiles();
-					Data.menuOptions = Data.menuFiles;
-					sliderList.updateList(selectPoseFile);
+					Data.loadSubFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
+					sliderList.updateFolder(selectPoseFile);
 					break;
 				case SKELETONADJUSTMENT_STATE:
-					Data.getSkeletonAdjustments(false);
-					if (multi) {
-						sliderList.updateCheckboxes(selectSkeletonAdjustment);
-					} else {
-						sliderList.updateList(selectSkeletonAdjustment);
-					}
+					Data.getAdjustmentFolder(false);
+					updateMulti(false);
 					break;
 				case RACEADJUSTMENT_STATE:
-					Data.getSkeletonAdjustments(true);
-					if (multi) {
-						sliderList.updateCheckboxes(selectRaceAdjustment);
-					} else {
-						sliderList.updateList(selectRaceAdjustment);
-					}
+					Data.getAdjustmentFolder(true);
+					updateMulti(true);
 					break;
 				case POSITIONING_STATE:
 					Data.loadPositioning();
@@ -778,9 +803,8 @@
 					sliderList.updateList(selectLightObject);
 					break;
 				case LOADLIGHT_STATE:
-					Data.loadLightFiles();
-					Data.menuOptions = Data.menuFiles;
-					sliderList.updateList(selectLightFile);
+					Data.loadSubFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
+					sliderList.updateFolder(selectLightFile);
 					break;
 				case LIGHTSETTINGS_STATE:
 					Data.loadLightSettings();
@@ -798,11 +822,13 @@
 			updateTitle();
 		}
 		
-		public function updateFolder():void
+		public function updateMulti(race:Boolean):void
 		{
-			Data.popFolder();
-			switch(this.state) {
-				case POSEPLAY_STATE: popFolder(selectPosePlay); break;
+			var func:Function = (race ? selectRaceAdjustment : selectSkeletonAdjustment);
+			if (multi) {
+				sliderList.updateFolderCheckbox(func);
+			} else {
+				sliderList.updateFolder(func);
 			}
 		}
 		
@@ -913,9 +939,10 @@
 			Data.selectedCategory = id;
 
 			//If index less than 0 then it's not a tongue
-			if (Data.selectedValues[id] < 0) {
+			if (Data.menuValues[id] < 0) {
 				pushState(MORPH_STATE);
 			} else {
+				Data.selectedCategory = Data.menuValues[id];
 				pushState(MORPHTONGUE_STATE);
 			}
 		}
@@ -1026,17 +1053,6 @@
 			}
 		}
 		
-		internal function selectMfgFile(id:int)
-		{
-			Data.loadMfg(id);
-		}
-		
-		internal function selectAdjustmentFile(id:int)
-		{
-			Data.loadAdjustment(id);
-			popState();
-		}
-		
 		internal function selectIdleCategory(id:int)
 		{
 			Data.selectedCategory = id;
@@ -1060,25 +1076,55 @@
 			pushState(POSEEXPORT_STATE);
 		}
 		
-		internal function selectPoseFile(id:int)
-		{
-			Data.loadPose(id);
-		}
-		
 		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
 		{
-			Data.loadSkeletonAdjustment(id, false, !multi, enabled);
+			if (Data.selectSkeletonFile(id, false, !multi, enabled)) {
+				pushFolderCheckbox(id, selectSkeletonAdjustment);
+			} else {
+				Data.getAdjustmentFolder(false);
+				updateMulti(false);
+			}
 		}
 		
 		internal function selectRaceAdjustment(id:int, enabled:Boolean = true)
 		{
-			Data.loadSkeletonAdjustment(id, true, !multi, enabled);
+			if (Data.selectSkeletonFile(id, true, !multi, enabled)) {
+				pushFolderCheckbox(id, selectRaceAdjustment);
+			} else {
+				Data.getAdjustmentFolder(true);
+				updateMulti(true);
+			}
 		}
 		
-		internal function selectPosePlay(id:int)
+		internal function selectPoseFile(id:int)
 		{
 			if (Data.selectSamPose(id)) {
-				pushFolder(id, selectPosePlay);
+				pushFolder(id, selectPoseFile);
+			}
+		}
+		
+		internal function selectMfgFile(id:int)
+		{
+			if (Data.selectMfgFile(id)) {
+				pushFolder(id, selectMfgFile);
+			}
+		}
+		
+		internal function selectLightFile(id:int)
+		{
+			if (Data.selectLightFile(id)) {
+				pushFolder(id, selectLightFile);
+			} else {
+				clearFolder();
+			}
+		}
+		
+		internal function selectAdjustmentFile(id:int)
+		{
+			if (Data.selectAdjustmentFile(id)) {
+				pushFolder(id, selectAdjustmentFile);
+			} else {
+				clearFolder();
 			}
 		}
 		
@@ -1164,12 +1210,6 @@
 			popState();
 		}
 		
-		internal function selectLightFile(id:int)
-		{
-			Data.loadLights(id);
-			popState();
-		}
-		
 		internal function selectLightSettings(id:int, value:Number = 0)
 		{
 			if (id < 4) { // pos/rot
@@ -1195,7 +1235,7 @@
 			pushState(TRANSFORM_STATE);
 		}
 
-		internal function resetButton():void
+		public function resetButton():void
 		{
 			switch (this.state) {
 				case ADJUSTMENT_STATE:
@@ -1222,11 +1262,13 @@
 					break;
 				case SKELETONADJUSTMENT_STATE:
 					Data.resetSkeletonAdjustment(false);
-					Data.getSkeletonAdjustments(false);
+					Data.getAdjustmentFolder(false);
+					updateMulti(false);
 					break;
 				case RACEADJUSTMENT_STATE:
 					Data.resetSkeletonAdjustment(true);
-					Data.getSkeletonAdjustments(true);
+					Data.getAdjustmentFolder(true);
+					updateMulti(true);
 					break;
 				case POSITIONING_STATE:
 					Data.resetPositioning();
@@ -1254,16 +1296,44 @@
 			}
 			else if (Data.folderStack.length > 0) //folder state
 			{
-				Data.popFolder();
-				switch(this.state) {
-					case POSEPLAY_STATE: popFolder(selectPosePlay); break;
-				}			
+				updateFolder();
 			}
 			else
 			{
 				popState();
 			}
 			Util.playCancel();
+		}
+		
+		public function updateFolder()
+		{
+			switch(this.state) {
+				case SKELETONADJUSTMENT_STATE:
+					Data.popSkeletonAdjustment(false);
+					popFolderCheckbox(selectSkeletonAdjustment);
+					break;
+				case RACEADJUSTMENT_STATE:
+					Data.popSkeletonAdjustment(true);
+					popFolderCheckbox(selectRaceAdjustment);
+					break;
+				case POSEPLAY_STATE: 
+				case LOADPOSE_STATE:
+					Data.popFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
+					popFolder(selectPoseFile); 
+					break;
+				case LOADLIGHT_STATE: 
+					Data.popFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
+					popFolder(selectLightFile); 
+					break;
+				case LOADADJUSTMENT_STATE:
+					Data.popFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
+					popFolder(selectAdjustmentFile); 
+					break;
+				case LOADMFG_STATE:
+					Data.popFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
+					popFolder(selectMfgFile); 
+					break;
+			}
 		}
 		
 		public function exit():void
@@ -1307,12 +1377,12 @@
 					multi = !multi;
 					if (multi) {
 						buttonHintExtra.ButtonText = "$SAM_Multi";
-						sliderList.updateCheckboxes(selectSkeletonAdjustment);
+						sliderList.updateFolderCheckbox(selectSkeletonAdjustment);
 					} 
 					else
 					{
 						buttonHintExtra.ButtonText = "$SAM_Single";
-						sliderList.updateList(selectSkeletonAdjustment);
+						sliderList.updateFolder(selectSkeletonAdjustment);
 					}
 					sliderList.restoreSelected();
 					break;
@@ -1321,12 +1391,12 @@
 					multi = !multi;
 					if (multi) {
 						buttonHintExtra.ButtonText = "$SAM_Multi";
-						sliderList.updateCheckboxes(selectRaceAdjustment);
+						sliderList.updateFolderCheckbox(selectRaceAdjustment);
 					} 
 					else
 					{
 						buttonHintExtra.ButtonText = "$SAM_Single";
-						sliderList.updateList(selectRaceAdjustment);
+						sliderList.updateFolder(selectRaceAdjustment);
 					}
 					sliderList.restoreSelected();
 					break;

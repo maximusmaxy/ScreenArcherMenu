@@ -11,6 +11,7 @@
 #include "conversions.h"
 #include "hacks.h"
 #include "eyes.h"
+#include "io.h"
 
 #include "f4se_common/Utilities.h"
 
@@ -20,22 +21,27 @@ namespace SAF {
 	UInt32 PapyrusCreateAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, BSFixedString espName)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return 0;
-		UInt32 handle = adjustments->CreateAdjustment(std::string(name), std::string(espName));
+		if (!adjustments) 
+			return 0;
+
+		UInt32 handle = adjustments->CreateAdjustment(name.c_str(), espName.c_str());
 		return handle;
 	}
 
 	bool PapyrusHasAdjustment(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return false;
+		if (!adjustments) 
+			return false;
+
 		return (adjustments->GetAdjustment(handle) != nullptr);
 	}
 
 	void PapyrusRemoveAdjustment(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
 
 		adjustments->RemoveAdjustment(handle);
 		adjustments->UpdateAllAdjustments();
@@ -43,9 +49,13 @@ namespace SAF {
 
 	BSFixedString PapyrusAdjustmentName(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle) {
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return BSFixedString();
+		if (!adjustments) 
+			return BSFixedString();
+
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return BSFixedString();
+		if (!adjustment) 
+			return BSFixedString();
+
 		return BSFixedString(adjustment->name.c_str());
 	}
 
@@ -53,7 +63,8 @@ namespace SAF {
 	{
 		VMArray<SInt32> result;
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return result;
+		if (!adjustments) 
+			return result;
 
 		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
 			SInt32 adjustmentHandle = adjustment->handle;
@@ -76,10 +87,12 @@ namespace SAF {
 	UInt32 PapyrusGetAdjustmentFile(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return 0;
+		if (!adjustments) 
+			return 0;
 
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetFile(filename.c_str());
-		if (!adjustment) return 0;
+		if (!adjustment) 
+			return 0;
 
 		return adjustment->handle;
 	}
@@ -87,7 +100,8 @@ namespace SAF {
 	void PapyrusRemoveAdjustmentFile(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
 
 		adjustments->RemoveFile(filename.c_str(), 0);
 		adjustments->UpdateAllAdjustments();
@@ -97,17 +111,20 @@ namespace SAF {
 	{
 		VMArray<BSFixedString> result;
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return result;
+		if (!adjustments) 
+			return result;
+
 		for (auto& nodeName: adjustments->nodeSets->allStrings) {
 			if (adjustments->HasNode(nodeName)) {
 				BSFixedString name(nodeName);
 				result.Push(&name);
 			}
 		}
+
 		return result;
 	}
 
-	Transform TransformToPapyrus(SamTransform& transform, BSFixedString name, bool offset) {
+	Transform TransformToPapyrus(NiTransform& transform, BSFixedString name, bool offset) {
 		Transform result;
 
 		result.Set<BSFixedString>("name", name);
@@ -115,35 +132,39 @@ namespace SAF {
 		result.Set<float>("x", transform.pos.x);
 		result.Set<float>("y", transform.pos.y);
 		result.Set<float>("z", transform.pos.z);
+
 		float yaw, pitch, roll;
-		MatrixToEulerYPR2(transform.rot, yaw, pitch, roll);
+		MatrixToEulerYPR(transform.rot, yaw, pitch, roll);
 		result.Set<float>("yaw", yaw);
 		result.Set<float>("pitch", pitch);
 		result.Set<float>("roll", roll);
+
 		result.Set<float>("scale", transform.scale);
 
 		return result;
 	}
 
-	SamTransform TransformFromPapyrus(Transform& transform) {
-		SamTransform result;
+	NiTransform TransformFromPapyrus(Transform& transform) {
+		NiTransform result;
 
 		transform.Get<float>("x", &result.pos.x);
 		transform.Get<float>("y", &result.pos.y);
 		transform.Get<float>("z", &result.pos.z);
+
 		float yaw, pitch, roll;
 		transform.Get<float>("yaw", &yaw);
 		transform.Get<float>("pitch", &pitch);
 		transform.Get<float>("roll", &roll);
-		MatrixFromEulerYPR2(result.rot, yaw, pitch, roll);
+		MatrixFromEulerYPR(result.rot, yaw, pitch, roll);
+
 		transform.Get<float>("scale", &result.scale);
 
 		return result;
 	}
 
-	const NodeKey GetPapyrusKeyTransform(BSFixedString name, Transform& transform, SamTransform* out)
+	const NodeKey GetPapyrusKeyTransform(BSFixedString name, Transform& transform, NiTransform* out)
 	{
-		NodeKey nodeKey = GetNodeKeyFromString(name);
+		NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(name);
 		if (!nodeKey.key)
 			return nodeKey;
 		*out = TransformFromPapyrus(transform);
@@ -158,13 +179,16 @@ namespace SAF {
 	{
 		Transform result;
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return result;
+		if (!adjustments) 
+			return result;
+
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return result;
+		if (!adjustment) 
+			return result;
 
-		const NodeKey nodeKey = GetNodeKeyFromString(name);
+		const NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(name);
 
-		SamTransform transform = adjustment->GetTransformOrDefault(nodeKey);
+		NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
 
 		return TransformToPapyrus(transform, name, nodeKey.offset);
 	}
@@ -172,11 +196,14 @@ namespace SAF {
 	void PapyrusSetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle, Transform transform)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustments) 
+			return;
 
-		SamTransform papyrusTransform;
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) 
+			return;
+
+		NiTransform papyrusTransform;
 		NodeKey nodeKey = GetPapyrusKeyTransform(name, transform, &papyrusTransform);
 		if (nodeKey.key && adjustments->HasNode(nodeKey.name)) {
 			adjustment->SetTransform(nodeKey, papyrusTransform);
@@ -187,11 +214,14 @@ namespace SAF {
 	void PapyrusOverrideTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle, Transform transform)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustments) 
+			return;
 
-		SamTransform papyrusTransform;
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) 
+			return;
+
+		NiTransform papyrusTransform;
 		NodeKey nodeKey = GetPapyrusKeyTransform(name, transform, &papyrusTransform);
 		if (nodeKey.key && adjustments->HasNode(nodeKey.name)) {
 			if (nodeKey.offset) {
@@ -208,11 +238,14 @@ namespace SAF {
 	void PapyrusResetTransform(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustments) 
+			return;
 
-		NodeKey nodeKey = GetNodeKeyFromString(name);
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) 
+			return;
+
+		NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(name);
 		if (nodeKey.key) {
 			adjustment->ResetTransform(nodeKey);
 			adjustments->UpdateNode(nodeKey.name);
@@ -223,11 +256,14 @@ namespace SAF {
 	{
 		VMArray<Transform> result;
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return result;
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return result;
+		if (!adjustments)
+			return result;
 
-		adjustment->ForEachTransformOrDefault([&](const NodeKey* nodeKey, SamTransform* transform) {
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) 
+			return result;
+
+		adjustment->ForEachTransformOrDefault([&](const NodeKey* nodeKey, NiTransform* transform) {
 			result.Push(&TransformToPapyrus(*transform, nodeKey->name, nodeKey->offset));
 		}, &adjustments->nodeSets->all);
 
@@ -237,9 +273,12 @@ namespace SAF {
 	void PapyrusSetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, VMArray<Transform> transforms)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
+
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustment) 
+			return;
 
 		UInt32 length = transforms.Length();
 		for (UInt32 i = 0; i < length; ++i) {
@@ -249,7 +288,7 @@ namespace SAF {
 			BSFixedString name;
 			result.Get<BSFixedString>("name", &name);
 
-			SamTransform papyrusTransform;
+			NiTransform papyrusTransform;
 			NodeKey nodeKey = GetPapyrusKeyTransform(name, result, &papyrusTransform);
 			if (nodeKey.key && adjustments->HasNode(nodeKey.name))
 			{
@@ -262,9 +301,12 @@ namespace SAF {
 	void PapyrusOverrideAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, VMArray<Transform> transforms)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
+
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustment) 
+			return;
 
 		UInt32 length = transforms.Length();
 		for (UInt32 i = 0; i < length; ++i) {
@@ -274,7 +316,7 @@ namespace SAF {
 			BSFixedString name;
 			result.Get<BSFixedString>("name", &name);
 
-			SamTransform papyrusTransform;
+			NiTransform papyrusTransform;
 			NodeKey nodeKey = GetPapyrusKeyTransform(name, result, &papyrusTransform);
 			if (nodeKey.key && adjustments->HasNode(nodeKey.name))
 			{
@@ -292,9 +334,12 @@ namespace SAF {
 	void PapyrusResetAll(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
+
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustment) 
+			return;
 
 		adjustment->Clear();
 		adjustments->UpdateAllAdjustments();
@@ -303,9 +348,10 @@ namespace SAF {
 	UInt32 PapyrusLoadAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename, BSFixedString espName)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return 0;
+		if (!adjustments) 
+			return 0;
 
-		UInt32 handle = adjustments->LoadAdjustmentHandle(std::string(filename), std::string(espName));
+		UInt32 handle = adjustments->LoadAdjustmentHandle(filename.c_str(), espName.c_str());
 		adjustments->UpdateAllAdjustments();
 		
 		return handle;
@@ -314,28 +360,35 @@ namespace SAF {
 	void PapyrusSaveAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename, UInt32 handle)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
 
-		adjustments->SaveAdjustment(std::string(filename), handle);
+		adjustments->SaveAdjustment(filename.c_str(), handle);
 		adjustments->UpdateAllAdjustments();
 	}
 
 	SInt32 PapyrusGetAdjustmentScale(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return 100;
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return 100;
+		if (!adjustments) 
+			return 100;
 
-		return adjustment->scale;
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) 
+			return 100;
+
+		return (SInt32)std::round(adjustment->scale * 100);
 	}
 
 	void PapyrusSetAdjustmentScale(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, SInt32 scale)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
+
 		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return;
+		if (!adjustment) 
+			return;
 
 		adjustment->SetScale(scale * 0.01);
 		adjustments->UpdateAllAdjustments();
@@ -345,13 +398,16 @@ namespace SAF {
 	{
 		Transform result;
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return result;
-		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment) return result;
+		if (!adjustments) 
+			return result;
 
-		const NodeKey nodeKey = GetNodeKeyFromString(name);
+		std::shared_ptr<Adjustment> adjustment = adjustments->GetAdjustment(handle);
+		if (!adjustment) 
+			return result;
+
+		const NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(name);
 		
-		SamTransform transform = adjustment->GetScaledTransformOrDefault(nodeKey);
+		NiTransform transform = adjustment->GetScaledTransformOrDefault(nodeKey);
 
 		return TransformToPapyrus(transform, name, nodeKey.offset);
 	}
@@ -359,20 +415,20 @@ namespace SAF {
 	void PapyrusLoadPose(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
 
-		std::string path("Data\\F4SE\\Plugins\\SAF\\Poses\\");
-		path += filename;
-		path += ".json";
+		std::string path = GetPathWithExtension(POSES_PATH, filename, ".json");
 
-		adjustments->LoadPose(path);
+		adjustments->LoadPose(path.c_str());
 		adjustments->UpdateAllAdjustments();
 	}
 
 	void PapyrusSavePose(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
 
 		ExportSkeleton exports;
 		exports.skeleton = "All";
@@ -383,13 +439,14 @@ namespace SAF {
 			}
 		});
 
-		adjustments->SavePose(std::string(filename), &exports);
+		adjustments->SavePose(filename.c_str(), &exports);
 	}
 
 	void PapyrusResetPose(StaticFunctionTag*, TESObjectREFR* refr)
 	{
 		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments) return;
+		if (!adjustments) 
+			return;
 
 		adjustments->ResetPose();
 		adjustments->UpdateAllAdjustments();

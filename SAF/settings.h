@@ -10,13 +10,12 @@ namespace SAF {
 		std::string offset;
 		std::string pose;
 		std::string aaf;
+		std::string outfitStudioPosePath;
 		UInt32 doppelgangerID;
 		UInt32 fullDoppelgangerID;
 
 		void Initialize();
-		void ToJson(Json::Value);
-		void FromJson(Json::Value);
+		void ToJson(Json::Value& value);
+		void FromJson(Json::Value& value);
 	};
-
-	extern Settings g_settings;
 }

@@ -1,23 +1,9 @@
 #include "f4se/PluginAPI.h"
-#include "f4se/PapyrusNativeFunctions.h"
-
-#include "f4se/GameData.h"
-#include "f4se/GameSettings.h"
-#include "f4se/GameReferences.h"
-#include "f4se/GameTypes.h"
-#include "f4se/GameMenus.h"
-
-#include "f4se/NiNodes.h"
-#include "f4se/NiTypes.h"
-#include "f4se/NiObjects.h"
-#include "f4se/InputMap.h"
-#include "f4se/GameRTTI.h"
 
 #include "papyrus.h"
 #include "serialization.h"
 #include "adjustments.h"
 #include "util.h"
-#include "messaging.h"
 
 #include <shlobj.h>
 #include <string>

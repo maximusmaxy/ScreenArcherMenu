@@ -11,7 +11,7 @@
 #include "json.h"
 #include "strnatcmp.h"
 #include "SAF/io.h"
-#include "SAF/messaging.h"
+#include "SAF/adjustments.h"
 
 #include <unordered_map>
 #include <regex>
@@ -118,6 +118,10 @@ void OnConsoleUpdate();
 void ToggleMenu();
 bool OpenSamFile(std::string filename);
 
+void LoadMenuFiles();
+bool isDotOrDotDot(const char* cstr);
+void GetSubFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path, const char* ext);
+
 extern SAF::SAFDispatcher safDispatcher;
 
 class SAMMessaging {
@@ -143,8 +147,6 @@ public:
 void F4SEMessageHandler(F4SEMessagingInterface::Message* msg);
 
 extern SAMMessaging samMessaging;
-
-void LoadMenuFiles();
 
 void SamSerializeSave(const F4SESerializationInterface* ifc);
 void SamSerializeLoad(const F4SESerializationInterface* ifc);

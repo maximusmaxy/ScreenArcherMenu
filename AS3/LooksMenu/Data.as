@@ -42,6 +42,9 @@
 		public static const POSE_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Poses";
 		public static const LIGHT_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAM\\Lights";
 		
+		public static const JSON_EXT:String = ".json";
+		public static const TXT_EXT:String = ".txt";
+		
 		public static const KEYBOARD = 1;
 		public static const PAD = 2;
 		
@@ -742,18 +745,6 @@
 			}
 		}
 		
-		public static function loadMfgFiles()
-		{
-			if (!getFileListing(MORPH_DIRECTORY, "*.txt"))
-			{
-				if (Util.debug){
-					for (var y:int = 0; y < 1000; y++) {
-						menuFiles[y] = y.toString();
-					}
-				}
-			}
-		}
-		
 		public static function saveMfg(filename:String)
 		{
 			try
@@ -763,19 +754,6 @@
 			catch (e:Error)
 			{
 				trace("Failed to save preset");
-			}
-		}
-		
-		public static function loadMfg(id:int) 
-		{
-			var filename:String = menuFiles[id];
-			try
-			{
-				sam.LoadMorphsPreset(filename, selectedCategory);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load file " + filename);
 			}
 		}
 		
@@ -1015,26 +993,6 @@
 			}
 		}
 		
-		public static function getSkeletonAdjustments(race:Boolean)
-		{
-			try {
-				var adjustments:Object = sam.GetSkeletonAdjustments(race);
-				menuOptions = adjustments.names;
-				menuValues = adjustments.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get skeleton adjustments");
-				if (Util.debug) {
-					menuOptions = ["1", "2", "3", "4", "5"];
-					menuValues = [false, false, true, false, false];
-				} else {
-					menuOptions = [];
-					menuValues = [];
-				}
-			}
-		}
-		
 		public static function loadSkeletonAdjustment(id:int, race:Boolean, clear:Boolean, enabled:Boolean)
 		{
 			if (clear) {
@@ -1135,26 +1093,50 @@
 			}
 		}
 		
-		public static function popFolder()
+		public static function updateFolderCheckbox():Array
+		{
+			menuValues = [];
+			for (var i:int = 0; i < menuFolder.length; i++) {
+				menuValues.push(menuFolder[i].checked);
+			}
+		}
+		
+		public static function popFolder(dir:String, ext:String)
 		{
 			folderStack.pop();
 			try {
-				var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length - 1];
-				menuFolder = sam.GetSamPoses(path);
+				var path:String = (folderStack.length == 0) ? dir : folderStack[folderStack.length - 1];
+				menuFolder = sam.GetSubFolder(path, ext);
 				updateFolderNames();
 			}
 			catch (e:Error) {
-				trace("Failed to get sam poses");
+				trace("Failed to get sub folder");
 				menuOptions = [];
 				menuFolder = [];
 			}
 		}
 		
-		public static function loadSamPoses()
+		public static function popSkeletonAdjustment(race:Boolean)
+		{
+			folderStack.pop();
+			try {
+				var path:String = (folderStack.length == 0) ? ADJUSTMENT_DIRECTORY : folderStack[folderStack.length - 1];
+				menuFolder = sam.GetSkeletonAdjustments(path, race);
+				updateFolderNames();
+				updateFolderCheckbox();
+			}
+			catch (e:Error) {
+				trace("Failed to get skeleton adjustments");
+				menuOptions = [];
+				menuFolder = [];
+			}
+		}
+		
+		public static function loadSubFolder(dir:String, ext:String)
 		{
 			try {
-				var path:String = (folderStack.length == 0) ? POSE_DIRECTORY : folderStack[folderStack.length - 1];
-				menuFolder = sam.GetSamPoses(path);
+				var path:String = (folderStack.length == 0) ? dir : folderStack[folderStack.length - 1];
+				menuFolder = sam.GetSubFolder(path, ext);
 				updateFolderNames();
 			}
 			catch (e:Error)
@@ -1174,32 +1156,126 @@
 						}
 					];
 					updateFolderNames();
+				} else {
+					menuFolder = [];
+					menuOptions = [];
 				}
 			}
 		}
 		
-		public static function selectSamPose(id:int):Boolean
+		public static function getAdjustmentFolder(race:Boolean)
+		{
+			try {
+				var path:String = (folderStack.length == 0) ? ADJUSTMENT_DIRECTORY : folderStack[folderStack.length - 1];
+				menuFolder = sam.GetSkeletonAdjustments(path, race);
+				updateFolderNames();
+				updateFolderCheckbox();
+			}
+			catch (e:Error)
+			{
+				trace("Failed to get skeleton adjustments");
+				if (Util.debug) {
+					menuFolder = [
+						{
+							"name": "Folder",
+							"folder": true,
+							"path": "test"
+						},
+						{
+							"name": "File",
+							"path": "test",
+							"checked": true
+						},
+						{
+							"name": "File",
+							"path": "test",
+							"checked": false
+						}
+					];
+					updateFolderNames();
+				} else {
+					menuOptions = [];
+					menuFolder = [];
+				}
+			}
+		}
+		
+		public static function selectSubFolder(id:int, ext:String, func:Function):Boolean
 		{
 			try {
 				if (menuFolder[id].folder) {
 					var path:String = menuFolder[id].path;
-					menuFolder = sam.GetSamPoses(path);
+					menuFolder = sam.GetSubFolder(path, ext);
 					folderStack.push(path);
 					updateFolderNames();
 					return true;
 				} 
 				else 
 				{
-					sam.LoadPose(menuFolder[id].path);
+					func(menuFolder[id].path);
 				}
 			}
 			catch (e:Error)
 			{
-				trace("Failed to select sam pose");
+				trace("Failed to select sub folder");
 				menuOptions = [];
 				menuFolder = [];
 			}
 			return false;
+		}
+		
+		public static function selectSkeletonFile(id:int, race:Boolean, clear:Boolean, enabled:Boolean):Boolean
+		{
+			try {
+				if (menuFolder[id].folder) {
+					var path:String = menuFolder[id].path;
+					menuFolder = sam.GetSkeletonAdjustments(path, race);
+					folderStack.push(path);
+					updateFolderNames();
+					updateFolderCheckbox();
+					return true;
+				} 
+				else 
+				{
+//					if (clear) {
+//						for (var i:int = 0; i < menuValues.length; i++) {
+//							menuFolder[i].checked = false;
+//						}
+//					}
+//					
+//					menuFolder[id].checked = enabled;
+//					updateFolderCheckbox();
+//					
+					sam.LoadSkeletonAdjustment(menuFolder[id].path, race, clear, enabled);
+				}
+			}
+			catch (e:Error)
+			{
+				trace("Failed to select adjustment folder");
+				menuOptions = [];
+				menuFolder = [];
+			}
+			return false;
+		}
+
+		public static function selectSamPose(id:int):Boolean
+		{
+			return selectSubFolder(id, JSON_EXT, sam.LoadPose);
+		}
+		
+		public static function selectLightFile(id:int):Boolean
+		{
+			return selectSubFolder(id, JSON_EXT, sam.LoadLights);
+		}
+		
+		public static function selectMfgFile(id:int):Boolean
+		{
+			return selectSubFolder(id, TXT_EXT, sam.LoadMorphsPreset);
+		}
+		
+		public static function selectAdjustmentFile(id:int):Boolean
+		{
+			return selectSubFolder(id, JSON_EXT, sam.LoadAdjustment);
 		}
 		
 		public static function loadOptions()
@@ -1569,26 +1645,6 @@
 			catch (e:Error)
 			{
 				trace("Failed to delete lights");
-			}
-		}
-		
-		public static function loadLightFiles()
-		{
-			if (!getFileListing(LIGHT_DIRECTORY, "*.json"))
-			{
-				menuFiles = [];
-			}
-		}
-		
-		public static function loadLights(id:int)
-		{
-			try
-			{
-				sam.LoadLights(menuOptions[id]);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load lights");
 			}
 		}
 		

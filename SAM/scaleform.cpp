@@ -85,16 +85,16 @@ GFxFunction(GetMorphCategories, {
 
 GFxFunction(GetMorphs, {
 	GetMorphsGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
-})
+});
 
 GFxFunction(SaveMorphsPreset, {
 	SaveMfg(args->args[0].GetString());
 });
 
 GFxFunction(LoadMorphsPreset, {
-	LoadMfg(args->args[0].GetString());
-	GetMorphsGFx(args->movie->movieRoot, args->result, args->args[1].GetInt());
+	LoadMfgPath(args->args[0].GetString());
 });
+//GetMorphsGFx(args->movie->movieRoot, args->result, args->args[1].GetInt());
 
 GFxFunction(ResetMorphs, {
 	ResetMfg();
@@ -239,7 +239,7 @@ GFxFunction(SaveAdjustment, {
 });
 
 GFxFunction(LoadAdjustment, {
-	LoadAdjustmentFile(args->args[0].GetString());
+	LoadAdjustmentPath(args->args[0].GetString());
 });
 
 GFxFunction(NewAdjustment, {
@@ -301,7 +301,7 @@ GFxFunction(SavePose, {
 });
 
 GFxFunction(LoadPose, {
-	LoadJsonPose(args->args[0].GetString());
+	LoadPosePath(args->args[0].GetString());
 });
 
 class ResetPoseScaleform : public GFxFunctionHandler
@@ -321,7 +321,7 @@ public:
 };
 
 GFxFunction(GetSkeletonAdjustments, {
-	GetSkeletonAdjustmentsGFx(args->movie->movieRoot, args->result, args->args[0].GetBool());
+	GetSkeletonAdjustmentsGFx(args->movie->movieRoot, args->result, args->args[0].GetString(), args->args[1].GetBool());
 });
 
 GFxFunction(LoadSkeletonAdjustment, {
@@ -352,8 +352,8 @@ GFxFunction(ResetPositioning, {
 	GetPositioningGFx(args->movie->movieRoot, args->result);
 });
 
-GFxFunction(GetSamPoses, {
-	GetSamPosesGFx(args->movie->movieRoot, args->result, args->args[0].GetString());
+GFxFunction(GetSubFolder, {
+	GetSubFolderGFx(args->movie->movieRoot, args->result, args->args[0].GetString(), args->args[1].GetString());
 });
 
 GFxFunction(SetCursorVisible, {
@@ -486,7 +486,7 @@ GFxFunction(SaveLights, {
 });
 
 GFxFunction(LoadLights, {
-	LoadLightsJson(args->args[0].GetString());
+	LoadLightsPath(args->args[0].GetString());
 });
 
 GFxFunction(GetPoseExportTypes, {
@@ -578,7 +578,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(GetPositioning);
 	GFxRegister(SelectPositioning);
 	GFxRegister(ResetPositioning);
-	GFxRegister(GetSamPoses);
+	GFxRegister(GetSubFolder);
 	GFxRegister(SetCursorVisible);
 	GFxRegister(GetCursorPosition);
 	GFxRegister(SetCursorPosition);
