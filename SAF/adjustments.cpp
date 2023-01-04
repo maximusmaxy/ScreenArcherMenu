@@ -865,7 +865,7 @@ namespace SAF {
 				if (!transform.first.offset) {
 					auto baseNode = GetFromBaseMap(*baseMap, transform.first.name);
 					if (baseNode) {
-						NiTransform dst = MultiplyNiTransform(*baseNode, transform.second);
+						NiTransform dst = *baseNode * transform.second;
 						transform.second = NegateNiTransform(*baseNode, dst);
 					}
 				}
