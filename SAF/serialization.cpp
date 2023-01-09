@@ -258,9 +258,9 @@ namespace SAF {
 
 					for (UInt32 i = 0; i < actorSize; ++i) {
 
-						UInt32 oldId, formId;
-						ReadData<UInt32>(ifc, &oldId);
-						bool actorResolved = ifc->ResolveFormId(oldId, &formId);
+						UInt32 oldActorId, actorId;
+						ReadData<UInt32>(ifc, &oldActorId);
+						bool actorResolved = ifc->ResolveFormId(oldActorId, &actorId);
 
 						//in version 4 onward, need to store a raceGender key as well
 						UInt32 raceGenderSize = 1;
@@ -279,10 +279,10 @@ namespace SAF {
 								ReadData<UInt64>(ifc, &oldRaceGender);
 
 								UInt64 isFemale = oldRaceGender & 0x100000000;
-								UInt32 oldId = oldRaceGender & 0xFFFFFFFF;
-								UInt32 formId;
-								raceGenderResolved = ifc->ResolveFormId(oldId, &formId);
-								raceGenderId = formId | isFemale;
+								UInt32 oldRacegenderId = oldRaceGender & 0xFFFFFFFF;
+								UInt32 outRaceGenderId;
+								raceGenderResolved = ifc->ResolveFormId(oldRacegenderId, &outRaceGenderId);
+								raceGenderId = outRaceGenderId | isFemale;
 							}
 
 							UInt32 adjustmentSize;
@@ -405,9 +405,10 @@ namespace SAF {
 										}
 									}
 								}
-								LoadPersistentIfValid(formId, raceGenderId, persistent, modLoaded);
+								if (actorResolved && raceGenderResolved && modLoaded)
+									LoadPersistentIfValid(actorId, raceGenderId, persistent);
 							}
-							ValidatePersistents(persistentAdjustments, formId, raceGenderId);
+							ValidatePersistents(persistentAdjustments, actorId, raceGenderId);
 						}
 					}
 				}
@@ -470,11 +471,7 @@ namespace SAF {
 		}
 	}
 
-	void AdjustmentManager::LoadPersistentIfValid(UInt32 formId, UInt64 raceGenderId, PersistentAdjustment persistent, bool loaded) {
-		//if mod not loaded
-		if (!loaded)
-			return;
-
+	void AdjustmentManager::LoadPersistentIfValid(UInt32 formId, UInt64 raceGenderId, PersistentAdjustment& persistent) {
 		//if default or tongue type, check if transform is unedited
 		if (!persistent.IsValid())
 			return;
@@ -532,6 +529,7 @@ namespace SAF {
 		case kAdjustmentTypeNone: return false;
 		case kAdjustmentTypeDefault:
 		case kAdjustmentTypeTongue: 
+		case kAdjustmentTypePose:
 			return !TransformMapIsDefault(adjustment.map);
 		case kAdjustmentTypeRace: 
 			return adjustment.updated;
@@ -584,21 +582,30 @@ namespace SAF {
 
 	bool PersistentAdjustment::StoreMap()
 	{
-		if (!type)
+		switch (type) {
+		case kAdjustmentTypeNone:
 			return false;
+		case kAdjustmentTypeDefault:
+		case kAdjustmentTypeTongue:
+		case kAdjustmentTypePose:
+			return true;
+		}
 
-		//Store map if a non file type or if a file type is updated
-		return (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue || updated);
+		return updated;
 	}
 
 	bool PersistentAdjustment::IsValid()
 	{
-		if (!type)
+		switch (type) {
+		case kAdjustmentTypeNone:
 			return false;
-
-		if (type == kAdjustmentTypeDefault || type == kAdjustmentTypeTongue) {
+		case kAdjustmentTypeDefault:
+		case kAdjustmentTypeTongue:
+		case kAdjustmentTypePose:
+		{
 			if (TransformMapIsDefault(map))
 				return false;
+		}
 		}
 
 		return true;

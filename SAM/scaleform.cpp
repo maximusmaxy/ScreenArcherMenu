@@ -34,7 +34,7 @@
 public: \
 void T ## Scaleform::Invoke(Args* args) \
 Func \
-};
+}
 
 GFxFunction(SaveState, {
 	samManager.SaveData(&args->args[0]);

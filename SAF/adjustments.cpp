@@ -511,6 +511,8 @@ namespace SAF {
 			for (auto& persistent : *data.persistents) {
 				switch (persistent.type) {
 				case kAdjustmentTypeDefault:
+				case kAdjustmentTypeTongue:
+				case kAdjustmentTypePose:
 				{
 					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name.c_str());
 					adjustment->file = persistent.file;
@@ -518,6 +520,7 @@ namespace SAF {
 					adjustment->scale = persistent.scale;
 					adjustment->map = persistent.map;
 					adjustment->updated = persistent.updated;
+					adjustment->type = persistent.type;
 					
 					//if version < 2 treat as 0
 					UpdateAdjustmentVersion(&adjustment->map, persistent.updateType);
@@ -527,7 +530,6 @@ namespace SAF {
 				}
 				case kAdjustmentTypeSkeleton:
 				case kAdjustmentTypeRace:
-				case kAdjustmentTypePose:
 				{
 					std::shared_ptr<Adjustment> adjustment;
 					if (persistent.updated) 
@@ -559,21 +561,6 @@ namespace SAF {
 					adjustment->name = persistent.file;
 					adjustment->mod = persistent.mod;
 					adjustment->type = kAdjustmentTypeRemovedFile;
-					break;
-				}
-				case kAdjustmentTypeTongue:
-				{
-					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name.c_str());
-					adjustment->file = persistent.file;
-					adjustment->mod = persistent.mod;
-					adjustment->scale = persistent.scale;
-					adjustment->map = persistent.map;
-					adjustment->updated = persistent.updated;
-					adjustment->type = persistent.type;
-
-					UpdateAdjustmentVersion(&adjustment->map, persistent.updateType);
-
-					adjustment->UpdateMapScale();
 					break;
 				}
 				}
