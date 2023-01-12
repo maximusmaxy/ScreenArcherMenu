@@ -58,6 +58,11 @@
 		
 		public var isEnabled:Boolean = true;
 		
+		public var listFunc:Function = null;
+		public var checkboxFunc:Function = null;
+		public var sliderFunc:Function = null;
+		public var touchFunc:Function = null;
+		
 		public function SliderList() {
 			super();
 			addSliders(); 
@@ -491,15 +496,15 @@
 			}
 		}
 		
-		public function updateList(func:Function):void
+		public function updateList():void
 		{
 			this.type = LIST;
-			update(Data.menuOptions.length, LIST_MAX, func);
+			update(Data.menuOptions.length, LIST_MAX, listFunc);
 		}
 		
 		public function updateListEntry(entry:SliderListEntry):void
 		{
-			entry.updateList(Data.menuOptions[entry.id]);
+			entry.updateList(Data.items[entry.id].name]);
 		}
 		
 		public function updateCheckboxes(func:Function):void

@@ -247,6 +247,11 @@
 			updateState();
 			updateAlignment();
 			
+			sliderList.listFunc = selectList;
+			sliderList.checkboxFunc = selectCheckbox;
+			sliderList.sliderFunc = selectSlider;
+			sliderList.touchFunc = selectTouch;
+			
 			//addEventListener(PlatformChangeEvent.PLATFORM_CHANGE, onPlatformChange);
 //			if (Util.debug) {
 //				addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
@@ -528,13 +533,6 @@
 			}
 		}
 		
-		public function setScriptHandle(data:Object)
-		{
-			Data.scriptType = data.__type__;
-			Data.scriptHandleHigh = data.__handleHigh__;
-			Data.scriptHandleLow = data.__handleLow__;
-		}
-		
 		public function showNotification(msg:String)
 		{
 			if (msg && msg.length > 0) {
@@ -679,6 +677,93 @@
 			sliderList.updateState(currentState.pos);
 			
 			updateState();
+		}
+		
+		internal function updateMenu()
+		{
+			switch(getType(Data.menu.type))
+			{
+				case MAIN: UpdateMain(); break;
+			}
+		}
+		
+		internal function LoadMenu(name:String)
+		{
+			if (Data.loadMenu(name)) {
+				LoadMenuOptions();
+			} else {
+				showNotification(Data.error);
+			}
+		}
+		
+		internal function LoadMenuOptions()
+		{
+			switch (Data.menuType) {
+				case Data.MAIN:
+					loadMainMenu();
+					sliderList.updateList();
+					break;
+				case Data.MIXED:
+					loadMixedMenuOptions();
+					sliderList.updateMixed();
+					break;
+			}
+		}
+		
+		internal function loadMainMenu()
+		{
+			Data.items.length = Data.menu.names;
+			
+			for (var i:int = 0; i < Data.items.length; i++) {
+				Data.items[i] = {
+					name: Data.menu.names[i],
+					type: Data.LIST
+				};
+			}
+		}
+		
+		internal function loadMixedMenuOptions()
+		{
+			Data.items = Data.menu.items;
+			
+			for (var i:int = 0; i < Data.items.length; i++) {
+				Data.items[i].type = Data.getType(Data.menuTypes, Data.items[i].type);
+			}
+		}
+		
+		internal function selectItem(i:int, value:Object = null)
+		{
+			switch (Data.items[i].type)
+			{
+				case Data.LIST:
+					Data.callFunction(Data.items[i].set
+					break;
+			}
+		}
+		
+		internal function callFunction(func:Object)
+		{
+			
+		}
+		
+		internal function selectList(i:int) 
+		{
+			switch (Data.menuType) {
+				case Data.MAIN:
+					LoadMenu(Data.menu.values[i])
+					break;
+				case Data.LIST:
+					break;
+			}
+		}
+		
+		internal function selectMixed(i:int, value:Object = null)
+		{
+			switch(Data.items[i].type) {
+				case Data.LIST:
+					Data.callFunction(
+					break;
+			}
 		}
 		
 		internal function updateState()

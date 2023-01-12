@@ -114,6 +114,7 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="console.cpp" />
+    <ClCompile Include="gfx.cpp" />
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="input.cpp" />
@@ -133,6 +134,7 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="compatibility.h" />
     <ClInclude Include="console.h" />
+    <ClInclude Include="gfx.h" />
     <ClInclude Include="idle.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="lights.h" />

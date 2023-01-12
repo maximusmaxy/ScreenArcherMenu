@@ -14,8 +14,6 @@
 #include "common/IDirectoryIterator.h"
 #include "common/IFileStream.h"
 
-#include "json/json.h"
-
 #include "SAF/util.h"
 #include "SAF/io.h"
 #include "SAF/hacks.h"
@@ -33,6 +31,7 @@
 #include "papyrus.h"
 #include "scripts.h"
 #include "input.h"
+#include "gfx.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -50,6 +49,8 @@ MenuCategoryList lightsMenuCache;
 MenuCategoryList tongueMenuCache;
 
 SamManager samManager;
+
+JsonCache jsonMenuCache;
 
 RelocPtr <BSReadWriteLock> uiMessageLock(0x65774B0);
 
@@ -80,7 +81,6 @@ GFxMovieRoot* GetRoot(BSFixedString name)
 
 void SamManager::SetOpen(bool isOpen)
 {
-	//BSWriteLocker locker(g_menuTableLock);
 	std::lock_guard<std::mutex> lock(mutex);
 
 	menuOpened = isOpen;
@@ -107,7 +107,6 @@ void SamManager::CloseMenu(BSFixedString menuName)
 
 void SamManager::TryClose(BSFixedString menuName)
 {
-	//BSWriteLocker locker(g_menuTableLock);
 	std::lock_guard<std::mutex> lock(mutex);
 
 	bool result = false;
@@ -138,7 +137,6 @@ void SamManager::TryClose(BSFixedString menuName)
 
 void SamManager::Invoke(BSFixedString menuName, const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs)
 {
-	//BSReadLocker locker(g_menuTableLock);
 	std::lock_guard<std::mutex> lock(mutex);
 
 	if (menuOpened) {
@@ -150,65 +148,20 @@ void SamManager::Invoke(BSFixedString menuName, const char* name, GFxValue* resu
 
 void SamManager::SetVariable(BSFixedString menuName, const char* pVarPath, const GFxValue* value, UInt32 setType)
 {
-	//BSReadLocker locker(g_menuTableLock);
 	std::lock_guard<std::mutex> lock(mutex);
 
 	if (menuOpened) {
 		GFxMovieRoot* root = GetRoot(menuName);
 		if (root)
-			root->SetVariable(pVarPath, value, setType);
+root->SetVariable(pVarPath, value, setType);
 	}
-}
-
-Json::Value GetJsonValue(GFxValue* value)
-{
-	switch (value->GetType()) {
-	case GFxValue::kType_Bool:
-		return Json::Value(value->GetBool());
-	case GFxValue::kType_Int:
-		return Json::Value(value->GetInt());
-	case GFxValue::kType_UInt:
-	{
-		UInt64 uint = value->GetUInt();
-		return Json::Value(uint);
-	}
-	case GFxValue::kType_Number:
-		return Json::Value(value->GetNumber());
-	case GFxValue::kType_String:
-		return Json::Value(value->GetString());
-	case GFxValue::kType_Array:
-	{
-		Json::Value arr(Json::ValueType::arrayValue);
-		SavedDataArrVisitor arrVisitor(arr);
-		value->VisitElements(&arrVisitor, 0, value->GetArraySize());
-		return arr;
-	}
-	case GFxValue::kType_Object:
-	{
-		Json::Value obj(Json::ValueType::objectValue);
-		SavedDataObjVisitor visitor(obj);
-		value->VisitMembers(&visitor);
-		return obj;
-	}
-	default:
-		return Json::Value(Json::ValueType::nullValue);
-	}
-}
-
-void SavedDataObjVisitor::Visit(const char* member, GFxValue* value) {
-	json[member] = GetJsonValue(value);
-}
-
-void SavedDataArrVisitor::Visit(UInt32 idx, GFxValue* value) {
-	json[(int)idx] = GetJsonValue(value);
 }
 
 void SamManager::SaveData(GFxValue* saveData)
 {
-	BSReadLocker locker(g_menuTableLock);
-	//std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex); is called during try close
 
-	if (!selected.refr) 
+	if (!selected.refr)
 		return;
 
 	//copying to a json for saved menu data instead of trying to understand how GFx managed memory works
@@ -221,8 +174,7 @@ void SamManager::SaveData(GFxValue* saveData)
 
 bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 {
-	BSReadLocker locker(g_menuTableLock);
-	//std::lock_guard<std::mutex> lock(mutex);
+	std::lock_guard<std::mutex> lock(mutex);
 
 	//if ref updated save data is invalidated so ignore
 	if (!refr || selected.refr != refr) {
@@ -247,47 +199,64 @@ void SamManager::ClearData()
 	refr = nullptr;
 }
 
-void SamManager::GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value) {
-	switch (value.type()) {
-	case Json::ValueType::booleanValue:
-		result->SetBool(value.asBool());
-		break;
-	case Json::ValueType::intValue:
-		result->SetInt((SInt32)value.asInt());
-		break;
-	case Json::ValueType::uintValue:
-		result->SetUInt((UInt32)value.asUInt());
-		break;
-	case Json::ValueType::realValue:
-		result->SetNumber(value.asDouble());
-		break;
-	case Json::ValueType::stringValue:
-		result->SetString(value.asCString());
-		break;
-	case Json::ValueType::arrayValue:
-	{
-		root->CreateArray(result);
+//typedef void (*_ScaleformRefCountImplAddRef)(IMenu* menu);
+//RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
+//
+//typedef void (*_ScaleformRefCountImplRelease)(IMenu* menu);
+//RelocAddr<_ScaleformRefCountImplRelease> ScaleformRefCountImplRelease(0x210EC90);
+//
+//IMenu* SamManager::AddRef(BSFixedString& name)
+//{
+//	std::lock_guard<std::mutex> lock(mutex);
+//
+//	IMenu* menu = (*g_ui)->GetMenu(name);
+//
+//	if (menu) {
+//		ScaleformRefCountImplAddRef(menu);
+//		return menu;
+//	}
+//
+//	return nullptr;
+//}
 
-		for (auto& member : value) {
-			GFxValue arrValue;
-			GetGFxValue(root, &arrValue, member);
-			result->PushBack(&arrValue);
-		}
+//void SamManager::Release()
+//{
+//	std::lock_guard<std::mutex> lock(mutex);
+//
+//	static BSFixedString samMenuName(SAM_MENU_NAME);
+//	static BSFixedString cursorMenuName(CURSOR_MENU_NAME);
+//
+//	if (samMenu) {
+//		ScaleformRefCountImplRelease(samMenu);
+//		_Log("Sam ref count: ", samMenu->refCount);
+//	}
+//	else {
+//		_DMESSAGE("Sam null");
+//	}
+//
+//	if (cursorMenu) {
+//		ScaleformRefCountImplRelease(cursorMenu);
+//		_Log("Cursor ref count: ", samMenu->refCount);
+//	}
+//	else {
+//		_DMESSAGE("Cursor null");
+//	}
+//
+//	samMenu = nullptr;
+//	cursorMenu = nullptr;
+//}
 
-		break;
-	}
-	case Json::ValueType::objectValue:
-	{
-		root->CreateObject(result);
+void SamManager::CursorAlwaysOn(bool enabled) {
+	std::lock_guard<std::mutex> lock(mutex);
 
-		for (auto it = value.begin(); it != value.end(); ++it) {
-			GFxValue objValue;
-			GetGFxValue(root, &objValue, *it);
-			result->SetMember(it.key().asCString(), &objValue);
-		}
+	static BSFixedString cursorMenuName(CURSOR_MENU_NAME);
 
-		break;
-	}
+	IMenu* menu = (*g_ui)->GetMenu(cursorMenuName);
+	if (menu) {
+		if (enabled)
+			menu->flags |= 0x02;
+		else
+			menu->flags &= ~0x02;
 	}
 }
 
@@ -416,10 +385,11 @@ void GetMenuTarget(GFxValue& data) {
 }
 
 void OnMenuOpen() {
-	static BSFixedString samMenu("ScreenArcherMenu");
-	static BSFixedString photoMenu("PhotoMenu");
+	static BSFixedString samMenu(SAM_MENU_NAME);
+	static BSFixedString photoMenu(PHOTO_MENU_NAME);
 
 	samManager.SetOpen(true);
+	//samManager.samMenu = samManager.AddRef(samMenu);
 
 	GFxMovieRoot* root = GetRoot(samMenu);
 	if (!root) {
@@ -472,13 +442,15 @@ void OnMenuClose() {
 
 	selected.Clear();
 
-	SetMenusHidden(false);
+	//SetMenusHidden(false); Doesn't work
 
 	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
+
+	//samManager.Release();
 }
 
 void OnConsoleUpdate() {
-	static BSFixedString samMenu("ScreenArcherMenu");
+	static BSFixedString samMenu(SAM_MENU_NAME);
 
 	GFxMovieRoot* root = GetRoot(samMenu);
 	if (!root) {
@@ -520,7 +492,7 @@ void OnConsoleUpdate() {
 }
 
 void ToggleMenu() {
-	static BSFixedString menuName("ScreenArcherMenu");
+	static BSFixedString menuName(SAM_MENU_NAME);
 
 	if ((*g_ui)->IsMenuRegistered(menuName)) {
 		if ((*g_ui)->IsMenuOpen(menuName)) {
@@ -541,9 +513,10 @@ public:
 	virtual ~SamOpenCloseHandler() { };
 	virtual	EventResult	ReceiveEvent(MenuOpenCloseEvent* evn, void* dispatcher) override
 	{
-		BSFixedString samMenu("ScreenArcherMenu");
-		BSFixedString photoMenu("PhotoMenu");
-		BSFixedString consoleMenu("Console");
+		BSFixedString samMenu(SAM_MENU_NAME);
+		BSFixedString photoMenu(PHOTO_MENU_NAME);
+		BSFixedString consoleMenu(CONSOLE_MENU_NAME);
+		BSFixedString cursorMenu(CURSOR_MENU_NAME);
 
 		if (evn->menuName == samMenu) {
 			if (evn->isOpen) {
@@ -564,12 +537,28 @@ public:
 		else {
 			if ((*g_ui)->IsMenuOpen(samMenu)) {
 				if (evn->menuName == consoleMenu) {
+					//console opened while sam is open
 					if (evn->isOpen) {
 						inputHandler.enabled = false;
 					}
+					//console closed while same is open
 					else {
 						OnConsoleUpdate();
 						inputHandler.enabled = true;
+					}
+				}
+				else if (evn->menuName == cursorMenu) {
+					//cursor opened while sam is open
+					if (evn->isOpen) {
+						samManager.CursorAlwaysOn(true);
+					}
+				}
+			}
+			else {
+				if (evn->menuName == cursorMenu) {
+					//cursor opened wihle sam is closed
+					if (evn->isOpen) {
+						samManager.CursorAlwaysOn(false);
 					}
 				}
 			}
@@ -817,25 +806,149 @@ bool LoadIdleFile(const char* path) {
 	return true;
 }
 
+//Json enums need to be identical to AS3 constants so make sure they are updated accordingly
+enum {
+	kJsonMenuMain = 1,
+	kJsonMenuMixed,
+	kJsonMenuList,
+	kJsonMenuCheckbox,
+	kJsonMenuSlider,
+	kJsonMenuCategory,
+	kJsonMenuFolder
+};
+
+SAF::InsensitiveUInt32Map jsonMenuTypeMap = {
+	{"main", kJsonMenuMain},
+	{"mixed", kMenuTypeMorphs},
+	{"list", kJsonMenuList},
+	{"checkbox", kJsonMenuCheckbox},
+	{"sliders", kJsonMenuSlider},
+	{"category", kJsonMenuCategory},
+	{"folder", kJsonMenuFolder}
+};
+
+enum {
+	kJsonFuncSam = 1,
+	kJsonFuncLocal,
+	kJsonFuncPapyrus
+};
+
+SAF::InsensitiveUInt32Map jsonFuncTypeMap = {
+	{"sam", kJsonFuncSam},
+	{"local", kJsonFuncLocal},
+	{"papyrus", kJsonFuncPapyrus}
+};
+
+enum {
+	kJsonValueInt = 1,
+	kJsonValueFloat = 2
+};
+
+SAF::InsensitiveUInt32Map jsonValueTypeMap = {
+	{"int", kJsonValueInt},
+	{"float", kJsonValueFloat}
+};
+
+//Need to convert type strings into ints
+bool sanitizeJsonMenu(Json::Value& value)
+{
+	Json::Value menuType = value.get("type", "");
+	auto it = jsonMenuTypeMap.find(menuType.asCString());
+	int typeConstant = it != jsonMenuTypeMap.end() ? (int)it->second : 0;
+	
+	if (!typeConstant) {
+		_Log("Failed to parse menu type ", menuType.asCString());
+		return false;
+	}
+
+	value["type"] = typeConstant;
+
+	//switch (typeConstant) {
+	//case kJsonMenuMixed:
+	//{
+	//	itemValue = 
+	//}
+	//}
+
+	return true;
+}
+
+bool LoadJsonMenu(const char* path)
+{
+	IFileStream file;
+
+	if (!file.Open(path)) {
+		_Log("Failed to open", path);
+		return false;
+	}
+
+	std::string jsonString;
+	SAF::ReadAll(&file, &jsonString);
+	file.Close();
+
+	Json::Reader reader;
+	Json::Value value;
+
+	if (!reader.parse(jsonString, value)) {
+		_Log("Failed to parse ", path);
+		return false;
+	}
+
+	if (!sanitizeJsonMenu(value))
+		return false;
+
+	std::filesystem::path filepath(path);
+
+	jsonMenuCache.emplace(filepath.stem().string(), value);
+
+	return true;
+}
+
+void LoadJsonMenus(std::unordered_set<std::string>& loadedMenus) 
+{
+	//load overrides first to prevent the default menus from being loaded
+	
+	for (IDirectoryIterator iter(OVERRIDE_PATH, "*.json"); !iter.Done(); iter.Next())
+	{
+		std::string	path = iter.GetFullPath();
+		if (!loadedMenus.count(path)) {
+
+			//only add to set if parsing succeeds to prevent defaults 
+			if (LoadJsonMenu(path.c_str())) {
+				loadedMenus.insert(path);
+			}
+		}
+	}
+
+	for (IDirectoryIterator iter(MENUDATA_PATH, "*.json"); !iter.Done(); iter.Next())
+	{
+		std::string	path = iter.GetFullPath();
+		if (!loadedMenus.count(path)) {
+			LoadJsonMenu(path.c_str());
+			loadedMenus.insert(path);
+		}
+	}
+}
+
 void LoadMenuFiles() {
 	//Add menu categories preemptively for ordering purposes
 	std::unordered_set<std::string> loadedMenus;
 
 	//Load human menu first for ordering purposes
-	const char* humanPoseFile = "Data\\F4SE\\Plugins\\SAM\\Menus\\Human Pose.txt";
-	LoadMenuFile(humanPoseFile);
-	loadedMenus.insert(humanPoseFile);
+	std::string humanPoseFile = std::string(MENUS_PATH) + "\\Human Pose.txt";
+	LoadMenuFile(humanPoseFile.c_str());
+	loadedMenus.insert(humanPoseFile.c_str());
 
 	//Load Vanilla and ZeX Export files first for ordering purposes
-	const char* vanillaExport = "Data\\F4SE\\Plugins\\SAM\\Menus\\Vanilla Export.txt";
-	LoadMenuFile(vanillaExport);
-	loadedMenus.insert(vanillaExport);
+	std::string vanillaExport = std::string(MENUS_PATH) + "\\Vanilla Export.txt";
+	LoadMenuFile(vanillaExport.c_str());
+	loadedMenus.insert(vanillaExport.c_str());
 
-	const char* zexExport = "Data\\F4SE\\Plugins\\SAM\\Menus\\ZeX Export.txt";
-	LoadMenuFile(zexExport);
-	loadedMenus.insert(zexExport);
+	std::string zexExport = std::string(MENUS_PATH) + "\\ZeX Export.txt";
+	LoadMenuFile(zexExport.c_str());
+	loadedMenus.insert(zexExport.c_str());
 
-	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Menus", "*.txt"); !iter.Done(); iter.Next())
+	for (IDirectoryIterator iter(MENUS_PATH, "*.txt"); !iter.Done(); iter.Next())
 	{
 		std::string	path = iter.GetFullPath();
 		if (!loadedMenus.count(path)) {
@@ -844,10 +957,36 @@ void LoadMenuFiles() {
 		}
 	}
 
-	for (IDirectoryIterator iter("Data\\F4SE\\Plugins\\SAM\\Idles", "*.json"); !iter.Done(); iter.Next())
+	for (IDirectoryIterator iter(IDLES_PATH, "*.json"); !iter.Done(); iter.Next())
 	{
 		std::string	path = iter.GetFullPath();
 		LoadIdleFile(path.c_str());
+	}
+
+	LoadJsonMenus(loadedMenus);
+}
+
+void ReloadJsonMenus()
+{
+	std::unordered_set<std::string> loadedMenus;
+	jsonMenuCache.clear();
+	LoadJsonMenus(loadedMenus);
+}
+
+void LoadCachedMenu(GFxMovieRoot* root, GFxValue* result, const char* name) 
+{
+	root->CreateObject(result);
+
+	auto it = jsonMenuCache.find(name);
+	if (it != jsonMenuCache.end()) {
+		GFxValue menu;
+		GetGFxValue(root, &menu, it->second);
+		result->SetMember("menu", &menu);
+		result->SetMember("result", &GFxValue(true));
+	}
+	else {
+		result->SetMember("result", &GFxValue(false));
+		result->SetMember("error", &GFxValue("$SAM_MenuMissingError"));
 	}
 }
 

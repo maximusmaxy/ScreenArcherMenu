@@ -14,3 +14,7 @@ void GetHacksGFx(GFxMovieRoot* root, GFxValue* hacks)
 	GFxValue eyeState(GetDisableEyecoordUpdate() == 1);
 	hacks->PushBack(&eyeState);
 }
+
+//RelocPtr<UInt8> cursorFlags(0x126ABA8);
+//Always on 0x02
+//Default 0x00

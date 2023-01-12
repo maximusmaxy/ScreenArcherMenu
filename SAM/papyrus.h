@@ -4,6 +4,7 @@
 #include "f4se/PapyrusEvents.h"
 
 bool RegisterPapyrus(VirtualMachine* vm);
+void CallPapyrusGlobal(BSFixedString script, BSFixedString function);
 void CallSamGlobal(BSFixedString function);
 
 typedef void (*_PapyrusDeleteInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr);

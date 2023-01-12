@@ -17,6 +17,16 @@
 #include <regex>
 #include <mutex>
 
+#define SAM_MENU_NAME "ScreenArcherMenu"
+#define CURSOR_MENU_NAME "CursorMenu"
+#define CONSOLE_MENU_NAME "ConsoleMenu"
+#define PHOTO_MENU_NAME "PhotoMenu"
+
+#define MENUS_PATH "Data\\F4SE\\Plugins\\SAM\\Menus"
+#define IDLES_PATH "Data\\F4SE\\Plugins\\SAM\\Idles"
+#define OVERRIDE_PATH "Data\\F4SE\\Plugins\\SAM\\Override"
+#define MENUDATA_PATH "Data\\F4SE\\Plugins\\SAM\\Data"
+
 //class SamMenu : public GameMenuBase
 //{
 //public:
@@ -56,9 +66,13 @@ class SamManager {
 private:
 	std::mutex mutex;
 	bool menuOpened;
+
 public:
 	TESObjectREFR* refr;
 	Json::Value data;
+
+	//IMenu* samMenu;
+	//IMenu* cursorMenu;
 
 	SamManager() : menuOpened(false) {}
 
@@ -73,30 +87,13 @@ public:
 	bool LoadData(GFxMovieRoot* root, GFxValue* res);
 	void ClearData();
 
-	void GetGFxValue(GFxMovieRoot* root, GFxValue* result, const Json::Value& value);
+	void CursorAlwaysOn(bool enabled);
+
+	//IMenu* AddRef(BSFixedString& name);
+	//void Release();
 };
 
 extern SamManager samManager;
-
-class SavedDataObjVisitor : public GFxValue::ObjectInterface::ObjVisitor
-{
-public:
-	Json::Value& json;
-
-	SavedDataObjVisitor(Json::Value& json) : json(json) {};
-
-	void Visit(const char* member, GFxValue* value);
-};
-
-class SavedDataArrVisitor : public GFxValue::ObjectInterface::ArrayVisitor
-{
-public:
-	Json::Value& json;
-
-	SavedDataArrVisitor(Json::Value& json) : json(json) {};
-
-	void Visit(UInt32 idx, GFxValue* val);
-};
 
 TESObjectREFR* GetRefr();
 GFxMovieRoot* GetRoot(BSFixedString name);
@@ -118,7 +115,13 @@ void OnConsoleUpdate();
 void ToggleMenu();
 bool OpenSamFile(std::string filename);
 
+typedef std::unordered_map<std::string, Json::Value> JsonCache;
+extern JsonCache jsonMenuCache;
+
 void LoadMenuFiles();
+void ReloadJsonMenus();
+void LoadCachedMenu(GFxMovieRoot* root, GFxValue* result, const char* name);
+
 bool isDotOrDotDot(const char* cstr);
 void GetSubFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path, const char* ext);
 

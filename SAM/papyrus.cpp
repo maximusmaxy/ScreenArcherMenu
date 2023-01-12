@@ -7,18 +7,23 @@
 RelocAddr<_PapyrusDeleteInternal> PapyrusDeleteInternal(0x1404960);
 RelocAddr<_PapyrusPlayGamebryoAnimationInternal> PapyrusPlayGamebryoAnimationInternal(0x140BD60);
 
-void CallSamGlobal(BSFixedString function)
+void CallPapyrusGlobal(BSFixedString script, BSFixedString function)
 {
 	VirtualMachine* vm = (*g_gameVM)->m_virtualMachine;
-	
+
 	VMValue packedArgs;
 	VMValue::ArrayData* arrayData = nullptr;
 	vm->CreateArray(&packedArgs, 0, &arrayData);
 	packedArgs.type.value = VMValue::kType_VariableArray;
 	packedArgs.data.arr = arrayData;
+	
+	CallGlobalFunctionNoWait_Internal(vm, 0, 0, &script, &function, &packedArgs);
+}
 
-	static BSFixedString samMenu("ScreenArcherMenu");
-	CallGlobalFunctionNoWait_Internal(vm, 0, 0, &samMenu, &function, &packedArgs);
+void CallSamGlobal(BSFixedString function)
+{
+	static BSFixedString samMenu(SAM_MENU_NAME);
+	CallPapyrusGlobal(samMenu, function);
 }
 
 void PapyrusDelete(TESObjectREFR* refr)
@@ -39,8 +44,13 @@ void PapyrusToggleMenu(StaticFunctionTag*) {
 	ToggleMenu();
 }
 
+void PapyrusReloadMenus(StaticFunctionTag*) {
+	ReloadJsonMenus();
+}
+
 bool RegisterPapyrus(VirtualMachine* vm) {
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ToggleMenu", "SAM", PapyrusToggleMenu, vm));
+	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ReloadMenus", "SAM", PapyrusReloadMenus, vm));
 
 	return true;
 }

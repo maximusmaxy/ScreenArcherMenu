@@ -6,7 +6,7 @@
 		public static var f4seObj:Object;
 		public static var stage:DisplayObject;
 		
-		public static var menuOptions:Object = {};
+		public static var menuOptions:Array = [];
 		public static var menuValues:Array = [];
 		
 		public static var menuFiles:Array = [];
@@ -31,125 +31,57 @@
 		public static var delayClose:Boolean;
 		public static var autoPlay:Boolean;
 		
-		public static var scriptType:String;
-		public static var scriptHandleHigh:uint;
-		public static var scriptHandleLow:uint;
-		
 		public static var selectedText:SliderListEntry = null;
 		
-		public static const MORPH_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAM\\FaceMorphs";
-		public static const ADJUSTMENT_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Adjustments";
-		public static const POSE_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAF\\Poses";
-		public static const LIGHT_DIRECTORY:String = "Data\\F4SE\\Plugins\\SAM\\Lights";
+		public static var menu:Object = {};
+		public static var error:String = "";
+		public static var menuType:int = 0;
+		public static var items:Array = [];
 		
-		public static const JSON_EXT:String = ".json";
-		public static const TXT_EXT:String = ".txt";
+		public static const NONE:int = 0;
+		public static const MAIN:int = 1;
+		public static const MIXED:int = 2;
+		public static const LIST:int = 3;
 		
-		public static const KEYBOARD = 1;
-		public static const PAD = 2;
+		public var menuTypes:Object = {
+			"main": MAIN,
+			"mixed": MIXED,
+			"list": LIST
+		};
 		
-        public static const MAIN_MENU:Vector.<String> = new <String>[
-            "$SAM_PoseAdjustMenu",
-			"$SAM_SkeletonAdjustMenu",
-			"$SAM_RaceAdjustMenu",
-			"$SAM_PosePlayMenu",
-			"$SAM_PoseExportMenu",
-			"$SAM_PlayIdleMenu",
-			"$SAM_PositionMenu",
-            "$SAM_FaceMorphsMenu",
-            "$SAM_EyesMenu",
-			"$SAM_LightMenu",
-			"$SAM_CameraMenu",
-            "$SAM_HacksMenu",
-			"$SAM_OptionsMenu"
-        ];
+		public static const 
 		
-		public static const ERROR_NAMES:Vector.<String> = new <String>[
-		    "",
-			"$SAM_ConsoleError", 
-			"$SAM_SkeletonError",
-			"$SAM_MorphsError",
-			"$SAM_EyeError",
-			"$SAM_CameraError"
-		];
+		public static function getType(types:Object, type:String):int
+		{
+			if (types.hasOwnProperty(type)) {
+				return types[type];
+			}
+			
+			return 0;
+		}
 		
-		public static const TRANSFORM_NAMES:Vector.<String> = new <String>[
-			"$SAM_RotX",
-			"$SAM_RotY",
-			"$SAM_RotZ",
-			"$SAM_PosX",
-			"$SAM_PosY",
-			"$SAM_PosZ",
-			"$SAM_Scale",
-			"$SAM_RotX",
-			"$SAM_RotY",
-			"$SAM_RotZ"
-		];
-		
-		public static const EYE_NAMES:Vector.<String> = new <String>[
-			"$SAM_EyeX",
-			"$SAM_EyeY"
-		];
-		
-		public static const HACK_NAMES:Vector.<String> = new <String>[
-			"$SAM_BlinkHack",
-			"$SAM_MorphHack",
-			"$SAM_EyeTrackingHack"
-		];
-		
-		public static const POSITIONING_NAMES:Vector.<String> = new <String>[
-			"$SAM_Step",
-			"$SAM_PosX",
-			"$SAM_PosY",
-			"$SAM_PosZ",
-			"$SAM_RotX",
-			"$SAM_RotY",
-			"$SAM_RotZ",
-			"$SAM_Scale",
-			"$SAM_ResetPos",
-			"$SAM_ResetRot",
-			"$SAM_ResetScale",
-			"$SAM_TGP",
-			"$SAM_TCL",
-			"$SAM_EnableFootIK",
-			"$SAM_DisableFootIK"
-		];
-		
-		public static const OPTION_NAMES:Vector.<String> = new <String>[
-			"$SAM_Hotswap",
-			"$SAM_Alignment",
-			"$SAM_Widescreen"
-		];
-		
-		public static const CAMERA_NAMES:Vector.<String> = new <String>[
-			"$SAM_PosX",
-			"$SAM_PosY",
-			"$SAM_PosZ",
-			"$SAM_Yaw",
-			"$SAM_Pitch",
-			"$SAM_Roll",
-			"$SAM_FOV"
-		];
-		
-		public static const LIGHT_NAMES:Vector.<String> = new <String>[
-			"$SAM_Distance",
-			"$SAM_Rotation",
-			"$SAM_Height",
-			"$SAM_XOffset",
-			"$SAM_YOffset",
-			"$SAM_Rename",
-			"$SAM_Swap",
-			"$SAM_Delete"
-		];
-		
-		public static const LIGHTSETTINGS_NAMES:Vector.<String> = new <String>[
-			"$SAM_PosX",
-			"$SAM_PosY",
-			"$SAM_PosZ",
-			"$SAM_Rotation",
-			"$SAM_UpdateAll",
-			"$SAM_DeleteAll"
-		];
+		public static function loadMenu(name:String):Boolean
+		{
+			try {
+				var result:Object = sam.LoadMenu(name);
+			
+				if (result.success) {
+					
+					menu = result.menu;
+					menuType = getType(menuTypes, menu.type);
+					
+					return true;
+					
+				} else {
+					error = result.error;
+				}
+			}
+			catch(e:Error) {
+				error = e.message;
+			}
+			
+			return false;
+		}
 		
 		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
 		{

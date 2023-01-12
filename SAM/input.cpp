@@ -11,7 +11,7 @@ UInt32 inputRepeat[InputMap::kMaxMacros] = { 0 };
 
 void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 {
-	BSFixedString samMenu("ScreenArcherMenu");
+	BSFixedString samMenu(SAM_MENU_NAME);
 
 	UInt32	keyCode;
 	UInt32	deviceType = inputEvent->deviceType;

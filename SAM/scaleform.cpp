@@ -36,6 +36,20 @@ void T ## Scaleform::Invoke(Args* args) \
 Func \
 }
 
+class LoadMenuScaleform : public GFxFunctionHandler
+{
+public:
+	void LoadMenuScaleform::Invoke(Args* args)
+	{
+		LoadCachedMenu(args->movie->movieRoot, args->result, args->args[0].GetString());
+	}
+};
+
+GFxFunction(CallPapyrusGlobal, {
+
+});
+
+
 GFxFunction(SaveState, {
 	samManager.SaveData(&args->args[0]);
 	//saveData.Save(&args->args[0]);
@@ -513,6 +527,7 @@ GFxFunction(Test2, {
 
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 { 
+	RegisterFunction<LoadMenuScaleform>(value, view->movieRoot, "LoadMenu");
 	GFxRegister(SaveState);
 	GFxRegister(ClearState);
 	GFxRegister(CheckError);
