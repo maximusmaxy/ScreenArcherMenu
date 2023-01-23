@@ -10,6 +10,7 @@
 #include "f4se/PluginManager.h"
 #include "f4se/CustomMenu.h"
 #include "f4se/Serialization.h"
+#include "f4se/PapyrusScaleformAdapter.h"
 
 #include "common/IDirectoryIterator.h"
 #include "common/IFileStream.h"
@@ -19,6 +20,7 @@
 #include "SAF/hacks.h"
 #include "SAF/eyes.h"
 
+#include "constants.h"
 #include "pose.h"
 #include "mfg.h"
 #include "idle.h"
@@ -32,6 +34,7 @@
 #include "scripts.h"
 #include "input.h"
 #include "gfx.h"
+#include "data.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -50,7 +53,8 @@ MenuCategoryList tongueMenuCache;
 
 SamManager samManager;
 
-JsonCache jsonMenuCache;
+JsonCache menuDataCache;
+SAF::InsensitiveStringSet extensionSet;
 
 RelocPtr <BSReadWriteLock> uiMessageLock(0x65774B0);
 
@@ -79,6 +83,16 @@ GFxMovieRoot* GetRoot(BSFixedString name)
 	return view->movieRoot;
 }
 
+GFxMovieRoot* SamManager::GetSamRoot()
+{
+	static BSFixedString samMenuName(SAM_MENU_NAME);
+
+	if (!menuOpened)
+		return nullptr;
+	
+	return GetRoot(samMenuName);
+}
+
 void SamManager::SetOpen(bool isOpen)
 {
 	std::lock_guard<std::mutex> lock(mutex);
@@ -86,33 +100,38 @@ void SamManager::SetOpen(bool isOpen)
 	menuOpened = isOpen;
 }
 
-void SamManager::OpenMenu(BSFixedString menuName)
+void SamManager::OpenMenu(BSFixedString name)
 {
 	std::lock_guard<std::mutex> lock(mutex);
 
-	if ((*g_ui)->IsMenuRegistered(menuName) && !(*g_ui)->IsMenuOpen(menuName)) {
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
+	if ((*g_ui)->IsMenuRegistered(name) && !(*g_ui)->IsMenuOpen(name)) {
+		menuName = MAIN_MENU_NAME;
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(name, kMessage_Open);
 	}
 }
 
-void SamManager::CloseMenu(BSFixedString menuName)
+void SamManager::CloseMenu(BSFixedString name)
 {
 	std::lock_guard<std::mutex> lock(mutex);
 
-	if ((*g_ui)->IsMenuRegistered(menuName)) {
+	if ((*g_ui)->IsMenuRegistered(name)) {
 		menuOpened = false;
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(name, kMessage_Close);
 	}
 }
 
-void SamManager::TryClose(BSFixedString menuName)
+void SamManager::TryClose(BSFixedString name)
 {
 	std::lock_guard<std::mutex> lock(mutex);
 
+	SaveAndClose(name);
+}
+
+void SamManager::SaveAndClose(BSFixedString name)
+{
 	bool result = false;
 	if (menuOpened) {
-
-		IMenu* menu = (*g_ui)->GetMenu(menuName);
+		IMenu* menu = (*g_ui)->GetMenu(name);
 		if (menu) {
 
 			GFxMovieView* view = menu->movie;
@@ -130,30 +149,30 @@ void SamManager::TryClose(BSFixedString menuName)
 
 		if (result) {
 			menuOpened = false;
-			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(name, kMessage_Close);
 		}
 	}
 }
 
-void SamManager::Invoke(BSFixedString menuName, const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs)
+void SamManager::Invoke(BSFixedString name, const char* func, GFxValue* result, GFxValue* args, UInt32 numArgs)
 {
 	std::lock_guard<std::mutex> lock(mutex);
 
 	if (menuOpened) {
-		GFxMovieRoot* root = GetRoot(menuName);
+		GFxMovieRoot* root = GetRoot(name);
 		if (root)
-			root->Invoke(name, result, args, numArgs);
+			root->Invoke(func, result, args, numArgs);
 	}
 }
 
-void SamManager::SetVariable(BSFixedString menuName, const char* pVarPath, const GFxValue* value, UInt32 setType)
+void SamManager::SetVariable(BSFixedString name, const char* pVarPath, const GFxValue* value, UInt32 setType)
 {
 	std::lock_guard<std::mutex> lock(mutex);
 
 	if (menuOpened) {
-		GFxMovieRoot* root = GetRoot(menuName);
+		GFxMovieRoot* root = GetRoot(name);
 		if (root)
-root->SetVariable(pVarPath, value, setType);
+			root->SetVariable(pVarPath, value, setType);
 	}
 }
 
@@ -166,7 +185,7 @@ void SamManager::SaveData(GFxValue* saveData)
 
 	//copying to a json for saved menu data instead of trying to understand how GFx managed memory works
 	data.clear();
-	SavedDataObjVisitor visitor(data);
+	GFxToJsonObjVisitor visitor(data);
 	saveData->VisitMembers(&visitor);
 
 	refr = selected.refr;
@@ -176,19 +195,22 @@ bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 {
 	std::lock_guard<std::mutex> lock(mutex);
 
+	if (!menuOpened)
+		return false;
+
 	//if ref updated save data is invalidated so ignore
 	if (!refr || selected.refr != refr) {
 		ClearData();
 		return false;
 	}
 
-	root->CreateObject(result);
-
-	for (auto it = data.begin(); it != data.end(); ++it) {
-		GFxValue GFxMember;
-		GetGFxValue(root, &GFxMember, *it);
-		result->SetMember(it.key().asCString(), &GFxMember);
+	//Check the saved menu name matches the menu being opened
+	if (_stricmp(data.get("rootMenu", "").asCString(), menuName.c_str())) {
+		ClearData();
+		return false;
 	}
+
+	JsonToGFx(root, result, data);
 
 	ClearData();
 	return true;
@@ -197,6 +219,215 @@ bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 void SamManager::ClearData()
 {
 	refr = nullptr;
+}
+
+void SamManager::OpenExtensionMenu(const char* name)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	static BSFixedString samMenuName(SAM_MENU_NAME);
+
+	if (menuOpened) {
+		//close it
+		if (!_stricmp(menuName.c_str(), name)) {
+			SaveAndClose(samMenuName);
+		}
+
+		return;
+	}
+
+	if ((*g_ui)->IsMenuRegistered(samMenuName) && !(*g_ui)->IsMenuOpen(samMenuName)) {
+		menuName = name;
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Open);
+	}
+}
+
+void SamManager::PushMenu(const char* name)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue result;
+	GFxValue args(name);
+	root->Invoke("root1.Menu_mc.PushMenu", &result, &args, 1);
+}
+
+void SamManager::PopMenu()
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue ret;
+	root->Invoke("root1.Menu_mc.PopMenu", &ret, nullptr, 0);
+}
+
+void SamManager::PopMenuTo(const char* name)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue ret;
+	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &GFxValue(name), 1);
+}
+
+void SamManager::ShowNotification(const char* msg)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args(msg);
+	GFxValue ret;
+	root->Invoke("root1.Menu_mc.showNotification", &ret, &args, 1);
+}
+
+void SamManager::SetTitle(const char* title)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args(title);
+	GFxValue ret;
+	root->Invoke("root1.Menu_mc.setTitle", &ret, &args, 1);
+}
+
+void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args;
+	GFxResult result(&args);
+	result.CreateNames();
+
+	for (int i = 0; i < vmNames.Length(); i++) {
+		BSFixedString name;
+		vmNames.Get(&name, i);
+		result.PushName(name.c_str());
+	}
+
+	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+}
+
+void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args;
+	GFxResult result(&args);
+	result.CreateValues();
+
+	for (int i = 0; i < vmValues.Length(); i++) {
+		VMVariable var;
+		vmValues.Get(&var, i);
+
+		GFxValue value;
+		PlatformAdapter::ConvertPapyrusValue(&value, &var.GetValue(), root);
+
+		result.PushValue(&value);
+	}
+
+	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+}
+
+void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariable>& vmValues)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args;
+	GFxResult result(&args);
+
+	//make sure both arrays are the same length
+	//if (vmNames.Length() != vmValues.Length()) {
+	//	result.SetError(MENU_ITEM_LENGTH_ERROR);
+	//	return result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+	//}
+
+	result.CreateMenuItems();
+
+	for (int i = 0; i < vmNames.Length(); ++i) {
+		BSFixedString name;
+		vmNames.Get(&name, i);
+		result.PushName(name.c_str());
+	}
+
+	for (int i = 0; i < vmValues.Length(); i++) {
+		VMVariable var;
+		vmValues.Get(&var, i);
+		
+		GFxValue value;
+		PlatformAdapter::ConvertPapyrusValue(&value, &var.GetValue(), root);
+
+		result.PushValue(&value);
+	}
+
+	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+}
+
+void SamManager::SetString(const char* msg)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue value;
+	GFxResult result(&value);
+	result.SetString(msg);
+	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+}
+
+void SamManager::SetSuccess()
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue value;
+	GFxResult result(&value); 
+	result.Invoke(root, "root1.Menu_mc.PapyrusResult"); //success is default
+}
+
+void SamManager::SetError(const char* error)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue value;
+	GFxResult result(&value);
+	result.SetError(error);
+	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
 }
 
 //typedef void (*_ScaleformRefCountImplAddRef)(IMenu* menu);
@@ -258,6 +489,13 @@ void SamManager::CursorAlwaysOn(bool enabled) {
 		else
 			menu->flags &= ~0x02;
 	}
+}
+
+void SamManager::SetVisible(bool visible) {
+	std::lock_guard<std::mutex> lock(mutex);
+
+	static BSFixedString samMenuName(SAM_MENU_NAME);
+	SetMenuVisible(samMenuName, "root1.Menu_mc.visible", visible);
 }
 
 MenuCategoryList* GetMenu(MenuCache* cache)
@@ -389,7 +627,6 @@ void OnMenuOpen() {
 	static BSFixedString photoMenu(PHOTO_MENU_NAME);
 
 	samManager.SetOpen(true);
-	//samManager.samMenu = samManager.AddRef(samMenu);
 
 	GFxMovieRoot* root = GetRoot(samMenu);
 	if (!root) {
@@ -412,15 +649,16 @@ void OnMenuOpen() {
 	GFxValue data;
 	root->CreateObject(&data);
 
+	data.SetMember("menuName", &GFxValue(samManager.menuName.c_str()));
+
 	GFxValue delayClose((*g_ui)->IsMenuOpen(photoMenu));
 	data.SetMember("delayClose", &delayClose);
 
 	GetMenuTarget(data);
 
 	GFxValue saved;
-	if (samManager.LoadData(root, &saved)) {
+	if (samManager.LoadData(root, &saved))
 		data.SetMember("saved", &saved);
-	}
 
 	GFxValue widescreen(GetMenuOption(kOptionWidescreen));
 	data.SetMember("widescreen", &widescreen);
@@ -445,8 +683,6 @@ void OnMenuClose() {
 	//SetMenusHidden(false); Doesn't work
 
 	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
-
-	//samManager.Release();
 }
 
 void OnConsoleUpdate() {
@@ -460,18 +696,6 @@ void OnConsoleUpdate() {
 
 	GFxValue data;
 	root->CreateObject(&data);
-
-	GFxValue menuState;
-	root->GetVariable(&menuState, "root1.Menu_mc.state");
-
-	//Idle states
-	if (menuState.GetInt() == 14 || menuState.GetInt() == 15) {
-		const char* idleName = GetCurrentIdleName();
-		if (idleName) {
-			GFxValue idle(idleName);
-			data.SetMember("idle", &idle);
-		}
-	}
 
 	UpdateNonActorRefr();
 	TESObjectREFR * refr = GetRefr();
@@ -517,6 +741,7 @@ public:
 		BSFixedString photoMenu(PHOTO_MENU_NAME);
 		BSFixedString consoleMenu(CONSOLE_MENU_NAME);
 		BSFixedString cursorMenu(CURSOR_MENU_NAME);
+		BSFixedString containerMenu(CONTAINER_MENU_NAME);
 
 		if (evn->menuName == samMenu) {
 			if (evn->isOpen) {
@@ -553,10 +778,22 @@ public:
 						samManager.CursorAlwaysOn(true);
 					}
 				}
+				else if (evn->menuName == containerMenu) {
+					//container menu opened while sam is open
+					if (evn->isOpen) {
+						inputHandler.enabled = false;
+						samManager.SetVisible(false);
+					}
+					//container menu closed while sam is open
+					else {
+						inputHandler.enabled = true;
+						samManager.SetVisible(true);
+					}
+				}
 			}
 			else {
 				if (evn->menuName == cursorMenu) {
-					//cursor opened wihle sam is closed
+					//cursor opened while sam is closed
 					if (evn->isOpen) {
 						samManager.CursorAlwaysOn(false);
 					}
@@ -752,181 +989,79 @@ bool LoadMenuFile(const char* path)
 }
 
 bool LoadIdleFile(const char* path) {
-	IFileStream file;
 
-	if (!file.Open(path)) {
-		_Log("Failed to open", path);
-		return false;
-	}
-
-	std::string jsonString;
-	SAF::ReadAll(&file, &jsonString);
-	file.Close();
-
-	Json::Reader reader;
 	Json::Value value;
-
-	if (!reader.parse(jsonString, value)) {
-		_Log("Failed to parse ", path);
+	if (!SAF::ReadJsonFile(path, value))
 		return false;
+
+	for (auto it = value.begin(); it != value.end(); ++it) {
+		IdleData data;
+
+		std::string mod = it->get("mod", "").asString();
+		std::string id = it->get("race", "").asString();
+		data.raceId = GetFormId(mod.c_str(), id.c_str());
+
+		Json::Value reset = it->get("reset", Json::Value());
+		mod = reset.get("mod", "").asString();
+		id = reset.get("idle", "").asString();
+		data.resetId = GetFormId(mod.c_str(), id.c_str());
+
+		Json::Value filter = it->get("filter", Json::Value());
+		data.behavior = BSFixedString(filter.get("behavior", "").asCString());
+		data.event = BSFixedString(filter.get("event", "").asCString());
+
+		//default to human a pose
+		Json::Value apose = it->get("apose", Json::Value());
+		mod = apose.get("mod", SAM_ESP).asString();
+		id = apose.get("idle", "802").asString();
+		data.aposeId = GetFormId(mod.c_str(), id.c_str());
+
+		raceIdleData[data.raceId] = data;
 	}
-
-	try {
-
-		for (auto it = value.begin(); it != value.end(); ++it) {
-			IdleData data;
-
-			std::string mod = it->get("mod", "").asString();
-			std::string id = it->get("race", "").asString();
-			data.raceId = GetFormId(mod.c_str(), id.c_str());
-
-			Json::Value reset = it->get("reset", Json::Value());
-			mod = reset.get("mod", "").asString();
-			id = reset.get("idle", "").asString();
-			data.resetId = GetFormId(mod.c_str(), id.c_str());
-
-			Json::Value filter = it->get("filter", Json::Value());
-			data.behavior = BSFixedString(filter.get("behavior", "").asCString());
-			data.event = BSFixedString(filter.get("event", "").asCString());
-
-			//default to human a pose
-			Json::Value apose = it->get("apose", Json::Value());
-			mod = apose.get("mod", "ScreenArcherMenu.esp").asString();
-			id = apose.get("idle", "802").asString();
-			data.aposeId = GetFormId(mod.c_str(), id.c_str());
-
-			raceIdleData[data.raceId] = data;
-		}
-	}
-	catch (...) {
-		_Log("Failed to read ", path);
-		return false;
-	}
-
-	return true;
-}
-
-//Json enums need to be identical to AS3 constants so make sure they are updated accordingly
-enum {
-	kJsonMenuMain = 1,
-	kJsonMenuMixed,
-	kJsonMenuList,
-	kJsonMenuCheckbox,
-	kJsonMenuSlider,
-	kJsonMenuCategory,
-	kJsonMenuFolder
-};
-
-SAF::InsensitiveUInt32Map jsonMenuTypeMap = {
-	{"main", kJsonMenuMain},
-	{"mixed", kMenuTypeMorphs},
-	{"list", kJsonMenuList},
-	{"checkbox", kJsonMenuCheckbox},
-	{"sliders", kJsonMenuSlider},
-	{"category", kJsonMenuCategory},
-	{"folder", kJsonMenuFolder}
-};
-
-enum {
-	kJsonFuncSam = 1,
-	kJsonFuncLocal,
-	kJsonFuncPapyrus
-};
-
-SAF::InsensitiveUInt32Map jsonFuncTypeMap = {
-	{"sam", kJsonFuncSam},
-	{"local", kJsonFuncLocal},
-	{"papyrus", kJsonFuncPapyrus}
-};
-
-enum {
-	kJsonValueInt = 1,
-	kJsonValueFloat = 2
-};
-
-SAF::InsensitiveUInt32Map jsonValueTypeMap = {
-	{"int", kJsonValueInt},
-	{"float", kJsonValueFloat}
-};
-
-//Need to convert type strings into ints
-bool sanitizeJsonMenu(Json::Value& value)
-{
-	Json::Value menuType = value.get("type", "");
-	auto it = jsonMenuTypeMap.find(menuType.asCString());
-	int typeConstant = it != jsonMenuTypeMap.end() ? (int)it->second : 0;
-	
-	if (!typeConstant) {
-		_Log("Failed to parse menu type ", menuType.asCString());
-		return false;
-	}
-
-	value["type"] = typeConstant;
-
-	//switch (typeConstant) {
-	//case kJsonMenuMixed:
-	//{
-	//	itemValue = 
-	//}
-	//}
 
 	return true;
 }
 
 bool LoadJsonMenu(const char* path)
 {
-	IFileStream file;
-
-	if (!file.Open(path)) {
-		_Log("Failed to open", path);
-		return false;
-	}
-
-	std::string jsonString;
-	SAF::ReadAll(&file, &jsonString);
-	file.Close();
-
-	Json::Reader reader;
 	Json::Value value;
+	if (!SAF::ReadJsonFile(path, value))
+		return false;
 
-	if (!reader.parse(jsonString, value)) {
-		_Log("Failed to parse ", path);
+	std::string stem = std::filesystem::path(path).stem().string();
+
+	JsonMenuValidator validator(stem.c_str(), &value);
+	validator.ValidateMenu();
+	if (validator.hasError) {
+		_DMESSAGE(validator.errorStream.str().c_str());
 		return false;
 	}
 
-	if (!sanitizeJsonMenu(value))
-		return false;
+	menuDataCache.emplace(stem, value);
 
-	std::filesystem::path filepath(path);
-
-	jsonMenuCache.emplace(filepath.stem().string(), value);
-
+	if (value.get("extension", false).asBool())
+		extensionSet.insert(stem);
+	
 	return true;
 }
 
-void LoadJsonMenus(std::unordered_set<std::string>& loadedMenus) 
+void LoadJsonMenus() 
 {
-	//load overrides first to prevent the default menus from being loaded
-	
-	for (IDirectoryIterator iter(OVERRIDE_PATH, "*.json"); !iter.Done(); iter.Next())
+	//load overrides last to override defaults and extensions
+	for (IDirectoryIterator iter(EXTENSIONS_PATH, "*.json"); !iter.Done(); iter.Next())
 	{
-		std::string	path = iter.GetFullPath();
-		if (!loadedMenus.count(path)) {
-
-			//only add to set if parsing succeeds to prevent defaults 
-			if (LoadJsonMenu(path.c_str())) {
-				loadedMenus.insert(path);
-			}
-		}
+		LoadJsonMenu(iter.GetFullPath().c_str());
 	}
 
 	for (IDirectoryIterator iter(MENUDATA_PATH, "*.json"); !iter.Done(); iter.Next())
 	{
-		std::string	path = iter.GetFullPath();
-		if (!loadedMenus.count(path)) {
-			LoadJsonMenu(path.c_str());
-			loadedMenus.insert(path);
-		}
+		LoadJsonMenu(iter.GetFullPath().c_str());
+	}
+
+	//override data and extensions
+	for (IDirectoryIterator iter(OVERRIDE_PATH, "*.json"); !iter.Done(); iter.Next())
+	{
+		LoadJsonMenu(iter.GetFullPath().c_str());
 	}
 }
 
@@ -963,30 +1098,48 @@ void LoadMenuFiles() {
 		LoadIdleFile(path.c_str());
 	}
 
-	LoadJsonMenus(loadedMenus);
+	LoadJsonMenus();
+	LoadIdleFavorites();
+	LoadPoseFavorites();
 }
 
 void ReloadJsonMenus()
 {
-	std::unordered_set<std::string> loadedMenus;
-	jsonMenuCache.clear();
-	LoadJsonMenus(loadedMenus);
+	menuDataCache.clear();
+	extensionSet.clear();
+
+	LoadJsonMenus();
 }
 
-void LoadCachedMenu(GFxMovieRoot* root, GFxValue* result, const char* name) 
+Json::Value* GetCachedMenu(const char* name)
 {
-	root->CreateObject(result);
+	auto it = menuDataCache.find(name);
+	if (it != menuDataCache.end())
+		return &it->second;
 
-	auto it = jsonMenuCache.find(name);
-	if (it != jsonMenuCache.end()) {
-		GFxValue menu;
-		GetGFxValue(root, &menu, it->second);
-		result->SetMember("menu", &menu);
-		result->SetMember("result", &GFxValue(true));
+	return nullptr;
+}
+
+void GetMenuGFx(GFxResult& result, const char* name) 
+{
+	Json::Value* menu = GetCachedMenu(name);
+	if (!menu)
+		return result.SetError(MENU_MISSING_ERROR);
+		
+	result.SetMenu(menu);
+}
+
+void GetExtensionMenusGFx(GFxResult& result) {
+	result.CreateMenuItems();
+
+	//sort the extensions
+	NaturalSortedSet set;
+	for (auto& extension : extensionSet) {
+		set.insert(extension);
 	}
-	else {
-		result->SetMember("result", &GFxValue(false));
-		result->SetMember("error", &GFxValue("$SAM_MenuMissingError"));
+
+	for (auto& extension : set) {
+		result.PushItem(extension.c_str(), &GFxValue(extension.c_str()));
 	}
 }
 
@@ -997,12 +1150,8 @@ bool isDotOrDotDot(const char* cstr) {
 	return (cstr[2] == 0);
 }
 
-void GetSubFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path, const char* ext) {
-	root->CreateArray(result);
-
-	std::map<std::string, std::string, NaturalSort> folders;
-	std::map<std::string, std::string, NaturalSort> files;
-
+void GetSortedFilesAndFolders(const char* path, const char* ext, NaturalSortedMap& files, NaturalSortedMap& folders)
+{
 	int extLen = strlen(ext);
 
 	for (IDirectoryIterator iter(path, "*"); !iter.Done(); iter.Next())
@@ -1014,49 +1163,46 @@ void GetSubFolderGFx(GFxMovieRoot* root, GFxValue* result, const char* path, con
 			std::string filepath = iter.GetFullPath();
 
 			if (std::filesystem::is_directory(filepath)) {
-				folders[filename] = filepath;
+				folders.emplace(filename, filepath);
 			}
 			else {
 				UInt32 size = filename.size();
 				if (size >= extLen) {
 					if (!_stricmp(&filename.c_str()[size - extLen], ext)) {
 						std::string noExtension = filename.substr(0, filename.length() - extLen);
-						files[noExtension] = filepath;
+						files.emplace(noExtension, filepath);
 					}
 				}
 			}
 		}
 	}
+}
+
+void GetFolderGFx(GFxResult& result, const char* path, const char* ext) {
+	result.CreateFolder();
+
+	NaturalSortedMap files;
+	NaturalSortedMap folders;
+	GetSortedFilesAndFolders(path, ext, files, folders);
 
 	for (auto& folder : folders) {
-		GFxValue value;
-		root->CreateObject(&value);
-
-		std::string folderName = folder.first;
-		GFxValue name(folderName.c_str());
-		value.SetMember("name", &name);
-
-		GFxValue isFolder(true);
-		value.SetMember("folder", &isFolder);
-
-		GFxValue pathname(folder.second.c_str());
-		value.SetMember("path", &pathname);
-
-		result->PushBack(&value);
+		result.PushFolder(folder.first.c_str(), folder.second.c_str());
 	}
 
 	for (auto& file : files) {
-		GFxValue value;
-		root->CreateObject(&value);
-
-		GFxValue name(file.first.c_str());
-		value.SetMember("name", &name);
-
-		GFxValue pathname(file.second.c_str());
-		value.SetMember("path", &pathname);
-
-		result->PushBack(&value);
+		result.PushFile(file.first.c_str(), file.second.c_str());
 	}
+}
+
+void GetPathStem(GFxResult& result, const char* path)
+{
+	result.SetManagedString(result.root, std::filesystem::path(path).stem().string().c_str());
+}
+
+void GetPathRelative(GFxResult& result, const char* root, const char* ext, const char* path)
+{
+	std::string relative = GetRelativePath(strlen(root), strlen(ext), path);
+	result.SetManagedString(result.root, relative.c_str());
 }
 
 void SamSerializeSave(const F4SESerializationInterface* ifc)
@@ -1085,4 +1231,5 @@ void SamSerializeRevert(const F4SESerializationInterface* ifc)
 {
 	RevertCamera();
 	RevertLights();
+	lastSelectedPose.clear();
 }

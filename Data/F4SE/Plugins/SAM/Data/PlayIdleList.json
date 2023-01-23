@@ -1,0 +1,37 @@
+{
+    "type": "list",
+    "update": true,
+    "get": {
+        "type": "sam",
+        "name": "GetIdles",
+        "args": [
+            {
+                "type": "var",
+                "name": "idleMod"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "PlayIdle",
+        "args": [
+            {
+                "type": "var",
+                "name": "idleMod"
+            }
+        ]
+    },
+    "extra": {
+        "name": "$SAM_Rotate",
+        "type": "hold",
+        "hold": {
+            "type": "float",
+            "step": 2.0,
+            "mod": 0.01,
+            "func": {
+                "type": "sam",
+                "name": "RotateIdle"
+            }
+        }
+    }
+}

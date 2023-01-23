@@ -14,6 +14,7 @@
 using namespace rapidxml;
 
 #include <filesystem>
+#include <io.h>
 
 namespace SAF {
 	std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
@@ -40,23 +41,96 @@ namespace SAF {
 		{"girl", kGenderFemale }
 	};
 
-	void ReadAll(IFileStream* file, std::string* str)
+	void ReadAll(IFileStream& file, std::stringstream& ss)
 	{
-		char ret = file->Read8();
+		char ret = file.Read8();
 		while (ret > 0) {
-			str->push_back(ret);
-			ret = file->Read8();
+			ss << ret;
+			ret = file.Read8();
 		}
 	}
 
-	float ReadJsonFloat(Json::Value& value) {
-		if (value.isDouble()) {
-			return value.asFloat();
+	float ReadJsonFloat(Json::Value& value, const char* key, float defaultValue) {
+		Json::Value result = value.get(key, defaultValue);
+		
+		if (result.isDouble()) {
+			return result.asFloat();
 		}
-		else if (value.isString()) {
-			return std::stof(value.asString());
+		else if (result.isString()) {
+			try {
+				return std::stof(result.asString());
+			}
+			catch (...) {
+				return defaultValue;
+			}
 		}
-		return 0.0f;
+
+		return defaultValue;
+	}
+
+	void WriteJsonFloat(Json::Value& json, const char* key, float value, char* buffer, const char* format)
+	{
+		sprintf_s(buffer, FLOAT_BUFFER_LEN, format, value);
+		json[key] = Json::Value(buffer);
+	}
+
+	bool ReadJsonFile(const char* path, Json::Value& value)
+	{
+		std::ifstream stream;
+		stream.open(path);
+
+		if (stream.fail()) {
+			_Log("Failed to open json file for read: ", path);
+			return false;
+		}
+			
+
+		Json::Reader reader;
+		if (!reader.parse(stream, value)) {
+			_DMESSAGE(reader.getFormattedErrorMessages().c_str());
+			return false;
+		}
+
+		return true;
+	}
+
+	bool OpenOutFileStream(const char* path, std::ofstream* stream)
+	{
+		IFileStream::MakeAllDirs(path);
+
+		auto fileHandle = CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (fileHandle == INVALID_HANDLE_VALUE)
+			return false;
+
+		auto file_descriptor = _open_osfhandle((intptr_t)fileHandle, 0);
+		if (file_descriptor == -1)
+			return false;
+
+		FILE* file = _fdopen(file_descriptor, "w");
+
+		*stream = std::ofstream(file);
+
+		if (stream->fail())
+		{
+			_Log("Failed to open output file for write: ", path);
+			stream->close();
+			return false;
+		}
+		
+		return true;
+	}
+
+	bool WriteJsonFile(const char* path, Json::Value& value)
+	{
+		std::ofstream stream;
+		if (!OpenOutFileStream(path, &stream))
+			return false;
+		
+		Json::StyledStreamWriter writer;
+		writer.write(stream, value);
+
+		stream.close();
+		return true;
 	}
 
 	void InsertNode(NodeSets* nodeSet, const char* name, bool offset)
@@ -94,25 +168,9 @@ namespace SAF {
 
 	bool LoadNodeSetsJson(const char* path)
 	{
-		IFileStream file;
-
-		if (!file.Open(path)) {
-			_Log("Failed to open ", path);
-			return false;
-		}
-
-		std::string nodeMap;
-		ReadAll(&file, &nodeMap);
-		file.Close();
-
-		Json::Reader reader;
 		Json::Value value;
-
-		if (!reader.parse(nodeMap, value))
-		{
-			_Log("Failed to parse ", path);
+		if (!ReadJsonFile(path, value))
 			return false;
-		}
 
 		try {
 			std::string mod = value["mod"].asString();
@@ -188,14 +246,20 @@ namespace SAF {
 	enum {
 		kNodeTypeOffset = 1,
 		kNodeTypePose,
-		kNodeTypeRoot
+		kNodeTypeRoot,
+		kNodeTypeCenter,
+		kNodeTypeMirror
 	};
 
 	InsensitiveUInt32Map nodeTypeMap = {
 		{ "offset", kNodeTypeOffset },
 		{ "pose", kNodeTypePose },
 		{ "override", kNodeTypePose },
-		{ "root", kNodeTypeRoot }
+		{ "overide", kNodeTypePose },
+		{ "root", kNodeTypeRoot },
+		{ "center", kNodeTypeCenter },
+		{ "centre", kNodeTypeCenter },
+		{ "mirror", kNodeTypeMirror },
 	};
 
 	enum {
@@ -215,13 +279,13 @@ namespace SAF {
 			return false;
 		}
 
-		char buf[512];
+		char buf[REGEX_BUFFER_LEN];
 		std::cmatch match;
 		bool finalized = false;
 
 		try {
 			while (!file.HitEOF()) {
-				file.ReadString(buf, 512, '\n', '\r');
+				file.ReadString(buf, REGEX_BUFFER_LEN, '\n', '\r');
 				if (std::regex_search(buf, match, tabOptionalRegex)) {
 					if (!_stricmp(match[1].str().c_str(), "category")) {
 						if (!finalized) {
@@ -359,6 +423,12 @@ namespace SAF {
 				case kNodeTypeRoot:
 					nodeSet->rootName = BSFixedString(m1.c_str());
 					break;
+				case kNodeTypeCenter:
+					nodeSet->center.insert(BSFixedString(m1.c_str()));
+					break;
+				case kNodeTypeMirror:
+					nodeSet->mirror.emplace(BSFixedString(m1.c_str()), BSFixedString(m2.c_str()));
+					break;
 				}
 				break;
 			}
@@ -385,14 +455,14 @@ namespace SAF {
 	};
 
 	void ReadTransformJson(NiTransform& transform, Json::Value& value, UInt32 version) {
-		transform.pos.x = ReadJsonFloat(value["x"]);
-		transform.pos.y = ReadJsonFloat(value["y"]);
-		transform.pos.z = ReadJsonFloat(value["z"]);
+		transform.pos.x = ReadJsonFloat(value, "x", 0.0f);
+		transform.pos.y = ReadJsonFloat(value, "y", 0.0f);
+		transform.pos.z = ReadJsonFloat(value, "z", 0.0f);
 
 		float yaw, pitch, roll;
-		yaw = ReadJsonFloat(value["yaw"]);
-		pitch = ReadJsonFloat(value["pitch"]);
-		roll = ReadJsonFloat(value["roll"]);
+		yaw = ReadJsonFloat(value, "yaw", 0.0f);
+		pitch = ReadJsonFloat(value, "pitch", 0.0f);
+		roll = ReadJsonFloat(value, "roll", 0.0f);
 
 		switch (version) {
 		case kTransformJsonTranspose:
@@ -406,15 +476,16 @@ namespace SAF {
 			break;
 		}
 
-		transform.scale = ReadJsonFloat(value["scale"]);
+		transform.scale = ReadJsonFloat(value, "scale", 1.0f);
 	}
 
 	void WriteTransformJson(NiTransform* transform, Json::Value& value, UInt32 version) 
 	{
-		char buffer[32];
-		WriteJsonFloat(value["x"], transform->pos.x, "%.06f");
-		WriteJsonFloat(value["y"], transform->pos.y, "%.06f");
-		WriteJsonFloat(value["z"], transform->pos.z, "%.06f");
+		char buffer[FLOAT_BUFFER_LEN];
+
+		WriteJsonFloat(value, "x", transform->pos.x, buffer, "%.06f");
+		WriteJsonFloat(value, "y", transform->pos.y, buffer, "%.06f");
+		WriteJsonFloat(value, "z", transform->pos.z, buffer, "%.06f");
 
 		float yaw, pitch, roll;
 		switch (version) {
@@ -432,10 +503,10 @@ namespace SAF {
 			break;
 		}
 
-		WriteJsonFloat(value["yaw"], yaw, "%.02f");
-		WriteJsonFloat(value["pitch"], pitch, "%.02f");
-		WriteJsonFloat(value["roll"], roll, "%.02f");
-		WriteJsonFloat(value["scale"], transform->scale, "%.06f");
+		WriteJsonFloat(value, "yaw", yaw, buffer, "%.02f");
+		WriteJsonFloat(value, "pitch", pitch, buffer, "%.02f");
+		WriteJsonFloat(value, "roll", roll, buffer, "%.02f");
+		WriteJsonFloat(value, "scale", transform->scale, buffer, "%.06f");
 	}
 
 	/*
@@ -447,7 +518,6 @@ namespace SAF {
 
 	bool SaveAdjustmentFile(const char* filename, std::shared_ptr<Adjustment> adjustment) 
 	{
-		Json::StyledWriter writer;
 		Json::Value value;
 		value["version"] = 1;
 
@@ -466,21 +536,9 @@ namespace SAF {
 
 		value["transforms"] = transforms;
 
-		IFileStream file;
-
 		std::string path = GetPathWithExtension(ADJUSTMENTS_PATH, filename, ".json");
 
-		IFileStream::MakeAllDirs(path.c_str());
-		if (!file.Create(path.c_str())) {
-			_Log("Failed to create file ", filename);
-			return false;
-		}
-
-		std::string jsonString = writer.write(value);
-		file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
-		file.Close();
-
-		return true;
+		return WriteJsonFile(path.c_str(), value);
 	}
 
 	bool LoadAdjustmentFile(const char* filename, LoadedAdjustment* adjustment)
@@ -492,49 +550,29 @@ namespace SAF {
 
 	bool LoadAdjustmentPath(const char* path, LoadedAdjustment* adjustment) 
 	{
-		IFileStream file;
-
-		if (!file.Open(path)) {
-			_Log("Failed to open ", path);
-			return false;
-		}
-
-		std::string adjustmentString;
-		ReadAll(&file, &adjustmentString);
-		file.Close();
-
-		Json::Reader reader;
 		Json::Value value;
-
-		if (!reader.parse(adjustmentString, value)) {
-			_Log("Failed to parse adjustment json ", path);
-			return false;
-		}
-
-		try {
-			//If no version treat as simple key->transform map, else get map from transforms property
-			UInt32 version = value.get("version", 0).asUInt();
-
-			//if prior to version 1 it needs to be updated
-			adjustment->updateType = version < 1 ? kAdjustmentUpdateFile : kAdjustmentUpdateNone;
-
-			//get transforms, or just use itself
-			Json::Value transforms = value.get("transforms", value);
-
-			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
-				NiTransform transform;
-				//read version 2 if non zero version
-				ReadTransformJson(transform, *it, (version > 0 ? kTransformJsonPose : kTransformJsonTranspose));
-				NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(it.key().asCString());
-				if (nodeKey.key) {
-					adjustment->map->emplace(nodeKey, transform);
-				}
-			}
-		}
-		catch (...) {
-			_Log("Failed to read adjustment json ", path);
+		if (!ReadJsonFile(path, value)) {
 			adjustment->updateType = kAdjustmentUpdateNone;
 			return false;
+		}
+
+		//If no version treat as simple key->transform map, else get map from transforms property
+		UInt32 version = value.get("version", 0).asUInt();
+
+		//if prior to version 1 it needs to be updated
+		adjustment->updateType = version < 1 ? kAdjustmentUpdateFile : kAdjustmentUpdateNone;
+
+		//get transforms, or just use itself
+		Json::Value transforms = value.get("transforms", value);
+
+		for (auto it = transforms.begin(); it != transforms.end(); ++it) {
+			NiTransform transform;
+			//read version 2 if non zero version
+			ReadTransformJson(transform, *it, (version > 0 ? kTransformJsonPose : kTransformJsonTranspose));
+			NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(it.key().asCString());
+			if (nodeKey.key) {
+				adjustment->map->emplace(nodeKey, transform);
+			}
 		}
 
 		return true;
@@ -550,7 +588,6 @@ namespace SAF {
 
 	bool SavePoseFile(const char* filename, TransformMap* poseMap, const char* skeleton) 
 	{
-		Json::StyledWriter writer;
 		Json::Value value;
 
 		value["version"] = 2;
@@ -569,63 +606,30 @@ namespace SAF {
 
 		value["transforms"] = transforms;
 
-		IFileStream file;
-
 		std::string path = GetPathWithExtension(POSES_PATH, filename, ".json");
 
-		IFileStream::MakeAllDirs(path.c_str());
-		if (!file.Create(path.c_str())) {
-			_Log("Failed to create file ", path.c_str());
-			return false;
-		}
-
-		std::string jsonString = writer.write(value);
-		file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
-		file.Close();
-
-		return true;
+		return WriteJsonFile(path.c_str(), value);
 	}
 
 	bool LoadPosePath(const char* path, TransformMap* poseMap) 
 	{
-		IFileStream file;
-
-		if (!file.Open(path)) {
-			_Log("Failed to open pose ", path);
-			return false;
-		}
-
-		std::string adjustmentString;
-		ReadAll(&file, &adjustmentString);
-		file.Close();
-
-		Json::Reader reader;
 		Json::Value value;
-
-		if (!reader.parse(adjustmentString, value)) {
-			_Log("Failed to parse ", path);
+		if (!ReadJsonFile(path, value))
 			return false;
-		}
 
-		try {
-			//If no version treat as simple key->transform map, else get map from transforms property
-			UInt32 version = value.get("version", 0).asUInt();
+		//If no version treat as simple key->transform map, else get map from transforms property
+		UInt32 version = value.get("version", 0).asUInt();
 
-			//get transforms, or just use itself
-			Json::Value transforms = value.get("transforms", value);
+		//get transforms, or just use itself
+		Json::Value transforms = value.get("transforms", value);
 
-			for (auto it = transforms.begin(); it != transforms.end(); ++it) {
-				NiTransform transform;
-				ReadTransformJson(transform, *it, version > 0 ? kTransformJsonPose : kTransformJsonTranspose);
-				NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(it.key().asCString());
-				if (nodeKey.key) {
-					poseMap->emplace(nodeKey, transform);
-				}
+		for (auto it = transforms.begin(); it != transforms.end(); ++it) {
+			NiTransform transform;
+			ReadTransformJson(transform, *it, version > 0 ? kTransformJsonPose : kTransformJsonTranspose);
+			NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(it.key().asCString());
+			if (nodeKey.key) {
+				poseMap->emplace(nodeKey, transform);
 			}
-		}
-		catch (...) {
-			_Log("Failed to read ", path);
-			return false;
 		}
 
 		return true;
@@ -644,7 +648,7 @@ namespace SAF {
 
 		IFileStream::MakeAllDirs(path);
 		if (!file.Create(path)) {
-			_Log("Failed to create file ", path);
+			_Log("Failed to create outfit studio xml: ", path);
 			return false;
 		}
 
@@ -687,34 +691,19 @@ namespace SAF {
 			file.Close();
 		}
 		catch (...) {
-			_Log("Failed to write ", path);
+			_Log("Failed to write to outfit studio xml: ", path);
 			return false;
 		}
 
 		return true;
 	}
 
-	void SaveSettingsFile(const char* path)
+	bool SaveSettingsFile(const char* path)
 	{
-		IFileStream file;
+		Json::Value value;
 
-		try {
-			Json::StyledWriter writer;
-			Json::Value value;
-
-			g_adjustmentManager.settings.ToJson(value);
-
-			std::string jsonString = writer.write(value);
-
-			if (file.Create(path))
-			{
-				file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
-				file.Close();
-			}
-		}
-		catch (...) {
-			_DMESSAGE("Failed to create settings json");
-		}
+		g_adjustmentManager.settings.ToJson(value);
+		return WriteJsonFile(path, value);
 	}
 
 	void LoadSettingsFile(const char* path)
@@ -723,22 +712,14 @@ namespace SAF {
 
 		//if settings doesn't exist generate it
 		if (!file.Open(path)) {
-
 			g_adjustmentManager.settings.Initialize();
 			SaveSettingsFile(path);
 
 			return;
 		}
 
-		std::string settingString;
-		ReadAll(&file, &settingString);
-		file.Close();
-
-		Json::Reader reader;
 		Json::Value value;
-
-		if (!reader.parse(settingString, value)) {
-			_DMESSAGE("Failed to parse settings json");
+		if (!ReadJsonFile(path, value)) {
 			g_adjustmentManager.settings.Initialize();
 			return;
 		}
@@ -766,7 +747,7 @@ namespace SAF {
 			LoadSafTsv(path);
 		}
 
-		//auto
+		//default
 		for (IDirectoryIterator iter(DEFAULT_PATH, "*.txt"); !iter.Done(); iter.Next())
 		{
 			std::string	path = iter.GetFullPath();

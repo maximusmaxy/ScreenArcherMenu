@@ -1,5 +1,6 @@
 #include "options.h"
 
+#include "constants.h"
 #include "sam.h"
 
 #include "SAF/io.h"
@@ -22,12 +23,12 @@ bool menuOptionDefaults[] = {
 	false
 };
 
-void GetMenuOptionsGFx(GFxMovieRoot* root, GFxValue* result)
+void GetMenuOptionsGFx(GFxResult& result)
 {
-	root->CreateArray(result);
+	result.CreateValues();
 
 	for (int i = 0; i < kOptionMax; ++i) {
-		result->PushBack(&GFxValue(GetMenuOption(i)));
+		result.PushValue(&GFxValue(GetMenuOption(i)));
 	}
 }
 
@@ -64,13 +65,13 @@ void LoadOptionsFile() {
 	IFileStream file;
 
 	if (file.Open(OPTIONS_PATH)) {
-		std::string jsonString;
-		SAF::ReadAll(&file, &jsonString);
+		std::stringstream ss;
+		SAF::ReadAll(file, ss);
 		file.Close();
 
 		Json::Reader reader;
 
-		if (!reader.parse(jsonString, menuOptions)) {
+		if (!reader.parse(ss.str(), menuOptions)) {
 			menuOptions.clear();
 		}
 	}
@@ -90,19 +91,8 @@ void SaveOptionsFile() {
 	if (!menuOptionsUpdated)
 		return;
 
-	Json::StyledWriter writer;
-
-	IFileStream file;
-
-	IFileStream::MakeAllDirs(OPTIONS_PATH);
-	if (!file.Create(OPTIONS_PATH)) {
-		_DMESSAGE("Failed to write options json");
+	if (!SAF::WriteJsonFile(OPTIONS_PATH, menuOptions))
 		return;
-	}
-
-	auto jsonString = writer.write(menuOptions);
-	file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
-	file.Close();
 
 	//update timestamp
 	struct _stat fileInfo;

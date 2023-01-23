@@ -3,7 +3,7 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 
-#define FACEMORPHS_PATH "Data\\F4SE\\Plugins\\SAM\\FaceMorphs"
+#include "gfx.h"
 
 class BSFaceGenAnimationData {
 public:
@@ -22,7 +22,7 @@ void SaveMfg(const char* filename);
 bool LoadMfgFile(const char* filename);
 bool LoadMfgPath(const char* filename);
 void ResetMfg();
-void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* morphArray);
-void GetMorphsGFx(GFxMovieRoot* root, GFxValue* morphArray, UInt32 categoryIndex);
+void GetMorphCategoriesGFx(GFxResult& result);
+void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex);
 void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex);
 void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex);

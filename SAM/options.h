@@ -5,7 +5,7 @@
 
 #include "json/json.h"
 
-#define OPTIONS_PATH "Data\\F4SE\\Plugins\\SAM\\options.json"
+#include "gfx.h"
 
 extern Json::Value menuOptions;
 
@@ -17,7 +17,7 @@ enum {
 	kOptionMax
 };
 
-void GetMenuOptionsGFx(GFxMovieRoot* root, GFxValue* result);
+void GetMenuOptionsGFx(GFxResult& result);
 bool GetMenuOption(int index);
 void SetMenuOption(int index, bool value);
 

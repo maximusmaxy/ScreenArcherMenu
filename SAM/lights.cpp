@@ -17,6 +17,7 @@ using namespace Serialization;
 
 #include "common/IFileStream.h"
 
+#include "constants.h"
 #include "sam.h"
 #include "papyrus.h"
 #include "positioning.h"
@@ -606,9 +607,19 @@ void EditLight(UInt32 id, UInt32 type, float value)
 
 	switch (type)
 	{
-	case kLightDistance: light->distance = value; break;
-	case kLightRotation: light->rotation = value * DEGREE_TO_RADIAN; break;
-	case kLightHeight: light->height = value; break;
+	case kLightDistance: 
+		light->distance += value;
+		if (light->distance < 0)
+			light->distance = 0.0f;
+		break;
+	case kLightRotation:
+		light->rotation += value * DEGREE_TO_RADIAN; 
+		if (light->rotation > 360.0f)
+			light->rotation -= 360.0f;
+		else if (light->rotation < 0.0f)
+			light->rotation += 360.0f;
+		break;
+	case kLightHeight: light->height += value;
 	case kLightX: light->xOffset = value * DEGREE_TO_RADIAN; break;
 	case kLightY: light->yOffset = value * DEGREE_TO_RADIAN; break;
 	}
@@ -749,52 +760,35 @@ void DeleteAllLights()
 
 bool SaveLightsJson(const char* filename)
 {
-	IFileStream file;
-
-	std::string path = GetPathWithExtension(LIGHTS_PATH, filename, ".json");
-
-	const char* pathStr = path.c_str();
-
-
-	IFileStream::MakeAllDirs(pathStr);
-
-	if (!file.Create(pathStr)) {
-		_Log("Failed to create file ", pathStr);
-		return false;
-	}
-
 	Json::Value value;
 	Json::Value lights(Json::ValueType::arrayValue);
 	value["name"] = filename;
 	value["version"] = 1;
 
-	char buffer[32];
-	WriteJsonFloat(value["x"], lightManager.pos.x, "%.06f");
-	WriteJsonFloat(value["y"], lightManager.pos.y, "%.06f");
-	WriteJsonFloat(value["z"], lightManager.pos.z, "%.06f");
-	WriteJsonFloat(value["rotation"], lightManager.rot, "%.06f");
+	char buffer[FLOAT_BUFFER_LEN];
+	WriteJsonFloat(value, "x", lightManager.pos.x, buffer, "%.06f");
+	WriteJsonFloat(value, "y", lightManager.pos.y, buffer, "%.06f");
+	WriteJsonFloat(value, "z", lightManager.pos.z, buffer, "%.06f");
+	WriteJsonFloat(value, "rotation", lightManager.rot, buffer, "%.06f");
 
 	lightManager.ForEach([&](MenuLight* light) {
 		Json::Value lightValue;
 		lightValue["name"] = light->name;
 		lightValue["mod"] = lightModMap[GetModId(light->lightRefr->baseForm->formID)];
 		lightValue["id"] = HexToString(GetBaseId(light->lightRefr->baseForm->formID));
-		WriteJsonFloat(lightValue["distance"], light->distance, "%.06f");
-		WriteJsonFloat(lightValue["rotation"], light->rotation, "%.06f");
-		WriteJsonFloat(lightValue["height"], light->height, "%.06f");
-		WriteJsonFloat(lightValue["xoffset"], light->xOffset, "%.06f");
-		WriteJsonFloat(lightValue["yoffset"], light->yOffset, "%.06f");
+		WriteJsonFloat(lightValue, "distance", light->distance, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "rotation", light->rotation, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "height", light->height, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "xoffset", light->xOffset, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "yoffset", light->yOffset, buffer, "%.06f");
 		lights.append(lightValue);
 	});
 
 	value["lights"] = lights;
 
-	Json::StyledWriter writer;
-	Json::String jsonString = writer.write(value);
-	file.WriteBuf(jsonString.c_str(), jsonString.size() - 1);
-	file.Close();
+	std::string path = GetPathWithExtension(LIGHTS_PATH, filename, ".json");
 
-	return true;
+	return WriteJsonFile(path.c_str(), value);
 }
 
 bool LoadLightsFile(const char* filename)
@@ -809,33 +803,16 @@ bool LoadLightsPath(const char* path)
 	if (!selected.refr)
 		return false;
 
-	IFileStream file;
-
-	if (!file.Open(path)) 
-	{
-		_Log("Failed to open lights json ", path);
-		return false;
-	}
-		
-
-	std::string jsonString;
-	ReadAll(&file, &jsonString);
-	file.Close();
-
-	Json::Reader reader;
 	Json::Value value;
-	
-	if (!reader.parse(jsonString, value)) {
-		_Log("Failed to parse lights json ", path);
+	if (!ReadJsonFile(path, value))
 		return false;
-	}
 
 	lightManager.EraseAll();
 
-	lightManager.pos.x = ReadJsonFloat(value["x"]);
-	lightManager.pos.y = ReadJsonFloat(value["y"]);
-	lightManager.pos.z = ReadJsonFloat(value["z"]);
-	lightManager.rot = ReadJsonFloat(value["rotation"]);
+	lightManager.pos.x = ReadJsonFloat(value, "x", 0.0f);
+	lightManager.pos.y = ReadJsonFloat(value, "y", 0.0f);
+	lightManager.pos.z = ReadJsonFloat(value, "z", 0.0f);
+	lightManager.rot = ReadJsonFloat(value, "rotation", 0.0f);
 
 	Json::Value lights = value["lights"];
 
@@ -849,11 +826,11 @@ bool LoadLightsPath(const char* path)
 		
 		if (menuLight.formId != 0) {
 			menuLight.name = light.get("name", "Light").asString();
-			menuLight.distance = ReadJsonFloat(light["distance"]);
-			menuLight.rotation = ReadJsonFloat(light["rotation"]);
-			menuLight.height = ReadJsonFloat(light["height"]);
-			menuLight.xOffset = ReadJsonFloat(light["xoffset"]);
-			menuLight.yOffset = ReadJsonFloat(light["yoffset"]);
+			menuLight.distance = ReadJsonFloat(light, "distance", 100.0f);
+			menuLight.rotation = ReadJsonFloat(light, "rotation", 0.0f);
+			menuLight.height = ReadJsonFloat(light, "height", 100.0f);
+			menuLight.xOffset = ReadJsonFloat(light, "xoffset", 0.0f);
+			menuLight.yOffset = ReadJsonFloat(light, "yoffset", 0.0f);
 			menuLight.Update();
 			lightManager.Push(menuLight);
 		}

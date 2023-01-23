@@ -1,0 +1,40 @@
+Race	000C9ACF
+Mod	Fallout4.esm
+Sex	male
+Type	export
+
+Category	Cat
+COM
+Pelvis
+SPINE1
+SPINE2
+Ribcage
+Neck1
+Neck2
+HEAD
+RLeg_Rear_Thigh
+RLeg_Rear_Knee
+RLeg_Rear_Ankle
+RLeg_Rear_Toe1
+LLeg_Rear_Thigh
+LLeg_Rear_Knee
+LLeg_Rear_Ankle
+LLeg_Rear_Toe1
+RLeg_Front_Collarbone
+RLeg_Front_Thigh
+RLeg_Front_Knee
+RLeg_Front_Ankle
+RLeg_Front_Toe1
+LLeg_Front_Collarbone
+LLeg_Front_Thigh
+LLeg_Front_Knee
+LLeg_Front_Ankle
+LLeg_Front_Toe1
+Tail1
+Tail2
+Tail3
+Tail4
+REar
+LEar
+Jaw
+Tongue

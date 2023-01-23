@@ -8,9 +8,6 @@
 #include <vector>
 #include <unordered_map>
 
-#define LIGHTS_PATH "Data\\F4SE\\Plugins\\SAM\\Lights"
-#define LIGHTS_SERIALIZE_VERSION 2
-
 class MenuLight
 {
 public:

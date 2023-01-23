@@ -8,6 +8,7 @@
 #include "json/json.h"
 
 #include <regex>
+#include <fstream>
 
 #define ADJUSTMENTS_PATH "Data\\F4SE\\Plugins\\SAF\\Adjustments"
 #define POSES_PATH "Data\\F4SE\\Plugins\\SAF\\Poses"
@@ -15,8 +16,8 @@
 #define NODEMAPS_PATH "Data\\F4SE\\Plugins\\SAF\\NodeMaps"
 #define DEFAULT_PATH "Data\\F4SE\\Plugins\\SAF\\Default"
 
-#define WriteJsonFloat(K, V, D) sprintf_s(buffer, D, V); \
-K = Json::Value(buffer);
+#define FLOAT_BUFFER_LEN 32
+#define REGEX_BUFFER_LEN 512
 
 extern std::regex tabSeperatedRegex;
 extern std::regex tabOptionalRegex;
@@ -75,8 +76,13 @@ namespace SAF {
 
 	extern InsensitiveUInt32Map genderMap;
 
-	void ReadAll(IFileStream* file, std::string* str);
-	float ReadJsonFloat(Json::Value& value);
+	void ReadAll(IFileStream& file, std::stringstream& ss);
+	//Must close manualy!
+	bool OpenOutFileStream(const char* path, std::ofstream* stream);
+	float ReadJsonFloat(Json::Value& value, const char* key, float defaultValue);
+	void WriteJsonFloat(Json::Value& json, const char* key, float value, char* buffer, const char* format);
+	bool ReadJsonFile(const char* path, Json::Value& value);
+	bool WriteJsonFile(const char* path, Json::Value& value);
 	void LoadAllFiles();
 	bool SaveAdjustmentFile(const char* filename, std::shared_ptr<Adjustment> adjustment);
 	bool LoadAdjustmentFile(const char* filename, LoadedAdjustment* map);

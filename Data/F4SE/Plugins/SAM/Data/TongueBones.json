@@ -1,0 +1,11 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetTongueNodes"
+    },
+    "set": {
+        "type": "menu",
+        "name": "BoneEdit"
+    }
+}

@@ -1,0 +1,165 @@
+{
+    "type": "mixed",
+    "get": {
+        "type": "sam",
+        "name": "GetBoneTransform",
+        "args": [
+            {
+                "type": "var",
+                "name": "adjustmentHandle"
+            },
+            {
+                "type": "var",
+                "name": "boneName"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetBoneTransform"
+    },
+    "init": {
+        "type": "sam",
+        "name": "InitOffset"
+    },
+    "load": {
+        "name": "$SAM_Offset",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "ToggleOffset"
+        }
+    },
+    "reset": {
+        "name": "$SAM_Reset",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "ResetBoneTransform"
+        }
+    },
+    "extra": {
+        "name": "$SAM_Negate",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "NegateBoneTransform"
+        }
+    },
+    "items": [
+        {
+            "name": "$SAM_RotX",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -180.0,
+                "max": 180.0,
+                "step": 0.1,
+                "stepkey": 1.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_RotY",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -180.0,
+                "max": 180.0,
+                "step": 0.1,
+                "stepkey": 1.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_RotZ",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -180.0,
+                "max": 180.0,
+                "step": 0.1,
+                "stepkey": 1.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_PosX",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -10.0,
+                "max": 10.0,
+                "step": 0.01,
+                "stepkey": 0.1,
+                "fixed": 4
+            }
+        },
+        {
+            "name": "$SAM_PosY",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -10.0,
+                "max": 10.0,
+                "step": 0.01,
+                "stepkey": 0.1,
+                "fixed": 4
+            }
+        },
+        {
+            "name": "$SAM_PosZ",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -10.0,
+                "max": 10.0,
+                "step": 0.01,
+                "stepkey": 0.1,
+                "fixed": 4
+            }
+        },
+        {
+            "name": "$SAM_Scale",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": 0.0,
+                "max": 2.0,
+                "step": 0.01,
+                "stepkey": 0.02,
+                "fixed": 4
+            }
+        },
+        {
+            "name": "$SAM_RotX",
+            "type": "touch",
+            "touch": {
+                "type": "float",
+                "visible": false,
+                "step": 2.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_RotY",
+            "type": "touch",
+            "touch": {
+                "type": "float",
+                "visible": false,
+                "step": 2.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_RotZ",
+            "type": "touch",
+            "touch": {
+                "type": "float",
+                "visible": false,
+                "step": 2.0,
+                "fixed": 2
+            }
+        }
+    ]
+}

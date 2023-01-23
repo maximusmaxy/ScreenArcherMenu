@@ -1,0 +1,99 @@
+Race	000D9804
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	Main
+COM	COM
+Pelvis	Pelvis
+SPINE1	Spine 1
+SPINE2	Spine 2
+Chest	Chest
+Neck	Neck
+HEAD	Head
+
+Category	Face
+Jaw	Jaw
+Nose	Nose
+Tongue1	Tongue 1
+Tongue2	Tongue 2
+LEye	Left Eye
+REye	Right Eye
+LEyeBrow	Left Eye Brow
+REyeBrow	Right Eye Brow
+LBrow_In	Left Brow In
+LBrow_Out	Left Brow Out
+RBrow_In	Right Brow In
+RBrow_Out	Right Brow Out
+CLip_Down	Center Lip Down
+CLip_Up	Center Lip Up
+LLip_Low	Left Lip Low
+LLip_Mid	Left Lip Mid
+LLip_Up	Left Lip Up
+RLip_Mid	Right Lip Mid
+RLip_Low	Right Lip Low
+RLip_Up	Right Lip Up
+
+Category	Legs
+LLeg_Thigh	Left Thigh
+LLeg_Knee	Left Knee
+LLeg_Ankle	Left Ankle
+LLeg_Toe1	Left Toe
+LLeg_Thigh_Twist	Left Thigh Twist
+LButt	Left Butt
+RLeg_Thigh	Right Thight
+RLeg_Knee	Right Knee
+RLeg_Ankle	Right Ankle
+RLeg_Toe1	Right Toe
+RLeg_Thigh_Twist	Right Thigh Twist
+RButt	Right Butt
+
+Category	Left Arm
+LArm_Clavicle	Left Clavicle
+LArm_Shoulder	Left Shoulder
+LArm_Elbow	Left Elbow
+LArm_Hand	Left Hand
+LArm_Shoulder_Twist	Left Shoulder Twist
+LArm_Elbow_1_Twist	Left Elbow Twist 1
+LArm_Elbow_2_Twist	Left Elbow Twist 2
+LArm_Elbow_3_Twist	Left Elbow Twist 3
+LArm_Thumb1	Left Thumb 1
+LArm_Thumb2	Left Thumb 2
+LArm_Thumb3	Left Thumb 3
+LArm_Index1	Left Index 1
+LArm_Index2	Left Index 2
+LArm_Index3	Left Index 3
+LArm_Middle1	Left Middle 1
+LArm_Middle2	Left Middle 2
+LArm_Middle3	Left Middle 3
+LArm_Ring1	Left Ring 1
+LArm_Ring2	Left Ring 2
+LArm_Ring3	Left Ring 3
+LArm_Pinky1	Left Pinky 1
+LArm_Pinky2	Left Pinky 2
+LArm_Pinky3	Left Pinky 3
+
+Category	Right Arm
+RArm_Clavicle	Right Clavicle
+RArm_Shoulder	Right Shoulder
+RArm_Elbow	Right Elbow
+RArm_Hand	Right Hand
+RArm_Shoulder_Twist	Right Shoulder Twist
+RArm_Elbow_1_Twist	Right Elbow Twist 1
+RArm_Elbow_2_Twist	Right Elbow Twist 2
+RArm_Elbow_3_Twist	Right Elbow Twist 3
+RArm_Thumb1	Right Thumb 1
+RArm_Thumb2	Right Thumb 2
+RArm_Thumb3	Right Thumb 3
+RArm_Index1	Right Index 1
+RArm_Index2	Right Index 2
+RArm_Index3	Right Index 3
+RArm_Middle1	Right Middle 1
+RArm_Middle2	Right Middle 2
+RArm_Middle3	Right Middle 3
+RArm_Ring1	Right Ring 1
+RArm_Ring2	Right Ring 2
+RArm_Ring3	Right Ring 3
+RArm_Pinky1	Right Pinky 1
+RArm_Pinky2	Right Pinky 2
+RArm_Pinky3	Right Pinky 3

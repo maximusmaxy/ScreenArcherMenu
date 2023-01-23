@@ -4,6 +4,8 @@
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformMovie.h"
 
+#include "gfx.h"
+
 #include <vector>
 #include <unordered_map>
 
@@ -44,3 +46,8 @@ void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
 void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategory);
 
 const char* GetCurrentIdleName();
+
+void GetIdleFavorites(GFxResult& result);
+void AppendIdleFavorite(GFxResult& result);
+void PlayIdleFavorite(GFxResult& result, const char* idleName);
+bool LoadIdleFavorites();

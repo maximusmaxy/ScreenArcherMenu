@@ -1,0 +1,67 @@
+{
+    "type": "adjustment",
+    "get": {
+        "type": "sam",
+        "name": "GetAdjustments"
+    },
+    "init": {
+        "type": "local",
+        "name": "InitOrder"
+    },
+    "set" :{
+        "type": "menu",
+        "name": "BoneCategory",
+        "var": "adjustmentHandle"
+    },
+    "load": {
+        "name": "$SAM_Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "type": "full",
+                "path": "Data\\F4SE\\Plugins\\SAF\\Adjustments",
+                "ext": ".json",
+                "func": {
+                    "type": "sam",
+                    "func": "LoadAdjustment"
+                }
+            }
+        }
+    },
+    "extra": {
+        "name": "$SAM_New",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "NewAdjustment"
+        }
+    },
+    "reset": {
+        "name": "$SAM_Order",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "ToggleAdjustments"
+        }
+    },
+    "adjustment": {
+        "edit": {
+            "type": "menu",
+            "name": "EditAdjustment",
+            "var": "adjustmentHandle"
+        },
+        "remove": {
+            "type": "sam",
+            "func": "RemoveAdjustment"
+        },
+        "up": {
+            "type": "local",
+            "func": "MoveAdjustmentUp"
+        },
+        "down": {
+            "type": "local",
+            "func": "MoveAdjustmentDown"
+        }
+    }
+}

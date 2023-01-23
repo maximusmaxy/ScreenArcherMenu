@@ -1,0 +1,587 @@
+Menu Data Documentation
+
+This is the menu data spec for SAM Menu Data Jsons
+
+To add your own menu extensions, add a .json file to `Data\F4SE\Plugins\SAM\Extensions`
+MAKE SURE YOU USE THE { "extension": true } PROPERTY! This will notify sam to add it to the extensions menu
+Any additional sub menus DO NOT need this property
+Try to use descriptive menu names to prevent conflicts with other mods
+
+Json files in the Data and Extensions folder will be overwritten by the file with the same name in the Override folder. This is intended for end users only so that their edits do not get overwritten when updating
+
+Menus are cached on game startup for performance reasons. If you want to reload the menus at runtime use the SAM.ReloadMenus() papyrus function or call it from the console using the command `cgf "SAM.ReloadMenus"`
+
+If the menu fails to parse, the debug info is sent to the sam.log file in `documents\my games\fallout 4\f4se` and you will get a "Menu data could not be found" error when you try to access it
+
+If you are new to editing json files i would recommend a proper editor with validation like Visual Studio Code https://code.visualstudio.com/download or an online editor such as this https://jsonformatter.org/json-parser
+
+Some types are designed for internal use only so they won't be documented
+
+#------------------------------------------------------------
+# Menu Functions
+#------------------------------------------------------------
+
+Most menus will have 2 functions.
+The get function allows you to fill your list items with names and values dynamically
+The set function will be called whenever you interact with a menu item
+{
+    "get": {},
+    "set": {}
+}
+
+There are two optional functions you may use
+Enter is called when the menu is first entered
+Leave is called when you are leaving the menu
+{
+    "enter": {},
+    "leave": {}
+}
+
+#------------------------------------------------------------
+# Menu Types
+#------------------------------------------------------------
+
+You must first specify the type property to decide which kind of menu you are going to use
+
+#------------------------------------------------------------
+# Main
+#------------------------------------------------------------
+Used internally by sam for the main menu
+
+type - "main"
+names - an array of menu item names
+values - an array of menu data jsons (no extension)
+
+{
+    "type": "main",
+    "names": [
+        "name1",
+        "name2"
+    ],
+    "values": [
+        "value1",
+        "value2"
+    ]
+}
+
+#------------------------------------------------------------
+# List
+#------------------------------------------------------------
+
+type - "list"
+get - Optional, Get function can either return an array of names, values or both
+set - Will call the set function with the following parameters (index, value) The value is the one recieved from the get function. If no value was recieved it will use the name string
+
+Lists can be defined in multiple ways
+
+You can get names/values dynamically, useful for dynamically sorted menus
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetListNamesAndValues"
+    }
+}
+
+You can have static names without a get function
+{
+    "type": "list",
+    "set": {
+        "type": "sam",
+        "name": "SetListValue"
+    },
+    "names": [
+        "Name1",
+        "Name2"
+    ]
+}
+
+And finally, you can assign names and functions individually to each list item with no get/set required
+
+{
+    "type": "list",
+    "list": [
+        {
+            "name": "Open Container",
+            "func": {
+                "type": "sam",
+                "name": "OpenContainer"
+            }
+        },
+        {
+            "name": "Close Container",
+            "func": {
+                "type": "sam",
+                "name": "CloseContainer"
+            }
+        }
+    ]
+}
+
+#------------------------------------------------------------
+# Checkbox
+#------------------------------------------------------------
+
+type = "checkbox"
+get - function that returns an array of booleans
+set - function that is called with an index and a boolean
+
+{
+    "type": "checkbox",
+    "get": {},  //function
+    "set": {},  //function
+    "names": [
+        "Checkbox name"
+    ]
+}
+
+#------------------------------------------------------------
+# Mixed
+#------------------------------------------------------------
+
+type - "mixed"
+
+get - function that returns either an array of values or an object containing both names and values to dynamically assign menu item names
+      
+set - function that is called with the index as param1 and the new value as param2
+      list values will be called with the value assigned in the get function
+      checkboxes will be called with a boolean
+      sliders will be called with a int/float
+      touch sliders will be called with a float that is the distance to the left (negative) or right (positive) it has moved
+
+items - array of menu items of mixed types
+        items can have an optional function property to overwrite the set function
+
+{
+    "type": "mixed",
+    "items": [
+        {
+            "name": "List Item",
+            "type": "list"
+        },
+        {
+            "name": "Checkbox Item",
+            "type": "checkbox"
+        },
+        {
+            "name": "Slider Item",
+            "type": "slider",
+            "slider": {
+                "type": "float",    //type can be "int" or "float"
+                "min": 0.0,         //minimum slider value
+                "max": 360.0,       //maximum slider value
+                "step": 0.1,        //increment when clicking the arrows
+                "stepkey": 1.0,     //increment when using the keyboard/controller
+                "fixed": 4          //(optional) float type fixed decimal places 
+            }
+        },
+        {
+            "name": "Touch Slider Item",
+            "type": "touch",
+            "touch": {
+                "type": "float",    //type can be "int" or "float"
+                "step": 2.0,        //increment used when using keyboard/controller
+                "mod": 0.01,        //(optional) multiply the pixels moved by this amount
+                "fixed": 2,         //(optional) float type fixed decimal places
+                "visible": false     //(optional) whether the number value is visible, true by default
+            }
+        }
+    ]
+}
+
+#------------------------------------------------------------
+# Folder
+#------------------------------------------------------------
+Opens a folder at the specified path and returns all files with the specified extension. Use double backslashes as folder seperators
+
+type - "folder"
+folder - a folder object
+
+# folder object 
+type - "file", "relative" or "full". specifies how the parameter string is formatted when the function is called. As an example we'll use the following path:
+Data\F4SE\Plugins\SAM\Adjustments\Subfolder\MyAdjustment.json
+
+"file" = MyAdjustment
+"relative" = SubFolder\MyAdjustment
+"full" = Data\F4SE\Plugins\SAM\Adjustments\Subfolder\MyAdjustment.json
+
+If you need the string formatted in multiple ways, use the full path and the utility papryus functions SAM.GetFilename and SAM.GetRelativePath
+
+path - Path of the folder relative to the root directory
+ext - Only displays files with the specified extension
+func - Called with the file/path as the parameter
+pop - Optional, Defaults to true, if set to false it will prevent the folder menu from popping off the stack on file selection
+
+{
+    "type": "folder",
+    "folder": {
+        "type: "full",
+        "path": "Data\\F4SE\\Plugins\\SAM\\Adjustments",
+        "ext": ".json",
+        "pop": false,
+        "func": {
+            "type": "sam",
+            "func": "LoadAdjustment"
+        }
+    }
+}
+
+To add hotkeys to the folder they must be properties of the folder unlike the other menus. This is so you can add hotkeys to folders opened from functions.
+
+{
+    "folder": {
+        "save": {
+        },
+        "load": {
+        }
+    }
+}
+
+#------------------------------------------------------------
+# Optional Menu Properties
+#------------------------------------------------------------
+
+# Extension
+Notifies sam to add it to the extension list
+
+"extension": true
+
+# Refresh
+After you interact with a menu item and the set function is called, refresh will call the get function again. Use this if you are updating multiple values dynamically
+
+"refresh": true
+
+# Console Update
+By default, menus will boot you back to the main menu when the console target is updated to prevent logic errors. If your menu does not change based on information on the target it is usually safe to update instead with this property
+
+"update": true
+
+{
+    "type": "mixed",
+    "extension": true,
+    "refresh": true,
+    "update": true
+}
+
+#------------------------------------------------------------
+# Function Types
+#------------------------------------------------------------
+
+# Sam
+Calls a native function registered in the ScreenArcherMenu.dll
+
+type - "sam"
+name - Name of the function
+
+{
+    "type" : "sam",
+    "name" : "FunctionName"
+}
+
+# Local
+Calls a local function in the sam UI
+These are hard coded into the menu and designed for internal use only
+
+type - "local"
+name - Name of the function
+
+{
+    "type": "local",
+    "name": "FunctionName"
+}
+
+# Menu
+Opens a new menu
+
+{
+    "type": "menu",
+    "name": "MenuName"
+}
+
+# Entry
+Opens the text entry box and sends the string as the first parameter to the specified function
+
+{
+    "type": "entry",
+    "entry" {
+        "func": {
+            "type": "sam",
+            "name": "RenameAdjustment"
+        }
+    }
+}
+
+# Folder
+Opens a folder and calls the function with the specified file/path string. A full explanation on folder objects is in the folder menu
+
+{
+    "type": "folder',
+    "folder": {
+        "type": "full"
+        "path": "Data\\F4SE\\plugins\\SAM\\Adjustments"
+        "ext": ".json",
+        "func": {
+            "type": "sam",
+            "name": "LoadAdjustment"
+        }
+    }
+}
+
+#------------------------------------------------------------
+# Papyrus Functions
+#------------------------------------------------------------
+
+# Form
+Calls a papyrus function on the specified form
+
+type - "form"
+script - Script name
+name - Function name
+mod - Filename of the esp/esl
+id - The ID number of the form, make sure it is surrounded by quotes
+wait (optional) - To prevent hanging from get functions, sam will wait a specified time in milliseconds for papyrus to return a value. After which it will instead recieve a "Papyrus has timed out" error. The default is 1000ms
+
+{
+    "type": "form",
+    "name": "FuncName",
+    "mod": "MyMod.esp",
+    "id": "1D162"
+    "wait": 1000
+}
+
+# Global
+
+Calls a global papyrus function
+
+type - "global"
+script - Script name
+name - Function name
+wait (optional) - To prevent hanging from get functions, sam will wait a specified time in milliseconds for papyrus to return a value. After which it will instead recieve a "Papyrus has timed out" error. The default is 1000ms
+
+{
+    "type": "global",
+    "script" "ScriptName",
+    "name": "FuncName",
+    "wait": 1000
+}
+
+#------------------------------------------------------------
+# Papyrus Callbacks
+#------------------------------------------------------------
+
+Papyrus functions do not have the ability to return values when called dynamically from SAM. To return values to sam for use with get functions use the following functions
+
+# SAM.SetMenuValues(var[] values)
+List types can be any type and will send the (index, value) as params for set functions
+Checkboxes must be boolean values
+Sliders must be Int or Float depending on the type specified in the 
+
+# SAM.SetMenuItems(string[] names, var[] values)
+Same as set menu values but you may supply the names as well for dynamically assigning the menu item names
+
+# SAM.SetError(string)
+Returns an error, preventing get functions from loading the menu
+
+# SAM.SetString(string)
+Used for notification and title callback
+
+# SAM.SetSuccess()
+You may optionally call set functions that require a callback. This allows you to add error messaging to your set calls. Use this to return a success
+
+#------------------------------------------------------------
+# Optional Function Properties
+#------------------------------------------------------------
+
+# Local Variables
+When calling a set function you can state a var name to store it in a local variable. Try to use a descriptive name to avoid conflicts.
+
+{
+    "type": "papyrus",
+    "script": "ScriptName",
+    "func": "SetFunc",
+    "var": "itemValue"
+}
+
+# All Variables
+You can also choose to send or store the entire array of menu values by specifying the all property
+
+{
+    "type": "papyrus",
+    "script": "ScriptName",
+    "func": "SetFunc",
+    "var": "itemValue",
+    "all": true
+}
+
+# Pop
+Pops the top menu from the stack after calling the function
+
+{
+    "type": "sam",
+    "name": "PopFunction",
+    "pop": true
+}
+
+# Pop To
+Pops back to the specified menu after calling the function
+
+{
+    "type": "sam",
+    "name": "PopToMain",
+    "popto": "main"
+}
+
+#------------------------------------------------------------
+# Function Arguments
+#------------------------------------------------------------
+When calling a function you can supply additional arguments. It is an array of objects that specify either a local variable or a constant value.
+
+{
+    "type": "sam",
+    "name": "FunctionName",
+    "args": [
+        {
+            "type": "var",      //local variables correspond with values stored by the setter
+            "name": "itemValue"
+        },
+        {
+            "type": "index",    //uses the value at the specified item index
+            "index": 0
+        }
+        {
+            "type": "value",    //constant value
+            "value": 2.0
+        },
+
+    ]
+}
+
+#------------------------------------------------------------
+# Sam Functions
+#------------------------------------------------------------
+These are built in sam functions you can use
+
+# LoadMenu 
+
+Loads a menu from a string
+{
+    "type": "sam",
+    "func": "LoadMenu",
+    "args": [
+        {
+            "type": "value",
+            "value": "NewMenu"
+        }
+    ]
+}
+
+# LoadMenuValue 
+
+Loads a menu using the value from the selected menu item. Intended for use by set functions
+"set": {
+    "type: "sam",
+    "func": "LoadMenuValue"
+}
+
+#------------------------------------------------------------
+# Hotkeys
+#------------------------------------------------------------
+
+Aside from the default hide/back hotkeys, there are 4 optional hotkeys you can add to your menus
+
+# Reset - Assigned to R on keyboard and Y on Xbox
+# Extra - Assigned to X on keyboard and X on Xbox
+# Save - Assigned to Q on keyboard and LB/LT on Xbox
+# Load - Assigned to E on keyboard and RB/RT on Xbox
+
+You do not have to use these names and functions, you can assign your own.
+
+# Func
+Hotkey calls a function, you can use any of the function types in the functions section
+
+{
+    "type": "mixed",
+    "reset": {                  //Basic function
+        "name": "Reset",
+        "type": "func", 
+        "func": {
+            "type: "sam",
+            "name": "ResetBone"
+        }
+    },
+    "save": {                   //Entry function
+        "name": "Save",
+        "type": "func",
+        "func": {
+            "type": "entry",
+            "entry": {
+                "func": {
+                    "type": "sam",
+                    "name": "SaveBone"
+                }
+            }
+        }
+    },
+    "load": {                   //Folder function
+        "name": "Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "type": "full",
+                "path": "Data\\F4SE\\Plugins\\SAM\\Bones",
+                "ext": ".json",
+                "func": {
+                    "type": "sam",
+                    "func": "LoadBone"
+                }
+            }
+        }
+    }
+}
+
+# Hold
+When the hotkey is held down, you can either move the mouse left/right or press left/right on the keyboard/controller. This will send movements in floats to the specified function as the first parameter. This was designed specifically for rotating the character via hotkey but maybe you will find some other use for it
+
+{
+    "name": "Rotate",
+    "type": "hold",
+    "hold": {
+        "step": 2.0,    //Step value used for keyboard/controller
+        "mod": 0.01,    //Modifies the pixels moved by this amount
+        "func": {
+            "type": "sam",
+            "func": "RotateIdle"
+        }
+    }
+}
+
+#------------------------------------------------------------
+# Notifications
+#------------------------------------------------------------
+
+You can specify a function to display a string in the top left notification box. This function will be called when the menu is loaded. You can show the notification manually using the papyrus function SAM.ShowNotification(message). The notification is also used for error messaging so you can't rely on it being visible 100% of the time
+
+Notification functions recieve no initial params and must return a string
+
+{
+    "notification": {
+        "type": "sam",
+        "name": "GetIdleName"
+    }
+}
+
+#------------------------------------------------------------
+# Title
+#------------------------------------------------------------
+
+You can specify a title function which changes the name of the title string above the message box. By default it will be the targeted actors name if not specified. This function will be called when the menu is loaded. You can manually change the title with the papyrus function SAM.SetTitle(name).
+
+Title functions recieve no initial params and must return a string
+
+{
+    "title": {
+        "type": "sam",
+        "name": "GetBoneName"
+    }
+}

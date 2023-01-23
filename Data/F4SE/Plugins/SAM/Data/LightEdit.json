@@ -1,0 +1,110 @@
+{
+    "type": "mixed",
+    "refresh": true,
+    "get": {
+        "type": "sam",
+        "func": "GetLight",
+        "args": [
+            {
+                "type": "var",
+                "name": "selectedLight"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "func": "SetLight"
+    },
+    "items": [
+        {
+            "name": "$SAM_Distance",
+            "type": "touch",
+            "touch": {
+                "type": "float",
+                "step": 10.0,
+                "fixed": 2,
+                "mod": 0.5
+            }
+        },
+        {
+            "name": "$SAM_Rotation",
+            "type": "touch",
+            "touch": {
+                "type": "float",
+                "step": 2.0,
+                "fixed": 2,
+                "mod": 0.5
+            }
+        },
+        {
+            "name": "$SAM_Height",
+            "type": "touch",
+            "touch": {
+                "type": "float",
+                "step": 10.0,
+                "fixed": 2,
+                "mod": 0.5
+            }
+        },
+        {
+            "name": "$SAM_XOffset",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -90.0,
+                "max": 90.0,
+                "step": 0.1,
+                "stepkey": 1.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_YOffset",
+            "type": "slider",
+            "slider": {
+                "type": "float",
+                "min": -90.0,
+                "max": 90.0,
+                "step": 0.1,
+                "stepkey": 1.0,
+                "fixed": 2
+            }
+        },
+        {
+            "name": "$SAM_Rename",
+            "type": "list",
+            "func": {
+                "type": "entry",
+                "entry": {
+                    "func": {
+                        "type": "sam",
+                        "name": "RenameLight"
+                    }
+                }
+            }
+        },
+        {
+            "name": "$SAM_Swap",
+            "type": "list",
+            "func": {
+                "type": "menu",
+                "name": "LightSwapCategories"
+            }
+        },
+        {
+            "name": "$SAM_Delete",
+            "type": "list",
+            "func": {
+                "type": "sam",
+                "name": "DeleteLight",
+                "pop": true,
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "selectedLight"
+                    }
+                ]
+            }
+        }
+    ]
+}

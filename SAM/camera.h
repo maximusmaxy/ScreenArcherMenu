@@ -5,8 +5,7 @@
 #include "f4se/ScaleformValue.h"
 #include "f4se/PluginAPI.h"
 
-#define CAM_SAVE_STATE_SLOTS 3
-#define CAM_SERIALIZE_VERSION 1
+#include "gfx.h"
 
 class FreeCameraState : public TESCameraState
 {
@@ -32,12 +31,14 @@ struct CameraSaveState
 
 FreeCameraState* GetFreeCameraState();
 
-void GetCameraGFx(GFxMovieRoot* root, GFxValue* result);
-bool SetCameraPos(float x, float y, float z);
-bool SetCameraRot(float x, float y, float z);
-void SetFOV(float fov);
+void GetCameraGFx(GFxResult& result);
+void SetCamera(GFxResult& result, int index, float value);
 bool SaveCamera(int index);
 bool LoadCamera(int index);
+
+bool SaveCameraPath(const char* path);
+bool LoadCameraFile(const char* file);
+bool LoadCameraPath(const char* path);
 
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version);

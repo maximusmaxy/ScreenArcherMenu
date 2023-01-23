@@ -1,0 +1,101 @@
+Race	0001DB4A
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	Main
+COM	COM
+Pelvis	Pelvis
+SpineRoot	Spine Root
+Spine01	Spine 1
+Spine02	Spine 2
+SpineControl	Spine Control
+NeckRoot	Neck Root
+Neck01	Neck
+NeckSkin	Neck Skin
+HEAD	Head
+
+Category	Face
+Jaw	Jaw
+Nose	Nose
+RBrow	Right Brow
+LBrow	Left Brow
+Tongue01	Tongue 1
+Tongue02	Tongue 2
+Tongue03	Tongue 3
+LagBoneSpit	Lag Bone Spit
+
+Category	Tail
+Tail1	Tail 1
+Tail2	Tail 2
+Tail3	Tail 3
+Tail4	Tail 4
+Tail5	Tail 5
+Tail6	Tail 6
+Tail7	Tail 7
+
+Category	Left Arm
+WeaponLeft	Weapon Left
+LArmClavicle	Left Clavicle
+LArmUpperArm	Left Upper Arm
+LArmForeArm	Left Forearm
+LUpperarmTwist1	Left Upper Arm Twist 1
+LUpperarmTwist2	Left Upper Arm Twist 2
+LForearmTwist1	Left Forearm Twist 1
+LForearmTwist2	Left Forearm Twist 2
+LArmHand	Left Hand
+LArmThumb1	Left Thumb 1
+LArmThumb2	Left Thumb 2
+LArmIndex1	Left Index 1
+LArmIndex2	Left Index 2
+LArmIndex3	Left Index 3
+LArmMiddle1	Left Middle 1
+LArmMiddle2	Left Middle 2
+LArmMiddle3	Left Middle 3
+LArmRing1	Left Ring 1
+LArmRing2	Left Ring 2
+LArmRing3	Left Ring 3
+LArmPinky1	Left Pinky 1
+LArmPinky2	Left Pinky 2
+LArmPinky3	Left Pinky 3
+
+Category	Right Arm
+WEAPON	Weapon
+RArmClavicle	Right Clavicle
+RArmUpperArm	Right Upper Arm
+RArmForeArm	Right Forearm
+RUpperarmTwist1	Right Upper Arm Twist 1
+RUpperarmTwist2	Right Upper Arm Twist 2
+RForearmTwist1	Right Forearm Twist 1
+RForearmTwist2	Right Forearm Twist 2
+RArmHand	Right Hand
+RArmThumb1	Right Thumb 1
+RArmThumb2	Right Thumb 2
+RArmIndex1	Right Index 1
+RArmIndex2	Right Index 2
+RArmIndex3	Right Index 3
+RArmMiddle1	Right Middle 1
+RArmMiddle2	Right Middle 2
+RArmMiddle3	Right Middle 3
+RArmRing1	Right Ring 1
+RArmRing2	Right Ring 2
+RArmRing3	Right Ring 3
+RArmPinky1	Right Pinky 1
+RArmPinky2	Right Pinky 2
+RArmPinky3	Right Pinky 3
+
+Category	Legs
+LTHIGH	Left Thigh
+LCALF	Left Calf
+LFOOT	Left Foot
+LToe1	Left Toe 1
+LToe2	Left Toe 2
+LToe3	Left Toe 3
+LToe4	Left Toe 4
+RTHIGH	Right Thigh
+RCALF	Right Calf
+RFOOT	Right Foot
+RToe1	Right Toe 1
+RToe2	Right Toe 2
+RToe3	Right Toe 3
+RToe4	Right Toe 4

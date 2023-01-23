@@ -1,0 +1,50 @@
+{
+   "human": {
+       "race": "00013746",
+       "mod": "Fallout4.esm",
+       "reset": {
+           "mod": "Fallout4.esm",
+           "idle": "000E9855"
+       },
+       "apose": {
+           "mod": "ScreenArcherMenu.esp",
+           "idle": "00000802"
+       },
+       "filter": {
+           "behavior": "actors\\Character\\Behaviors\\RaiderRootBehavior.hkx",
+           "event": "dyn_ActivationLoop"
+       }
+   },
+   "powerarmor": {
+       "race": "0001D31E",
+       "mod": "Fallout4.esm",
+       "reset": {
+           "mod": "Fallout4.esm",
+           "idle": "000E9855"
+       },
+       "apose": {
+           "mod": "ScreenArcherMenu.esp",
+           "idle": "00000808"
+       },
+       "filter": {
+           "behavior": "actors\\Character\\Behaviors\\RaiderRootBehavior.hkx",
+           "event": "dyn_ActivationLoop"
+       }
+   },
+   "supermutant": {
+       "race": "0001A009",
+       "mod": "Fallout4.esm",
+       "reset": {
+           "mod": "Fallout4.esm",
+           "idle": "000E9855"
+       },
+       "apose": {
+           "mod": "ScreenArcherMenu.esp",
+           "idle": "00000807"
+       },
+       "filter": {
+           "behavior": "actors\\Character\\Behaviors\\RaiderRootBehavior.hkx",
+           "event": "dyn_ActivationLoop"
+       }
+   }
+}

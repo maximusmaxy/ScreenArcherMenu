@@ -18,60 +18,13 @@
 	import utils.Translator;
 	import Mobile.ScrollList.EventWithParams;
 	import flash.media.ID3Info;
-	
+
 	public class ScreenArcherMenu extends Shared.IMenu
 	{
 		public var state:int = 0;
-		public var currentState:Object;
+		public var currentState:MenuState;
 		public var stateStack:Array;
-		
-		//menu states
-		public static const MAIN_STATE:int = 0;
-		public static const MORPHCATEGORY_STATE:int = 1;
-		public static const MORPH_STATE = 2;
-		public static const LOADMFG_STATE:int = 3;
-		public static const SAVEMFG_STATE:int = 4;
-		public static const POSECATEGORY_STATE:int = 5;
-		public static const POSENODE_STATE:int = 6;
-		public static const TRANSFORM_STATE:int = 7;
-		public static const EYE_STATE:int = 8;
-		public static const HACK_STATE:int = 9;
-		public static const ADJUSTMENT_STATE:int = 10;
-		public static const LOADADJUSTMENT_STATE:int = 11;
-		public static const SAVEADJUSTMENT_STATE:int = 12;
-		public static const EDITADJUSTMENT_STATE:int = 13;
-		public static const IDLECATEGORY_STATE:int = 14;
-		public static const IDLE_STATE:int = 15;
-		public static const POSEEXPORT_STATE:int = 16;
-		public static const SAVEPOSE_STATE:int = 17;
-		public static const LOADPOSE_STATE:int = 18;
-		public static const SKELETONADJUSTMENT_STATE:int = 19;
-		public static const POSITIONING_STATE:int = 20;
-		public static const OPTIONS_STATE:int = 21;
-		public static const POSEPLAY_STATE:int = 22;
-		public static const RENAMEADJUSTMENT_STATE:int = 23;
-		public static const CAMERA_STATE:int = 24;
-		public static const LIGHTSELECT_STATE:int = 25;
-		public static const LIGHTEDIT_STATE:int = 26;
-		public static const LIGHTCATEGORY_STATE:int = 27;
-		public static const LIGHTOBJECT_STATE:int = 28;
-		public static const LIGHTSWAPCATEGORY_STATE:int = 29;
-		public static const LIGHTSWAPOBJECT_STATE:int = 30;
-		public static const SAVELIGHT_STATE:int = 31;
-		public static const LOADLIGHT_STATE:int = 32;
-		public static const RENAMELIGHT_STATE:int = 33;
-		public static const LIGHTSETTINGS_STATE:int = 34;
-		public static const RACEADJUSTMENT_STATE:int = 35;
-		public static const POSEEXPORTTYPE_STATE:int = 36;
-		public static const MORPHTONGUE_STATE:int = 37;
-		
-		//Error checks
-		public static const NO_CHECK = 0;
-		public static const TARGET_CHECK = 1;
-		public static const SKELETON_CHECK = 2;
-		public static const MORPHS_CHECK = 3;
-		public static const EYE_CHECK = 4;
-		public static const CAMERA_CHECK = 5;
+		public var sam:Object;
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
@@ -80,6 +33,7 @@
 		public var notification:MovieClip;
 		
 		public var titleName:String = "";
+		public var rootMenu:String;
 		
 		internal var buttonHintData:Vector.<BSButtonHintData > ;
 		internal var buttonHintExit:BSButtonHintData;
@@ -99,135 +53,38 @@
 		public var f4seObj:Object;
 
 		public var swapped:Boolean = false;
+		public var widescreen:Boolean = false;
 		public var hidden:Boolean = false;
 		public var saved:Boolean = false;
-		public var textInput:Boolean = false;
-		public var multi:Boolean = false;
-		public var widescreen:Boolean = false;
-		public var targetRace:Boolean = false;
-		public var order:Boolean = false;
-		public var offset:Boolean = false;
 		
-		public static const HELD_X:int = 1;
+		public var hold:Boolean = false;
+		public var holdType:int = 0;
 		
-		public var held:Boolean = false;
-		public var heldType:int = 0;
-		public var heldFuncLeft:Function = null;
-		public var heldFuncRight:Function = null;
+		public var papyrusWaiting:Boolean = false;
 		
-		//menu's listed here don't require an actor to be targeted
-		public var targetIgnore:Array = [
-			HACK_STATE,
-			POSITIONING_STATE,
-			OPTIONS_STATE,
-			CAMERA_STATE,
-			LIGHTSELECT_STATE,
-			LIGHTCATEGORY_STATE,
-			LIGHTOBJECT_STATE,
-		];
+		public static const NAME_MAIN:String = "Main";
 		
-		//Menu's listed here won't reset to main menu on console target hotswap
-		public var resetIgnore:Array = [
-			EYE_STATE,
-			HACK_STATE,
-			IDLECATEGORY_STATE,
-			IDLE_STATE,
-			POSITIONING_STATE,
-			OPTIONS_STATE,
-			POSEPLAY_STATE,
-			CAMERA_STATE,
-			LIGHTSELECT_STATE,
-			LIGHTCATEGORY_STATE,
-			LIGHTOBJECT_STATE,
-		];
+		public static const STATE_MAIN = 1;
+		public static const STATE_FOLDER = 2;
+		public static const STATE_ENTRY = 3;
 		
-		public var mainMenuOptions:Array = [
-			{
-				state: ADJUSTMENT_STATE,
-				check: SKELETON_CHECK
-			},
-			{
-				state: SKELETONADJUSTMENT_STATE,
-				check: SKELETON_CHECK
-			},
-			{
-				state: RACEADJUSTMENT_STATE,
-				check: SKELETON_CHECK
-			},
-			{
-				state: POSEPLAY_STATE,
-				check: SKELETON_CHECK
-			},
-			{
-				state: POSEEXPORTTYPE_STATE,
-				check: SKELETON_CHECK
-			},
-			{
-				state: IDLECATEGORY_STATE,
-				check: NO_CHECK
-			},
-			{
-				state: POSITIONING_STATE,
-				check: NO_CHECK,
-				ignore: true
-			},
-			{
-				state: MORPHCATEGORY_STATE,
-				check: MORPHS_CHECK
-			},
-			{
-				state: EYE_STATE,
-				check: EYE_CHECK
-			},
-			{
-				state: LIGHTSELECT_STATE,
-				check: NO_CHECK,
-				ignore: true
-			},
-			{
-				state: CAMERA_STATE,
-				check: CAMERA_CHECK,
-				ignore: true
-			},
-			{
-				state: HACK_STATE,
-				check: NO_CHECK,
-				ignore: true
-			},
-			{
-				state: OPTIONS_STATE,
-				check: NO_CHECK,
-				ignore: true
-			}
-		];
-		
-		public var keys = {
-			a: 0,
-			b: 0,
-			x: 0,
-			y: 0,
-			l1: 0,
-			r1: 0,
-			select: 0,
-			left: 0,
-			up: 0,
-			right: 0,
-			down: 0
-		}
-		
-		//public var testbutton:TextField;
+		public static const PAPYRUS_GET = 1;
+		public static const PAPYURS_SET = 2;
+		public static const PAPYRUS_REFRESH = 3;
 		
 		public function ScreenArcherMenu()
 		{
 			super();
 			
-			Util.debug = false;
+			Util.debug = true;
 			widescreen = false;
 			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
 			Translator.Create(root);
+			
 			initButtonHints();
+			initSliderFuncs();
 			
 			filenameInput.visible = false;
 			sliderList.bUseShadedBackground = false;
@@ -236,37 +93,32 @@
 			ButtonHintBar_mc.ShadedBackgroundMethod = "Flash";
 			notification.visible = false;
 			
-			state = MAIN_STATE;
+			state = STATE_MAIN;
 			stateStack = [];
-			currentState = {
-				"menu": MAIN_STATE,
-				"pos": 0,
-				"x": 0,
-				"y": 0
-			};
-			updateState();
-			updateAlignment();
 			
-			sliderList.listFunc = selectList;
-			sliderList.checkboxFunc = selectCheckbox;
-			sliderList.sliderFunc = selectSlider;
-			sliderList.touchFunc = selectTouch;
+			currentState = new MenuState(NAME_MAIN, 0, 0, 0);
 			
-			//addEventListener(PlatformChangeEvent.PLATFORM_CHANGE, onPlatformChange);
 //			if (Util.debug) {
-//				addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
-//				addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+//				menuName = "Main";
+//				PushMenu(NAME_MAIN);
 //			}
-			//addEventListener("F4SE::Initialized", onF4SEInitialized);
 			
-			//testbutton.addEventListener(MouseEvent.CLICK, onTestClick);
+			updateAlignment();
 		}
 		
-//		internal function onTestClick(event:Event):void
-//		{
-//			trace("test");
-//			root.f4se.plugins.ScreenArcherMenu.Test();
-//		}
+		internal function initSliderFuncs():void
+		{
+			//Define callback functions for the slider list entries to avoid generating events
+			var functions:EntryFunctions = new EntryFunctions();
+			
+			functions.list = this.selectList;
+			functions.valueInt = this.selectInt;
+			functions.valueFloat = this.selectFloat;
+			functions.checkbox = this.selectCheckbox;
+			functions.checkbox2 = this.selectCheckbox2;
+
+			sliderList.initEntryFunctions(functions);
+		}
 		
 		internal function initButtonHints():void
 		{
@@ -278,14 +130,12 @@
 			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirmButton);
 			buttonHintHide = new BSButtonHintData("$SAM_Hide","F","PSN_Select","Xenon_Select",1,hideButton);
 			buttonHintExtra = new BSButtonHintData("","X","PSN_X","Xenon_X",1,extraButton);
-			//buttonHintTarget = new BSButtonHintData("","E","PSN_R1","Xenon_R1",1,targetButton);
 			buttonHintData.push(buttonHintExit);
 			buttonHintData.push(buttonHintBack);
 			buttonHintData.push(buttonHintHide);
 			buttonHintData.push(buttonHintSave);
 			buttonHintData.push(buttonHintLoad);
 			buttonHintData.push(buttonHintExtra);
-			//buttonHintData.push(buttonHintTarget);
 			buttonHintData.push(buttonHintReset);
 			buttonHintData.push(buttonHintConfirm);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
@@ -293,8 +143,9 @@
 		
 		public function menuOpened(data:Object)
 		{
-			Data.load(data, root, this.f4seObj, stage);
-
+			this.sam = root.f4se.plugins.ScreenArcherMenu;
+			Data.load(data, this.sam, this.f4seObj, stage);
+			
 			if (data.title) {
 				updateTitle(data.title);
 			}
@@ -312,15 +163,20 @@
 				updateAlignment();
 			}
 
+			this.rootMenu = data.menuName;
+			Data.menuName = data.menuName;
+			
 			if (data.saved) {
 				this.state = data.saved.state;
 				currentState = data.saved.current;
 				stateStack = data.saved.stack;
-				textInput = data.saved.text;
 				sliderList.focused = data.saved.focused;
 				sliderList.updateState(currentState.pos);
-				offset = data.saved.offset;
-				updateState();
+				ReloadMenu();
+				sliderList.updateSelected(currentState.x, currentState.y);
+			} else {
+				//push new menu
+				PushMenu(Data.menuName);
 			}
 			
 			Util.playOk();
@@ -329,33 +185,23 @@
 		public function consoleRefUpdated(data:Object)
 		{
 			if (data.updated) {
-				switch (this.state) {
-					case EYE_STATE:
-						Data.loadEyes();
-						sliderList.updateValues();
-						break;
-					case HACK_STATE:
-						Data.loadHacks();
-						sliderList.updateValues();
-						break;
-					case POSITIONING_STATE:
-						Data.loadPositioning();
-						sliderList.updateValues();
-						break;
+				
+				var isUpdated:Boolean = false;
+				
+				if (Data.menuData.consoleupdate) {
+					var result:GFxResult = GetResult(Data.menuData);
+					if (result) {
+						LoadMenu(Data.menuName, Data.menuData, result);
+						isUpdated = true;
+					}
 				}
 				
-				if (resetIgnore.indexOf(this.state) < 0) {
+				if (!isUpdated) {
 					resetState();
 				}
-				
+
 				Util.playOk();
 			}
-			
-//			if (data.idle) {
-//				showNotification(data.idle);
-//			} else {
-//				hideNotification();
-//			}
 
 			updateTitle(data.title);
 		}
@@ -388,9 +234,9 @@
 		public function processKeyDown(keyCode:uint)
 		{
 			//https://www.creationkit.com/fallout4/index.php?title=DirectX_Scan_Codes
-			if (held) {
-				return;
-			}
+			if (this.isWaiting() || hold)
+				return
+
 			switch (keyCode)
 			{
 				case 9://Tab
@@ -459,33 +305,38 @@
 			}
 		};
 		
-		public function processKeyHeld(keyCode:uint)
+		public function processKeyHold(keyCode:uint)
 		{
 			switch (keyCode)
 			{
 				case 37://Left
 				case 65://A
 				case 268://Pad Left
-					if (heldFuncLeft != null) {
-						heldFuncLeft();
-					}
+					onHoldStep(false);
 					break;
 				case 39://Right
 				case 68://D
 				case 269://Pad Right
-					if (heldFuncRight != null) {
-						heldFuncRight();
-					}
+					onHoldStep(true);
 					break;
 			}
 		}
 		
 		public function processKeyRepeat(keyCode:uint)
 		{
-			if (held) {
-				processKeyHeld(keyCode);
+			//block while waiting for latent functions
+			if (isWaiting())
+				return;
+			
+			if (hold) {
+				processKeyHold(keyCode);
 				return;
 			}
+			
+			//block inputs during text selection
+			if (Data.selectedText != null)
+				return;
+				
 			switch (keyCode) {
 				case 37://Left
 				case 65://A
@@ -523,10 +374,28 @@
 		{
 			switch (keyCode)
 			{
+				case 69://E
+				case 273://Pad R1
+				case 275://Pad R2
+					disableHold(Data.BUTTON_LOAD);
+					break;
+					
+				case 81://Q
+				case 272://Pad L1
+				case 274://Pad L2
+					disableHold(Data.BUTTON_SAVE);
+					break;
+					
+				case 82://R
+				case 279://Pad Y
+					disableHold(Data.BUTTON_RESET);
+					break;
+					
 				case 88://X
 				case 278://Pad X
-					disableHold(HELD_X, onZMove);
+					disableHold(Data.BUTTON_EXTRA);
 					break;
+				
 //				case 257://Mouse2
 //					show();
 //					break;
@@ -548,73 +417,251 @@
 			notification.visible = false;
 		}
 		
-		public function checkError(id:int):Boolean
+		public function setFolder(data:Object)
 		{
-			if (Data.checkError(id)) {
-				hideNotification();
-				return true;
-			} else {
-				showNotification(Data.ERROR_NAMES[id]);
-				return false;
+			var folderResult:GFxResult = Data.getFolder(data.path, data.ext);
+			if (!CheckError(folderResult))
+				return;
+				
+			loadFolder(data, folderResult);
+		}
+		
+		public function loadFolder(data:Object, result:GFxResult):void
+		{
+			Data.setFolder(data, folderResult.result);
+			
+			state = STATE_FOLDER;
+			stateStack.push(GetState());
+			sliderList.updateState(0);
+			sliderList.update();
+			sliderList.updateSelected(0, 0);
+			
+			updateMenus();
+		}
+		
+		public function loadMenuFolder(data:Object, result:GFxResult, name:String):void
+		{
+			Data.menuData = data;
+			Data.menuName = name;
+			loadFolder(data.folder, result);
+		}
+		
+		public function selectFolder(i:int)
+		{
+			var type:int = Data.getType(i);
+			if (type == Data.ITEM_LIST) {
+				
+				var path:String = Data.getFolderPath(i);
+				var selectResult:GFxResult = callDataFunction(Data.folderData.func, [path]);
+				
+				if (!CheckError(selectResult))
+					return;
+				
+				if (Data.folderData.pop) {
+					clearFolder();
+				}
+			} else if (type == Data.ITEM_FOLDER) {
+				
+				var folderResult:GFxResult = Data.getFolder(Data.menuFolder[i].path, Data.folderData.ext);
+				
+				if (!CheckError(folderResult))
+					return;
+					
+				Data.pushFolder(i, folderResult.result);
+				
+				stateStack.push(GetState());
+				sliderList.updateState(0);
+				sliderList.update();
+				sliderList.updateSelected(0, 0);
+				
+				updateMenus();
 			}
 		}
 		
-		public function checkIgnore(id:int, arr:Array):Boolean
+		public function popFolder() 
 		{
-			if (arr.indexOf(id) >= 0) {
-				hideNotification();
-				return true;
+			var folderPath:String = Data.folderStack.pop();
+			var folderResult:GFxResult = Data.getFolder(folderPath, Data.folderData.ext, true);
+			Data.popFolder(folderResult.result);
+			
+			currentState = stateStack.pop();
+			sliderList.updateState(currentState.pos);
+			sliderList.update();
+			sliderList.updateSelected(currentState.x, currentState.y);
+			
+			updateMenus();
+		}
+		
+//		public function pushFolderCheckbox(id:int, func:Function)
+//		{
+//			stateStack.push(getState());
+//			sliderList.updateState(0);
+//			if (multi) {
+//				sliderList.updateFolderCheckbox(func);
+//			} else {
+//				sliderList.updateFolder(func);
+//			}
+//			sliderList.updateSelected(0, 0);
+//		}
+//		
+//		public function popFolderCheckbox(func:Function)
+//		{
+//			currentState = stateStack.pop();
+//			sliderList.updateState(currentState.pos);
+//			if (multi) {
+//				sliderList.updateFolderCheckbox(func);
+//			} else {
+//				sliderList.updateFolder(func);
+//			}
+//			sliderList.updateSelected(currentState.x, currentState.y);
+//		}
+		
+		public function clearFolder()
+		{
+			//go to first folder then pop to get current state
+			stateStack.length = stateStack.length - Data.folderStack.length;
+			Data.folderStack.length = 0;
+			
+			PopMenu();
+		}
+		
+		public function CheckError(result:GFxResult):Boolean
+		{
+			//no result
+			if (!result) {
+				showNotification(Data.error)
+				return false;
 			}
+			
+			//show error message
+			if (result.type == Data.RESULT_ERROR) {
+				showNotification(result.result);
+				return false;
+			}
+			
+			//good result
+			return true;
+		}
+		
+		public function CheckWait(menuResult:GFxResult, getResult:GFxResult, type:int):Boolean
+		{
+			if (getResult.type != Data.RESULT_WAITING)
+				return true;
+				
+			Data.setPapyrusWaiting(menuResult.result, type);
+			
+			Data.papyrusTimer.Timer = new Timer(menuResult.result.get.timeout, 1);
+			Data.papyrusTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) 
+			{
+				showNotification("$SAM_PapyrusTimeout");
+				Util.playCancel();
+				Data.clearPapyrusWaiting();
+			});
+			
+			Data.papyrusTimer.start();
+
 			return false;
 		}
 		
-		public function checkTargetIgnore(id:int):Boolean
+		public function GetState():MenuState
 		{
-			return checkIgnore(id, targetIgnore);
+			return new MenuState(Data.menuName, sliderList.listPosition, sliderList.selectedX, sliderList.selectedY);
 		}
 		
-		public function getState():Object
+		public function PushMenu(name:String)
 		{
-			return {
-				"menu": this.state,
-				"pos": sliderList.listPosition,
-				"x": sliderList.selectedX,
-				"y": sliderList.selectedY
-			};
-		}
-		
-		public function pushState(id:int)
-		{
-			if (!checkTargetIgnore(id) && !checkError(TARGET_CHECK)) return;
+			var menuResult:GFxResult = Data.getMenu(name);
 			
-			stateStack.push(getState());
+			if (!CheckError(menuResult))
+				return;
+				
+			var getResult:GFxResult = GetResult(menuResult.result);
 			
-			this.state = id;
+			if (!CheckError(getResult))
+				return;
+				
+			if (!CheckWait(menuResult, getResult, PAPYRUS_GET))
+				return;
+				
+			trace("menuResult");
+			Util.traceObj(menuResult.result);
+			trace("getResult");
+			Util.traceObj(getResult.result);
+				
+			//Check if result is a folder and load that instead
+			if (getResult.type == Data.MENU_FOLDER) {
+				loadMenuFolder(menuResult.result, getResult, name);
+				return;
+			}
 			
+			stateStack.push(GetState());
 			currentState.x = 0;
 			currentState.y = 0;
-			
 			sliderList.updateState(0);
 			
-			updateState();
+			LoadMenu(name, menuResult.result, getResult);
 		}
 		
-		public function popState()
+		public function PopMenu():void
 		{
+			//pop folder
+			if (Data.folderStack.length > 0) {
+				popFolder();
+				return;
+			}
+			
 			currentState = stateStack.pop();
 			
-			this.state = currentState.menu;
+			var menuResult:GFxResult = Data.getMenu(currentState.menu, true);
+			
+			if (!CheckError(menuResult))
+				return;
+			
+			var getResult:GFxResult = GetResult(menuResult.result);
+			
+			if (!CheckError(getResult))
+				return;
+			
 			sliderList.updateState(currentState.pos);
 			
-			updateState();
+			LoadMenu(currentState.menu, menuResult.result, getResult);
 		}
 		
-		public function resetState()
+		public function PopMenuTo(name:String):void
 		{
-			this.state = MAIN_STATE;
-			sliderList.updateState(0);
-			currentState.x = 0;
-			currentState.y = 0;
+			//TODO account for folder stack
+			
+			//do not pop from main
+			if (stateStack.length < 2)
+				return;
+				
+			//find stack index
+			var index:int = stateStack.length - 2;
+			while (index >= 0) {
+				var popState:MenuState = stateStack[index];
+				if (popState.menu == name)
+					break;
+				index--;
+			}
+			
+			//menu not found
+			if (index < 0)
+				return;
+			
+			//go to menu above index and pop
+			Data.folderStack.length = 0;
+			stateStack.length = index + 1;
+			if (filenameInput.visible) {
+				setTextInput(false);
+			}
+			
+			PopMenu();
+		}
+		
+		public function ResetState():void
+		{
+			state = STATE_MAIN;
+			currentState = new MenuState(NAME_MAIN, 0, 0, 0);
 			stateStack.length = 0;
 			Data.folderStack.length = 0;
 
@@ -622,459 +669,702 @@
 				setTextInput(false);
 			}
 			
-			updateState();
+			PushMenu(NAME_MAIN);
 		}
 		
-		public function pushFolder(id:int, func:Function)
+		public function LoadMenu(name:String, data:Object, get:GFxResult):void
 		{
-			stateStack.push(getState());
-			sliderList.updateState(0);
-			sliderList.updateFolder(func);
-			sliderList.updateSelected(0, 0);
-		}
-		
-		public function popFolder(func:Function) 
-		{
-			currentState = stateStack.pop();
-			sliderList.updateState(currentState.pos);
-			sliderList.updateFolder(func);
-			sliderList.updateSelected(currentState.x, currentState.y);
-		}
-		
-		public function pushFolderCheckbox(id:int, func:Function)
-		{
-			stateStack.push(getState());
-			sliderList.updateState(0);
-			if (multi) {
-				sliderList.updateFolderCheckbox(func);
-			} else {
-				sliderList.updateFolder(func);
+			//leave previous menu
+			if (Data.menuData && Data.menuData.leave) {
+				callDataFunction(Data.menuData.leave);
 			}
-			sliderList.updateSelected(0, 0);
-		}
-		
-		public function popFolderCheckbox(func:Function)
-		{
-			currentState = stateStack.pop();
-			sliderList.updateState(currentState.pos);
-			if (multi) {
-				sliderList.updateFolderCheckbox(func);
-			} else {
-				sliderList.updateFolder(func);
-			}
-			sliderList.updateSelected(currentState.x, currentState.y);
-		}
-		
-		public function clearFolder()
-		{
-			//go to first folder then pop to get current state
-			stateStack.length = stateStack.length - Data.folderStack.length;
-			currentState = stateStack.pop();
 			
-			Data.folderStack.length = 0;
+			//enter new menu
+			if (data.enter) {
+				callDataFunction(data.enter);
+			}
 			
-			this.state = currentState.menu;
-			sliderList.updateState(currentState.pos);
-			
-			updateState();
-		}
-		
-		internal function updateMenu()
-		{
-			switch(getType(Data.menu.type))
-			{
-				case MAIN: UpdateMain(); break;
-			}
-		}
-		
-		internal function LoadMenu(name:String)
-		{
-			if (Data.loadMenu(name)) {
-				LoadMenuOptions();
-			} else {
-				showNotification(Data.error);
-			}
-		}
-		
-		internal function LoadMenuOptions()
-		{
-			switch (Data.menuType) {
-				case Data.MAIN:
-					loadMainMenu();
-					sliderList.updateList();
-					break;
-				case Data.MIXED:
-					loadMixedMenuOptions();
-					sliderList.updateMixed();
-					break;
-			}
-		}
-		
-		internal function loadMainMenu()
-		{
-			Data.items.length = Data.menu.names;
-			
-			for (var i:int = 0; i < Data.items.length; i++) {
-				Data.items[i] = {
-					name: Data.menu.names[i],
-					type: Data.LIST
-				};
-			}
-		}
-		
-		internal function loadMixedMenuOptions()
-		{
-			Data.items = Data.menu.items;
-			
-			for (var i:int = 0; i < Data.items.length; i++) {
-				Data.items[i].type = Data.getType(Data.menuTypes, Data.items[i].type);
-			}
-		}
-		
-		internal function selectItem(i:int, value:Object = null)
-		{
-			switch (Data.items[i].type)
-			{
-				case Data.LIST:
-					Data.callFunction(Data.items[i].set
-					break;
-			}
-		}
-		
-		internal function callFunction(func:Object)
-		{
-			
-		}
-		
-		internal function selectList(i:int) 
-		{
-			switch (Data.menuType) {
-				case Data.MAIN:
-					LoadMenu(Data.menu.values[i])
-					break;
-				case Data.LIST:
-					break;
-			}
-		}
-		
-		internal function selectMixed(i:int, value:Object = null)
-		{
-			switch(Data.items[i].type) {
-				case Data.LIST:
-					Data.callFunction(
-					break;
-			}
-		}
-		
-		internal function updateState()
-		{
+			Data.updateMenu(name, data, get);
+	
+			state = STATE_MAIN;
 			Util.unselectText();
-			switch(this.state)
-			{
-				case MAIN_STATE:
-					Data.menuOptions = Data.MAIN_MENU;
-					sliderList.updateList(selectMenu);
-					break;
-				case ADJUSTMENT_STATE:
-					Data.loadAdjustmentList();
-					sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
-					break;
-				case EDITADJUSTMENT_STATE:
-					Data.editAdjustment();
-					sliderList.updateAdjustmentEdit(selectEditAdjustment);
-					break;
-				case POSECATEGORY_STATE:
-					Data.loadCategories();
-					sliderList.updateList(selectCategory);
-					break;
-				case POSENODE_STATE:
-					Data.loadBones();
-					sliderList.updateList(selectBone);
-					break;
-				case TRANSFORM_STATE:
-					Data.loadTransforms();
-					sliderList.updateTransform(selectTransform);
-					break;
-				case MORPHCATEGORY_STATE:
-					Data.loadMorphCategories();
-					sliderList.updateList(selectMorphCategory);
-					break;
-				case MORPH_STATE:
-					Data.loadMorphs();
-					sliderList.updateMorphs(selectMorph);
-					break;
-				case LOADADJUSTMENT_STATE:
-					Data.loadSubFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
-					sliderList.updateFolder(selectAdjustmentFile);
-					break;
-				case LOADMFG_STATE:
-					Data.loadSubFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
-					sliderList.updateFolder(selectMfgFile);
-					break;
-				case SAVEMFG_STATE:
-				case SAVEADJUSTMENT_STATE:
-				case SAVEPOSE_STATE:
-				case RENAMEADJUSTMENT_STATE:
-				case SAVELIGHT_STATE:
-				case RENAMELIGHT_STATE:
-					setTextInput(true);
-					break;
-				case EYE_STATE:
-					Data.loadEyes();
-					sliderList.updateEyes(selectEye);
-					break;
-				case HACK_STATE:
-					Data.loadHacks();
-					Data.menuOptions = Data.HACK_NAMES;
-					sliderList.updateCheckboxes(selectHack);
-					break;
-				case IDLECATEGORY_STATE:
-					Data.loadIdleCategories();
-					sliderList.updateList(selectIdleCategory);
-					break;
-				case IDLE_STATE:
-					Data.loadIdles();
-					sliderList.updateList(selectIdle);
-					break;
-				case POSEEXPORT_STATE:
-					Data.getPoseList();
-					sliderList.updateCheckboxes(selectPose);
-					break;
-				case POSEEXPORTTYPE_STATE:
-					Data.loadPoseExport();
-					sliderList.updateList(selectExportType);
-					break;
-				case POSEPLAY_STATE:
-				case LOADPOSE_STATE:
-					Data.loadSubFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
-					sliderList.updateFolder(selectPoseFile);
-					break;
-				case SKELETONADJUSTMENT_STATE:
-					Data.getAdjustmentFolder(false);
-					updateMulti(false);
-					break;
-				case RACEADJUSTMENT_STATE:
-					Data.getAdjustmentFolder(true);
-					updateMulti(true);
-					break;
-				case POSITIONING_STATE:
-					Data.loadPositioning();
-					sliderList.updatePositioning(selectPositioning);
-					break;
-				case OPTIONS_STATE:
-					Data.loadOptions();
-					sliderList.updateCheckboxes(selectOptions);
-					break;
-				case CAMERA_STATE:
-					Data.loadCamera();
-					sliderList.updateCamera(selectCamera);
-					break;
-				case LIGHTSELECT_STATE:
-					Data.loadLightSelect();
-					sliderList.updateList(selectLightSelect);
-					break;
-				case LIGHTEDIT_STATE:
-					Data.loadLightEdit();
-					sliderList.updateLight(selectLightEdit);
-					break;
-				case LIGHTCATEGORY_STATE:
-				case LIGHTSWAPCATEGORY_STATE:
-					Data.loadLightCategory();
-					sliderList.updateList(selectLightCategory);
-					break;
-				case LIGHTOBJECT_STATE:
-				case LIGHTSWAPOBJECT_STATE:
-					Data.loadLightObject();
-					sliderList.updateList(selectLightObject);
-					break;
-				case LOADLIGHT_STATE:
-					Data.loadSubFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
-					sliderList.updateFolder(selectLightFile);
-					break;
-				case LIGHTSETTINGS_STATE:
-					Data.loadLightSettings();
-					sliderList.updateLightSettings(selectLightSettings);
-					break;
-				case MORPHTONGUE_STATE:
-					Data.getMorphsTongueNodes();
-					sliderList.updateList(selectMorphTongue);
-					break;
-			}
+			sliderList.update();
 			sliderList.updateSelected(currentState.x, currentState.y);
-			order = false;
+			updateMenus();
+		}
+		
+		public function updateMenus()
+		{
 			updateButtonHints();
 			updateNotification();
 			updateTitle();
 		}
 		
-		public function updateMulti(race:Boolean):void
+		public function GetResult(menu:Object):GFxResult
 		{
-			var func:Function = (race ? selectRaceAdjustment : selectSkeletonAdjustment);
-			if (multi) {
-				sliderList.updateFolderCheckbox(func);
-			} else {
-				sliderList.updateFolder(func);
+			switch (menu.type) {
+				case Data.MENU_MAIN:
+					return Data.resultSuccess;
+				case Data.MENU_MIXED:
+				case Data.MENU_CHECKBOX:
+				case Data.MENU_SLIDERS:
+					return callDataFunction(menu.get);
+				case Data.MENU_LIST:
+					//optional
+					if (menu.get) {
+						return callDataFunction(menu.get);
+					} else {
+						return Data.resultSuccess;
+					}
+				case Data.MENU_FOLDER:
+					return Data.getFolder(menu.folder.path, menu.folder.ext);
+			}
+			
+			return null;
+		}
+		
+		public function CallSet(... args)
+		{
+			trace("get set data");
+			var data:Object = GetSetData(args);
+			trace("has data");
+			if (!data)
+				return;
+			trace("call data function");
+			var result:GFxResult = callDataFunction(data, args);
+			trace("checking error");
+			if (!CheckError(result))
+				return;
+			trace("finalize");
+			if (data.pop) {
+				PopMenu();
+			} else if (data.popto) {
+				PopMenuTo(data.popto);
+			} else if (Data.menuData.refresh) {
+				RefreshValues();
 			}
 		}
 		
-		public function selectMenu(id:int):void
-		{
-			var menu:Object = mainMenuOptions[id];
+		public function RefreshValues() {
+			var result:GFxResult = GetResult(Data.menuData);
+				
+			if (!CheckError(result))
+				return;
+				
+			if (!CheckWait(Data.menuData, result, PAPYRUS_REFRESH))
+				return;
+				
+			Data.updateValues(result);
+			sliderList.updateValues();
+		}
+		
+		public function ReloadMenu() {
+			var result:GFxResult = GetResult(Data.menuData);
 			
-			if (!menu.ignore && !checkError(TARGET_CHECK)) return;
+			if (!CheckError(result))
+				return;
+				
+			if (!CheckWait(Data.menuData, result, PAPYRUS_GET))
+				return;
 			
-			if (menu.check > 0 && !checkError(menu.check)) return;
-			
-			pushState(menu.state);
-		}
-		
-		public function selectAdjustment(id:int):void
-		{
-			Data.selectedAdjustment = Data.menuValues[id];
-			pushState(POSECATEGORY_STATE);
-		}
-		
-		public function editAdjustment(id:int):void
-		{
-			Data.selectedAdjustment = Data.menuValues[id];
-			pushState(EDITADJUSTMENT_STATE);
-		}
-		
-		public function selectEditAdjustment(id:int, value:Object = null):void
-		{
-			switch (id)
-			{
-				case 0:
-					Data.menuValues[id] = value;
-					Data.setAdjustmentScale(value);
-					break;
-				case 1:
-					pushState(SAVEADJUSTMENT_STATE);
-					break;
-				case 2:
-					pushState(RENAMEADJUSTMENT_STATE);
-					break;
-				case 3:
-					Data.resetAdjustment();
-					break;
-				default:
-					Data.negateAdjustmentGroup(id);
-			}
-		}
-		
-		public function removeAdjustment(id:int):void
-		{
-			Data.removeAdjustment(Data.menuValues[id]);
-			Data.loadAdjustmentList();
 			sliderList.storeSelected();
-			sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
+			Data.updateMenu(Data.menuName, Data.menuData, result);
+			sliderList.update();
 			sliderList.restoreSelected();
 		}
 		
-		public function downAdjustment(id:int):void
+		public function GetSetData(args:Array):Object
+		{
+			switch (Data.menuType) {
+				case Data.MENU_MIXED:
+					if (Data.menuData.items[args[0]].func)
+						return Data.menuData.items[args[0]].func;
+					break;
+				case Data.MENU_LIST:
+					if (Data.menuData.list)
+						if (Data.menuData.list[args[0]].func)
+							return Data.menuData.list[args[0]].func;
+					break;
+			}
+			
+			if (Data.menuData.set)
+				return Data.menuData.set;
+				
+			return null;
+		}
+		
+		public function selectList(i:int) 
+		{
+			switch (Data.menuType) {
+				case Data.MENU_LIST:
+				case Data.MENU_MIXED:
+				case Data.MENU_ADJUSTMENT:
+					CallSet(i, Data.menuValues[i]);
+					break;
+				case Data.MENU_MAIN:
+					PushMenu(Data.menuData.values[i])
+					break;
+				case Data.MENU_FOLDER:
+					selectFolder(i);
+					break;
+				case Data.MENU_FOLDERCHECKBOX:
+					selectFolderCheckbox(i);
+					break;
+			}
+		}
+		
+		public function selectInt(i:int, value:int)
+		{
+			Data.menuValues[i] = value;
+			CallSet(i, value);
+		}
+		
+		public function selectFloat(i:int, value:Number)
+		{
+			Data.menuValues[i] = value;
+			CallSet(i, value);
+		}
+		
+		public function selectCheckbox(i:int, checked:Boolean = false)
+		{
+			trace("select checkbox");
+			switch (Data.menuType) 
+			{
+				case Data.MENU_CHECKBOX:
+				case Data.MENU_FOLDERCHECKBOX:
+					Data.menuValues[i] = checked;
+					CallSet(i, checked);
+					break;
+				case Data.MENU_ADJUSTMENT:
+					CallSet(i);
+					break;
+				case Data.MENU_MIXED: 
+					trace("mixed");
+					switch(Data.getType(i)) 
+					{
+						case Data.ITEM_CHECKBOX:
+							trace("item checkbox");
+							CallSet(i, checked);
+							break;
+					}
+					break;
+				case Data.MENU_ADJUSTMENT:
+					if (Data.locals.order) {
+						callDatafunction(menuData.adjustment.down, [i]);
+					} else {
+						callDataFunction(menuData.adjustment.edit, [i, Data.menuValues[i]]);
+					}
+					break;
+			}
+		}
+		
+		public function selectCheckbox2(i:int, checked:Boolean = false)
+		{
+			if (Data.locals.order) {
+				callDataFunction(menuData.adjustment.up, [i]);
+			} else {
+				callDataFunction(menuData.adjustment.remove, [i, Data.menuValues[i]]);
+				ReloadMenu();
+			}
+		}
+		
+		//Prevent user input when waiting for return values
+		public function isWaiting():Boolean {
+			return Data.papyrusWaiting;
+		}
+
+		public function PapyrusResult(result:GFxResult):void
+		{
+			if (Data.papyrusWaiting)
+			{
+				if (!CheckError(result)) {
+					Util.playCancel();
+					Data.clearPapyrusWaiting();
+					return;
+				}
+				
+				switch (Data.papyrusType) {
+					case PAPYRUS_GET:
+						stateStack.push(GetState());
+						currentState.x = 0;
+						currentState.y = 0;
+						sliderList.updateState(0);
+				
+						LoadMenu(name, Data.papyrusMenuData, result);
+						break;
+						
+					case PAPYRUS_REFRESH:
+						sliderList.updateValues();
+						break;
+						
+					//case PAPYRUS_SET: //ignore
+				}
+				
+				Data.clearPapyrusWaiting();
+			}
+		}
+		
+		public function callDataFunction(data:Object, args:Array = null):GFxResult
+		{
+			trace("data");
+			if (data["var"]) {
+				if (data.all) {
+					Data.locals[data["var"]] = Util.shallowCopyArray(Data.menuValues);
+				} else {
+					if (!args) {
+						Data.error = "No index found to store var " + data["var"];
+						return null;
+					}
+					Data.locals[data["var"]] = Data.menuValues[args[0]];
+				}
+			}
+			trace("type");
+			switch (data.type) {
+				case Data.FUNC_GLOBAL:
+					if (!data.script) {
+						Data.error = "Papyrus function missing script name";
+						return null;
+					}
+					
+					if (!data.func) { 
+						Data.error = "Papyrus function missing function name";
+						return null;
+					}
+					
+					if (!args) {
+						args = [];
+					}
+					
+					args.push(data.script);
+					args.push(data.func);
+					break;
+				case Data.FUNC_MENU:
+					PushMenu(data.name);
+					return Data.resultSuccess;
+			}
+			trace("args");
+			if (data.args) {
+				if (!args) {
+					args = [];
+				}
+				
+				for (var i:int = 0; i < args.length; i++) {
+					switch (data.args[i].type) {
+						case Data.ARGS_VAR:
+							var property:String = data.args[i].name;
+							//need to use hasOwnProperty because of falsy values
+							if (Data.locals.hasOwnProperty(property)) {
+								args.push(Data.locals[property]);
+							}
+							break;
+						case Data.ARGS_INDEX:
+							args.push(menuValues[data.args[i]]);
+							break;
+						case Data.ARGS_VALUE:
+							args.push(data.args[i].value)
+							break;
+					}
+				}
+			}
+			trace("type 2");
+			switch (data.type)
+			{
+				case Data.FUNC_SAM: return callSamFunction(data.name, args);
+				case Data.FUNC_LOCAL: return callLocalFunction(data.name, args);
+				case Data.FUNC_FORM: return callPapyrusForm(data, args);
+				case Data.FUNC_GLOBAL: return callPapyrusGlobal(args, data.wait);
+				case Data.FUNC_ENTRY: 
+				{
+					//Store data and args and open text entry
+					Data.entryData = data.entry.func;
+					Data.entryArgs = args;
+					
+					setTextInput(true);
+					updateMenus();
+
+					return Data.resultSuccess;
+				}
+				case Data.FUNC_FOLDER:
+				{
+					setFolder(data.folder);
+
+					return Data.resultSuccess;
+				}
+			}
+			
+			Data.error = "Could not resolve function type";
+			return null;
+		}
+		
+		public function callSamFunction(name:String, args:Array):GFxResult 
+		{
+			if (this.sam[name])
+				return Util.callFuncArgs(this.sam[name], args);
+			else if (Util.debug)
+				return Data.getSamDebugFunction(name);
+			
+			Data.error = "$SAM_SamFunctionMissing";
+			return null;
+		}
+		
+		public function callLocalFunction(name:String, args:Array) {
+			if (this[name])
+				return Util.callFuncArgs(this[name], args);
+			else if (Util.debug)
+				return getLocalDebugFunction(name);
+
+			Data.error = "$SAM_LocalFunctionMissing";
+			return null;
+		}
+		
+		//Calls a papyrus global function
+		public function callPapyrusForm(data:Object, args:Array):GFxResult
+		{
+			try {
+				return this.sam.CallPapyrusForm(data.id, data.func, args);
+			}
+			catch (e:Error) {}
+			
+			Data.error = "$SAM_PapyrusTimeout";
+			return null;
+		}
+		
+		public function callPapyrusGlobal(args:Array, timeout:int):GFxResult
+		{
+			try {
+				return Util.callFuncArgs(this.f4seObj.CallGlobalFunctionNoWait, args); 			
+			} 
+			catch (e:Error) {}
+			
+			Data.error = "$SAM_PapyrusTimeout";
+			return null;
+		}
+		
+		public function getLocalDebugFunction(name:String):Object
+		{
+			return null;
+		}
+		
+//		internal function updateState()
+//		{
+//			
+//			switch(this.state)
+//			{
+//				case MAIN_STATE:
+//					Data.menuOptions = Data.MAIN_MENU;
+//					sliderList.updateList(selectMenu);
+//					break;
+//				case ADJUSTMENT_STATE:
+//					Data.loadAdjustmentList();
+//					sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
+//					break;
+//				case EDITADJUSTMENT_STATE:
+//					Data.editAdjustment();
+//					sliderList.updateAdjustmentEdit(selectEditAdjustment);
+//					break;
+//				case POSECATEGORY_STATE:
+//					Data.loadCategories();
+//					sliderList.updateList(selectCategory);
+//					break;
+//				case POSENODE_STATE:
+//					Data.loadBones();
+//					sliderList.updateList(selectBone);
+//					break;
+//				case TRANSFORM_STATE:
+//					Data.loadTransforms();
+//					sliderList.updateTransform(selectTransform);
+//					break;
+//				case MORPHCATEGORY_STATE:
+//					Data.loadMorphCategories();
+//					sliderList.updateList(selectMorphCategory);
+//					break;
+//				case MORPH_STATE:
+//					Data.loadMorphs();
+//					sliderList.updateMorphs(selectMorph);
+//					break;
+//				case LOADADJUSTMENT_STATE:
+//					Data.loadSubFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
+//					sliderList.updateFolder(selectAdjustmentFile);
+//					break;
+//				case LOADMFG_STATE:
+//					Data.loadSubFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
+//					sliderList.updateFolder(selectMfgFile);
+//					break;
+//				case SAVEMFG_STATE:
+//				case SAVEADJUSTMENT_STATE:
+//				case SAVEPOSE_STATE:
+//				case RENAMEADJUSTMENT_STATE:
+//				case SAVELIGHT_STATE:
+//				case RENAMELIGHT_STATE:
+//					setTextInput(true);
+//					break;
+//				case EYE_STATE:
+//					Data.loadEyes();
+//					sliderList.updateEyes(selectEye);
+//					break;
+//				case HACK_STATE:
+//					Data.loadHacks();
+//					Data.menuOptions = Data.HACK_NAMES;
+//					sliderList.updateCheckboxes(selectHack);
+//					break;
+//				case IDLECATEGORY_STATE:
+//					Data.loadIdleCategories();
+//					sliderList.updateList(selectIdleCategory);
+//					break;
+//				case IDLE_STATE:
+//					Data.loadIdles();
+//					sliderList.updateList(selectIdle);
+//					break;
+//				case POSEEXPORT_STATE:
+//					Data.getPoseList();
+//					sliderList.updateCheckboxes(selectPose);
+//					break;
+//				case POSEEXPORTTYPE_STATE:
+//					Data.loadPoseExport();
+//					sliderList.updateList(selectExportType);
+//					break;
+//				case POSEPLAY_STATE:
+//				case LOADPOSE_STATE:
+//					Data.loadSubFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
+//					sliderList.updateFolder(selectPoseFile);
+//					break;
+//				case SKELETONADJUSTMENT_STATE:
+//					Data.getAdjustmentFolder(false);
+//					updateMulti(false);
+//					break;
+//				case RACEADJUSTMENT_STATE:
+//					Data.getAdjustmentFolder(true);
+//					updateMulti(true);
+//					break;
+//				case POSITIONING_STATE:
+//					Data.loadPositioning();
+//					sliderList.updatePositioning(selectPositioning);
+//					break;
+//				case OPTIONS_STATE:
+//					Data.loadOptions();
+//					sliderList.updateCheckboxes(selectOptions);
+//					break;
+//				case CAMERA_STATE:
+//					Data.loadCamera();
+//					sliderList.updateCamera(selectCamera);
+//					break;
+//				case LIGHTSELECT_STATE:
+//					Data.loadLightSelect();
+//					sliderList.updateList(selectLightSelect);
+//					break;
+//				case LIGHTEDIT_STATE:
+//					Data.loadLightEdit();
+//					sliderList.updateLight(selectLightEdit);
+//					break;
+//				case LIGHTCATEGORY_STATE:
+//				case LIGHTSWAPCATEGORY_STATE:
+//					Data.loadLightCategory();
+//					sliderList.updateList(selectLightCategory);
+//					break;
+//				case LIGHTOBJECT_STATE:
+//				case LIGHTSWAPOBJECT_STATE:
+//					Data.loadLightObject();
+//					sliderList.updateList(selectLightObject);
+//					break;
+//				case LOADLIGHT_STATE:
+//					Data.loadSubFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
+//					sliderList.updateFolder(selectLightFile);
+//					break;
+//				case LIGHTSETTINGS_STATE:
+//					Data.loadLightSettings();
+//					sliderList.updateLightSettings(selectLightSettings);
+//					break;
+//				case MORPHTONGUE_STATE:
+//					Data.getMorphsTongueNodes();
+//					sliderList.updateList(selectMorphTongue);
+//					break;
+//			}
+//
+//		}
+		
+//		public function updateMulti(race:Boolean):void
+//		{
+//			var func:Function = (race ? selectRaceAdjustment : selectSkeletonAdjustment);
+//			if (multi) {
+//				sliderList.updateFolderCheckbox(func);
+//			} else {
+//				sliderList.updateFolder(func);
+//			}
+//		}
+		
+//		public function selectAdjustment(id:int):void
+//		{
+//			Data.selectedAdjustment = Data.menuValues[id];
+//			pushState(POSECATEGORY_STATE);
+//		}
+//		
+//		public function editAdjustment(id:int):void
+//		{
+//			Data.selectedAdjustment = Data.menuValues[id];
+//			pushState(EDITADJUSTMENT_STATE);
+//		}
+//		
+//		public function selectEditAdjustment(id:int, value:Object = null):void
+//		{
+//			switch (id)
+//			{
+//				case 0:
+//					Data.menuValues[id] = value;
+//					Data.setAdjustmentScale(value);
+//					break;
+//				case 1:
+//					pushState(SAVEADJUSTMENT_STATE);
+//					break;
+//				case 2:
+//					pushState(RENAMEADJUSTMENT_STATE);
+//					break;
+//				case 3:
+//					Data.resetAdjustment();
+//					break;
+//				default:
+//					Data.negateAdjustmentGroup(id);
+//			}
+//		}
+		
+//		public function removeAdjustment(id:int):void
+//		{
+//			Data.removeAdjustment(Data.menuValues[id]);
+//			Data.loadAdjustmentList();
+//			sliderList.storeSelected();
+//			sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
+//			sliderList.restoreSelected();
+//		}
+		
+		public function MoveAdjustmentDown(id:int):void
 		{
 			if (Data.moveAdjustment(id, true)) {
-				Data.loadAdjustmentList();
-				sliderList.storeSelected();
-				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
-				if (sliderList.focused) {
-					sliderList.storeY++;
+				var result:GFxResult = callDataFunction(Data.menuData.get);
+				if (result && result.type != Data.RESULT_ERROR) {
+					Data.updateMenu(Data.menuName, Data.menuData, result);
+					sliderList.storeSelected();
+					sliderList.update();
+					if (sliderList.focused) {
+						sliderList.storeY++;
+					}
+					sliderList.restoreSelected();
 				}
-				sliderList.restoreSelected();
 			}
 		}
 		
-		public function upAdjustment(id:int):void
+		public function MoveAdjustmentUp(id:int):void
 		{
 			if (Data.moveAdjustment(id, false)) {
-				Data.loadAdjustmentList();
-				sliderList.storeSelected();
-				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
-				if (sliderList.focused) {
-					sliderList.storeY--;
+				var result:GFxResult = callDataFunction(Data.menuData.get);
+				if (result && result.type != Data.RESULT_ERROR) {
+					Data.updateMenu(Data.menuName, Data.menuData, result);
+					sliderList.storeSelected();
+					sliderList.update();
+					if (sliderList.focused) {
+						sliderList.storeY--;
+					}
+					sliderList.restoreSelected();
 				}
-				sliderList.restoreSelected();
 			}
 		}
 		
-		public function selectCategory(id:int):void
-		{
-			Data.selectedCategory = Data.menuValues[id];
-			pushState(POSENODE_STATE);
-		}
+//		public function selectCategory(id:int):void
+//		{
+//			Data.selectedCategory = Data.menuValues[id];
+//			pushState(POSENODE_STATE);
+//		}
+//		
+//		public function selectBone(id:int):void
+//		{
+//			Data.selectedBone = Data.menuValues[id];
+//			Data.getNodeName();
+//			offset = false;
+//			pushState(TRANSFORM_STATE);
+//		}
+//		
+//		public function selectTransform(id:int, value:Number):void
+//		{
+//			Data.setTransform(id, value);
+//			if (id >= 7) {
+//				sliderList.updateValues();
+//			}
+//		}
+//		
+//		public function selectMorphCategory(id:int):void
+//		{
+//			Data.selectedCategory = id;
+//
+//			//If index less than 0 then it's not a tongue
+//			if (Data.menuValues[id] < 0) {
+//				pushState(MORPH_STATE);
+//			} else {
+//				Data.selectedCategory = Data.menuValues[id];
+//				pushState(MORPHTONGUE_STATE);
+//			}
+//		}
+//		
+//		public function selectMorph(id:int, value:Number):void
+//		{
+//			Data.setMorph(id, int(value));
+//		}
+//		
+//		public function selectEye(id:int, value:Object):void
+//		{
+//			Data.setEye(id, value);
+//		}
+//		
+//		public function selectHack(id:int, enabled:Boolean):void
+//		{
+//			Data.setHack(id, enabled);
+//		}
+//		
+//		public function selectPositioning(id:int, value:Number = 0):void
+//		{
+//			Data.selectPositioning(id, value);
+//			if (id > 0) {
+//				sliderList.updateValues();
+//			}
+//		}
 		
-		public function selectBone(id:int):void
-		{
-			Data.selectedBone = Data.menuValues[id];
-			Data.getNodeName();
-			offset = false;
-			pushState(TRANSFORM_STATE);
-		}
-		
-		public function selectTransform(id:int, value:Number):void
-		{
-			Data.setTransform(id, value);
-			if (id >= 7) {
-				sliderList.updateValues();
-			}
-		}
-		
-		public function selectMorphCategory(id:int):void
-		{
-			Data.selectedCategory = id;
-
-			//If index less than 0 then it's not a tongue
-			if (Data.menuValues[id] < 0) {
-				pushState(MORPH_STATE);
-			} else {
-				Data.selectedCategory = Data.menuValues[id];
-				pushState(MORPHTONGUE_STATE);
-			}
-		}
-		
-		public function selectMorph(id:int, value:Number):void
-		{
-			Data.setMorph(id, int(value));
-		}
-		
-		public function selectEye(id:int, value:Object):void
-		{
-			Data.setEye(id, value);
-		}
-		
-		public function selectHack(id:int, enabled:Boolean):void
-		{
-			Data.setHack(id, enabled);
-		}
-		
-		public function selectPositioning(id:int, value:Number = 0):void
-		{
-			Data.selectPositioning(id, value);
-			if (id > 0) {
-				sliderList.updateValues();
-			}
-		}
-
 		internal function confirmButton():void
 		{
-			switch (this.state) {
-				case SAVEMFG_STATE: Data.saveMfg(filenameInput.Input_tf.text); break;
-				case SAVEADJUSTMENT_STATE: Data.saveAdjustment(filenameInput.Input_tf.text); break;
-				case SAVEPOSE_STATE: Data.savePose(filenameInput.Input_tf.text); break;
-				case RENAMEADJUSTMENT_STATE: Data.renameAdjustment(filenameInput.Input_tf.text); break;
-				case SAVELIGHT_STATE: Data.saveLights(filenameInput.Input_tf.text); break;
-				case RENAMELIGHT_STATE: Data.renameLight(filenameInput.Input_tf.text); break;
+			if (this.filenameInput.visible) 
+			{
+				var result:GFxResult = callDataFunction(Data.entryData, Data.entryArgs);
+				CheckError(result);
+				
+				clearEntry();
+				Util.playOk();
 			}
-			setTextInput(false);
-			popState();
-			Util.playOk();
 		}
 		
+		internal function clearEntry():void
+		{
+			setTextInput(false);
+			Data.entryData = null;
+			Data.entryArgs = null;
+			updateMenus();
+		}
+
+//		internal function confirmButton():void
+//		{
+//			switch (this.state) {
+//				case SAVEMFG_STATE: Data.saveMfg(filenameInput.Input_tf.text); break;
+//				case SAVEADJUSTMENT_STATE: Data.saveAdjustment(filenameInput.Input_tf.text); break;
+//				case SAVEPOSE_STATE: Data.savePose(filenameInput.Input_tf.text); break;
+//				case RENAMEADJUSTMENT_STATE: Data.renameAdjustment(filenameInput.Input_tf.text); break;
+//				case SAVELIGHT_STATE: Data.saveLights(filenameInput.Input_tf.text); break;
+//				case RENAMELIGHT_STATE: Data.renameLight(filenameInput.Input_tf.text); break;
+//			}
+//			setTextInput(false);
+//			PopMenu();
+//			Util.playOk();
+//		}
+//		
 		internal function setTextInput(enabled:Boolean)
 		{
-			textInput = enabled;
 			if (enabled)
 			{
+				state = STATE_ENTRY;
 				filenameInput.visible = true;
 				sliderList.visible = false;
 				filenameInput.Input_tf.type = TextFieldType.INPUT;
@@ -1086,6 +1376,7 @@
 			}
 			else
 			{
+				state = STATE_MAIN;
 				filenameInput.Input_tf.text = "";
 				filenameInput.Input_tf.type = TextFieldType.DYNAMIC;
 				filenameInput.Input_tf.setSelection(0,0);
@@ -1098,328 +1389,361 @@
 			}
 		}
 
-		internal function saveButton():void
+//		internal function saveButton():void
+//		{
+//			switch (this.state) {
+//				case MORPH_STATE:
+//				case MORPHCATEGORY_STATE:
+//					pushState(SAVEMFG_STATE); break;
+//				case ADJUSTMENT_STATE: pushState(SAVEADJUSTMENT_STATE); break;
+//				case POSEEXPORT_STATE: pushState(SAVEPOSE_STATE); break;
+//				case LIGHTSELECT_STATE: pushState(SAVELIGHT_STATE); break;
+//			}
+//		}
+//
+//		internal function loadButton():void
+//		{
+//			switch (this.state) {
+//				case MORPH_STATE: 
+//				case MORPHCATEGORY_STATE:
+//					pushState(LOADMFG_STATE); break;
+//				case ADJUSTMENT_STATE: pushState(LOADADJUSTMENT_STATE); break;
+//				case POSEEXPORT_STATE: pushState(LOADPOSE_STATE); break;
+//				case LIGHTSELECT_STATE: pushState(LOADLIGHT_STATE); break;
+//				case POSEPLAY_STATE: //a-pose
+//					Data.resetPose(2);
+//					break;
+//				case TRANSFORM_STATE: //offset toggle
+//					//only toggle if node isn't offset only
+//					if (!Data.getNodeIsOffset()) {
+//						if (Data.toggleNodeName()) {
+//							offset = !offset;
+//							buttonHintLoad.ButtonText = offset ? "$SAM_Pose" : "$SAM_Offset";
+//							Data.loadTransforms();
+//							sliderList.updateValues();
+//							updateTitle();
+//							Util.playOk();
+//						}
+//					}
+//					break;
+//			}
+//		}
+		
+//		internal function selectIdleCategory(id:int)
+//		{
+//			Data.selectedCategory = id;
+//			pushState(IDLE_STATE);
+//		}
+//		
+//		internal function selectIdle(id:int)
+//		{
+//			Data.playIdle(id);
+//			showNotification(Data.menuOptions[id]);
+//		}
+//		
+//		internal function selectPose(id:int, enabled:Boolean)
+//		{
+//			Data.menuValues[id] = enabled;
+//		}
+//		
+//		internal function selectPoseExport(id:int)
+//		{
+//			Data.selectedCategory = id;
+//			pushState(POSEEXPORT_STATE);
+//		}
+//		
+//		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
+//		{
+//			if (Data.selectSkeletonFile(id, false, !multi, enabled)) {
+//				pushFolderCheckbox(id, selectSkeletonAdjustment);
+//			} else {
+//				Data.getAdjustmentFolder(false);
+//				updateMulti(false);
+//			}
+//		}
+//		
+//		internal function selectRaceAdjustment(id:int, enabled:Boolean = true)
+//		{
+//			if (Data.selectSkeletonFile(id, true, !multi, enabled)) {
+//				pushFolderCheckbox(id, selectRaceAdjustment);
+//			} else {
+//				Data.getAdjustmentFolder(true);
+//				updateMulti(true);
+//			}
+//		}
+//		
+//		internal function selectPoseFile(id:int)
+//		{
+//			if (Data.selectSamPose(id)) {
+//				pushFolder(id, selectPoseFile);
+//			}
+//		}
+//		
+//		internal function selectMfgFile(id:int)
+//		{
+//			if (Data.selectMfgFile(id)) {
+//				pushFolder(id, selectMfgFile);
+//			}
+//		}
+//		
+//		internal function selectLightFile(id:int)
+//		{
+//			if (Data.selectLightFile(id)) {
+//				pushFolder(id, selectLightFile);
+//			} else {
+//				clearFolder();
+//			}
+//		}
+//		
+//		internal function selectAdjustmentFile(id:int)
+//		{
+//			if (Data.selectAdjustmentFile(id)) {
+//				pushFolder(id, selectAdjustmentFile);
+//			} else {
+//				clearFolder();
+//			}
+//		}
+//		
+//		internal function selectOptions(id:int, enabled:Boolean)
+//		{
+//			switch (id) {
+//				case 0://hotswap
+//					break;
+//				case 1://alignment
+//					swapped = enabled;
+//					updateAlignment();
+//					break;
+//				case 2://widescreen
+//					widescreen = enabled;
+//					updateAlignment();
+//					break;
+//				case 3://autoplay
+//					Data.autoPlay = enabled;
+//					break;
+//			}
+//			Data.setOption(id, enabled);
+//		}
+//		
+//		internal function selectCamera(id:int, value:Number = 0)
+//		{
+//			Data.setCamera(id, value);
+//			Data.loadCamera();
+//			sliderList.updateValues();
+//		}
+//		
+//		internal function selectLightSelect(id:int)
+//		{
+//			if (id < Data.menuOptions.length - 3) { //light
+//				Data.selectedAdjustment = id;
+//				pushState(LIGHTEDIT_STATE);
+//			} else if (id < Data.menuOptions.length - 2) { //add new
+//				pushState(LIGHTCATEGORY_STATE);
+//			} else if (id < Data.menuOptions.length - 1) { //add console
+//				Data.addLight();
+//				Data.loadLightSelect();
+//				sliderList.updateList(selectLightSelect);
+//			} else {
+//				pushState(LIGHTSETTINGS_STATE);
+//			}
+//		}
+//		
+//		internal function selectLightEdit(id:int, value:Number = 0)
+//		{
+//			if (id < 5) { //properties
+//				Data.editLight(id, value);
+//				sliderList.updateValues();
+//			} else if (id < 6) { //rename
+//				pushState(RENAMELIGHT_STATE);
+//			} else if (id < 7) { //swap
+//				pushState(LIGHTSWAPCATEGORY_STATE);
+//			} else { //delete
+//				Data.deleteLight();
+//				PopMenu();
+//			}
+//		}
+//		
+//		internal function selectLightCategory(id:int)
+//		{
+//			Data.selectedCategory = id;
+//			switch (this.state) {
+//				case LIGHTCATEGORY_STATE: pushState(LIGHTOBJECT_STATE); break;
+//				case LIGHTSWAPCATEGORY_STATE: pushState(LIGHTSWAPOBJECT_STATE); break;
+//			}
+//		}
+//		
+//		internal function selectLightObject(id:int)
+//		{
+//			switch (this.state) {
+//				case LIGHTOBJECT_STATE:
+//					Data.createLight(id);
+//					break;
+//				case LIGHTSWAPOBJECT_STATE:
+//					Data.swapLight(id);
+//					break;
+//			}
+//			//need to double pop so fake pop first
+//			stateStack.pop();
+//			PopMenu();
+//		}
+//		
+//		internal function selectLightSettings(id:int, value:Number = 0)
+//		{
+//			if (id < 4) { // pos/rot
+//				Data.editLightSettings(id, value);
+//				sliderList.updateValues();
+//			} else if (id < 5) { //update all
+//				Data.updateAllLights();
+//			} else { //delete all
+//				Data.deleteAllLights();
+//			}
+//		}
+//		
+//		internal function selectExportType(id:int)
+//		{
+//			Data.selectedCategory = id;
+//			pushState(POSEEXPORT_STATE);
+//		}
+//		
+//		internal function selectMorphTongue(id:int)
+//		{
+//			Data.getMorphsTongue(id);
+//			offset = false;
+//			pushState(TRANSFORM_STATE);
+//		}
+		
+		public function resetButton()
 		{
-			switch (this.state) {
-				case MORPH_STATE:
-				case MORPHCATEGORY_STATE:
-					pushState(SAVEMFG_STATE); break;
-				case ADJUSTMENT_STATE: pushState(SAVEADJUSTMENT_STATE); break;
-				case POSEEXPORT_STATE: pushState(SAVEPOSE_STATE); break;
-				case LIGHTSELECT_STATE: pushState(SAVELIGHT_STATE); break;
+			callHotkeyFunction(Data.BUTTON_RESET);
+		}
+		
+		public function extraButton()
+		{
+			callHotkeyFunction(Data.BUTTON_EXTRA);
+		}
+		
+		public function saveButton()
+		{
+			callHotkeyFunction(Data.BUTTON_SAVE);
+		}
+		
+		public function loadButton()
+		{
+			callHotkeyFunction(Data.BUTTON_LOAD);
+		}
+		
+		public function callHotkeyFunction(type:int)
+		{
+			var data:Object = Data.getHotkey(type);
+			if (!data)
+				return;
+			
+			switch (data.type) {
+				case Data.HOTKEY_FUNC:
+					var result:GFxResult = callDataFunction(data);
+					CheckError(result);
+					break;
+				case Data.HOTKEY_HOLD:
+					enableHold(data.hold, type);
+					break;
 			}
 		}
 
-		internal function loadButton():void
-		{
-			switch (this.state) {
-				case MORPH_STATE: 
-				case MORPHCATEGORY_STATE:
-					pushState(LOADMFG_STATE); break;
-				case ADJUSTMENT_STATE: pushState(LOADADJUSTMENT_STATE); break;
-				case POSEEXPORT_STATE: pushState(LOADPOSE_STATE); break;
-				case LIGHTSELECT_STATE: pushState(LOADLIGHT_STATE); break;
-				case POSEPLAY_STATE: //a-pose
-					Data.resetPose(2);
-					break;
-				case TRANSFORM_STATE: //offset toggle
-					//only toggle if node isn't offset only
-					if (!Data.getNodeIsOffset()) {
-						if (Data.toggleNodeName()) {
-							offset = !offset;
-							buttonHintLoad.ButtonText = offset ? "$SAM_Pose" : "$SAM_Offset";
-							Data.loadTransforms();
-							sliderList.updateValues();
-							updateTitle();
-							Util.playOk();
-						}
-					}
-					break;
-			}
-		}
-		
-		internal function selectIdleCategory(id:int)
-		{
-			Data.selectedCategory = id;
-			pushState(IDLE_STATE);
-		}
-		
-		internal function selectIdle(id:int)
-		{
-			Data.playIdle(id);
-			showNotification(Data.menuOptions[id]);
-		}
-		
-		internal function selectPose(id:int, enabled:Boolean)
-		{
-			Data.menuValues[id] = enabled;
-		}
-		
-		internal function selectPoseExport(id:int)
-		{
-			Data.selectedCategory = id;
-			pushState(POSEEXPORT_STATE);
-		}
-		
-		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
-		{
-			if (Data.selectSkeletonFile(id, false, !multi, enabled)) {
-				pushFolderCheckbox(id, selectSkeletonAdjustment);
-			} else {
-				Data.getAdjustmentFolder(false);
-				updateMulti(false);
-			}
-		}
-		
-		internal function selectRaceAdjustment(id:int, enabled:Boolean = true)
-		{
-			if (Data.selectSkeletonFile(id, true, !multi, enabled)) {
-				pushFolderCheckbox(id, selectRaceAdjustment);
-			} else {
-				Data.getAdjustmentFolder(true);
-				updateMulti(true);
-			}
-		}
-		
-		internal function selectPoseFile(id:int)
-		{
-			if (Data.selectSamPose(id)) {
-				pushFolder(id, selectPoseFile);
-			}
-		}
-		
-		internal function selectMfgFile(id:int)
-		{
-			if (Data.selectMfgFile(id)) {
-				pushFolder(id, selectMfgFile);
-			}
-		}
-		
-		internal function selectLightFile(id:int)
-		{
-			if (Data.selectLightFile(id)) {
-				pushFolder(id, selectLightFile);
-			} else {
-				clearFolder();
-			}
-		}
-		
-		internal function selectAdjustmentFile(id:int)
-		{
-			if (Data.selectAdjustmentFile(id)) {
-				pushFolder(id, selectAdjustmentFile);
-			} else {
-				clearFolder();
-			}
-		}
-		
-		internal function selectOptions(id:int, enabled:Boolean)
-		{
-			switch (id) {
-				case 0://hotswap
-					break;
-				case 1://alignment
-					swapped = enabled;
-					updateAlignment();
-					break;
-				case 2://widescreen
-					widescreen = enabled;
-					updateAlignment();
-					break;
-				case 3://autoplay
-					Data.autoPlay = enabled;
-					break;
-			}
-			Data.setOption(id, enabled);
-		}
-		
-		internal function selectCamera(id:int, value:Number = 0)
-		{
-			Data.setCamera(id, value);
-			Data.loadCamera();
-			sliderList.updateValues();
-		}
-		
-		internal function selectLightSelect(id:int)
-		{
-			if (id < Data.menuOptions.length - 3) { //light
-				Data.selectedAdjustment = id;
-				pushState(LIGHTEDIT_STATE);
-			} else if (id < Data.menuOptions.length - 2) { //add new
-				pushState(LIGHTCATEGORY_STATE);
-			} else if (id < Data.menuOptions.length - 1) { //add console
-				Data.addLight();
-				Data.loadLightSelect();
-				sliderList.updateList(selectLightSelect);
-			} else {
-				pushState(LIGHTSETTINGS_STATE);
-			}
-		}
-		
-		internal function selectLightEdit(id:int, value:Number = 0)
-		{
-			if (id < 5) { //properties
-				Data.editLight(id, value);
-				sliderList.updateValues();
-			} else if (id < 6) { //rename
-				pushState(RENAMELIGHT_STATE);
-			} else if (id < 7) { //swap
-				pushState(LIGHTSWAPCATEGORY_STATE);
-			} else { //delete
-				Data.deleteLight();
-				popState();
-			}
-		}
-		
-		internal function selectLightCategory(id:int)
-		{
-			Data.selectedCategory = id;
-			switch (this.state) {
-				case LIGHTCATEGORY_STATE: pushState(LIGHTOBJECT_STATE); break;
-				case LIGHTSWAPCATEGORY_STATE: pushState(LIGHTSWAPOBJECT_STATE); break;
-			}
-		}
-		
-		internal function selectLightObject(id:int)
-		{
-			switch (this.state) {
-				case LIGHTOBJECT_STATE:
-					Data.createLight(id);
-					break;
-				case LIGHTSWAPOBJECT_STATE:
-					Data.swapLight(id);
-					break;
-			}
-			//need to double pop so fake pop first
-			stateStack.pop();
-			popState();
-		}
-		
-		internal function selectLightSettings(id:int, value:Number = 0)
-		{
-			if (id < 4) { // pos/rot
-				Data.editLightSettings(id, value);
-				sliderList.updateValues();
-			} else if (id < 5) { //update all
-				Data.updateAllLights();
-			} else { //delete all
-				Data.deleteAllLights();
-			}
-		}
-		
-		internal function selectExportType(id:int)
-		{
-			Data.selectedCategory = id;
-			pushState(POSEEXPORT_STATE);
-		}
-		
-		internal function selectMorphTongue(id:int)
-		{
-			Data.getMorphsTongue(id);
-			offset = false;
-			pushState(TRANSFORM_STATE);
-		}
-
-		public function resetButton():void
-		{
-			switch (this.state) {
-				case ADJUSTMENT_STATE:
-					order = !order;
-					updateAdjustment();
-					break;
-				case TRANSFORM_STATE:
-					Data.resetTransform(); 
-					break;
-				case MORPH_STATE:
-				case MORPHCATEGORY_STATE:
-					var update:Boolean = (this.state == MORPH_STATE);
-					Data.resetMorphs(update);
-					break;
-				case IDLECATEGORY_STATE:
-				case IDLE_STATE:
-					Data.resetIdle();
-					hideNotification();
-					break;
-				case POSEEXPORT_STATE:
-				case POSEPLAY_STATE:
-					Data.resetIdle();
-					Data.resetPose(1);
-					break;
-				case SKELETONADJUSTMENT_STATE:
-					Data.resetSkeletonAdjustment(false);
-					Data.getAdjustmentFolder(false);
-					updateMulti(false);
-					break;
-				case RACEADJUSTMENT_STATE:
-					Data.resetSkeletonAdjustment(true);
-					Data.getAdjustmentFolder(true);
-					updateMulti(true);
-					break;
-				case POSITIONING_STATE:
-					Data.resetPositioning();
-					break;
-				case LIGHTEDIT_STATE:
-					Data.resetLight();
-					break;
-				case LIGHTSETTINGS_STATE:
-					Data.resetLightSettings();
-					break;
-			}
-			sliderList.updateValues();
-			Util.playOk();
-		}
+//		public function resetButton():void
+//		{
+//			switch (this.state) {
+//				case ADJUSTMENT_STATE:
+//					order = !order;
+//					updateAdjustment();
+//					break;
+//				case TRANSFORM_STATE:
+//					Data.resetTransform(); 
+//					break;
+//				case MORPH_STATE:
+//				case MORPHCATEGORY_STATE:
+//					var update:Boolean = (this.state == MORPH_STATE);
+//					Data.resetMorphs(update);
+//					break;
+//				case IDLECATEGORY_STATE:
+//				case IDLE_STATE:
+//					Data.resetIdle();
+//					hideNotification();
+//					break;
+//				case POSEEXPORT_STATE:
+//				case POSEPLAY_STATE:
+//					Data.resetIdle();
+//					Data.resetPose(1);
+//					break;
+//				case SKELETONADJUSTMENT_STATE:
+//					Data.resetSkeletonAdjustment(false);
+//					Data.getAdjustmentFolder(false);
+//					updateMulti(false);
+//					break;
+//				case RACEADJUSTMENT_STATE:
+//					Data.resetSkeletonAdjustment(true);
+//					Data.getAdjustmentFolder(true);
+//					updateMulti(true);
+//					break;
+//				case POSITIONING_STATE:
+//					Data.resetPositioning();
+//					break;
+//				case LIGHTEDIT_STATE:
+//					Data.resetLight();
+//					break;
+//				case LIGHTSETTINGS_STATE:
+//					Data.resetLightSettings();
+//					break;
+//			}
+//			sliderList.updateValues();
+//			Util.playOk();
+//		}
 
 		internal function backButton():void
 		{
 			if (this.filenameInput.visible)
 			{
-				setTextInput(false);
+				clearEntry();
 			}
-			if (this.state == MAIN_STATE)
+			else if (this.stateStack.length == 1)
 			{
 				exit();
 			}
-			else if (Data.folderStack.length > 0) //folder state
-			{
-				updateFolder();
-			}
 			else
 			{
-				popState();
+				PopMenu();
 			}
 			Util.playCancel();
 		}
-		
-		public function updateFolder()
-		{
-			switch(this.state) {
-				case SKELETONADJUSTMENT_STATE:
-					Data.popSkeletonAdjustment(false);
-					popFolderCheckbox(selectSkeletonAdjustment);
-					break;
-				case RACEADJUSTMENT_STATE:
-					Data.popSkeletonAdjustment(true);
-					popFolderCheckbox(selectRaceAdjustment);
-					break;
-				case POSEPLAY_STATE: 
-				case LOADPOSE_STATE:
-					Data.popFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
-					popFolder(selectPoseFile); 
-					break;
-				case LOADLIGHT_STATE: 
-					Data.popFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
-					popFolder(selectLightFile); 
-					break;
-				case LOADADJUSTMENT_STATE:
-					Data.popFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
-					popFolder(selectAdjustmentFile); 
-					break;
-				case LOADMFG_STATE:
-					Data.popFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
-					popFolder(selectMfgFile); 
-					break;
-			}
-		}
+//		
+//		public function updateFolder()
+//		{
+//			switch(this.state) {
+//				case SKELETONADJUSTMENT_STATE:
+//					Data.popSkeletonAdjustment(false);
+//					popFolderCheckbox(selectSkeletonAdjustment);
+//					break;
+//				case RACEADJUSTMENT_STATE:
+//					Data.popSkeletonAdjustment(true);
+//					popFolderCheckbox(selectRaceAdjustment);
+//					break;
+//				case POSEPLAY_STATE: 
+//				case LOADPOSE_STATE:
+//					Data.popFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
+//					popFolder(selectPoseFile); 
+//					break;
+//				case LOADLIGHT_STATE: 
+//					Data.popFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
+//					popFolder(selectLightFile); 
+//					break;
+//				case LOADADJUSTMENT_STATE:
+//					Data.popFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
+//					popFolder(selectAdjustmentFile); 
+//					break;
+//				case LOADMFG_STATE:
+//					Data.popFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
+//					popFolder(selectMfgFile); 
+//					break;
+//			}
+//		}
 		
 		public function exit():void
 		{
@@ -1445,114 +1769,103 @@
 		public function close()
 		{
 			try {
-				root.f4se.plugins.ScreenArcherMenu.SamCloseMenu("ScreenArcherMenu");
+				this.sam.SamCloseMenu("ScreenArcherMenu");
 			}
 			catch (e:Error)
 			{
 				trace("No escape");
 			}
 		}
-		
-		public function extraButton():void
+
+//		public function extraButton():void
+//		{
+//			switch(this.state)
+//			{
+//				case SKELETONADJUSTMENT_STATE: //multi
+//					sliderList.storeSelected();
+//					multi = !multi;
+//					if (multi) {
+//						buttonHintExtra.ButtonText = "$SAM_Multi";
+//						sliderList.updateFolderCheckbox(selectSkeletonAdjustment);
+//					} 
+//					else
+//					{
+//						buttonHintExtra.ButtonText = "$SAM_Single";
+//						sliderList.updateFolder(selectSkeletonAdjustment);
+//					}
+//					sliderList.restoreSelected();
+//					break;
+//				case RACEADJUSTMENT_STATE: //multi
+//					sliderList.storeSelected();
+//					multi = !multi;
+//					if (multi) {
+//						buttonHintExtra.ButtonText = "$SAM_Multi";
+//						sliderList.updateFolderCheckbox(selectRaceAdjustment);
+//					} 
+//					else
+//					{
+//						buttonHintExtra.ButtonText = "$SAM_Single";
+//						sliderList.updateFolder(selectRaceAdjustment);
+//					}
+//					sliderList.restoreSelected();
+//					break;
+//				case ADJUSTMENT_STATE: //new
+//					Data.newAdjustment();
+//					updateAdjustment();
+//					break;
+//				case TRANSFORM_STATE: //negate
+//					Data.negateAdjustment();
+//					Data.loadTransforms();
+//					sliderList.updateValues();
+//					break;
+//				case IDLECATEGORY_STATE: //z-rotate
+//				case IDLE_STATE:
+//				case POSEPLAY_STATE:
+//					enableHold(HELD_X, onZMove, onZLeft, onZRight);
+//					break;
+//				case LIGHTSELECT_STATE: //visible
+//				case LIGHTSETTINGS_STATE:
+//					buttonHintExtra.ButtonText = (Data.toggleLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
+//					break;
+//				case LIGHTEDIT_STATE: //visible
+//					buttonHintExtra.ButtonText = (Data.toggleLightVisible() ? "$SAM_Invisible" : "$SAM_Visible");
+//					break;
+//			}
+//		}
+
+		public function enableHold(data:Object, type:int)
 		{
-			switch(this.state)
-			{
-				case SKELETONADJUSTMENT_STATE: //multi
-					sliderList.storeSelected();
-					multi = !multi;
-					if (multi) {
-						buttonHintExtra.ButtonText = "$SAM_Multi";
-						sliderList.updateFolderCheckbox(selectSkeletonAdjustment);
-					} 
-					else
-					{
-						buttonHintExtra.ButtonText = "$SAM_Single";
-						sliderList.updateFolder(selectSkeletonAdjustment);
-					}
-					sliderList.restoreSelected();
-					break;
-				case RACEADJUSTMENT_STATE: //multi
-					sliderList.storeSelected();
-					multi = !multi;
-					if (multi) {
-						buttonHintExtra.ButtonText = "$SAM_Multi";
-						sliderList.updateFolderCheckbox(selectRaceAdjustment);
-					} 
-					else
-					{
-						buttonHintExtra.ButtonText = "$SAM_Single";
-						sliderList.updateFolder(selectRaceAdjustment);
-					}
-					sliderList.restoreSelected();
-					break;
-				case ADJUSTMENT_STATE: //new
-					Data.newAdjustment();
-					updateAdjustment();
-					break;
-				case TRANSFORM_STATE: //negate
-					Data.negateAdjustment();
-					Data.loadTransforms();
-					sliderList.updateValues();
-					break;
-				case IDLECATEGORY_STATE: //z-rotate
-				case IDLE_STATE:
-				case POSEPLAY_STATE:
-					enableHold(HELD_X, onZMove, onZLeft, onZRight);
-					break;
-				case LIGHTSELECT_STATE: //visible
-				case LIGHTSETTINGS_STATE:
-					buttonHintExtra.ButtonText = (Data.toggleLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
-					break;
-				case LIGHTEDIT_STATE: //visible
-					buttonHintExtra.ButtonText = (Data.toggleLightVisible() ? "$SAM_Invisible" : "$SAM_Visible");
-					break;
-			}
-		}
-		
-		public function enableHold(type:int, move:Function, left:Function, right:Function)
-		{
-			if (!held) {
-				held = true;
-				heldType = type;
+			if (!hold) {
+				hold = true;
+				holdType = type;
 				stage.addEventListener(MouseEvent.MOUSE_MOVE, move);
-				heldFuncMove = move;
-				heldFuncLeft = left;
-				heldFuncRight = right;
+				Data.holdData = data;
 				Data.setCursorVisible(false);
 				Data.storeCursorPos();
 				sliderList.storeSelected();
 			}
 		}
 		
-		public function disableHold(type:int, move:Function) {
-			if (held && heldType == type) {
-				held = false;
+		public function disableHold(type:int) {
+			if (hold && holdType == type) {
+				hold = false;
 				stage.removeEventListener(MouseEvent.MOUSE_MOVE, move);
-				heldFuncMove = null;
-				heldFuncLeft = null;
-				heldFuncRight = null;
+				Data.holdData = null;
 				Data.setCursorVisible(true);
 				Data.endCursorDrag();
 				sliderList.restoreSelected();
 			}
 		}
 		
-		public function onZMove(event:MouseEvent) {
-			Data.rotateIdle(NaN);
+		public function onHoldMove(event:MouseEvent) {
+			var delta:int = Data.updateCursorDrag();
+			var result:GFxResult = callDataFunction(Data.holdData, delta * mod);
+			CheckError(result);
 		}
 		
-		public function onZLeft() {
-			Data.rotateIdle(-2.0);
-		}
-		
-		public function onZRight() {
-			Data.rotateIdle(2.0);
-		}
-
-		public function targetButton()
-		{
-			targetRace = !targetRace;
-			buttonHintTarget.ButtonText = targetRace ? "$SAM_NPC" : "$SAM_Race";
+		public function onHoldStep(inc:Boolean) {
+			var result:GFxResult = callDataFunction(Data.holdData, (inc ? Data.holdData.step : -Data.holdData.step));
+			CheckError(result);
 		}
 		
 		public function allowTextInput(allow:Boolean)
@@ -1569,179 +1882,89 @@
 
 		internal function updateButtonHints():void
 		{
-			buttonHintBack.ButtonText = state == MAIN_STATE ? "$SAM_Exit" : "$SAM_Back";
-			buttonHintBack.ButtonVisible = true;
-			switch (state)
-			{
-				case MAIN_STATE :
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = false;
+			switch (this.state) {
+				case STATE_MAIN:
+					buttonHintBack.ButtonText = this.stateStack.length == 1 ? "$SAM_Exit" : "$SAM_Back";
+					buttonHintBack.ButtonVisible = true;
 					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = false;
-					break;
-				case ADJUSTMENT_STATE :
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = true;
-					buttonHintLoad.ButtonText = "$SAM_Load";
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = "$SAM_New";
-					buttonHintExtra.ButtonClickDisabled = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = order ? "$SAM_Edit" : "$SAM_Order";
+					
+					updateHotkey(buttonHintSave, Data.BUTTON_SAVE);
+					updateHotkey(buttonHintLoad, Data.BUTTON_LOAD);
+					updateHotkey(buttonHintReset, Data.BUTTON_RESET);
+					updateHotkey(buttonHintExtra, Data.BUTTON_EXTRA);
 					break;
-				case TRANSFORM_STATE :
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = true;
-					buttonHintLoad.ButtonText = offset ? "$SAM_Pose" : "$SAM_Offset";
+				case STATE_FOLDER:
+					buttonHintBack.ButtonVisible = true;
+					buttonHintHide.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = "$SAM_Negate";
-					buttonHintExtra.ButtonClickDisabled = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
+					
+					updateFolderHotkey(buttonHintSave, Data.BUTTON_SAVE);
+					updateFolderHotkey(buttonHintLoad, Data.BUTTON_LOAD);
+					updateFolderHotkey(buttonHintReset, Data.BUTTON_RESET);
+					updateFolderHotkey(buttonHintExtra, Data.BUTTON_EXTRA);
 					break;
-				case IDLECATEGORY_STATE:
-				case IDLE_STATE:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = "$SAM_Rotate";
-					buttonHintExtra.ButtonClickDisabled = true;
-					break;
-				case POSITIONING_STATE:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					break;
-				case MORPH_STATE:
-				case MORPHCATEGORY_STATE:
-				case POSEEXPORT_STATE:
-					buttonHintSave.ButtonVisible = true;
-					buttonHintLoad.ButtonVisible = true;
-					buttonHintLoad.ButtonText = "$SAM_Load";
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					break;
-				case SAVEMFG_STATE:
-				case SAVEADJUSTMENT_STATE:
-				case SAVEPOSE_STATE:
-				case RENAMEADJUSTMENT_STATE:
-				case SAVELIGHT_STATE:
-				case RENAMELIGHT_STATE:
+				case STATE_ENTRY:
+					buttonHintBack.ButtonVisible = true;
 					buttonHintSave.ButtonVisible = false;
 					buttonHintLoad.ButtonVisible = false;
 					buttonHintReset.ButtonVisible = false;
 					buttonHintConfirm.ButtonVisible = true;
 					buttonHintHide.ButtonVisible = false;
 					buttonHintExtra.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = false;
 					break;
-				case SKELETONADJUSTMENT_STATE:
-				case RACEADJUSTMENT_STATE:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = multi ? "$SAM_Multi" : "$SAM_Single";
-					buttonHintExtra.ButtonClickDisabled = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					break;
-				case POSEPLAY_STATE:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = true;
-					buttonHintLoad.ButtonText = "$SAM_Apose";
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = "$SAM_Rotate";
-					buttonHintExtra.ButtonClickDisabled = true;
-					break;
-				case LIGHTSELECT_STATE:
-					buttonHintSave.ButtonVisible = true;
-					buttonHintLoad.ButtonVisible = true;
-					buttonHintLoad.ButtonText = "$SAM_Load";
-					buttonHintReset.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = (Data.getLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
-					buttonHintExtra.ButtonClickDisabled = false;
-					break;
-				case LIGHTSETTINGS_STATE:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = (Data.getLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
-					buttonHintExtra.ButtonClickDisabled = false;
-					break;
-				case LIGHTEDIT_STATE:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = true;
-					buttonHintReset.ButtonText = "$SAM_Reset";
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = true;
-					buttonHintExtra.ButtonText = (Data.getLightVisible() ? "$SAM_Invisible" : "$SAM_Visible");
-					buttonHintExtra.ButtonClickDisabled = false;
-					break;
-				default:
-					buttonHintSave.ButtonVisible = false;
-					buttonHintLoad.ButtonVisible = false;
-					buttonHintReset.ButtonVisible = false;
-					buttonHintConfirm.ButtonVisible = false;
-					buttonHintHide.ButtonVisible = true;
-					buttonHintExtra.ButtonVisible = false;
-					buttonHintExtra.ButtonClickDisabled = false;
 			}
 		};
 		
+		internal function updateHotkey(button:BSButtonHintData, type:int)
+		{
+			var data:Object = Data.getHotkey(type);
+			if (!data) {
+				button.ButtonVisible = false;
+				return;
+			}
+			
+			button.ButtonVisible = true;
+			button.ButtonText = data.name;
+			button.ButtonClickDisabled = (data.type == Data.HOTKEY_HOLD);
+		}
+		
+		internal function updateFolderHotkey(button:BSButtonHintData, type:int)
+		{
+			var data:Object = Data.getFolderHotkey(type);
+			if (!data) {
+				button.ButtonVisible = false;
+				return;
+			}
+			
+			button.ButtonVisible = true;
+			button.ButtonText = data.name;
+			button.ButtonClickDisabled = (data.type == Data.HOTKEY_HOLD);
+		}
+		
 		internal function updateNotification()
 		{
-			switch (state)
-			{
-				case IDLECATEGORY_STATE:
-				case IDLE_STATE:
-					showNotification(Data.getIdleName());
-					break;
-				default:
-					hideNotification();
-					break;
+			var notifData:Object = Data.menuData.notification;
+			if (notifData) {
+				var result:GFxResult = callDataFunction(notifData);
+				if (result && result.type == Data.RESULT_STRING) //ignore errors
+					showNotification(result.result);
+			}
+			else {
+				hideNotification();
 			}
 		}
 		
 		public function updateTitle(name:String = null)
 		{
-			if (name) {
+			if (name)
 				titleName = name;
-			}
-			switch (this.state) {
-				case TRANSFORM_STATE: sliderList.title.text = Data.boneName; break;
-				default: sliderList.title.text = titleName; break;
+			
+			var titleData:Object = Data.menuData.title;
+			if (titleData) {
+				var result:GFxResult = callDataFunction(titleData);
+				if (result && result.type == Data.RESULT_STRING)
+					sliderList.title.text = titleName;
 			}
 		}
 
@@ -1753,15 +1976,63 @@
 			}
 		}
 		
-		internal function updateAdjustment():void
+		public function InitOrder():void
 		{
-			sliderList.storeSelected();
-			if (order) {
-				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
-			} else {
-				sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
+			Data.locals.order = false;
+		}
+		
+		public function ToggleOrder():void
+		{
+			Data.locals.order = !Data.locals.order
+			sliderList.updateValues();
+		}
+		
+		public function InitOffset():void
+		{
+			Data.locals.offset = false;
+		}
+		
+		public function ToggleOffset():void
+		{
+			Data.locals.offset = !Data.locals.offset
+//			if (Data.locals.offset) {
+//				
+//			} else {
+//				
+//			}
+		}
+		
+//		internal function updateAdjustment():void
+//		{
+//			sliderList.storeSelected();
+//			if (order) {
+//				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
+//			} else {
+//				sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
+//			}
+//			sliderList.restoreSelected();
+//		}
+		
+		public function SetAlignment(i:int, checked:Boolean)
+		{
+			swapped = checked;
+			updateAlignment();
+			try {
+				this.sam.SetOption(i, checked);
+			} catch (e:Error) {
+				trace("Failed to set alignment");
 			}
-			sliderList.restoreSelected();
+		}
+		
+		public function SetWidescreen(i:int, checked:Boolean)
+		{
+			widescreen = checked;
+			updateAlignment();
+			try {
+				this.sam.SetOption(i, checked);
+			} catch (e:Error) {
+				trace("Failed to get alignment");
+			}
 		}
 		
 		internal function updateAlignment():void
@@ -1775,23 +2046,34 @@
 				sliderList.x = swapped ? -623 : 278;
 			}
 		}
+		
+		public function canClose():Boolean
+		{
+			if (filenameInput.visible)
+				return false;
+			
+			if (isWaiting())
+				return false;
+				
+			return true;
+		}
 
 		public function tryClose():Boolean
 		{
-			if (!filenameInput.visible)
+			if (canClose())
 			{
 				Util.unselectText();
 				
 				sliderList.getState(currentState);
-				currentState.menu = this.state;
+				currentState.menu = Data.menuName;
 
 				var data:Object = {
+					rootMenu: this.rootMenu,
+					menuName: Data.menuName,
 					state: this.state,
 					current: currentState,
 					stack: stateStack,
-					text: textInput,
-					focused: sliderList.focused,
-					offset: offset
+					focused: sliderList.focused
 				}
 				
 				Data.saveState(data);

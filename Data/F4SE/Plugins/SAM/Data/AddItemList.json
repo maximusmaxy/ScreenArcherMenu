@@ -1,0 +1,21 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetItemList",
+        "args": [
+            {
+                "type": "var",
+                "name": "addItemMod"
+            },
+            {
+                "type": "var",
+                "name": "addItemType"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "AddItem"
+    }
+}

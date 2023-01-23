@@ -7,6 +7,7 @@
 
 #include "util.h"
 #include "io.h"
+#include "papyrus.h"
 
 #include <algorithm>
 #include <mutex>
@@ -163,7 +164,21 @@ namespace SAF {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		map[key] = transform;
-		UpdateScale(key, transform);
+		scaled[key] = SlerpNiTransform(transform, scale);
+	}
+
+	void Adjustment::SetPoseTransform(BSFixedString name, NiTransform& transform)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		NodeKey offset(name, true);
+		NodeKey pose(name, false);
+		
+		map[pose] = transform;
+		scaled[pose] = SlerpNiTransform(transform, scale);
+
+		map.erase(offset);
+		scaled.erase(offset);
 	}
 
 	bool Adjustment::HasTransform(const NodeKey& key)
@@ -199,7 +214,7 @@ namespace SAF {
 		transform.pos.z = z;
 
 		map[key] = transform;
-		UpdateScale(key, transform);
+		scaled[key] = SlerpNiTransform(transform, scale);
 
 		updated = true;
 	}
@@ -214,7 +229,7 @@ namespace SAF {
 		MatrixFromEulerYPR(transform.rot, yaw * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, roll * DEGREE_TO_RADIAN);
 
 		map[key] = transform;
-		UpdateScale(key, transform);
+		scaled[key] = SlerpNiTransform(transform, scale);
 
 		updated = true;
 	}
@@ -228,7 +243,7 @@ namespace SAF {
 
 		transform.scale = scale;
 		map[key] = transform;
-		UpdateScale(key, transform);
+		scaled[key] = SlerpNiTransform(transform, scale);
 
 		updated = true;
 	}
@@ -264,7 +279,7 @@ namespace SAF {
 		map = newMap;
 
 		for (auto& transform : map) {
-			UpdateScale(transform.first, transform.second);
+			scaled[transform.first] = SlerpNiTransform(transform.second, scale);
 		}
 	}
 
@@ -307,16 +322,16 @@ namespace SAF {
 		scale = newScale;
 
 		for (auto& transform : map) {
-			UpdateScale(transform.first, transform.second);
+			scaled[transform.first] = SlerpNiTransform(transform.second, scale);
 		}
 
 		updated = true;
 	}
 
-	void Adjustment::UpdateScale(const NodeKey& name, NiTransform& transform)
-	{
-		scaled[name] = SlerpNiTransform(transform, scale);
-	}
+	//void Adjustment::UpdateScale(const NodeKey& name, NiTransform& transform)
+	//{
+	//	scaled[name] = SlerpNiTransform(transform, scale);
+	//}
 
 	NiTransform* Adjustment::GetScaledTransform(const NodeKey& key)
 	{
@@ -842,6 +857,155 @@ namespace SAF {
 		return 1;
 	}
 
+	UInt32 ActorAdjustments::MergeAdjustmentDown(UInt32 handle)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		auto it = list.begin();
+
+		//get iterator of selected handle
+		while (it != list.end() && (*it)->handle != handle)
+			++it;
+
+		auto& selected = *it;
+
+		//find next visible below
+		while (it != list.end() && !(*it)->IsVisible())
+			++it;
+
+		if (it == list.end())
+			return 0;
+
+		//find transforms in below adjustment and apply them to selected
+		for (auto& kvp : (*it)->map) {
+			auto transform = selected->GetTransform(kvp.first);
+			if (transform) {
+				selected->SetTransform(kvp.first, MultiplyNiTransform(*transform, kvp.second));
+			}
+			else {
+				selected->SetTransform(kvp.first, kvp.second);
+			}
+		}
+
+		//return handle of adjustment that needs to be removed
+		return (*it)->handle;
+	}
+
+	NiTransform GetMirroredTransform(std::shared_ptr<Adjustment> adjustment, NiTransform& base, NiTransform& pose, BSFixedString name) {
+		//get current position
+		NiTransform result = adjustment->GetTransformOrDefault(NodeKey(name, true));
+		result = MultiplyNiTransform(result, base);
+		result = MultiplyNiTransform(result, adjustment->GetTransformOrDefault(NodeKey(name, false)));
+		result = MultiplyNiTransform(result, pose);
+
+		//Inverse Z translation and yaw/pitch rotation
+		result.pos.z = -result.pos.z;
+		result.rot.data[2][0] = -result.rot.data[2][0]; //x-axis z
+		result.rot.data[2][1] = -result.rot.data[2][1]; //y-axis z
+		result.rot.data[0][2] = -result.rot.data[0][2]; //z-axis x
+		result.rot.data[1][2] = -result.rot.data[1][2]; //z-axis y
+
+		return result;
+	}
+
+	bool ActorAdjustments::SetMirroredTransform(std::shared_ptr<Adjustment> adjustment, BSFixedString name, NiTransform* mirrored) {
+		auto base = GetFromBaseMap(*baseMap, name);
+		if (!base)
+			return false;
+		
+		auto pose = GetFromNodeMap(poseMap, name);
+		if (!pose)
+			return false;
+
+		NiTransform result = GetMirroredTransform(adjustment, *base, pose->m_localTransform, name);
+
+		//Trace back the pose/negation
+		result = MultiplyNiTransform(result, InvertNiTransform(pose->m_localTransform));
+		result = MultiplyNiTransform(result, *base);
+
+		//Get the difference
+		result = NegateNiTransform(*base, result);
+
+		*mirrored = result;
+		return true;
+	}
+
+	bool ActorAdjustments::SwapMirroredTransform(std::shared_ptr<Adjustment> adjustment,
+		BSFixedString left, BSFixedString right, NiTransform * leftMirrored, NiTransform * rightMirrored) {
+
+		auto leftBase = GetFromBaseMap(*baseMap, left);
+		if (!leftBase)
+			return false;
+		auto rightBase = GetFromBaseMap(*baseMap, right);
+		if (!rightBase)
+			return false;
+
+		auto leftPose = GetFromNodeMap(poseMap, left);
+		if (!leftPose)
+			return false;
+		auto rightPose = GetFromNodeMap(poseMap, right);
+		if (!rightPose)
+			return false;
+
+		//Swap left result to right transform
+		NiTransform leftResult = GetMirroredTransform(adjustment, *leftBase, leftPose->m_localTransform, left);
+		leftResult = MultiplyNiTransform(leftResult, InvertNiTransform(rightPose->m_localTransform));
+		leftResult = MultiplyNiTransform(leftResult, *rightBase);
+		leftResult = NegateNiTransform(*rightBase, leftResult);
+		*rightMirrored = leftResult;
+
+		//Swap right result to left transform
+		NiTransform rightResult = GetMirroredTransform(adjustment, *rightBase, rightPose->m_localTransform, right);
+		rightResult = MultiplyNiTransform(rightResult, InvertNiTransform(leftPose->m_localTransform));
+		rightResult = MultiplyNiTransform(rightResult, *leftBase);
+		rightResult = NegateNiTransform(*leftBase, rightResult);
+		*leftMirrored = rightResult;
+
+		return true;
+	}
+
+	bool ActorAdjustments::MirrorAdjustment(UInt32 handle)
+	{
+		std::lock_guard<std::shared_mutex> lock(mutex);
+
+		auto adjustment = GetAdjustment(handle);
+		if (!adjustment)
+			return false;
+
+		if (nodeSets->center.empty() && nodeSets->mirror.empty())
+			return false;
+
+		for (auto& name : nodeSets->center) 
+		{
+			NiTransform result;
+			if (SetMirroredTransform(adjustment, name, &result)) {
+				adjustment->SetPoseTransform(name, result);
+			}
+			else {
+				adjustment->ResetTransform(NodeKey(name, false));
+				adjustment->ResetTransform(NodeKey(name, true));
+			}
+		}
+
+		for (auto& kvp : nodeSets->mirror)
+		{
+			NiTransform leftResult;
+			NiTransform rightResult;
+			if (SwapMirroredTransform(adjustment, kvp.first, kvp.second, &leftResult, &rightResult)) {
+				adjustment->SetPoseTransform(kvp.first, leftResult);
+				adjustment->SetPoseTransform(kvp.second, rightResult);
+			}
+			else {
+				adjustment->ResetTransform(NodeKey(kvp.first, false));
+				adjustment->ResetTransform(NodeKey(kvp.first, true));
+				adjustment->ResetTransform(NodeKey(kvp.second, false));
+				adjustment->ResetTransform(NodeKey(kvp.second, true));
+			}
+		}
+
+		return true;
+	}
+
 	void ActorAdjustments::UpdateAdjustmentVersion(TransformMap* map, UInt32 updateType)
 	{
 		switch (updateType) {
@@ -888,16 +1052,27 @@ namespace SAF {
 		return false;
 	}
 
+	bool ActorAdjustments::CacheUpdatedAdjustment(const char* filename)
+	{
+		TransformMap map;
+		LoadedAdjustment loadedAdjustment(&map);
+
+		if (LoadAdjustmentFile(filename, &loadedAdjustment)) {
+			UpdateAdjustmentVersion(loadedAdjustment.map, loadedAdjustment.updateType);
+			g_adjustmentManager.SetAdjustmentFile(filename, map);
+			
+			return true;
+		}
+
+		return false;
+	}
+
 	std::string GetAdjustmentNameFromPath(const char* path)
 	{
 		if (!path)
 			return std::string();
 
-		int rootLen = constStrLen(ADJUSTMENTS_PATH);
-		int pathLen = strlen(path);
-
-		//gets the middle part without the root folders and extension, but with subfolders
-		return std::string(path + rootLen + 1, pathLen - rootLen - 6);
+		return GetRelativePath(constStrLen(ADJUSTMENTS_PATH), constStrLen(".json"), path);
 	}
 
 	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustmentPath(const char* path, bool cached)
@@ -1012,6 +1187,20 @@ namespace SAF {
 				functor(adjustment);
 			}
 		}
+	}
+
+	std::shared_ptr<Adjustment> ActorAdjustments::FindAdjustment(const std::function<bool(std::shared_ptr<Adjustment>)>& functor)
+	{
+		std::shared_lock<std::shared_mutex> lock(mutex);
+
+		for (auto& adjustment : list) {
+			if (adjustment->IsVisible()) {
+				if (functor(adjustment))
+					return adjustment;
+			}
+		}
+
+		return nullptr;
 	}
 
 	bool ActorAdjustments::RemoveMod(BSFixedString modName)
@@ -2356,6 +2545,32 @@ namespace SAF {
 			adjustment->SetScale(scale);
 	}
 
+	void AdjustmentManager::MergeAdjustmentDown(UInt32 formId, UInt32 handle)
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		auto it = actorAdjustmentCache.find(formId);
+		if (it != actorAdjustmentCache.end()) {
+			UInt32 remove = it->second->MergeAdjustmentDown(handle);
+			if (remove) {
+				it->second->RemoveAdjustment(remove);
+				it->second->UpdateAllAdjustments();
+			}
+		}
+	}
+
+	void AdjustmentManager::MirrorAdjustment(UInt32 formId, UInt32 handle)
+	{
+		std::lock_guard<std::shared_mutex> lock(actorMutex);
+
+		auto it = actorAdjustmentCache.find(formId);
+		if (it != actorAdjustmentCache.end()) {
+			if (it->second->MirrorAdjustment(handle)) {
+				it->second->UpdateAllAdjustments();
+			}
+		}
+	}
+
 	void AdjustmentManager::RemoveMod(BSFixedString modName)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
@@ -2389,5 +2604,6 @@ namespace SAF {
 
 	void RevertCallback(const F4SESerializationInterface* ifc) {
 		g_adjustmentManager.SerializeRevert(ifc);
+		RevertPapyrus();
 	}
 }

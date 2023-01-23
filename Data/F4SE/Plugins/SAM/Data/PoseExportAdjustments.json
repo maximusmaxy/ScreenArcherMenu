@@ -1,0 +1,32 @@
+{
+    "type": "checkbox",
+    "get": {
+        "type": "sam",
+        "name": "GetPoseAdjustments"
+    },
+    "save": {
+        "name": "$SAM_Save",
+        "type": "func",
+        "func": {
+            "type": "entry",
+            "var": "selectedAdjustments",
+            "all": true,
+            "entry": {
+                "func": {
+                    "type": "sam",
+                    "name": "SavePose",
+                    "args": [
+                        {
+                            "type": "var",
+                            "name": "selectedAdjustments"
+                        },
+                        {
+                            "type": "var",
+                            "name": "exportType"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

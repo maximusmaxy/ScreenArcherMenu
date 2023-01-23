@@ -14,6 +14,7 @@ UInt32 GetFormId(const char* modName, UInt32 formId);
 UInt32 GetFormId(const char* modName, const char* idString);
 UInt32 GetModId(UInt32 formId);
 UInt32 GetBaseId(UInt32 formId);
+const char* GetModName(UInt32 formId);
 
 float Modulo(float a, float b);
 
@@ -24,3 +25,5 @@ std::string GetPathWithExtension(const char* folder, const char* path, const cha
 constexpr size_t constStrLen(const char* str) {
 	return std::char_traits<char>::length(str);
 }
+
+std::string GetRelativePath(int rootLen, int extLen, const char* path);

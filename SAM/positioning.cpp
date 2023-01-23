@@ -223,34 +223,34 @@ void SetRefrScale(double value)
 	SetRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x);
 }
 
-void AdjustObjectPosition(int type, int scalar, int step) {
+void AdjustObjectPosition(int type, float delta, int step) {
 	if (!selectedNonActor.refr) return;
 
 	float mod = step * 0.01;
 
 	switch (type) {
 	case kAdjustPositionX:
-		UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, scalar * 0.1 * mod);
+		UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, delta * mod);
 		break;
 	case kAdjustPositionY:
-		UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, scalar * 0.1 * mod);
+		UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, delta * mod);
 		break;
 	case kAdjustPositionZ:
-		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, scalar * 0.1 * mod);
+		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, delta * mod);
 		break;
 	case kAdjustRotationX:
 		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
-		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, scalar * 0.01 * mod);
+		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, delta * mod);
 		break;
 	case kAdjustRotationY:
 		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
-		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, scalar * 0.01 * mod);
+		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, delta * mod);
 		break;
 	case kAdjustRotationZ:
-		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, scalar * 0.01 * mod);
+		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, delta * mod);
 		break;
 	case kAdjustScale:
-		float scale = (UInt16)selectedNonActor.refr->unk104 * 0.01 + scalar * 0.01 * mod;
+		float scale = (UInt16)selectedNonActor.refr->unk104 * 0.01 + delta * mod;
 		if (scale < 0.01) {
 			scale = 0.01;
 		}

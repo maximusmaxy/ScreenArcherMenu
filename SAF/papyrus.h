@@ -4,4 +4,5 @@
 
 namespace SAF {
 	bool RegisterPapyrus(VirtualMachine* vm);
+	void RevertPapyrus();
 }

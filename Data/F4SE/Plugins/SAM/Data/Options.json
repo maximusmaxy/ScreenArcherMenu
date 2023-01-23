@@ -1,0 +1,34 @@
+{
+    "type": "mixed",
+    "update": true,
+    "get": {
+        "type": "sam",
+        "name": "GetOptions"
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetOption"
+    },
+    "items": [
+        {
+            "name": "$SAM_Hotswap",
+            "type": "checkbox"
+        },
+        {
+            "name": "$SAM_Alignment",
+            "type": "checkbox",
+            "func": {
+                "type": "local",
+                "name": "SetAlignment"
+            }
+        },
+        {
+            "name": "$SAM_Widescreen",
+            "type": "checkbox",
+            "func": {
+                "type": "local",
+                "name": "SetWidescreen"
+            }
+        }
+    ]
+}

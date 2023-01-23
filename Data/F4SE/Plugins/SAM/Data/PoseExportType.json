@@ -1,0 +1,12 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "func": "GetExportTypes"
+    },
+    "set": {
+        "type": "menu",
+        "name": "PoseExportAdjustments",
+        "var": "exportType"
+    }
+}

@@ -1,0 +1,82 @@
+Race	0003578A
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	Main
+Dogmeat_COM	COM
+Dogmeat_COMBone001	COM Bone
+Dogmeat_Pelvis	Pelvis
+Dogmeat_Spine1	Spine 1
+Dogmeat_Spine2	Spine 2
+Dogmeat_Spine3	Spine 3
+Dogmeat_Ribcage	Ribcage
+Dogmeat_Neck1	Neck 1
+Dogmeat_Neck2	Neck 2
+Dogmeat_Head	Head
+
+Category	Front Legs
+Dogmeat_Front_LLegCollarbone	Left Collarbone
+Dogmeat_Front_LLeg1	Left Leg 1
+Dogmeat_Front_LLeg2	Left Leg 2
+Dogmeat_Front_LLegAnkle	Left Ankle
+Dogmeat_Front_LLegToe1	Left Toe
+Dogmeat_Front_RLegCollarbone	Right Collarbone
+Dogmeat_Front_RLeg1	Right Leg 1
+Dogmeat_Front_RLeg2	Right Leg 2
+Dogmeat_Front_RLegAnkle	Right Ankle
+Dogmeat_Front_RLegToe1	Right Toe
+
+Category	Back Legs
+Dogmeat_Rear_LLeg1	Left Leg 1
+Dogmeat_Rear_LLeg2	Left Leg 2
+Dogmeat_Rear_LLegAnkle	Left Ankle 
+Dogmeat_Rear_LLegToe1	Left Toe
+Dogmeat_Rear_RLeg1	Rigth Leg 1
+Dogmeat_Rear_RLeg2	Right Leg 2
+Dogmeat_Rear_RLegAnkle	Right Ankle
+Dogmeat_Rear_RLegToe1	Right Toe
+
+Category	Face
+Dogmeat_Nose	Nose
+Dogmeat_Eye_L	Eye Left
+Dogmeat_Eye_R	Eye Right
+Dogmeat_EyeBlinkL	Eye Blink Left
+Dogmeat_EyeBlinkR	Eye Blink Right
+Dogmeat_Eyebrow_L	Eyebrow Left
+Dogmeat_Eyebrow_R	Eyebrow Right
+Dogmeat_Ear_L1	Ear Left 1
+Dogmeat_Ear_L2	Ear Left 2
+Dogmeat_Ear_R1	Ear Right 1
+Dogmeat_Ear_R2	Ear Right 2
+
+Category	Mouth
+Dogmeat_Jaw	Jaw
+Dogmeat_TopTeeth	Top Teeth
+Dogmeat_Mouth_BottomFrontL	Mouth Bottom Front Left 
+Dogmeat_Mouth_BottomMidL	Mouth Bottom Mid Left 
+Dogmeat_Mouth_BotCornerL	Mouth Bottom Corner Left 
+Dogmeat_Mouth_BottomFrontR	Mouth Bottom Front Right 
+Dogmeat_Mouth_BottomMidR	Mouth Bottom Mid Right 
+Dogmeat_Mouth_BotCornerR	Mouth Bottom Corner Right
+Dogmeat_Mouth_CornerL	Mouth Corner Left
+Dogmeat_Mouth_CornerR	Mouth Corner Right
+Dogmeat_Mouth_TopFrontL	Mouth Top Front Left
+Dogmeat_Mouth_TopFrontR	Mouth Top Front Right
+Dogmeat_Mouth_TopFront	Mouth Top Front
+Dogmeat_Mouth_TopMidL	Mouth Top Mid Left
+Dogmeat_Mouth_TopMidR	Mouth Top Mid Right
+
+Category	Tongue
+Dogmeat_Tongue1	Tongue 1
+Dogmeat_Tongue2	Tongue 2
+Dogmeat_Tongue3	Tongue 3
+Dogmeat_Tongue4	Tongue 4
+Dogmeat_Tongue5	Tongue 5
+
+Category	Tail
+Dogmeat_Tail1	Tail 1
+Dogmeat_Tail2	Tail 2
+Dogmeat_Tail3	Tail 3
+Dogmeat_Tail4	Tail 4
+Dogmeat_Tail5	Tail 5

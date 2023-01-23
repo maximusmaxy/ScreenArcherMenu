@@ -33,9 +33,9 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "f4se/NiTypes.h"
 
 enum {
-	kRotationX = 1,
-	kRotationY,
-	kRotationZ
+	kAxisX = 1,
+	kAxisY,
+	kAxisZ
 };
 
 namespace SAF {
@@ -65,6 +65,7 @@ namespace SAF {
 
 	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt);
 	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs);
+
 	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs);
 	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
 	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
@@ -78,6 +79,7 @@ namespace SAF {
 	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixXYZ2(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar);
+	NiPoint3 GetMatrixAxis(NiMatrix43& matrix, int type);
 
 	class Quat {
 	public:

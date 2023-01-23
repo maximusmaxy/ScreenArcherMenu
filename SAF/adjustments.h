@@ -64,32 +64,6 @@ namespace SAF {
 		kAdjustmentUpdateFile			//Update adjustment file to version 1.0+
 	};
 
-	struct AdjustmentMessage {
-		UInt32 formId;
-		UInt32 handle;
-	};
-
-	struct AdjustmentCreateMessage {
-		UInt32 formId;
-		const char* name;
-		const char* esp;
-	};
-
-	struct AdjustmentSaveMessage {
-		UInt32 formId;
-		const char* filename;
-		UInt32 handle;
-	};
-
-	enum {
-		kAdjustmentTransformPosition = 1,
-		kAdjustmentTransformRotation,
-		kAdjustmentTransformScale,
-		kAdjustmentTransformReset,
-		kAdjustmentTransformNegate,
-		kAdjustmentTransformRotate
-	};
-
 	struct AdjustmentTransformMessage {
 		UInt32 formId;
 		UInt32 handle;
@@ -99,42 +73,6 @@ namespace SAF {
 		float b;
 		float c;
 	};
-
-	struct AdjustmentActorMessage {
-		UInt32 formId;
-	};
-
-	struct AdjustmentNegateMessage {
-		UInt32 formId;
-		UInt32 handle;
-		const char* group;
-	};
-
-	struct PoseMessage {
-		UInt32 formId;
-		const char* filename;
-	};
-
-	struct SkeletonMessage {
-		UInt32 raceId;
-		bool isFemale;
-		const char* filename;
-		bool npc;
-		bool clear;
-		bool enable;
-	};
-
-	struct MoveMessage {
-		UInt32 formId;
-		UInt32 from;
-		UInt32 to;
-	};
-
-	struct TransformMapMessage {
-		UInt32 formId;
-		TransformMap* transforms;
-	};
-
 	struct ExportSkeleton
 	{
 		const char* skeleton;
@@ -142,12 +80,6 @@ namespace SAF {
 		NodeSet* nodes;
 
 		ExportSkeleton() : skeleton(nullptr), nodes(nullptr) {};
-	};
-
-	struct PoseExportMessage {
-		UInt32 formId;
-		const char* filename;
-		ExportSkeleton* exports;
 	};
 
 	struct LoadedAdjustment
@@ -221,29 +153,6 @@ namespace SAF {
 		UInt32 count;	//50
 	};
 
-	enum {
-		kSafAdjustmentManager = 1,
-		kSafAdjustmentCreate,
-		kSafAdjustmentSave,
-		kSafAdjustmentLoad,
-		kSafAdjustmentErase,
-		kSafAdjustmentReset,
-		kSafAdjustmentTransform,
-		kSafAdjustmentActor,
-		kSafAdjustmentNegate,
-		kSafPoseSave,
-		kSafOSPoseSave,
-		kSafPoseLoad,
-		kSafPoseReset,
-		kSafResult,
-		kSafSkeletonAdjustmentLoad,
-		kSafAdjustmentRotate,
-		kSafAdjustmentMove,
-		kSafAdjustmentRename,
-		kSafAdjustmentTongue,
-		kSafAdjustmentScale
-	};
-
 	class NodeSets
 	{
 	public:
@@ -259,6 +168,9 @@ namespace SAF {
 		NodeKeyMap nodeKeys;
 
 		BSFixedString rootName;
+
+		BSFixedStringSet center;
+		BSFixedStringMap mirror;
 	};
 
 	struct AdjustmentUpdateData
@@ -303,6 +215,7 @@ namespace SAF {
 		NiTransform GetScaledTransformOrDefault(const NodeKey& key);
 
 		void SetTransform(const NodeKey& name, NiTransform& transform);
+		void SetPoseTransform(BSFixedString name, NiTransform& transform);
 		bool HasTransform(const NodeKey& name);
 		void ResetTransform(const NodeKey& name);
 
@@ -320,7 +233,7 @@ namespace SAF {
 
 		void Rename(const char* name);
 		void SetScale(float scale);
-		void UpdateScale(const NodeKey& name, NiTransform& transform);
+		//void UpdateScale(const NodeKey& name, NiTransform& transform);
 
 		bool IsVisible();
 
@@ -378,6 +291,12 @@ namespace SAF {
 		//std::unordered_set<std::string> GetAdjustmentNames();
 		UInt32 GetAdjustmentIndex(UInt32 handle);
 		UInt32 MoveAdjustment(SInt32 fromIndex, SInt32 toIndex);
+		UInt32 MergeAdjustmentDown(UInt32 handle);
+
+		bool SetMirroredTransform(std::shared_ptr<Adjustment> adjustment, BSFixedString name, NiTransform* result);
+		bool SwapMirroredTransform(std::shared_ptr<Adjustment> adjustment,
+			BSFixedString left, BSFixedString right, NiTransform* leftResult, NiTransform* rightResult);
+		bool MirrorAdjustment(UInt32 handle);
 
 		std::shared_ptr<Adjustment> GetFile(const char* filename);
 		std::shared_ptr<Adjustment> GetFileOrCreate(const char* filename);
@@ -400,8 +319,10 @@ namespace SAF {
 		UInt32 LoadAdjustmentPathHandle(const char* filename, const char* espName, bool cached = false);
 		void SaveAdjustment(const char* filename, UInt32 handle);
 		bool LoadUpdatedAdjustment(const char* filename, TransformMap* map);
+		bool CacheUpdatedAdjustment(const char* filename);
 
 		void ForEachAdjustment(const std::function<void(std::shared_ptr<Adjustment>)>& functor);
+		std::shared_ptr<Adjustment> FindAdjustment(const std::function<bool(std::shared_ptr<Adjustment>)>& functor);
 
 		bool RemoveMod(BSFixedString espName);
 
@@ -481,6 +402,8 @@ namespace SAF {
 		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
 		void LoadTongueAdjustment(UInt32 formId, TransformMap* transforms);
 		void SetAdjustmentScale(UInt32 formId, UInt32 handle, float scale);
+		void MergeAdjustmentDown(UInt32 formId, UInt32 handle);
+		void MirrorAdjustment(UInt32 formId, UInt32 handle);
 		
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
 		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);
@@ -523,6 +446,98 @@ namespace SAF {
 	void SaveCallback(const F4SESerializationInterface* ifc);
 	void LoadCallback(const F4SESerializationInterface* ifc);
 	void RevertCallback(const F4SESerializationInterface* ifc);
+
+	enum {
+		kSafAdjustmentManager = 1,
+		kSafAdjustmentCreate,
+		kSafAdjustmentSave,
+		kSafAdjustmentLoad,
+		kSafAdjustmentErase,
+		kSafAdjustmentReset,
+		kSafAdjustmentTransform,
+		kSafAdjustmentActor,
+		kSafAdjustmentNegate,
+		kSafPoseSave,
+		kSafOSPoseSave,
+		kSafPoseLoad,
+		kSafPoseReset,
+		kSafResult,
+		kSafSkeletonAdjustmentLoad,
+		kSafAdjustmentRotate,
+		kSafAdjustmentMove,
+		kSafAdjustmentRename,
+		kSafAdjustmentTongue,
+		kSafAdjustmentScale,
+		kSafAdjustmentMerge,
+		kSafAdjustmentMirror
+	};
+
+	struct AdjustmentMessage {
+		UInt32 formId;
+		UInt32 handle;
+	};
+
+	struct AdjustmentCreateMessage {
+		UInt32 formId;
+		const char* name;
+		const char* esp;
+	};
+
+	struct AdjustmentSaveMessage {
+		UInt32 formId;
+		const char* filename;
+		UInt32 handle;
+	};
+
+	enum {
+		kAdjustmentTransformPosition = 1,
+		kAdjustmentTransformRotation,
+		kAdjustmentTransformScale,
+		kAdjustmentTransformReset,
+		kAdjustmentTransformNegate,
+		kAdjustmentTransformRotate
+	};
+
+	struct AdjustmentActorMessage {
+		UInt32 formId;
+	};
+
+	struct AdjustmentNegateMessage {
+		UInt32 formId;
+		UInt32 handle;
+		const char* group;
+	};
+
+	struct PoseMessage {
+		UInt32 formId;
+		const char* filename;
+	};
+
+	struct SkeletonMessage {
+		UInt32 raceId;
+		bool isFemale;
+		const char* filename;
+		bool npc;
+		bool clear;
+		bool enable;
+	};
+
+	struct MoveMessage {
+		UInt32 formId;
+		UInt32 from;
+		UInt32 to;
+	};
+
+	struct TransformMapMessage {
+		UInt32 formId;
+		TransformMap* transforms;
+	};
+
+	struct PoseExportMessage {
+		UInt32 formId;
+		const char* filename;
+		ExportSkeleton* exports;
+	};
 
 	class SAFMessaging
 	{
@@ -582,5 +597,7 @@ namespace SAF {
 		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
 		void LoadTongueAdjustment(UInt32 formId, TransformMap* transforms);
 		void ScaleAdjustment(UInt32 formId, UInt32 handle, float scale);
+		void MergeAdjustmentDown(UInt32 formId, UInt32 handle);
+		void MirrorAdjustment(UInt32 formId, UInt32 handle);
 	};
 }

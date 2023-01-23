@@ -187,7 +187,7 @@ namespace SAF {
 		float cos = std::cosf(scalar);
 
 		switch (type) {
-		case kRotationX:
+		case kAxisX:
 			rot.data[0][0] = 1.0f;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = 0.0f;
@@ -198,7 +198,7 @@ namespace SAF {
 			rot.data[2][1] = -sin;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationY:
+		case kAxisY:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = -sin;
@@ -209,7 +209,7 @@ namespace SAF {
 			rot.data[2][1] = 0.0f;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationZ:
+		case kAxisZ:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = sin;
 			rot.data[0][2] = 0.0f;
@@ -231,7 +231,7 @@ namespace SAF {
 		float cos = std::cosf(scalar);
 
 		switch (type) {
-		case kRotationX:
+		case kAxisX:
 			rot.data[0][0] = 1.0f;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = 0.0f;
@@ -242,7 +242,7 @@ namespace SAF {
 			rot.data[2][1] = -sin;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationY:
+		case kAxisY:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = -sin;
@@ -253,7 +253,7 @@ namespace SAF {
 			rot.data[2][1] = 0.0f;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationZ:
+		case kAxisZ:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = sin;
 			rot.data[0][2] = 0.0f;
@@ -276,7 +276,7 @@ namespace SAF {
 		float cos = std::cosf(scalar);
 
 		//switch (type) {
-		//case kRotationX:
+		//case kAxisX:
 		//	rot.data[0][0] = 1.0f;
 		//	rot.data[1][0] = 0.0f;
 		//	rot.data[2][0] = 0.0f;
@@ -287,7 +287,7 @@ namespace SAF {
 		//	rot.data[1][2] = -sin;
 		//	rot.data[2][2] = cos;
 		//	break;
-		//case kRotationY:
+		//case kAxisY:
 		//	rot.data[0][0] = cos;
 		//	rot.data[1][0] = 0.0f;
 		//	rot.data[2][0] = -sin;
@@ -298,7 +298,7 @@ namespace SAF {
 		//	rot.data[1][2] = 0.0f;
 		//	rot.data[2][2] = cos;
 		//	break;
-		//case kRotationZ:
+		//case kAxisZ:
 		//	rot.data[0][0] = cos;
 		//	rot.data[1][0] = sin;
 		//	rot.data[2][0] = 0.0f;
@@ -312,7 +312,7 @@ namespace SAF {
 		//}
 
 		switch (type) {
-		case kRotationX:
+		case kAxisX:
 			rot.data[0][0] = 1.0f;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = 0.0f;
@@ -323,7 +323,7 @@ namespace SAF {
 			rot.data[2][1] = -sin;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationY:
+		case kAxisY:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = -sin;
@@ -334,7 +334,7 @@ namespace SAF {
 			rot.data[2][1] = 0.0f;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationZ:
+		case kAxisZ:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = sin;
 			rot.data[0][2] = 0.0f;
@@ -357,7 +357,7 @@ namespace SAF {
 		float cos = std::cosf(scalar);
 
 		switch (type) {
-		case kRotationX:
+		case kAxisX:
 			rot.data[0][0] = 1.0f;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = 0.0f;
@@ -368,7 +368,7 @@ namespace SAF {
 			rot.data[2][1] = -sin;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationY:
+		case kAxisY:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = 0.0f;
 			rot.data[0][2] = -sin;
@@ -379,7 +379,7 @@ namespace SAF {
 			rot.data[2][1] = 0.0f;
 			rot.data[2][2] = cos;
 			break;
-		case kRotationZ:
+		case kAxisZ:
 			rot.data[0][0] = cos;
 			rot.data[0][1] = sin;
 			rot.data[0][2] = 0.0f;
@@ -393,6 +393,17 @@ namespace SAF {
 		}
 
 		matrix = matrix * rot;
+	}
+
+	NiPoint3 GetMatrixAxis(NiMatrix43& matrix, int type) 
+	{
+		switch (type) {
+		case kAxisX: return NiPoint3(matrix.data[0][0], matrix.data[1][0], matrix.data[2][0]);
+		case kAxisY: return NiPoint3(matrix.data[0][1], matrix.data[1][1], matrix.data[2][1]);
+		case kAxisZ: return NiPoint3(matrix.data[0][2], matrix.data[1][2], matrix.data[2][2]);
+		}
+
+		return NiPoint3(1.0f, 0.0f, 0.0f);
 	}
 
 	void MatrixFromEulerYPRTransposed(NiMatrix43& matrix, float x, float y, float z) {

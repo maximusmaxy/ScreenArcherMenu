@@ -12,6 +12,7 @@
 #include "SAF/util.h"
 #include "SAF/conversions.h"
 
+#include "constants.h"
 #include "sam.h"
 #include "pose.h"
 
@@ -24,7 +25,6 @@ std::regex mfgRegex("\\s*mfg\\s+morphs\\s+(\\d+)\\s+(\\d+).*"); //mfg morphs (n)
 std::regex tongueRegex("\\s*;tongue\\s+(\\d+)\\s+(\\w+)\\s+(\\S+)"); //;tongue (n) (w) (f)
 
 //#define TONGUE_NODES_SIZE 5
-#define MORPH_MAX 54
 
 float* GetMorphPointer() {
 	if (!selected.refr) 
@@ -324,30 +324,20 @@ void ResetMfg() {
 	safDispatcher.LoadTongueAdjustment(selected.refr->formID, nullptr);
 }
 
-void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
+void GetMorphCategoriesGFx(GFxResult& result)
 {
-	root->CreateObject(result);
-
-	GFxValue names;
-	root->CreateArray(&names);
-	result->SetMember("names", &names);
-
-	GFxValue values;
-	root->CreateArray(&values);
-	result->SetMember("values", &values);
+	result.CreateMenuItems();
 
 	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
-	if (!menu) 
-		return;
+	if (!menu)
+		return result.SetError("Could not get morph information for targeted race");
 
-	for (auto& kvp : *menu) 
-	{
-		names.PushBack(&GFxValue(kvp.first.c_str()));
-		values.PushBack(&GFxValue((SInt32)-1));
+	for (SInt32 i = 0; i < menu->size(); ++i) {
+		result.PushItem(menu->at(i).first.c_str(), &GFxValue(i));
 	}
 
 	//Need to check actors skeleton to see if the menu has 
-	if (!selected.refr) 
+	if (!selected.refr)
 		return;
 
 	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
@@ -358,22 +348,21 @@ void GetMorphCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
 	MenuList* tongueMenu = FindFirstTongueMenu(adjustments);
 
 	if (tongueMenu) {
-		names.PushBack(&GFxValue("$SAM_TongueBones"));
-		values.PushBack(&GFxValue(0));
+		result.PushItem("$SAM_TongueBones", &GFxValue(SInt32(-1)));
 	}
 }
 
-void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
+void LoadFaceMorphsGFx(GFxResult& result, int index, SInt32 value)
 {
-	root->CreateObject(result);
+	if (value < 0)
+		return samManager.PushMenu("TongueBones");
 
-	GFxValue names;
-	root->CreateArray(&names);
-	result->SetMember("names", &names);
-	
-	GFxValue values;
-	root->CreateArray(&values);
-	result->SetMember("values", &values);
+	return samManager.PushMenu("FaceMorphsList");
+}
+
+void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex)
+{
+	result.CreateMenuItems();
 
 	MenuCategoryList* menu = GetMenu(&morphsMenuCache);
 	if (!menu || categoryIndex >= menu->size()) 
@@ -384,14 +373,10 @@ void GetMorphsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
 		return;
 
 	for (auto& kvp : (*menu)[categoryIndex].second) {
-		GFxValue name(kvp.second.c_str());
-		names.PushBack(&name);
-
 		UInt32 key = std::stoul(kvp.first);
 		key = max(0, min(MORPH_MAX - 1, key));
 
-		GFxValue value((SInt32)std::round(ptr[key] * 100));
-		values.PushBack(&value);
+		result.PushItem(kvp.second.c_str(), &GFxValue((SInt32)std::round(ptr[key] * 100)));
 	}
 }
 

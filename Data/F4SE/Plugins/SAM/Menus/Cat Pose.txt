@@ -1,0 +1,48 @@
+Race	000C9ACF
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	Main
+COM	COM
+SPINE1	Spine 1
+SPINE2	Spine 2
+Ribcage	Ribcage
+Neck1	Neck 1
+Neck2	Neck 2
+HEAD	Head
+Pelvis	Pelvis
+
+Category	Face
+Jaw	Jaw
+Tongue	Tongue
+LEar	Left Ear
+REar	Right Ear
+
+Category	Tail
+Tail1	Tail 1
+Tail2	Tail 2
+Tail3	Tail 3
+Tail4	Tail 4
+
+Category	Front Legs
+LLeg_Front_Collarbone	Left Collarbone
+LLeg_Front_Thigh	Left Thigh
+LLeg_Front_Knee	Left Knee
+LLeg_Front_Ankle	Left Ankle
+LLeg_Front_Toe1	Left Toe
+RLeg_Front_Collarbone	Right Collarbone
+RLeg_Front_Thigh	Right Thigh
+RLeg_Front_Knee	Right Knee
+RLeg_Front_Ankle	Right Ankle
+RLeg_Front_Toe1	Right Toe
+
+Category	Rear Legs
+LLeg_Rear_Thigh	Left Thigh
+LLeg_Rear_Knee	Left Knee
+LLeg_Rear_Ankle	Left Ankle
+LLeg_Rear_Toe1	Left Toe
+RLeg_Rear_Thigh	Right Thigh
+RLeg_Rear_Knee	Right Knee
+RLeg_Rear_Ankle	Right Ankle
+RLeg_Rear_Toe1	Right Toe

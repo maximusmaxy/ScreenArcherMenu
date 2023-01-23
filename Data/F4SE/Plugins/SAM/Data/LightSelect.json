@@ -1,0 +1,29 @@
+{
+    "type": "list",
+    "update": true,
+    "get": {
+        "type": "sam",
+        "name": "GetLights"
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetLights",
+        "var": "selectedLight"
+    },
+    "load": {
+        "name": "$SAM_Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "type": "full",
+                "path": "Data\\F4SE\\Plugins\\SAM\\Lights",
+                "ext": ".json",
+                "func": {
+                    "type": "sam",
+                    "func": "LoadLights"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,26 @@
+{
+    "type": "list",
+    "items": [
+        {
+            "name": "$SAM_OpenContainer",
+            "func": {
+                "type": "sam",
+                "name": "OpenActorContainer"
+            }
+        },
+        {
+            "name": "$SAM_AddItem",
+            "func": {
+                "type": "menu",
+                "name": "AddItemMods"
+            }
+        },
+        {
+            "name": "$SAM_MaterialSwap",
+            "func": {
+                "type": "menu",
+                "name": "MaterialSwap"
+            }
+        }
+    ]
+}

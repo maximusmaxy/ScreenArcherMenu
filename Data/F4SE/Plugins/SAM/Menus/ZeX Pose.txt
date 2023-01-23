@@ -1,0 +1,87 @@
+Race	00013746
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	ZeX
+Breast_L_00	$BONE_BreastL0
+Breast_L_01	$BONE_BreastL1
+Breast_L_02	$BONE_BreastL2
+Breast_R_00	$BONE_BreastR0
+Breast_R_01	$BONE_BreastR1
+Breast_R_02	$BONE_BreastR2
+Butt_L_01	$BONE_ButtL1
+Butt_R_01	$BONE_ButtR1
+Belly_01	$BONE_Belly1
+Belly_02	$BONE_Belly2
+Penis	$BONE_Penis
+Penis_00	$BONE_Penis0
+Penis_01	$BONE_Penis1
+Penis_02	$BONE_Penis2
+Penis_03	$BONE_Penis3
+Penis_04	$BONE_Penis4
+Penis_05	$BONE_Penis5
+Penis_Balls	$BONE_PenisBalls
+Penis_Balls_01	$BONE_PenisBalls1
+Penis_Balls_02	$BONE_PenisBalls2
+Anus	$BONE_Anus
+Anus_00	$BONE_Anus0
+Anus_01	$BONE_Anus1
+Anus_02	$BONE_Anus2
+Anus_03	$BONE_Anus3
+Anus_04	$BONE_Anus4
+Vagina	$BONE_Vagina
+Vagina_00	$BONE_Vagina0
+Vagina_L_01	$BONE_VaginaL1
+Vagina_L_02	$BONE_VaginaL2
+Vagina_R_01	$BONE_VaginaR1
+Vagina_R_02	$BONE_VaginaR2
+Tail	$BONE_Tail
+Tongue_00	$BONE_Tongue0
+Tongue_01	$BONE_Tongue1
+Tongue_02	$BONE_Tongue2
+Tongue_03	$BONE_Tongue3
+Tongue_04	$BONE_Tongue4
+
+Category	ZeX CBP
+Breast_CBP_L_00	Breast CBP Left 0
+Breast_CBP_L_01	Breast CBP Left 1
+Breast_CBP_L_02	Breast CBP Left 2
+Breast_CBP_L_03	Breast CBP Left 3
+Breast_CBP_L_04	Breast CBP Left 4
+Breast_CBP_R_00	Breast CBP Right 0
+Breast_CBP_R_01	Breast CBP Right 1
+Breast_CBP_R_02	Breast CBP Right 2
+Breast_CBP_R_03	Breast CBP Right 3
+Breast_CBP_R_04	Breast CBP Right 4
+Butt_CBP_L_01	Butt CBP Left 1
+Butt_CBP_R_01	Butt CBP Right 1
+Thigh_CBP_R_F_01	Thigh CBP Right Front 1
+Thigh_CBP_R_F_02	Thigh CBP Right Front 2
+Thigh_CBP_R_B_01	Thigh CBP Right Back 1
+Thigh_CBP_R_B_02	Thigh CBP Right Back 2
+Thigh_CBP_L_F_01	Thigh CBP Left Front 1
+Thigh_CBP_L_F_02	Thigh CBP Left Front 2
+Thigh_CBP_L_B_01	Thigh CBP Left Back 1
+Thigh_CBP_L_B_02	Thigh CBP Left Back 2
+Penis_CBP_00	Penis CBP 0
+Penis_CBP_01	Penis CBP 1
+Penis_CBP_02	Penis CBP 2
+Penis_CBP_03	Penis CBP 3
+Penis_CBP_04	Penis CBP 4
+Penis_CBP_05	Penis CBP 5
+Penis_Balls_CBP_01	Balls CBP 1
+Penis_Balls_CBP_02	Balls CBP 2
+Vagina_CBP_00	Vagina CBP 0
+Vagina_CBP_L_01	Vagina CBP Left 1
+Vagina_CBP_L_02	Vagina CBP Left 2
+Vagina_CBP_R_01	Vagina CBP Right 1
+Vagina_CBP_R_02	Vagina CBP Right 2
+Tail_CBP_00	Tail CBP 0
+Tail_CBP_01	Tail CBP 1
+Tail_CBP_02	Tail CBP 2
+Tail_CBP_03	Tail CBP 3
+Tail_CBP_04	Tail CBP 4
+Tail_CBP_05	Tail CBP 5
+Tail_CBP_06	Tail CBP 6
+Tail_CBP_07	Tail CBP 7

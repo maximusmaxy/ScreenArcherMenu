@@ -21,26 +21,14 @@
 		public var selected:Boolean = false;
 		public var selectable:Boolean = true;
 		public var valueSelectable:Boolean = false;
-		public var func:Function;
-		public var func2:Function;
-		public var func3:Function;
 		
 		public var valueMod:Number = 0.0;
 		public var valueFixed:int = 0;
 		
-		public static const LIST = 0;
-		public static const SLIDER = 1;
-		public static const CHECKBOX = 2;
-		public static const ADJUSTMENT = 3;
-		public static const DRAG = 4;
-		public static const FOLDER = 5;
-		
-		public static const NONE = 0;
-		public static const INT = 1;
-		public static const FLOAT = 2;
-		
 		public var type:int;
 		public var valueType:int;
+		
+		public var functions:EntryFunctions;
 
 		public function SliderListEntry()
 		{
@@ -58,6 +46,13 @@
 			value.addEventListener(MouseEvent.CLICK, onValueClick);
 			value.addEventListener(Event.CHANGE, onValueInput);
 		}
+		
+		public function initFunctions(funcs:EntryFunctions)
+		{
+			this.functions = funcs;
+			this.checkbox.functions = funcs;
+			this.checkbox2.functions = funcs;
+		}
 
 		public function onMouseClick(event:MouseEvent)
 		{
@@ -72,14 +67,20 @@
 			if (visible) {
 				switch (this.type)
 				{
-					case LIST: 
-					case ADJUSTMENT:
-					case FOLDER:
-						func.call(null, id); 
+					case Data.ITEM_LIST: 
+						functions.list(id);
 						Util.playOk();
 						break;
-					case CHECKBOX:
-					case FOLDERCHECKBOX:
+					case Data.ITEM_ADJUSTMENT:
+						functions.list(id);
+						Util.playOk();
+						break;
+					case Data.ITEM_FOLDER:
+						functions.list(id); 
+						Util.playOk();
+						break;
+					case Data.ITEM_CHECKBOX:
+					case Data.ITEM_FOLDER:
 						checkbox.confirm();
 						break;
 				}
@@ -89,7 +90,14 @@
 		public function onValueChange(event:Event)
 		{
 			//Util.playFocus();
-			func.call(null, id, event.target.value - valueMod);
+			switch(this.type) {
+				case Data.VALUE_INT:
+					functions.valueInt(id, event.target.value - valueMod);
+					break;
+				case Data.VALUE_FLOAT:
+					functions.valueFloat(id, event.target.value - valueMod);
+					break;
+			}
 			updateValue(false);
 		}
 		
@@ -98,9 +106,9 @@
 			var menuValue:Number;
 			switch (valueType)
 			{
-				case INT:
+				case Data.VALUE_INT:
 				{
-					menuValue =  parseInt(value.text);
+					menuValue = parseInt(value.text);
 					if (!isNaN(menuValue)) {
 						var parsedInt:int = int(menuValue);
 						func.call(null, id, parsedInt);
@@ -108,7 +116,7 @@
 					}
 					break;
 				}
-				case FLOAT:
+				case Data.VALUE_FLOAT:
 				{
 					menuValue = parseFloat(value.text);
 					if (!isNaN(menuValue)) {
@@ -153,13 +161,15 @@
 			dispatchEvent(new EntryEvent(id, EntryEvent.OUT));
 		}
 		
-		public function update(id:int, func:Function, func2:Function, func3:Function)
+		public function update(id:int, type:int, xPos:int, yPos:int)
 		{	
 			this.visible = true;
+			this.type = type;
 			this.id = id;
-			this.func = func;
-			this.func2 = func2;
-			this.func3 = func3;
+			this.x = xPos;
+			this.y = yPos;
+			
+			updateType();
 		}
 		
 		public function clear()
@@ -178,35 +188,35 @@
 		{
 			switch (type)
 			{
-				case LIST:
-				case ADJUSTMENT:
-				case FOLDER:
+				case Data.ITEM_LIST:
+				case Data.ITEM_ADJUSTMENT:
+				case Data.ITEM_FOLDER:
 					return;
-				case DRAG:
+				case Data.ITEM_TOUCH:
 					if (!value.visible) return;
 			}
 			var menuValue;
 			switch (valueType)
 			{
-				case INT:
-					menuValue = int(Data.menuValues[id]);
+				case Data.VALUE_INT:
+					menuValue = int(Data.getInt(id));
 					value.text = menuValue;
 					break;
-				case FLOAT:
-					menuValue = Data.menuValues[id];
+				case Data.VALUE_FLOAT:
+					menuValue = Data.getFloat(id);
 					value.text = menuValue.toFixed(valueFixed);
 					break;
 			}
 			switch (type)
 			{
-				case SLIDER:
+				case Data.ITEM_SLIDER:
 					if (position) 
 					{
 						slider.position = menuValue + valueMod;
 					}
 					break;
-				case CHECKBOX:
-					checkbox.setCheck(Data.menuValues[id]);
+				case Data.ITEM_CHECKBOX:
+					checkbox.setCheck(Data.getBool(id));
 					break;
 			}
 		}
@@ -234,23 +244,35 @@
 			}
 		}
 		
-		public function updateList(name:String)
+		public function updateType()
+		{
+			switch(this.type) {
+				case Data.ITEM_LIST: updateList(); break;
+				case Data.ITEM_SLIDER: updateSlider(); break;
+				case Data.ITEM_CHECKBOX: updateCheckbox(); break;
+				case Data.ITEM_ADJUSTMENT: updateAdjustment(); break;
+				case Data.ITEM_TOUCH: updateTouch(); break;
+				case Data.ITEM_FOLDER: updateFolder(); break;
+				default: disable();
+			}
+		}
+		
+		public function updateList()
 		{
 			setSelectable(true);
-			setText(0, 0, 254, name);
+			setText(0, 0, 254, Data.getName(this.id));
 			slider.visible = false;
 			value.visible = false;
 			checkbox.disable();
 			checkbox2.disable();
 			Util.setRect(background, -2, -3.25, 290, 32);
-			this.type = LIST;
-			this.valueType = NONE;
+			this.valueType = Data.NONE;
 		}
 		
-		public function updateSlider(name:String, valueType:int)
+		public function updateSlider()
 		{
 			setSelectable(false);
-			setText(0, 0, 254, name);
+			setText(0, 0, 254, Data.getName(this.id));
 			slider.visible = true;
 			value.visible = true;
 			value.x = 219.7;
@@ -259,111 +281,110 @@
 			checkbox.disable();
 			checkbox2.disable();
 			Util.setRect(background, -2, -2, 223, 29);
-			this.type = SLIDER;
-			this.valueType = valueType;
+			
+			var data:Object = Data.getSlider(this.id);
+			
+			//there is a bug with values less than 0 so we modify the values to be 0 and above
+			this.valueMod = (data.min < 0 ? -data.min : 0)
+			slider.minimum = data.min + this.valueMod;
+			slider.maximum = data.max + this.valueMod;
+			
+			slider.StepSize = data.step;
+			slider.StepSizePad = data.stepKey;
+			
+			this.valueType = data.type;
+			if (this.valueType == Data.VALUE_NONE) {
+				this.valueType = Data.VALUE_INT; // force to int if none
+			} else if (this.valueType == Data.VALUE_FLOAT) {
+				if (data.fixed) {
+					this.valueFixed = data.fixed;
+				} else {
+					this.valueFixed = 4;
+				}
+			}
+			
 			updateValue(true); 
 		}
 		
-		public function updateCheckbox(name:String, checked:Boolean)
+		public function updateCheckbox()
 		{
 			setSelectable(true);
-			setText(31, 0, 254, name);
+			setText(31, 0, 254, Data.getName(this.id));
 			slider.visible = false;
 			value.visible = false;
-			checkbox.init(1, this.id, Checkbox.CHECK, false, func);
-			checkbox.setCheck(checked);
+			checkbox.init(1, this.id, Data.CHECKBOX_CHECK, false);
+			checkbox.setCheck(Data.getBool(this.id));
 			checkbox2.disable();
 			Util.setRect(background, 31, -3.25, 258, 32);
-			this.type = CHECKBOX;
-			this.valueType = NONE;
+			this.valueType = Data.NONE;
 		}
 		
-		public function updateAdjustment(name:String) 
+		public function updateAdjustment() 
 		{
 			setSelectable(true);
-			setText(0, 0, 218, name);
+			setText(0, 0, 218, Data.getName(this.id));
 			slider.visible = false;
 			value.visible = false;
-			checkbox.init(222, this.id, Checkbox.SETTINGS, true, func2);
-			checkbox2.init(256, this.id, Checkbox.RECYCLE, true, func3);
 			Util.setRect(background, -2, -3.25, 218, 32);
-			this.type = ADJUSTMENT;
-			this.valueType = NONE;
+			this.valueType = Data.NONE;
+			
+			if (Data.locals.order) {
+				checkbox.init(222, this.id, Data.CHECKBOX_SETTINGS, true);
+				checkbox2.init(256, this.id, Data.CHECKBOX_RECYCLE, true);
+			} else {
+				checkbox.init(222, this.id, Data.CHECKBOX_DOWN, true);
+				checkbox2.init(256, this.id, Data.CHECKBOX_UP, true);
+			}
 		}
 		
-		public function updateAdjustmentOrder(name:String) 
-		{
-			setSelectable(true);
-			setText(0, 0, 218, name);
-			slider.visible = false;
-			value.visible = false;
-			checkbox.init(222, this.id, Checkbox.DOWN, true, func2);
-			checkbox2.init(256, this.id, Checkbox.UP, true, func3);
-			Util.setRect(background, -2, -3.25, 218, 32);
-			this.type = ADJUSTMENT;
-			this.valueType = NONE;
-		}
-		
-		public function updateDrag(name:String)
+		public function updateTouch()
 		{
 			setSelectable(false);
-			setText(31, 0, 254, name)
+			setText(31, 0, 254, Data.getName(this.id));
 			slider.visible = false;
-			value.visible = false;
-			checkbox.init(1, this.id, Checkbox.DRAG, false, func);
+			checkbox.init(1, this.id, Data.CHECKBOX_TOUCH, false);
 			checkbox2.disable();
 			Util.setRect(background, 31, -3.25, 188, 32);
-			this.type = DRAG;
-			this.valueType = NONE;
+			
+			var data:Object = Data.getTouch(this.id);
+			this.valueType = data.type;
+			this.value.visible = data.visible;
+			
+			if (this.value.visible) {
+				value.visible = true;
+				value.x = 219.7;
+				value.y = 1;
+				valueSelectable = false;
+				valueMod = 0;
+				checkbox.increment = data.step;
+				checkbox.mod = data.mod;
+				
+				if (data.fixed) {
+					this.valueFixed = data.fixed;
+				} else {
+					this.valueFixed = 2;
+				}
+					
+				updateValue(false)
+			}
 		}
 		
-		public function updateDragValue(name:String)
-		{
-			setSelectable(false);
-			setText(31, 0, 254, name)
-			slider.visible = false;
-			value.visible = true;
-			value.x = 219.7;
-			value.y = 1;
-			valueSelectable = false;
-			valueMod = 0;
-			valueFixed = 2;
-			checkbox.init(1, this.id, Checkbox.DRAG, false, func);
-			checkbox2.disable();
-			Util.setRect(background, 31, -3.25, 188, 32);
-			this.type = DRAG;
-			this.valueType = FLOAT;
-			updateValue(false);
-		}
-		
-		public function updateFolder(name:String)
+		public function updateFolder()
 		{
 			setSelectable(true);
-			setText(33, 0, 254, name);
+			setText(33, 0, 254, Data.getName(this.id));
 			slider.visible = false;
 			value.visible = false;
-			checkbox.init(3, this.id, Checkbox.FOLDER, false, func);
+			checkbox.init(3, this.id, Data.CHECKBOX_FOLDER, false);
 			checkbox.setCheck(selected);
 			checkbox2.disable();
 			Util.setRect(background, -2, -3.25, 290, 32);
-			this.type = FOLDER;
-			this.valueType = NONE;
-		}
-		
-		public function updateSliderData(min:Number, max:Number, step:Number, stepPad:Number, mod:Number, fixed:int = 0)
-		{
-			slider.minimum = min;
-			slider.maximum = max;
-			slider.StepSize = step;
-			slider.StepSizePad = stepPad;
-			this.valueMod = mod;
-			this.valueFixed = fixed;
+			this.valueType = Data.NONE;
 		}
 		
 		public function disable()
 		{
 			this.visible = false;
-			this.func = null;
 			this.selectable = false;
 			//move to force mouse out
 			this.y = -100;

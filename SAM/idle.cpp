@@ -5,7 +5,9 @@
 #include "f4se/GameReferences.h"
 #include "f4se/GameRTTI.h"
 
+#include "constants.h"
 #include "sam.h"
+#include "pose.h"
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
 
@@ -14,6 +16,8 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <filesystem>
+#include <fstream>
 
 std::unordered_map<UInt32, IdleData> raceIdleData;
 
@@ -22,6 +26,11 @@ IdleMenuMap idleMenus;
 bool idleMenuLoaded = false;
 
 std::unordered_map<const char*, const char*> idlePathToEditorIdMap;
+
+std::vector<std::string> idleFavorites;
+
+typedef TESForm* (*_GetFormByEditorId)(const char* edid);
+RelocAddr<_GetFormByEditorId> GetFormByEditorId(0x152EB0);
 
 std::unordered_set<std::string> idleExclude = {
 	"Fallout4.esm",
@@ -423,4 +432,90 @@ const char* GetCurrentIdleName() {
 	}
 
 	return nullptr;
+}
+
+void GetIdleFavorites(GFxResult& result)
+{
+	result.CreateMenuItems();
+
+	//natural sort them
+	NaturalSortedSet set;
+	for (auto& item : idleFavorites) {
+		set.insert(item);
+	}
+
+	for (auto& item : set) {
+		result.PushItem(item.c_str(), &GFxValue(item.c_str()));
+	}
+}
+
+void AppendIdleFavorite(GFxResult& result)
+{
+	const char* idleName = GetCurrentIdleName();
+	if (!idleName)
+		return result.SetError("Idle name could not be found");
+
+	TESForm* form = GetFormByEditorId(idleName);
+	if (!form)
+		return result.SetError("Could not find form for idle");
+
+	std::ofstream stream;
+	if (!SAF::OpenOutFileStream(IDLE_FAVORITES, &stream))
+		return;
+
+	stream << idleName << std::endl;
+	stream.close();
+
+	idleFavorites.push_back(idleName);
+}
+
+void PlayIdleFavorite(GFxResult& result, const char* idleName)
+{
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	TESForm* form = GetFormByEditorId(idleName);
+	if (!form)
+		return result.SetError("Could not find form for idle");
+
+	TESIdleForm* idleForm = DYNAMIC_CAST(form, TESForm, TESIdleForm);
+	if (!idleForm)
+		return result.SetError("Could not find form for idle");
+
+	Actor* actor = (Actor*)selected.refr;
+	if (!PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0))
+		return result.SetError("Play idle request failed");
+}
+
+bool LoadIdleFavorites()
+{
+	if (!std::filesystem::exists(IDLE_FAVORITES)) {
+		IFileStream::MakeAllDirs(IDLE_FAVORITES);
+		IFileStream file;
+		if (!file.Create(IDLE_FAVORITES)) {
+			_Log("Failed to create idle favorites: ", IDLE_FAVORITES);
+			return false;
+		}
+		file.Close();
+	}
+
+	std::ifstream stream;
+	stream.open(IDLE_FAVORITES);
+
+	if (stream.fail()) {
+		_Log("Failed to read idle favorites: ", IDLE_FAVORITES);
+		return false;
+	}
+
+	idleFavorites.clear();
+
+	std::string line;
+	while (std::getline(stream, line, '\n'))
+	{
+		if (line.back() == '\r')
+			line = line.substr(0, line.size() - 1);
+		idleFavorites.push_back(line);
+	}
+
+	return true;
 }

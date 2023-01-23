@@ -1,0 +1,11 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "func": "GetAdjustmentNegation"
+    },
+    "set": {
+        "type": "sam",
+        "func": "SetAdjustmentNegation"
+    }
+}

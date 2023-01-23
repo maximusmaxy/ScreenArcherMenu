@@ -2,9 +2,9 @@
 
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
+#include "f4se/InputMap.h"
 
-#include "InputMap.h"
-
+#include "constants.h"
 #include "sam.h"
 
 UInt32 inputRepeat[InputMap::kMaxMacros] = { 0 };

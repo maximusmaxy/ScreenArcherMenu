@@ -1,0 +1,14 @@
+{
+    "type": "folder",
+    "update": true,
+    "folder": {
+        "type": "full",
+        "path": "Data\\F4SE\\Plugins\\SAF\\Poses",
+        "ext": ".json",
+        "pop": false,
+        "func": {
+            "type": "sam",
+            "func": "LoadPose"
+        }
+    }
+}

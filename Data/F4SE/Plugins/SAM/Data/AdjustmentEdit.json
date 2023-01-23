@@ -1,0 +1,74 @@
+{
+    "type": "mixed",
+    "items": [
+        {
+            "name": "$SAM_Scale",
+            "type": "slider",
+            "slider": {
+                "type": "int",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "stepkey": 1
+            }
+        },
+        {
+            "name": "$SAM_SaveAdjustment",
+            "type": "list",
+            "func": {
+                "type": "entry",
+                "entry": {
+                    "func": {
+                        "type": "sam",
+                        "func": "SaveAdjustment"
+                    }
+                }
+            }
+        },
+        {
+            "name": "$SAM_RenameAdjustment",
+            "type": "list",
+            "func": {
+                "type": "entry",
+                "entry": {
+                    "func": {
+                        "type": "sam",
+                        "func": "RenameAdjustment"
+                    }
+                }
+            }
+        },
+        {
+            "name": "$SAM_ResetAdjustment",
+            "type": "list",
+            "func": {
+                "type": "sam",
+                "name": "ResetAdjustment"
+            }
+        },
+        {
+            "name": "$SAM_MergeAdjustment",
+            "type": "list",
+            "func": {
+                "type": "sam",
+                "name": "MergeAdjustmentDown"
+            }
+        },
+        {
+            "name": "$SAM_MirrorAdjustment",
+            "type": "list",
+            "func": {
+                "type": "sam",
+                "name": "MirrorAdjustment"
+            }
+        },
+        {
+            "name": "$SAM_NegateAdjustment",
+            "type": "list",
+            "func": {
+                "type": "menu",
+                "name": "AdjustmentNegate"
+            }
+        }
+    ]
+}

@@ -1,0 +1,23 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetMatSwaps",
+        "args": [
+            {
+                "type": "var",
+                "name": "matSwapEquip"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetMatSwap",
+        "args": [
+            {
+                "type": "var",
+                "name": "matSwapEquip"
+            }
+        ]
+    }
+}

@@ -1,0 +1,898 @@
+Mod	SettleObjExpandPack.esp
+Type	lights
+
+Category	Omni
+113de1	Large White Omni Bright
+113de2	Large Warm Omni Bright
+113de3	Large Cool Omni Bright
+113de4	Large Blue Omni Bright
+113de5	Large Green Omni Bright
+113de6	Large Purple Omni Bright
+113de7	Large Red Omni Bright
+113de8	Large Orange Omni Bright
+113de9	Large Yellow Omni Bright
+113dea	Large White Omni Dim
+113deb	Large Warm Omni Dim
+113dec	Large Cool Omni Dim
+113ded	Large Blue Omni Dim
+113dee	Large Green Omni Dim
+113def	Large Purple Omni Dim
+113df0	Large Red Omni Dim
+113df1	Large Orange Omni Dim
+113df2	Large Yellow Omni Dim
+113dcf	Mid White Omni Bright
+113dd0	Mid Warm Omni Bright
+113dd1	Mid Cool Omni Bright
+113dd2	Mid Blue Omni Bright
+113dd3	Mid Green Omni Bright
+113dd4	Mid Purple Omni Bright
+113dd5	Mid Red Omni Bright
+113dd6	Mid Orange Omni Bright
+113dd7	Mid Yellow Omni Bright
+113dd8	Mid White Omni Dim
+113dd9	Mid Warm Omni Dim
+113dda	Mid Cool Omni Dim
+113ddb	Mid Blue Omni Dim
+113ddc	Mid Green Omni Dim
+113ddd	Mid Purple Omni Dim
+113dde	Mid Red Omni Dim
+113ddf	Mid Orange Omni Dim
+113de0	Mid Yellow Omni Dim
+113dbd	Small White Omni Bright
+113dbe	Small Warm Omni Bright
+113dbf	Small Cool Omni Bright
+113dc0	Small Blue Omni Bright
+113dc1	Small Green Omni Bright
+113dc2	Small Purple Omni Bright
+113dc3	Small Red Omni Bright
+113dc4	Small Orange Omni Bright
+113dc5	Small Yellow Omni Bright
+113dc6	Small White Omni Dim
+113dc7	Small Warm Omni Dim
+113dc8	Small Cool Omni Dim
+113dc9	Small Blue Omni Dim
+113dca	Small Green Omni Dim
+113dcb	Small Purple Omni Dim
+113dcc	Small Red Omni Dim
+113dcd	Small Orange Omni Dim
+113dce	Small Yellow Omni Dim
+
+Category	Omni Shadow
+113cdd	Large White Omni Bright
+113cde	Large Warm Omni Bright
+113cdf	Large Cool Omni Bright
+113ce0	Large Blue Omni Bright
+113ce1	Large Green Omni Bright
+113ce2	Large Purple Omni Bright
+113ce3	Large Red Omni Bright
+113ce4	Large Orange Omni Bright
+113ce5	Large Yellow Omni Bright
+113ce6	Large White Omni Dim
+113ce7	Large Warm Omni Dim
+113ce8	Large Cool Omni Dim
+113ce9	Large Blue Omni Dim
+113cea	Large Green Omni Dim
+113ceb	Large Purple Omni Dim
+113cec	Large Red Omni Dim
+113ced	Large Orange Omni Dim
+113cee	Large Yellow Omni Dim
+113ccb	Mid White Omni Bright
+113ccc	Mid Warm Omni Bright
+113ccd	Mid Cool Omni Bright
+113cce	Mid Blue Omni Bright
+113ccf	Mid Green Omni Bright
+113cd0	Mid Purple Omni Bright
+113cd1	Mid Red Omni Bright
+113cd2	Mid Orange Omni Bright
+113cd3	Mid Yellow Omni Bright
+113cd4	Mid White Omni Dim
+113cd5	Mid Warm Omni Dim
+113cd6	Mid Cool Omni Dim
+113cd7	Mid Blue Omni Dim
+113cd8	Mid Green Omni Dim
+113cd9	Mid Purple Omni Dim
+113cda	Mid Red Omni Dim
+113cdb	Mid Orange Omni Dim
+113cdc	Mid Yellow Omni Dim
+10b3d2	Small White Omni Bright
+10f825	Small Warm Omni Bright
+10f826	Small Cool Omni Bright
+10f827	Small Blue Omni Bright
+113c79	Small Green Omni Bright
+113c7a	Small Purple Omni Bright
+113c7b	Small Red Omni Bright
+113c7c	Small Orange Omni Bright
+113c7d	Small Yellow Omni Bright
+113c7e	Small White Omni Dim
+113c7f	Small Warm Omni Dim
+113c80	Small Cool Omni Dim
+113c81	Small Blue Omni Dim
+113c82	Small Green Omni Dim
+113c83	Small Purple Omni Dim
+113c84	Small Red Omni Dim
+113cc9	Small Orange Omni Dim
+113cca	Small Yellow Omni Dim
+
+Category	Hemispheric
+113e17	Large White Hemispheric Bright
+113e18	Large Warm Hemispheric Bright
+113e19	Large Cool Hemispheric Bright
+113e1a	Large Blue Hemispheric Bright
+113e1b	Large Green Hemispheric Bright
+113e1c	Large Purple Hemispheric Bright
+113e1d	Large Red Hemispheric Bright
+113e1e	Large Orange Hemispheric Bright
+113e1f	Large Yellow Hemispheric Bright
+113e20	Large White Hemispheric Dim
+113e21	Large Warm Hemispheric Dim
+113e22	Large Cool Hemispheric Dim
+113e23	Large Blue Hemispheric Dim
+113e24	Large Green Hemispheric Dim
+113e25	Large Purple Hemispheric Dim
+113e26	Large Red Hemispheric Dim
+113e27	Large Orange Hemispheric Dim
+113e28	Large Yellow Hemispheric Dim
+113e05	Mid White Hemispheric Bright
+113e06	Mid Warm Hemispheric Bright
+113e07	Mid Cool Hemispheric Bright
+113e08	Mid Blue Hemispheric Bright
+113e09	Mid Green Hemispheric Bright
+113e0a	Mid Purple Hemispheric Bright
+113e0b	Mid Red Hemispheric Bright
+113e0c	Mid Orange Hemispheric Bright
+113e0d	Mid Yellow Hemispheric Bright
+113e0e	Mid White Hemispheric Dim
+113e0f	Mid Warm Hemispheric Dim
+113e10	Mid Cool Hemispheric Dim
+113e11	Mid Blue Hemispheric Dim
+113e12	Mid Green Hemispheric Dim
+113e13	Mid Purple Hemispheric Dim
+113e14	Mid Red Hemispheric Dim
+113e15	Mid Orange Hemispheric Dim
+113e16	Mid Yellow Hemispheric Dim
+113df3	Small White Hemispheric Bright
+113df4	Small Warm Hemispheric Bright
+113df5	Small Cool Hemispheric Bright
+113df6	Small Blue Hemispheric Bright
+113df7	Small Green Hemispheric Bright
+113df8	Small Purple Hemispheric Bright
+113df9	Small Red Hemispheric Bright
+113dfa	Small Orange Hemispheric Bright
+113dfb	Small Yellow Hemispheric Bright
+113dfc	Small White Hemispheric Dim
+113dfd	Small Warm Hemispheric Dim
+113dfe	Small Cool Hemispheric Dim
+113dff	Small Blue Hemispheric Dim
+113e00	Small Green Hemispheric Dim
+113e01	Small Purple Hemispheric Dim
+113e02	Small Red Hemispheric Dim
+113e03	Small Orange Hemispheric Dim
+113e04	Small Yellow Hemispheric Dim
+
+Category	Hemispheric Shadow
+113d1b	Large White Hemispheric Bright
+113d1c	Large Warm Hemispheric Bright
+113d1d	Large Cool Hemispheric Bright
+113d1e	Large Blue Hemispheric Bright
+113d1f	Large Green Hemispheric Bright
+113d20	Large Purple Hemispheric Bright
+113d21	Large Red Hemispheric Bright
+113d22	Large Orange Hemispheric Bright
+113d23	Large Yellow Hemispheric Bright
+113d24	Large White Hemispheric Dim
+113d25	Large Warm Hemispheric Dim
+113d26	Large Cool Hemispheric Dim
+113d27	Large Blue Hemispheric Dim
+113d28	Large Green Hemispheric Dim
+113d29	Large Purple Hemispheric Dim
+113d2a	Large Red Hemispheric Dim
+113d2b	Large Orange Hemispheric Dim
+113d2c	Large Yellow Hemispheric Dim
+113d09	Mid White Hemispheric Bright
+113d0a	Mid Warm Hemispheric Bright
+113d0b	Mid Cool Hemispheric Bright
+113d0c	Mid Blue Hemispheric Bright
+113d0d	Mid Green Hemispheric Bright
+113d0e	Mid Purple Hemispheric Bright
+113d0f	Mid Red Hemispheric Bright
+113d10	Mid Orange Hemispheric Bright
+113d11	Mid Yellow Hemispheric Bright
+113d12	Mid White Hemispheric Dim
+113d13	Mid Warm Hemispheric Dim
+113d14	Mid Cool Hemispheric Dim
+113d15	Mid Blue Hemispheric Dim
+113d16	Mid Green Hemispheric Dim
+113d17	Mid Purple Hemispheric Dim
+113d18	Mid Red Hemispheric Dim
+113d19	Mid Orange Hemispheric Dim
+113d1a	Mid Yellow Hemispheric Dim
+113cf7	Small White Hemispheric Bright
+113cf8	Small Warm Hemispheric Bright
+113cf9	Small Cool Hemispheric Bright
+113cfa	Small Blue Hemispheric Bright
+113cfb	Small Green Hemispheric Bright
+113cfc	Small Purple Hemispheric Bright
+113cfd	Small Red Hemispheric Bright
+113cfe	Small Orange Hemispheric Bright
+113cff	Small Yellow Hemispheric Bright
+113d00	Small White Hemispheric Dim
+113d01	Small Warm Hemispheric Dim
+113d02	Small Cool Hemispheric Dim
+113d03	Small Blue Hemispheric Dim
+113d04	Small Green Hemispheric Dim
+113d05	Small Purple Hemispheric Dim
+113d06	Small Red Hemispheric Dim
+113d07	Small Orange Hemispheric Dim
+113d08	Small Yellow Hemispheric Dim
+
+Category	Spotlight Wide
+113e4d	Large White Spotlight Wide Bright
+113e4e	Large Warm Spotlight Wide Bright
+113e4f	Large Cool Spotlight Wide Bright
+113e50	Large Blue Spotlight Wide Bright
+113e51	Large Green Spotlight Wide Bright
+113e52	Large Purple Spotlight Wide Bright
+113e53	Large Red Spotlight Wide Bright
+113e54	Large Orange Spotlight Wide Bright
+113e55	Large Yellow Spotlight Wide Bright
+113e56	Large White Spotlight Wide Dim
+113e57	Large Warm Spotlight Wide Dim
+113e58	Large Cool Spotlight Wide Dim
+113e59	Large Blue Spotlight Wide Dim
+113e5a	Large Green Spotlight Wide Dim
+113e5b	Large Purple Spotlight Wide Dim
+113e5c	Large Red Spotlight Wide Dim
+113e5d	Large Orange Spotlight Wide Dim
+113e5e	Large Yellow Spotlight Wide Dim
+113e3b	Mid White Spotlight Wide Bright
+113e3c	Mid Warm Spotlight Wide Bright
+113e3d	Mid Cool Spotlight Wide Bright
+113e3e	Mid Blue Spotlight Wide Bright
+113e3f	Mid Green Spotlight Wide Bright
+113e40	Mid Purple Spotlight Wide Bright
+113e41	Mid Red Spotlight Wide Bright
+113e42	Mid Orange Spotlight Wide Bright
+113e43	Mid Yellow Spotlight Wide Bright
+113e44	Mid White Spotlight Wide Dim
+113e45	Mid Warm Spotlight Wide Dim
+113e46	Mid Cool Spotlight Wide Dim
+113e47	Mid Blue Spotlight Wide Dim
+113e48	Mid Green Spotlight Wide Dim
+113e49	Mid Purple Spotlight Wide Dim
+113e4a	Mid Red Spotlight Wide Dim
+113e4b	Mid Orange Spotlight Wide Dim
+113e4c	Mid Yellow Spotlight Wide Dim
+113e29	Small White Spotlight Wide Bright
+113e2a	Small Warm Spotlight Wide Bright
+113e2b	Small Cool Spotlight Wide Bright
+113e2c	Small Blue Spotlight Wide Bright
+113e2d	Small Green Spotlight Wide Bright
+113e2e	Small Purple Spotlight Wide Bright
+113e2f	Small Red Spotlight Wide Bright
+113e30	Small Orange Spotlight Wide Bright
+113e31	Small Yellow Spotlight Wide Bright
+113e32	Small White Spotlight Wide Dim
+113e33	Small Warm Spotlight Wide Dim
+113e34	Small Cool Spotlight Wide Dim
+113e35	Small Blue Spotlight Wide Dim
+113e36	Small Green Spotlight Wide Dim
+113e37	Small Purple Spotlight Wide Dim
+113e38	Small Red Spotlight Wide Dim
+113e39	Small Orange Spotlight Wide Dim
+113e3a	Small Yellow Spotlight Wide Dim
+
+Category	Spotlight Wide Shadow
+113d5d	Large White Spotlight Wide Bright
+113d5e	Large Warm Spotlight Wide Bright
+113d5f	Large Cool Spotlight Wide Bright
+113d60	Large Blue Spotlight Wide Bright
+113d61	Large Green Spotlight Wide Bright
+113d62	Large Purple Spotlight Wide Bright
+113d63	Large Red Spotlight Wide Bright
+113d64	Large Orange Spotlight Wide Bright
+113d65	Large Yellow Spotlight Wide Bright
+113d66	Large White Spotlight Wide Dim
+113d67	Large Warm Spotlight Wide Dim
+113d68	Large Cool Spotlight Wide Dim
+113d69	Large Blue Spotlight Wide Dim
+113d6a	Large Green Spotlight Wide Dim
+113d6b	Large Purple Spotlight Wide Dim
+113d6c	Large Red Spotlight Wide Dim
+113d6d	Large Orange Spotlight Wide Dim
+113d6e	Large Yellow Spotlight Wide Dim
+113d4b	Mid White Spotlight Wide Bright
+113d4c	Mid Warm Spotlight Wide Bright
+113d4d	Mid Cool Spotlight Wide Bright
+113d4e	Mid Blue Spotlight Wide Bright
+113d4f	Mid Green Spotlight Wide Bright
+113d50	Mid Purple Spotlight Wide Bright
+113d51	Mid Red Spotlight Wide Bright
+113d52	Mid Orange Spotlight Wide Bright
+113d53	Mid Yellow Spotlight Wide Bright
+113d54	Mid White Spotlight Wide Dim
+113d55	Mid Warm Spotlight Wide Dim
+113d56	Mid Cool Spotlight Wide Dim
+113d57	Mid Blue Spotlight Wide Dim
+113d58	Mid Green Spotlight Wide Dim
+113d59	Mid Purple Spotlight Wide Dim
+113d5a	Mid Red Spotlight Wide Dim
+113d5b	Mid Orange Spotlight Wide Dim
+113d5c	Mid Yellow Spotlight Wide Dim
+113d39	Small White Spotlight Wide Bright
+113d3a	Small Warm Spotlight Wide Bright
+113d3b	Small Cool Spotlight Wide Bright
+113d3c	Small Blue Spotlight Wide Bright
+113d3d	Small Green Spotlight Wide Bright
+113d3e	Small Purple Spotlight Wide Bright
+113d3f	Small Red Spotlight Wide Bright
+113d40	Small Orange Spotlight Wide Bright
+113d41	Small Yellow Spotlight Wide Bright
+113d42	Small White Spotlight Wide Dim
+113d43	Small Warm Spotlight Wide Dim
+113d44	Small Cool Spotlight Wide Dim
+113d45	Small Blue Spotlight Wide Dim
+113d46	Small Green Spotlight Wide Dim
+113d47	Small Purple Spotlight Wide Dim
+113d48	Small Red Spotlight Wide Dim
+113d49	Small Orange Spotlight Wide Dim
+113d4a	Small Yellow Spotlight Wide Dim
+
+Category	Spotlight Narrow
+113e83	Large White Spotlight Narrow Bright
+113e84	Large Warm Spotlight Narrow Bright
+113e85	Large Cool Spotlight Narrow Bright
+113e86	Large Blue Spotlight Narrow Bright
+113e87	Large Green Spotlight Narrow Bright
+113e88	Large Purple Spotlight Narrow Bright
+113e89	Large Red Spotlight Narrow Bright
+113e8a	Large Orange Spotlight Narrow Bright
+113e8b	Large Yellow Spotlight Narrow Bright
+113e8c	Large White Spotlight Narrow Dim
+113e8d	Large Warm Spotlight Narrow Dim
+113e8e	Large Cool Spotlight Narrow Dim
+113e8f	Large Blue Spotlight Narrow Dim
+113e90	Large Green Spotlight Narrow Dim
+113e91	Large Purple Spotlight Narrow Dim
+113e92	Large Red Spotlight Narrow Dim
+113e93	Large Orange Spotlight Narrow Dim
+113e94	Large Yellow Spotlight Narrow Dim
+113e71	Mid White Spotlight Narrow Bright
+113e72	Mid Warm Spotlight Narrow Bright
+113e73	Mid Cool Spotlight Narrow Bright
+113e74	Mid Blue Spotlight Narrow Bright
+113e75	Mid Green Spotlight Narrow Bright
+113e76	Mid Purple Spotlight Narrow Bright
+113e77	Mid Red Spotlight Narrow Bright
+113e78	Mid Orange Spotlight Narrow Bright
+113e79	Mid Yellow Spotlight Narrow Bright
+113e7a	Mid White Spotlight Narrow Dim
+113e7b	Mid Warm Spotlight Narrow Dim
+113e7c	Mid Cool Spotlight Narrow Dim
+113e7d	Mid Blue Spotlight Narrow Dim
+113e7e	Mid Green Spotlight Narrow Dim
+113e7f	Mid Purple Spotlight Narrow Dim
+113e80	Mid Red Spotlight Narrow Dim
+113e81	Mid Orange Spotlight Narrow Dim
+113e82	Mid Yellow Spotlight Narrow Dim
+113e5f	Small White Spotlight Narrow Bright
+113e60	Small Warm Spotlight Narrow Bright
+113e61	Small Cool Spotlight Narrow Bright
+113e62	Small Blue Spotlight Narrow Bright
+113e63	Small Green Spotlight Narrow Bright
+113e64	Small Purple Spotlight Narrow Bright
+113e65	Small Red Spotlight Narrow Bright
+113e66	Small Orange Spotlight Narrow Bright
+113e67	Small Yellow Spotlight Narrow Bright
+113e68	Small White Spotlight Narrow Dim
+113e69	Small Warm Spotlight Narrow Dim
+113e6a	Small Cool Spotlight Narrow Dim
+113e6b	Small Blue Spotlight Narrow Dim
+113e6c	Small Green Spotlight Narrow Dim
+113e6d	Small Purple Spotlight Narrow Dim
+113e6e	Small Red Spotlight Narrow Dim
+113e6f	Small Orange Spotlight Narrow Dim
+113e70	Small Yellow Spotlight Narrow Dim
+
+Category	Spotlight Narrow Shadow
+113d93	Large White Spotlight Narrow Bright
+113d94	Large Warm Spotlight Narrow Bright
+113d95	Large Cool Spotlight Narrow Bright
+113d96	Large Blue Spotlight Narrow Bright
+113d97	Large Green Spotlight Narrow Bright
+113d98	Large Purple Spotlight Narrow Bright
+113d99	Large Red Spotlight Narrow Bright
+113d9a	Large Orange Spotlight Narrow Bright
+113d9b	Large Yellow Spotlight Narrow Bright
+113d9c	Large White Spotlight Narrow Dim
+113d9d	Large Warm Spotlight Narrow Dim
+113d9e	Large Cool Spotlight Narrow Dim
+113d9f	Large Blue Spotlight Narrow Dim
+113da0	Large Green Spotlight Narrow Dim
+113da1	Large Purple Spotlight Narrow Dim
+113da2	Large Red Spotlight Narrow Dim
+113da3	Large Orange Spotlight Narrow Dim
+113da4	Large Yellow Spotlight Narrow Dim
+113d81	Mid White Spotlight Narrow Bright
+113d82	Mid Warm Spotlight Narrow Bright
+113d83	Mid Cool Spotlight Narrow Bright
+113d84	Mid Blue Spotlight Narrow Bright
+113d85	Mid Green Spotlight Narrow Bright
+113d86	Mid Purple Spotlight Narrow Bright
+113d87	Mid Red Spotlight Narrow Bright
+113d88	Mid Orange Spotlight Narrow Bright
+113d89	Mid Yellow Spotlight Narrow Bright
+113d8a	Mid White Spotlight Narrow Dim
+113d8b	Mid Warm Spotlight Narrow Dim
+113d8c	Mid Cool Spotlight Narrow Dim
+113d8d	Mid Blue Spotlight Narrow Dim
+113d8e	Mid Green Spotlight Narrow Dim
+113d8f	Mid Purple Spotlight Narrow Dim
+113d90	Mid Red Spotlight Narrow Dim
+113d91	Mid Orange Spotlight Narrow Dim
+113d92	Mid Yellow Spotlight Narrow Dim
+113d6f	Small White Spotlight Narrow Bright
+113d70	Small Warm Spotlight Narrow Bright
+113d71	Small Cool Spotlight Narrow Bright
+113d72	Small Blue Spotlight Narrow Bright
+113d73	Small Green Spotlight Narrow Bright
+113d74	Small Purple Spotlight Narrow Bright
+113d75	Small Red Spotlight Narrow Bright
+113d76	Small Orange Spotlight Narrow Bright
+113d77	Small Yellow Spotlight Narrow Bright
+113d78	Small White Spotlight Narrow Dim
+113d79	Small Warm Spotlight Narrow Dim
+113d7a	Small Cool Spotlight Narrow Dim
+113d7b	Small Blue Spotlight Narrow Dim
+113d7c	Small Green Spotlight Narrow Dim
+113d7d	Small Purple Spotlight Narrow Dim
+113d7e	Small Red Spotlight Narrow Dim
+113d7f	Small Orange Spotlight Narrow Dim
+113d80	Small Yellow Spotlight Narrow Dim
+
+Category	Special
+118389	Large White Special Bright
+11838a	Large Warm Special Bright
+11838b	Large Cool Special Bright
+11838c	Large Blue Special Bright
+11838d	Large Green Special Bright
+11838e	Large Purple Special Bright
+11838f	Large Red Special Bright
+118390	Large Orange Special Bright
+118391	Large Yellow Special Bright
+118392	Large White Special Dim
+118393	Large Warm Special Dim
+118394	Large Cool Special Dim
+118395	Large Blue Special Dim
+118396	Large Green Special Dim
+118397	Large Purple Special Dim
+118398	Large Red Special Dim
+118399	Large Orange Special Dim
+11839a	Large Yellow Special Dim
+118377	Mid White Special Bright
+118378	Mid Warm Special Bright
+118379	Mid Cool Special Bright
+11837a	Mid Blue Special Bright
+11837b	Mid Green Special Bright
+11837c	Mid Purple Special Bright
+11837d	Mid Red Special Bright
+11837e	Mid Orange Special Bright
+11837f	Mid Yellow Special Bright
+118380	Mid White Special Dim
+118381	Mid Warm Special Dim
+118382	Mid Cool Special Dim
+118383	Mid Blue Special Dim
+118384	Mid Green Special Dim
+118385	Mid Purple Special Dim
+118386	Mid Red Special Dim
+118387	Mid Orange Special Dim
+118388	Mid Yellow Special Dim
+118365	Small White Special Bright
+118366	Small Warm Special Bright
+118367	Small Cool Special Bright
+118368	Small Blue Special Bright
+118369	Small Green Special Bright
+11836a	Small Purple Special Bright
+11836b	Small Red Special Bright
+11836c	Small Orange Special Bright
+11836d	Small Yellow Special Bright
+11836e	Small White Special Dim
+11836f	Small Warm Special Dim
+118370	Small Cool Special Dim
+118371	Small Blue Special Dim
+118372	Small Green Special Dim
+118373	Small Purple Special Dim
+118374	Small Red Special Dim
+118375	Small Orange Special Dim
+118376	Small Yellow Special Dim
+
+Category	Special Shadow
+118353	Large White Special Bright
+118354	Large Warm Special Bright
+118355	Large Cool Special Bright
+118356	Large Blue Special Bright
+118357	Large Green Special Bright
+118358	Large Purple Special Bright
+118359	Large Red Special Bright
+11835a	Large Orange Special Bright
+11835b	Large Yellow Special Bright
+11835c	Large White Special Dim
+11835d	Large Warm Special Dim
+11835e	Large Cool Special Dim
+11835f	Large Blue Special Dim
+118360	Large Green Special Dim
+118361	Large Purple Special Dim
+118362	Large Red Special Dim
+118363	Large Orange Special Dim
+118364	Large Yellow Special Dim
+118341	Mid White Special Bright
+118342	Mid Warm Special Bright
+118343	Mid Cool Special Bright
+118344	Mid Blue Special Bright
+118345	Mid Green Special Bright
+118346	Mid Purple Special Bright
+118347	Mid Red Special Bright
+118348	Mid Orange Special Bright
+118349	Mid Yellow Special Bright
+11834a	Mid White Special Dim
+11834b	Mid Warm Special Dim
+11834c	Mid Cool Special Dim
+11834d	Mid Blue Special Dim
+11834e	Mid Green Special Dim
+11834f	Mid Purple Special Dim
+118350	Mid Red Special Dim
+118351	Mid Orange Special Dim
+118352	Mid Yellow Special Dim
+11832f	Small White Special Bright
+118330	Small Warm Special Bright
+118331	Small Cool Special Bright
+118332	Small Blue Special Bright
+118333	Small Green Special Bright
+118334	Small Purple Special Bright
+118335	Small Red Special Bright
+118336	Small Orange Special Bright
+118337	Small Yellow Special Bright
+118338	Small White Special Dim
+118339	Small Warm Special Dim
+11833a	Small Cool Special Dim
+11833b	Small Blue Special Dim
+11833c	Small Green Special Dim
+11833d	Small Purple Special Dim
+11833e	Small Red Special Dim
+11833f	Small Orange Special Dim
+118340	Small Yellow Special Dim
+
+Category	Special DLC
+118401	Large White Special Bright
+118402	Large Warm Special Bright
+118403	Large Cool Special Bright
+118404	Large Blue Special Bright
+118405	Large Green Special Bright
+118406	Large Purple Special Bright
+118407	Large Red Special Bright
+118408	Large Orange Special Bright
+118409	Large Yellow Special Bright
+11840a	Large White Special Dim
+11840b	Large Warm Special Dim
+11840c	Large Cool Special Dim
+11840d	Large Blue Special Dim
+11840e	Large Green Special Dim
+11840f	Large Purple Special Dim
+118410	Large Red Special Dim
+118411	Large Orange Special Dim
+118412	Large Yellow Special Dim
+1183ef	Mid White Special Bright
+1183f0	Mid Warm Special Bright
+1183f1	Mid Cool Special Bright
+1183f2	Mid Blue Special Bright
+1183f3	Mid Green Special Bright
+1183f4	Mid Purple Special Bright
+1183f5	Mid Red Special Bright
+1183f6	Mid Orange Special Bright
+1183f7	Mid Yellow Special Bright
+1183f8	Mid White Special Dim
+1183f9	Mid Warm Special Dim
+1183fa	Mid Cool Special Dim
+1183fb	Mid Blue Special Dim
+1183fc	Mid Green Special Dim
+1183fd	Mid Purple Special Dim
+1183fe	Mid Red Special Dim
+1183ff	Mid Orange Special Dim
+118400	Mid Yellow Special Dim
+1183dd	Small White Special Bright
+1183de	Small Warm Special Bright
+1183df	Small Cool Special Bright
+1183e0	Small Blue Special Bright
+1183e1	Small Green Special Bright
+1183e2	Small Purple Special Bright
+1183e3	Small Red Special Bright
+1183e4	Small Orange Special Bright
+1183e5	Small Yellow Special Bright
+1183e6	Small White Special Dim
+1183e7	Small Warm Special Dim
+1183e8	Small Cool Special Dim
+1183e9	Small Blue Special Dim
+1183ea	Small Green Special Dim
+1183eb	Small Purple Special Dim
+1183ec	Small Red Special Dim
+1183ed	Small Orange Special Dim
+1183ee	Small Yellow Special Dim
+
+Category	Special DLC Shadow
+1183cb	Large White Special Bright
+1183cc	Large Warm Special Bright
+1183cd	Large Cool Special Bright
+1183ce	Large Blue Special Bright
+1183cf	Large Green Special Bright
+1183d0	Large Purple Special Bright
+1183d1	Large Red Special Bright
+1183d2	Large Orange Special Bright
+1183d3	Large Yellow Special Bright
+1183d4	Large White Special Dim
+1183d5	Large Warm Special Dim
+1183d6	Large Cool Special Dim
+1183d7	Large Blue Special Dim
+1183d8	Large Green Special Dim
+1183d9	Large Purple Special Dim
+1183da	Large Red Special Dim
+1183db	Large Orange Special Dim
+1183dc	Large Yellow Special Dim
+1183b9	Mid White Special Bright
+1183ba	Mid Warm Special Bright
+1183bb	Mid Cool Special Bright
+1183bc	Mid Blue Special Bright
+1183bd	Mid Green Special Bright
+1183be	Mid Purple Special Bright
+1183bf	Mid Red Special Bright
+1183c0	Mid Orange Special Bright
+1183c1	Mid Yellow Special Bright
+1183c2	Mid White Special Dim
+1183c3	Mid Warm Special Dim
+1183c4	Mid Cool Special Dim
+1183c5	Mid Blue Special Dim
+1183c6	Mid Green Special Dim
+1183c7	Mid Purple Special Dim
+1183c8	Mid Red Special Dim
+1183c9	Mid Orange Special Dim
+1183ca	Mid Yellow Special Dim
+1183a7	Small White Special Bright
+1183a8	Small Warm Special Bright
+1183a9	Small Cool Special Bright
+1183aa	Small Blue Special Bright
+1183ab	Small Green Special Bright
+1183ac	Small Purple Special Bright
+1183ad	Small Red Special Bright
+1183ae	Small Orange Special Bright
+1183af	Small Yellow Special Bright
+1183b0	Small White Special Dim
+1183b1	Small Warm Special Dim
+1183b2	Small Cool Special Dim
+1183b3	Small Blue Special Dim
+1183b4	Small Green Special Dim
+1183b5	Small Purple Special Dim
+1183b6	Small Red Special Dim
+1183b7	Small Orange Special Dim
+1183b8	Small Yellow Special Dim
+
+Category	Spinning
+120d25	Large White Special Spinning Bright
+120d26	Large Warm Special Spinning Bright
+120d27	Large Cool Special Spinning Bright
+120d28	Large Blue Special Spinning Bright
+120d29	Large Green Special Spinning Bright
+120d2a	Large Purple Special Spinning Bright
+120d2b	Large Red Special Spinning Bright
+120d2c	Large Orange Special Spinning Bright
+120d2d	Large Yellow Special Spinning Bright
+120d2e	Large White Special Spinning Dim
+120d2f	Large Warm Special Spinning Dim
+120d30	Large Cool Special Spinning Dim
+120d31	Large Blue Special Spinning Dim
+120d32	Large Green Special Spinning Dim
+120d33	Large Purple Special Spinning Dim
+120d34	Large Red Special Spinning Dim
+120d35	Large Orange Special Spinning Dim
+120d36	Large Yellow Special Spinning Dim
+120d13	Mid White Special Spinning Bright
+120d14	Mid Warm Special Spinning Bright
+120d15	Mid Cool Special Spinning Bright
+120d16	Mid Blue Special Spinning Bright
+120d17	Mid Green Special Spinning Bright
+120d18	Mid Purple Special Spinning Bright
+120d19	Mid Red Special Spinning Bright
+120d1a	Mid Orange Special Spinning Bright
+120d1b	Mid Yellow Special Spinning Bright
+120d1c	Mid White Special Spinning Dim
+120d1d	Mid Warm Special Spinning Dim
+120d1e	Mid Cool Special Spinning Dim
+120d1f	Mid Blue Special Spinning Dim
+120d20	Mid Green Special Spinning Dim
+120d21	Mid Purple Special Spinning Dim
+120d22	Mid Red Special Spinning Dim
+120d23	Mid Orange Special Spinning Dim
+120d24	Mid Yellow Special Spinning Dim
+120d01	Small White Special Spinning Bright
+120d02	Small Warm Special Spinning Bright
+120d03	Small Cool Special Spinning Bright
+120d04	Small Blue Special Spinning Bright
+120d05	Small Green Special Spinning Bright
+120d06	Small Purple Special Spinning Bright
+120d07	Small Red Special Spinning Bright
+120d08	Small Orange Special Spinning Bright
+120d09	Small Yellow Special Spinning Bright
+120d0a	Small White Special Spinning Dim
+120d0b	Small Warm Special Spinning Dim
+120d0c	Small Cool Special Spinning Dim
+120d0d	Small Blue Special Spinning Dim
+120d0e	Small Green Special Spinning Dim
+120d0f	Small Purple Special Spinning Dim
+120d10	Small Red Special Spinning Dim
+120d11	Small Orange Special Spinning Dim
+120d12	Small Yellow Special Spinning Dim
+
+Category	Spinning Shadow
+120cef	Large White Special Spinning Bright
+120cf0	Large Warm Special Spinning Bright
+120cf1	Large Cool Special Spinning Bright
+120cf2	Large Blue Special Spinning Bright
+120cf3	Large Green Special Spinning Bright
+120cf4	Large Purple Special Spinning Bright
+120cf5	Large Red Special Spinning Bright
+120cf6	Large Orange Special Spinning Bright
+120cf7	Large Yellow Special Spinning Bright
+120cf8	Large White Special Spinning Dim
+120cf9	Large Warm Special Spinning Dim
+120cfa	Large Cool Special Spinning Dim
+120cfb	Large Blue Special Spinning Dim
+120cfc	Large Green Special Spinning Dim
+120cfd	Large Purple Special Spinning Dim
+120cfe	Large Red Special Spinning Dim
+120cff	Large Orange Special Spinning Dim
+120d00	Large Yellow Special Spinning Dim
+120cdd	Mid White Special Spinning Bright
+120cde	Mid Warm Special Spinning Bright
+120cdf	Mid Cool Special Spinning Bright
+120ce0	Mid Blue Special Spinning Bright
+120ce1	Mid Green Special Spinning Bright
+120ce2	Mid Purple Special Spinning Bright
+120ce3	Mid Red Special Spinning Bright
+120ce4	Mid Orange Special Spinning Bright
+120ce5	Mid Yellow Special Spinning Bright
+120ce6	Mid White Special Spinning Dim
+120ce7	Mid Warm Special Spinning Dim
+120ce8	Mid Cool Special Spinning Dim
+120ce9	Mid Blue Special Spinning Dim
+120cea	Mid Green Special Spinning Dim
+120ceb	Mid Purple Special Spinning Dim
+120cec	Mid Red Special Spinning Dim
+120ced	Mid Orange Special Spinning Dim
+120cee	Mid Yellow Special Spinning Dim
+11842b	Small White Special Spinning Bright
+120ccc	Small Warm Special Spinning Bright
+120ccd	Small Cool Special Spinning Bright
+120cce	Small Blue Special Spinning Bright
+120ccf	Small Green Special Spinning Bright
+120cd0	Small Purple Special Spinning Bright
+120cd1	Small Red Special Spinning Bright
+120cd2	Small Orange Special Spinning Bright
+120cd3	Small Yellow Special Spinning Bright
+120cd4	Small White Special Spinning Dim
+120cd5	Small Warm Special Spinning Dim
+120cd6	Small Cool Special Spinning Dim
+120cd7	Small Blue Special Spinning Dim
+120cd8	Small Green Special Spinning Dim
+120cd9	Small Purple Special Spinning Dim
+120cda	Small Red Special Spinning Dim
+120cdb	Small Orange Special Spinning Dim
+120cdc	Small Yellow Special Spinning Dim
+
+Category	Special Spinning DLC
+120d91	Large White Special Spinning Bright
+120d92	Large Warm Special Spinning Bright
+120d93	Large Cool Special Spinning Bright
+120d94	Large Blue Special Spinning Bright
+120d95	Large Green Special Spinning Bright
+120d96	Large Purple Special Spinning Bright
+120d97	Large Red Special Spinning Bright
+120d98	Large Orange Special Spinning Bright
+120d99	Large Yellow Special Spinning Bright
+120d9a	Large White Special Spinning Dim
+120d9b	Large Warm Special Spinning Dim
+120d9c	Large Cool Special Spinning Dim
+120d9d	Large Blue Special Spinning Dim
+120d9e	Large Green Special Spinning Dim
+120d9f	Large Purple Special Spinning Dim
+120da0	Large Red Special Spinning Dim
+120da1	Large Orange Special Spinning Dim
+120da2	Large Yellow Special Spinning Dim
+120d7f	Mid White Special Spinning Bright
+120d80	Mid Warm Special Spinning Bright
+120d81	Mid Cool Special Spinning Bright
+120d82	Mid Blue Special Spinning Bright
+120d83	Mid Green Special Spinning Bright
+120d84	Mid Purple Special Spinning Bright
+120d85	Mid Red Special Spinning Bright
+120d86	Mid Orange Special Spinning Bright
+120d87	Mid Yellow Special Spinning Bright
+120d88	Mid White Special Spinning Dim
+120d89	Mid Warm Special Spinning Dim
+120d8a	Mid Cool Special Spinning Dim
+120d8b	Mid Blue Special Spinning Dim
+120d8c	Mid Green Special Spinning Dim
+120d8d	Mid Purple Special Spinning Dim
+120d8e	Mid Red Special Spinning Dim
+120d8f	Mid Orange Special Spinning Dim
+120d90	Mid Yellow Special Spinning Dim
+120d6d	Small White Special Spinning Bright
+120d6e	Small Warm Special Spinning Bright
+120d6f	Small Cool Special Spinning Bright
+120d70	Small Blue Special Spinning Bright
+120d71	Small Green Special Spinning Bright
+120d72	Small Purple Special Spinning Bright
+120d73	Small Red Special Spinning Bright
+120d74	Small Orange Special Spinning Bright
+120d75	Small Yellow Special Spinning Bright
+120d76	Small White Special Spinning Dim
+120d77	Small Warm Special Spinning Dim
+120d78	Small Cool Special Spinning Dim
+120d79	Small Blue Special Spinning Dim
+120d7a	Small Green Special Spinning Dim
+120d7b	Small Purple Special Spinning Dim
+120d7c	Small Red Special Spinning Dim
+120d7d	Small Orange Special Spinning Dim
+120d7e	Small Yellow Special Spinning Dim
+
+Category	Special Spinning DLC Shadow
+120d5b	Large White Special Spinning Bright
+120d5c	Large Warm Special Spinning Bright
+120d5d	Large Cool Special Spinning Bright
+120d5e	Large Blue Special Spinning Bright
+120d5f	Large Green Special Spinning Bright
+120d60	Large Purple Special Spinning Bright
+120d61	Large Red Special Spinning Bright
+120d62	Large Orange Special Spinning Bright
+120d63	Large Yellow Special Spinning Bright
+120d64	Large White Special Spinning Dim
+120d65	Large Warm Special Spinning Dim
+120d66	Large Cool Special Spinning Dim
+120d67	Large Blue Special Spinning Dim
+120d68	Large Green Special Spinning Dim
+120d69	Large Purple Special Spinning Dim
+120d6a	Large Red Special Spinning Dim
+120d6b	Large Orange Special Spinning Dim
+120d6c	Large Yellow Special Spinning Dim
+120d49	Mid White Special Spinning Bright
+120d4a	Mid Warm Special Spinning Bright
+120d4b	Mid Cool Special Spinning Bright
+120d4c	Mid Blue Special Spinning Bright
+120d4d	Mid Green Special Spinning Bright
+120d4e	Mid Purple Special Spinning Bright
+120d4f	Mid Red Special Spinning Bright
+120d50	Mid Orange Special Spinning Bright
+120d51	Mid Yellow Special Spinning Bright
+120d52	Mid White Special Spinning Dim
+120d53	Mid Warm Special Spinning Dim
+120d54	Mid Cool Special Spinning Dim
+120d55	Mid Blue Special Spinning Dim
+120d56	Mid Green Special Spinning Dim
+120d57	Mid Purple Special Spinning Dim
+120d58	Mid Red Special Spinning Dim
+120d59	Mid Orange Special Spinning Dim
+120d5a	Mid Yellow Special Spinning Dim
+120d37	Small White Special Spinning Bright
+120d38	Small Warm Special Spinning Bright
+120d39	Small Cool Special Spinning Bright
+120d3a	Small Blue Special Spinning Bright
+120d3b	Small Green Special Spinning Bright
+120d3c	Small Purple Special Spinning Bright
+120d3d	Small Red Special Spinning Bright
+120d3e	Small Orange Special Spinning Bright
+120d3f	Small Yellow Special Spinning Bright
+120d40	Small White Special Spinning Dim
+120d41	Small Warm Special Spinning Dim
+120d42	Small Cool Special Spinning Dim
+120d43	Small Blue Special Spinning Dim
+120d44	Small Green Special Spinning Dim
+120d45	Small Purple Special Spinning Dim
+120d46	Small Red Special Spinning Dim
+120d47	Small Orange Special Spinning Dim
+120d48	Small Yellow Special Spinning Dim

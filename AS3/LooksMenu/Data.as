@@ -1,109 +1,660 @@
 ﻿package {
 	import flash.display.DisplayObject;
+	import flashx.textLayout.formats.Float;
+	import flash.utils.Timer;
 
     public class Data {
 		public static var sam:Object;
 		public static var f4seObj:Object;
 		public static var stage:DisplayObject;
 		
+		public static var menuName:String = "";
 		public static var menuOptions:Array = [];
 		public static var menuValues:Array = [];
-		
-		public static var menuFiles:Array = [];
+		public static var menuSize:int = 0;
 		
 		public static var menuFolder:Array = [];
 		public static var folderStack:Array = [];
+		
+		public static var entryData:Object = null;
+		public static var folderData:Object = null;
+		public static var holdData:Object = null;
+		
+		public static var menuData:Object = {};
+		public static var menuType:int = 0;
+		public static var error:String = "";
+		public static var locals:Object = {};
 
-		public static var selectedAdjustment:int = 0;
-		public static var selectedCategory:int = 0;
-		public static var selectedBone:int = 0;
-		public static var boneName:String = "";
-		
-		public static var lastDragValue:Number = 0;
-		public static var stepValue = 100;
-		
 		public static var cursorStored:Boolean = false;
 		public static var cursorPosX:int = -1;
 		public static var cursorPosY:int = -1;
-		
-		public static var poseHandles:Array = [];
 
 		public static var delayClose:Boolean;
-		public static var autoPlay:Boolean;
 		
 		public static var selectedText:SliderListEntry = null;
 		
-		public static var menu:Object = {};
-		public static var error:String = "";
-		public static var menuType:int = 0;
-		public static var items:Array = [];
+		public static var papyrusWaiting:Boolean = false;
+		public static var papyrusMenuData:Object = null;
+		public static var papyrusTimer:Timer = null;
+		public static var papyrusType = 0;
+	
+		public static const EMPTY:String = "";
+		public static const ERROR:String = "Error";
 		
+		//The data constants need to be identical to the sam plugin enums
 		public static const NONE:int = 0;
-		public static const MAIN:int = 1;
-		public static const MIXED:int = 2;
-		public static const LIST:int = 3;
 		
-		public var menuTypes:Object = {
-			"main": MAIN,
-			"mixed": MIXED,
-			"list": LIST
+		public static const RESULT_SUCCESS:int = 1;
+		public static const RESULT_ERROR:int = 2;
+		public static const RESULT_WAITING:int = 3;
+		public static const RESULT_MENU:int = 4;
+		public static const RESULT_VALUES:int = 5;
+		public static const RESULT_ITEMS:int = 6;
+		public static const RESULT_NAMES:int = 7;
+		public static const RESULT_STRING:int = 8;
+		public static const RESULT_BOOL:int = 9;
+		public static const RESULT_INT:int = 10;
+		public static const RESULT_FLOAT:int = 11;
+		public static const RESULT_OBJECT:int = 12;
+		public static const RESULT_FOLDER:int = 13;
+		public static const RESULT_FOLDERCHECKBOX:int = 14;
+		
+		public static const MENU_MAIN:int = 1;
+		public static const MENU_MIXED:int = 2;
+		public static const MENU_LIST:int = 3;
+		public static const MENU_CHECKBOX:int = 4;
+		public static const MENU_SLIDER:int = 5;
+		public static const MENU_FOLDER:int = 6;
+		public static const MENU_FOLDERCHECKBOX:int = 7;
+		public static const MENU_ADJUSTMENT:int = 8;
+		
+		public static const FUNC_SAM:int = 1;
+		public static const FUNC_LOCAL:int = 2;
+		public static const FUNC_FORM:int = 3;
+		public static const FUNC_GLOBAL:int = 4;
+		public static const FUNC_ENTRY:int = 5;
+		public static const FUNC_MENU:int = 6;
+		public static const FUNC_FOLDER:int = 7;
+		
+		public static const HOTKEY_FUNC:int = 1;
+		public static const HOTKEY_HOLD:int = 2;
+		
+		public static const BUTTON_SAVE = 1;
+		public static const BUTTON_LOAD = 2;
+		public static const BUTTON_RESET = 3;
+		public static const BUTTON_EXTRA = 4;
+		
+		public static const ITEM_LIST:int = 1;
+		public static const ITEM_SLIDER:int = 2;
+		public static const ITEM_CHECKBOX:int = 3;
+		public static const ITEM_TOUCH:int = 4;
+		public static const ITEM_FOLDER:int = 5;
+		public static const ITEM_ADJUSTMENT:int = 6;
+		
+		public static const VALUE_NONE:int = 1
+		public static const VALUE_INT:int = 2;
+		public static const VALUE_FLOAT:int = 3;
+		
+		public static const ARGS_VAR:int = 1;
+		public static const ARGS_INDEX:int = 2;
+		public static const ARGS_VALUE:int = 3;
+		
+		public static const CHECKBOX_CHECK = 1;
+		public static const CHECKBOX_SETTINGS = 2;
+		public static const CHECKBOX_RECYCLE = 3;
+		public static const CHECKBOX_TOUCH = 4;
+		public static const CHECKBOX_FOLDER = 5;
+		public static const CHECKBOX_DOWN = 6;
+		public static const CHECKBOX_UP = 7;
+		
+		public static const PATH_FILE = 1;
+		public static const PATH_RELATIVE = 2;
+		public static const PATH_FULL = 3;
+		
+		public static const SORT_ALPHANUMERIC = 1;
+		public static const SORT_NATURAL = 2;
+		
+		public static var defaultSliderData:Object = {
+			type: 2,
+			min: 0,
+			max: 100,
+			step: 1,
+			stepKey: 1
 		};
 		
-		public static const 
+		public static var defaultTouchData:Object = {
+			type: 3,
+			fixed: 2,
+			step: 2.0
+		};
 		
-		public static function getType(types:Object, type:String):int
+		public static var resultSuccess:GFxResult = new GFxResult(RESULT_SUCCESS, null);
+		public static var resultWaiting:GFxResult = new GFxResult(RESULT_WAITING, null);
+		public static var resultError:GFxResult = new GFxResult(RESULT_ERROR, ERROR);
+		
+		public static var popFail:GFxResult = new GFxResult(RESULT_MENU, {
+			type: MENU_LIST,
+			names: []
+		});
+
+		public static function getMenu(name:String, pop:Boolean = false):GFxResult
 		{
-			if (types.hasOwnProperty(type)) {
-				return types[type];
+			try {
+				var result:GFxResult = sam.GetMenu(name);
+				
+				//If pop fails, return a dummy menu instead to prevent locks
+				if (result && result.type == RESULT_MENU)
+					return result;
+			}
+			catch(e:Error) {
+				if (Util.debug) {
+					var menu:Object = getDebugMenu(name);
+					if (menu)
+						return new GFxResult(RESULT_MENU, menu);
+				}
+			}
+			
+			if (pop)
+				return popFail;
+				
+			error = "$SAM_MenuMissingError";
+			return null;
+		}
+		
+		public static function updateMenu(name:String, data:Object, result:GFxResult)
+		{
+			trace("updating menu");
+			menuName = name;
+			menuData = data;
+			menuType = data.type;
+			
+			var i:int;
+
+			//load base menu data first
+			switch(menuType) {
+				case MENU_MAIN:
+					menuSize = data.values.length;
+					menuOptions = data.names;
+					menuValues = data.values;
+					break;
+				case MENU_MIXED:
+					trace("updating mix");
+					setMenuSize(data.items.length);
+					var items:Object = data.items;
+					trace("menu size", menuSize);
+					for (i = 0; i < menuSize; i++) {
+						if (items[i].name)
+							menuOptions[i] = items[i].name;
+						else
+							menuOptions[i] = EMPTY;
+						menuValues[i] = null;
+					}
+					break;
+				case MENU_LIST:
+					if (data.list) {
+						setMenuSize(data.list.length);
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = data.list[i].name;
+							menuValues[i] = data.list[i].name;
+						}
+					} else if (data.names) {
+						setMenuSize(data.names.length);
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = data.names[i];
+							menuValues[i] = data.names[i];
+						}
+					} else {
+						//length specified by get function
+						if (result.type == RESULT_ITEMS) {
+							setMenuSize(result.result.names.length);
+						} else {
+							setMenuSize(result.result.length);
+						}
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = EMPTY;
+							menuValues[i] = EMPTY;
+						}
+					}
+					break;
+				case MENU_CHECKBOX:
+				case MENU_SLIDER:
+				case MENU_ADJUSTMENT:
+					menuNames = result.names;
+					menuValues = result.values;
+					menuSize = result.values.length;
+					break;
+			}
+			
+			updateValues(result);
+		}
+		
+		public static function updateValues(result:GFxResult) {
+			var i:int;
+			var len:int;
+			trace("result type", result.type);
+			switch (result.type)
+			{
+				case Data.RESULT_NAMES:
+					len = result.result.length;
+					for (i = 0; i < len; i++) {
+						menuOptions[i] = result.result[i];
+						menuValues[i] =  result.result[i];
+					}
+					break;
+				case Data.RESULT_VALUES:
+					trace("getting values");
+					len = result.result.length;
+					trace("len", len);
+					for (i = 0; i < len; i++) {
+						trace(result.result[i]);
+						menuValues[i] = result.result[i];
+					}
+					break;
+				case Data.RESULT_ITEMS:
+					len = result.result.names.length;
+					for (i = 0; i < len; i++) {
+						menuOptions[i] = result.result.names[i];
+					}
+					len = result.result.values.length;
+					for (i = 0; i < len; i++) {
+						menuValues[i] = result.result.values[i];
+					}
+					break;
+			}
+		}
+		
+		public static function setMenuSize(length:int) {
+			menuSize = length;
+			menuOptions.length = length;
+			menuValues.length = length;
+		}
+
+		public static function getType(index:int):int
+		{
+			switch (menuType) {
+				case MENU_MAIN: return ITEM_LIST;
+				case MENU_MIXED: return menuData.items[index].type;
+				case MENU_CHECKBOX: return ITEM_CHECKBOX;
+				case MENU_LIST: return ITEM_LIST;
+				case MENU_SLIDER: return ITEM_SLIDER;
+				case MENU_FOLDER: return (menuFolder[index].folder ? ITEM_FOLDER : ITEM_LIST);
+				case MENU_FOLDERCHECKBOX: return (menuFolder[index].folder ? ITEM_FOLDER : ITEM_CHECKBOX);
+				case MENU_ADJUSTMENT: return ITEM_ADJUSTMENT;
 			}
 			
 			return 0;
 		}
 		
-		public static function loadMenu(name:String):Boolean
+		public static function getName(index:int):String
 		{
-			try {
-				var result:Object = sam.LoadMenu(name);
-			
-				if (result.success) {
-					
-					menu = result.menu;
-					menuType = getType(menuTypes, menu.type);
-					
-					return true;
-					
-				} else {
-					error = result.error;
-				}
-			}
-			catch(e:Error) {
-				error = e.message;
-			}
-			
-			return false;
+			return menuOptions[index];
+//			switch (menuType) {
+//				case MENU_MAIN: return menuData.names[index];
+//				case MENU_CHECKBOX: return menuData.names[index];
+//				case MENU_MIXED: return menuData.items[index].name;
+//			}
 		}
 		
-		public static function load(data:Object, root:Object, f4se:Object, stageObj:DisplayObject)
+		public static function getValue(index:int):Object
 		{
-			sam = root.f4se.plugins.ScreenArcherMenu;
+			return menuValues[index];
+		}
+		
+		public static function getInt(index:int):int
+		{
+			return menuValues[index];
+		}
+		
+		public static function getFloat(index:int):Number
+		{
+			return menuValues[index];
+		}
+		
+		public static function getString(index:int):String
+		{
+			return menuValues[index];
+		}
+		
+		public static function getBool(index:int):Boolean
+		{
+			return menuValues[index];
+		}
+		
+		public static function getHotkey(type:int):Object
+		{
+			switch (type) {
+				case BUTTON_SAVE: if (menuData.save) return menuData.save;
+				case BUTTON_LOAD: if (menuData.load) return menuData.load;
+				case BUTTON_RESET: if (menuData.reset) return menuData.reset;
+				case BUTTON_EXTRA: if (menuData.extra) return menuData.extra;
+			}
+			
+			return null;
+		}
+		
+		public static function getFolderHotkey(type:int):Object
+		{
+			switch (type) {
+				case BUTTON_SAVE: if (folderData.save) return folderData.save;
+				case BUTTON_LOAD: if (folderData.load) return folderData.load;
+				case BUTTON_RESET: if (folderData.reset) return folderData.reset;
+				case BUTTON_EXTRA: if (folderData.extra) return folderData.extra;
+			}
+			
+			return null;
+		}
+		
+		public static function getTouch(index:int):Object
+		{
+			var data:Object = menuData.items[index].touch;
+			if (data)
+				return data;
+			
+			return defaultTouchData;
+		}
+		
+		public static function getSlider(index:int):Object
+		{
+			var data:Object = (menuType == MENU_SLIDER ? menuData.slider : menuData.items[index].data);
+			if (data)
+				return data;
+			
+			return defaultSliderData;
+		}
+		
+		public static function setPapyrusWaiting(data:Object, type:int)
+		{
+			papyrusWaiting = true;
+			papyrusMenuData = data;
+			papyrusType = type;
+		}
+		
+		public static function clearPapyrusWaiting()
+		{
+			papyrusWaiting = false;
+			papyrusMenuData = null;
+			if (papyrusTimer) {
+				papyrusTimer.stop();
+				papyrusTimer = null;
+			}
+		}
+		
+		public static function getDebugMenu(name:String):Object
+		{
+			switch (name) {
+				
+			case "Main": return {
+				type: MENU_MAIN,
+				names: [
+					"$SAM_PoseAdjustMenu",
+					"$SAM_SkeletonAdjustMenu",
+					"$SAM_RaceAdjustMenu",
+					"$SAM_PosePlayMenu",
+					"$SAM_PoseExportMenu",
+					"$SAM_PlayIdleMenu",
+					"$SAM_PositionMenu",
+					"$SAM_FaceMorphsMenu",
+					"$SAM_EyesMenu",
+					"$SAM_InventoryMenu",
+					"$SAM_LightMenu",
+					"$SAM_CameraMenu",
+					"$SAM_HacksMenu",
+					"$SAM_OptionsMenu",
+					"$SAM_ExtensionsMenu"
+				],
+				values: [
+					"PoseAdjustment",
+					"SkeletonAdjustment",
+					"RaceAdjustment",
+					"SamPoses",
+					"ExportType",
+					"PlayIdle",
+					"Positioning",
+					"FaceMorphs",
+					"Eyes",
+					"Inventory",
+					"Lights",
+					"Camera",
+					"Hacks",
+					"Options",
+					"Extensions"
+				]
+			};
+			
+			case "Options": return {
+				type: MENU_MIXED,
+				get: {
+					type: FUNC_SAM,
+					name: "GetOptions"
+				},
+				set: {
+					type: FUNC_SAM,
+					name: "SetOptions"
+				},
+				update: true,
+				items: [
+					{
+						name: "$SAM_Hotswap",
+						type: ITEM_CHECKBOX
+					},
+					{
+						name: "$SAM_Alignment",
+						type: ITEM_CHECKBOX,
+						func: {
+							type: FUNC_LOCAL,
+							name: "SetAlignment"
+						}
+					},
+					{
+						name: "$SAM_Widescreen",
+						type: ITEM_CHECKBOX,
+						func: {
+							type: FUNC_LOCAL,
+							name: "SetWidescreen"
+						}
+					}
+				]
+			};
+			
+			case "Positioning": return {
+				"type": MENU_MIXED,
+				"get": {
+					"type": FUNC_SAM,
+					"name": "GetPositioning"
+				},
+				"set": {
+					"type": FUNC_SAM,
+					"name": "SetPositioning"
+				},
+				"update": true,
+				"items": [
+					{
+						"name": "$SAM_Step",
+						"type": ITEM_SLIDER,
+						"slider": {
+							"type": VALUE_INT,
+							"min": 0,
+							"max": 500,
+							"step": 1,
+							"stepkey": 1
+						}
+					},
+					{
+						"name": "$SAM_PosX",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 10.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_PosY",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 10.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_PosZ",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 10.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_RotX",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 2.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_RotY",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 2.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_RotZ",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 2.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_Scale",
+						"type": ITEM_TOUCH,
+						"touch": {
+							"type": VALUE_FLOAT,
+							"visible": true,
+							"step": 1.0,
+							"fixed": 2
+						}
+					},
+					{
+						"name": "$SAM_ResetPos",
+						"type": ITEM_LIST
+					},
+					{
+						"name": "$SAM_ResetRot",
+						"type": ITEM_LIST
+					},
+					{
+						"name": "$SAM_ResetScale",
+						"type": ITEM_LIST
+					},
+					{
+						"name": "$SAM_TGP",
+						"type": ITEM_LIST
+					},
+					{
+						"name": "$SAM_TCL",
+						"type": ITEM_LIST
+					},
+					{
+						"name": "$SAM_EnableFootIK",
+						"type": ITEM_LIST
+					},
+					{
+						"name": "$SAM_DisableFootIK",
+						"type": ITEM_LIST
+					}
+				]
+			};
+			
+			case "Inventory": return {
+				type: MENU_LIST,
+				names: [
+					"Hello"
+				],
+				load: {
+					"name": "$SAM_Load",
+					"type": FUNC_FOLDER,
+					"folder": {
+						"type": PATH_FULL,
+						"path": "Data\\F4SE\\Plugins\\SAF\\Adjustments",
+						"ext": ".json",
+						"pop": false,
+						"func": {
+							"type": FUNC_SAM,
+							"name": "LoadAdjustment"
+						}
+					}
+				},
+				save: {
+					"name": "$SAM_SAVE",
+					"type": FUNC_ENTRY,
+					"entry": {
+						"func": {
+							"type": FUNC_SAM,
+							"name": "SaveAdjustment"
+						}
+					}
+				}
+			};
+			
+			}
+			
+			error = "$SAM_MenuMissing";
+			return null;
+		}
+		
+		public static function getSamDebugFunction(name:String):GFxResult
+		{
+			switch (name)
+			{
+				
+			case "GetOptions": return new GFxResult(RESULT_VALUES, [
+				false, false, false
+			]);
+			
+			case "GetPositioning": return new GFxResult(RESULT_VALUES, [
+				 100, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 1.0
+			]);
+			
+			}
+			
+			error = "$SAM_SamFunctionMissing";
+			return null;
+		}
+		
+		public static function load(data:Object, samObj:Object, f4se:Object, stageObj:DisplayObject)
+		{
+			sam = samObj;
 			f4seObj = f4se;
-			
 			delayClose = data.delayClose;
-			
 			stage = stageObj;
 			
 			if (data.saved) {
 				menuOptions = data.saved.options;
 				menuValues = data.saved.values;
-				menuFiles = data.saved.files;
-				selectedAdjustment = data.saved.adjustment;
-				selectedCategory = data.saved.category;
-				selectedBone = data.saved.bone;
-				boneName = data.saved.boneName;
-				poseHandles = data.saved.handles;
-				stepValue = data.saved.step;
+				menuSize = data.saved.size;
 				folderStack = data.saved.folderStack;
 				menuFolder = data.saved.folder;
+				locals = data.saved.locals;
+				menuData = data.saved.menuData;
+				entryData = data.saved.entryData;
+				folderData = data.saved.folderData;
+				holdData = data.saved.holdData;
+				menuType = data.saved.menuType;
 			}
 		}
 		
@@ -111,15 +662,15 @@
 		{
 			data.options = menuOptions;
 			data.values = menuValues;
-			data.files = menuFiles;
-			data.adjustment = selectedAdjustment;
-			data.category = selectedCategory;
-			data.bone = selectedBone;
-			data.boneName = boneName;
-			data.handles = poseHandles;
-			data.step = stepValue;
+			data.size = menuSize
 			data.folderStack = folderStack;
 			data.folder = menuFolder;
+			data.locals = locals;
+			data.menuData = menuData;
+			data.entryData = entryData;
+			data.folderData = folderData;
+			data.holdData = holdData;
+			data.menuType = menuType;
 			
 			try 
 			{
@@ -142,40 +693,40 @@
 			}
 		}
 		
-		public static function checkError(id:int):Boolean
-		{
-			try {
-				return sam.CheckError(id);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to check error");
-				if (Util.debug)
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-		
-		public static function getFileListing(dir:String, ext:String):Boolean
-		{
-			menuFiles = [];
-			try {
-				var listing:Array = f4seObj.GetDirectoryListing(dir, ext);
-				for (var i:int = 0; i < listing.length; i++) {
-					var filename = listing[i]["nativePath"]; //name is bugged so use nativePath instead
-					var startIndex:int = filename.lastIndexOf("\\") + 1;
-					menuFiles[i] = filename.substring(startIndex, filename.length - ext.length + 1);
-				}
-				return true;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get file listing from directory: " + dir);
-			}
-			return false;
-		}
+//		public static function checkError(id:int):Boolean
+//		{
+//			try {
+//				return sam.CheckError(id);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to check error");
+//				if (Util.debug)
+//				{
+//					return true;
+//				}
+//			}
+//			return false;
+//		}
+//		
+//		public static function getFileListing(dir:String, ext:String):Boolean
+//		{
+//			menuFiles = [];
+//			try {
+//				var listing:Array = f4seObj.GetDirectoryListing(dir, ext);
+//				for (var i:int = 0; i < listing.length; i++) {
+//					var filename = listing[i]["nativePath"]; //name is bugged so use nativePath instead
+//					var startIndex:int = filename.lastIndexOf("\\") + 1;
+//					menuFiles[i] = filename.substring(startIndex, filename.length - ext.length + 1);
+//				}
+//				return true;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get file listing from directory: " + dir);
+//			}
+//			return false;
+//		}
 		
 		public static function setCursorVisible(visible:Boolean)
 		{
@@ -191,8 +742,7 @@
 		
 		public static function storeCursorPos()
 		{
-			try 
-			{
+			try {
 				var result:Object = sam.GetCursorPosition();
 				cursorStored = result.success;
 				if (cursorStored) {
@@ -207,11 +757,8 @@
 			}
 		}
 		
-		public static function updateCursorDrag(value:Number):int
+		public static function updateCursorDrag():int
 		{
-			if (!isNaN(value)) {
-				return int(value);
-			}
 			if (cursorStored) {
 				try 
 				{
@@ -234,18 +781,18 @@
 			cursorStored = false;
 		}
 		
-		public static function isLocked(type:int):Boolean
-		{
-			try 
-			{
-				return sam.GetLock(type);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get scroll lock");
-			}
-			return false;
-		}
+//		public static function isLocked(type:int):Boolean
+//		{
+//			try 
+//			{
+//				return sam.GetLock(type);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get scroll lock");
+//			}
+//			return false;
+//		}
 		
 		public static function toggleMenu():Boolean
 		{
@@ -957,13 +1504,13 @@
 			}
 		}
 		
-		public static function updatePositioning()
-		{
-			menuValues[0] = stepValue;
-			for (var i:int = 8; i < POSITIONING_NAMES.length; i++) {
-				menuValues[i] = 0;
-			}
-		}
+//		public static function updatePositioning()
+//		{
+//			menuValues[0] = stepValue;
+//			for (var i:int = 8; i < POSITIONING_NAMES.length; i++) {
+//				menuValues[i] = 0;
+//			}
+//		}
 		
 		public static function loadPositioning()
 		{
@@ -981,28 +1528,28 @@
 			}
 		}
 		
-		public static function selectPositioning(id:int, value:Number = 0)
-		{
-			try
-			{
-				if (id < 1) {
-					var step:int = int(value);
-					menuValues[id] = step;
-					stepValue = step;
-				} else if (id < 8) {
-					var dif:int = updateCursorDrag(value);
-					menuValues = sam.AdjustPositioning(id, dif, stepValue);
-					updatePositioning();
-				} else {
-					menuValues = sam.SelectPositioning(id);
-					updatePositioning();
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to update position");
-			}
-		}
+//		public static function selectPositioning(id:int, value:Number = 0)
+//		{
+//			try
+//			{
+//				if (id < 1) {
+//					var step:int = int(value);
+//					menuValues[id] = step;
+//					stepValue = step;
+//				} else if (id < 8) {
+//					var dif:int = updateCursorDrag(value);
+//					menuValues = sam.AdjustPositioning(id, dif, stepValue);
+//					updatePositioning();
+//				} else {
+//					menuValues = sam.SelectPositioning(id);
+//					updatePositioning();
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to update position");
+//			}
+//		}
 		
 		public static function resetPositioning()
 		{
@@ -1019,34 +1566,34 @@
 		
 		public static function updateFolderNames():Array
 		{
-			menuOptions = [];
+			setMenuSize(menuFolder.length);
 			for (var i:int = 0; i < menuFolder.length; i++) {
-				menuOptions.push(menuFolder[i].name);
+				menuOptions[i] = menuFolder[i].name;
 			}
 		}
 		
 		public static function updateFolderCheckbox():Array
 		{
-			menuValues = [];
+			menuValues.length = menuFolder.length;
 			for (var i:int = 0; i < menuFolder.length; i++) {
-				menuValues.push(menuFolder[i].checked);
+				menuValues[i] = menuFolder[i].checked;
 			}
 		}
-		
-		public static function popFolder(dir:String, ext:String)
-		{
-			folderStack.pop();
-			try {
-				var path:String = (folderStack.length == 0) ? dir : folderStack[folderStack.length - 1];
-				menuFolder = sam.GetSubFolder(path, ext);
-				updateFolderNames();
-			}
-			catch (e:Error) {
-				trace("Failed to get sub folder");
-				menuOptions = [];
-				menuFolder = [];
-			}
-		}
+//		
+//		public static function popFolder(dir:String, ext:String)
+//		{
+//			folderStack.pop();
+//			try {
+//				var path:String = (folderStack.length == 0) ? dir : folderStack[folderStack.length - 1];
+//				menuFolder = sam.GetSubFolder(path, ext);
+//				updateFolderNames();
+//			}
+//			catch (e:Error) {
+//				trace("Failed to get sub folder");
+//				menuOptions = [];
+//				menuFolder = [];
+//			}
+//		}
 		
 		public static function popSkeletonAdjustment(race:Boolean)
 		{
@@ -1064,36 +1611,128 @@
 			}
 		}
 		
-		public static function loadSubFolder(dir:String, ext:String)
+		public static function getFolder(path:String, ext:String, pop:Boolean = false):GFxResult
 		{
 			try {
-				var path:String = (folderStack.length == 0) ? dir : folderStack[folderStack.length - 1];
-				menuFolder = sam.GetSubFolder(path, ext);
-				updateFolderNames();
+				//var path:String = (folderStack.length == 0) ? folderData.path : folderStack[folderStack.length - 1];
+				var result:GFxResult = sam.GetFolder(path, ext);
+				
+				if (result && result.type == RESULT_FOLDER)
+					return result;
 			}
-			catch (e:Error)
-			{
-				trace("Failed to load sam poses");
-				if (Util.debug)
-				{
-					menuFolder = [
-						{
-							"name": "Folder",
-							"folder": true,
-							"path": "test"
-						},
-						{
-							"name": "File",
-							"path": "test"
-						}
-					];
-					updateFolderNames();
-				} else {
-					menuFolder = [];
-					menuOptions = [];
+			catch (e:Error) {
+				if (Util.debug) {
+					var debugFolder:Object = getDebugFolder(path);
+					if (debugFolder)
+						return new GFxResult(RESULT_FOLDER, debugFolder);
 				}
 			}
+			
+			if (pop)
+				return popFail;
+			
+			error = "Failed to get folder";
+			return null;
 		}
+		
+		public static function setFolder(data:Object, result:Object)
+		{
+			menuType = MENU_FOLDER;
+			folderData = data;
+			folderStack.length = 0;
+			menuFolder = result;
+			updateFolderNames();
+		}
+		
+		public static function pushFolder(i:int, result:Object)
+		{
+			folderStack.push(menuFolder[i].path);
+			menuFolder = result;
+			updateFolderNames();
+		}
+		
+		public static function popFolder(result:Object):String
+		{
+			menuFolder = result;
+			updateFolderNames();
+		}
+		
+		public static function getFolderPath(i:int)
+		{
+			try {
+				switch(folderData.type) {
+					case PATH_FILE:
+						var fileResult:GFxResult = sam.GetPathStem(menuFolder[i].path);
+						if (fileResult && fileResult.type == RESULT_STRING)
+							return fileResult.result;
+						break;
+						
+					case PATH_RELATIVE:
+						var relativeResult:GFxResult = sam.GetPathRelative(menuFolder[i].path, folderData.path, folderData.ext);
+						if (relativeResult && relativeResult.type == RESULT_STRING)
+							return relativeResult.result;
+						break;
+						
+					case PATH_FULL:
+						return menuFolder[i].path;
+				}
+			}
+			catch (e:Error) {
+				trace(e.message);
+			}
+			
+			return EMPTY;
+		}
+		
+		public static function getDebugFolder(path:String)
+		{
+			return [
+				{
+					"name": "Folder",
+					"folder": true,
+					"path": "test"
+				},
+				{
+					"name": "File",
+					"folder": false,
+					"path": "test"
+				}
+			];
+			
+			error = "Failed to get folder";
+			return null;
+		}
+		
+//		public static function loadSubFolder(dir:String, ext:String)
+//		{
+//			try {
+//				var path:String = (folderStack.length == 0) ? dir : folderStack[folderStack.length - 1];
+//				menuFolder = sam.GetSubFolder(path, ext);
+//				updateFolderNames();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load sam poses");
+//				if (Util.debug)
+//				{
+//					menuFolder = [
+//						{
+//							"name": "Folder",
+//							"folder": true,
+//							"path": "test"
+//						},
+//						{
+//							"name": "File",
+//							"path": "test"
+//						}
+//					];
+//					updateFolderNames();
+//				} else {
+//					menuFolder = [];
+//					menuOptions = [];
+//				}
+//			}
+//		}
 		
 		public static function getAdjustmentFolder(race:Boolean)
 		{
@@ -1132,29 +1771,29 @@
 			}
 		}
 		
-		public static function selectSubFolder(id:int, ext:String, func:Function):Boolean
-		{
-			try {
-				if (menuFolder[id].folder) {
-					var path:String = menuFolder[id].path;
-					menuFolder = sam.GetSubFolder(path, ext);
-					folderStack.push(path);
-					updateFolderNames();
-					return true;
-				} 
-				else 
-				{
-					func(menuFolder[id].path);
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to select sub folder");
-				menuOptions = [];
-				menuFolder = [];
-			}
-			return false;
-		}
+//		public static function selectSubFolder(id:int, ext:String, func:Function):Boolean
+//		{
+//			try {
+//				if (menuFolder[id].folder) {
+//					var path:String = menuFolder[id].path;
+//					menuFolder = sam.GetSubFolder(path, ext);
+//					folderStack.push(path);
+//					updateFolderNames();
+//					return true;
+//				} 
+//				else 
+//				{
+//					func(menuFolder[id].path);
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to select sub folder");
+//				menuOptions = [];
+//				menuFolder = [];
+//			}
+//			return false;
+//		}
 		
 		public static function selectSkeletonFile(id:int, race:Boolean, clear:Boolean, enabled:Boolean):Boolean
 		{
@@ -1368,34 +2007,34 @@
 			}
 		}
 		
-		public static function editLight(id:int, value:Number)
-		{
-			try
-			{
-				if (id < 3) {
-					var dif:int = updateCursorDrag(value);
-					menuValues[id] += dif * 0.5;
-					if (id == 0 && menuValues[id] < 0) {
-						//clamp distance above 0
-						menuValues[id] = 0;
-					} else if (id == 1) {
-						//rotation 0-360
-						if (menuValues[id] < 0) {
-							menuValues[id] += 360;
-						} else if (menuValues[id] >= 360) {
-							menuValues[id] -= 360;
-						}
-					}
-				} else {
-					menuValues[id] = value;
-				}
-				sam.EditLight(selectedAdjustment, id, menuValues[id]);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to edit light");
-			}
-		}
+//		public static function editLight(id:int, value:Number)
+//		{
+//			try
+//			{
+//				if (id < 3) {
+//					var dif:int = updateCursorDrag(value);
+//					menuValues[id] += dif * 0.5;
+//					if (id == 0 && menuValues[id] < 0) {
+//						//clamp distance above 0
+//						menuValues[id] = 0;
+//					} else if (id == 1) {
+//						//rotation 0-360
+//						if (menuValues[id] < 0) {
+//							menuValues[id] += 360;
+//						} else if (menuValues[id] >= 360) {
+//							menuValues[id] -= 360;
+//						}
+//					}
+//				} else {
+//					menuValues[id] = value;
+//				}
+//				sam.EditLight(selectedAdjustment, id, menuValues[id]);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to edit light");
+//			}
+//		}
 		
 		public static function resetLight()
 		{

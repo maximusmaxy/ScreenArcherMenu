@@ -1,5 +1,6 @@
 #include "f4se/PluginAPI.h"
 
+#include "constants.h"
 #include "sam.h"
 #include "console.h"
 #include "scaleform.h"
@@ -89,7 +90,7 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 	}
 
 	safDispatcher.pluginHandle = samMessaging.pluginHandle;
-	safDispatcher.modName = "ScreenArcherMenu.esp";
+	safDispatcher.modName = SAM_ESP;
 
 	samObScriptCommit();
 		

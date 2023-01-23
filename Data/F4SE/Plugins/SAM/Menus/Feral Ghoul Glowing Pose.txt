@@ -1,0 +1,91 @@
+Race	000A96BF
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	Main
+COM	COM
+Pelvis	Pelvis
+SpineRoot	Spine Root
+SPINE1	Spine 1
+SPINE2	Spine 2
+Chest	Chest
+Neck	Neck
+HEAD	Head
+Jaw	Jaw
+LBrow	Left Brow
+RBrow	Right Brow
+
+Category	Left Arm
+LCollarbone	Left Collarbone
+LUPPERARM	Left Upperarm
+LArmUpperTwist1	Left Upper Twist 1
+LArmUpperTwist2	Left Upper Twist 2
+LForeArm1	Left Forearm 1
+LForeArm2	Left Forearm 2
+LHAND	Left Hand
+LThumb	Left Thumb 0
+LThumb1	Left Thumb 1
+LThumb2	Left Thumb 2
+LIndex	Left Index 0
+LIndex1	Left Index 1
+LIndex2	Left Index 2
+LMiddle	Left Middle 0
+LMiddle1	Left Middle 1
+LMiddle2	Left Middle 2
+LRing	Left Ring 0
+LRing1	Left Ring 1
+LRing2	Left Ring 2
+LPinky	Left Pinky 0
+LPinky1	Left Pinky 1
+LPinky2	Left Pinky 2
+
+Category	Right Arm
+RCollarbone	Right Collarbone
+RUPPERARM	Right Upper Arm
+RArmUpperTwist1	Right Upper Arm Twist 1
+RArmUpperTwist2	Right Upper Arm Twist 2
+RForeArm1	Right Forearm 1
+RForeArm2	Right Forearm 2
+RHAND	Right hand
+RThumb	Right Thumb 0
+RThumb1	Right Thumb 1
+RThumb2	Right Thumb 2
+RIndex	Right Index 0
+RIndex1	Right Index 1
+RIndex2	Right Index 2
+RMiddle	Right Middle 0
+RMiddle1	Right Middle 1
+RMiddle2	Right Middle 2
+RRing	Right Ring 0
+RRing1	Right Ring 1
+RRing2	Right Ring 2
+RPinky	Right Pinky 0
+RPinky1	Right Pinky 1
+RPinky2	Right Pinky 2
+
+Category	Legs
+LTHIGH	Left Thigh
+LCALF	Left Calf
+LFOOT	Left Foot
+LToe1	Left Toe
+RTHIGH	Right Thigh
+RCALF	Right Calf
+RFOOT	Right Foot
+RToe1	Right Toe
+
+Category	Skin
+SpineRoot_skin	Spine Root Skin
+Spine1_skin	Spine 1 Skin 
+Spine2_skin	Spine 2 Skin
+Neck_skin	Neck Skin
+Head_skin	Head Skin
+Hunch_skin	Hunch Skin
+Skull1_skin	Skull 1 Skin
+Skull2_skin	Skull 2 Skin
+LShoulder_skin	Left Shoulder Skin
+LArmUpperTwist1_skin	Left Upper Twist 1 Skin
+LArmUpperTwist2_skin	Left Upper Twist 2 Skin
+RShoulder_skin	Right Shoulder Skin
+RArmUpperTwist1_skin	Right Upper Twist 1 Skin
+RArmUpperTwist2_skin	Right Upper Twist 2 Skin

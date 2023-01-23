@@ -19,6 +19,8 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="lights.cpp" />
     <ClCompile Include="gfx.cpp" />
+    <ClCompile Include="data.cpp" />
+    <ClCompile Include="inventory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -38,6 +40,9 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="lights.h" />
     <ClInclude Include="gfx.h" />
+    <ClInclude Include="data.h" />
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="inventory.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectName>ScreenArcherMenu</ProjectName>
     <ProjectGuid>{FC9A1EE6-D9DB-47F6-B0ED-8867439C43CE}</ProjectGuid>
-    <RootNamespace>survivalunlock</RootNamespace>
+    <RootNamespace>SAM</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -55,7 +55,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>D:\Projects\F4SE2\f4se\Eigen;D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -65,8 +65,8 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -76,12 +76,12 @@
       <AdditionalDependencies>shlwapi.lib;"D:\Projects\F4SE2\f4se\x64\Debug\f4se_1_10_163.lib";"D:\Projects\F4SE2\f4se\x64\Debug\f4se_common.lib";"D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib";"D:\Projects\F4SE2\f4se\x64\Debug\SAF.lib";%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <AdditionalOptions>/VERBOSE %(AdditionalOptions)</AdditionalOptions>
       <FunctionOrder>
       </FunctionOrder>
       <OptimizeReferences>true</OptimizeReferences>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
     </Link>
     <PostBuildEvent>
       <Command>$(SolutionDir)sam.bat</Command>
@@ -114,10 +114,12 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="console.cpp" />
+    <ClCompile Include="data.cpp" />
     <ClCompile Include="gfx.cpp" />
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="input.cpp" />
+    <ClCompile Include="inventory.cpp" />
     <ClCompile Include="lights.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mfg.cpp" />
@@ -134,9 +136,12 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="compatibility.h" />
     <ClInclude Include="console.h" />
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="data.h" />
     <ClInclude Include="gfx.h" />
     <ClInclude Include="idle.h" />
     <ClInclude Include="input.h" />
+    <ClInclude Include="inventory.h" />
     <ClInclude Include="lights.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="options.h" />

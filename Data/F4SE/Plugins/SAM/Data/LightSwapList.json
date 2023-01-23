@@ -1,0 +1,24 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetLightList",
+        "args": [
+            {
+                "type": "var",
+                "name": "lightCategories"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SwapLight",
+        "popto": "LightEdit",
+        "args": [
+            {
+                "type": "var",
+                "name": "selectedLight"
+            }
+        ]
+    }
+}

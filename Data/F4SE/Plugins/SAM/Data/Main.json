@@ -1,0 +1,37 @@
+{
+    "type": "main",
+    "names": [
+        "$SAM_PoseAdjustMenu",
+        "$SAM_SkeletonAdjustMenu",
+        "$SAM_RaceAdjustMenu",
+        "$SAM_PosePlayMenu",
+        "$SAM_PoseExportMenu",
+        "$SAM_PlayIdleMenu",
+        "$SAM_PositionMenu",
+        "$SAM_FaceMorphsMenu",
+        "$SAM_EyesMenu",
+        "$SAM_InventoryMenu",
+        "$SAM_LightMenu",
+        "$SAM_CameraMenu",
+        "$SAM_HacksMenu",
+        "$SAM_OptionsMenu",
+        "$SAM_ExtensionsMenu"
+    ],
+    "values": [
+        "AdjustmentList",
+        "SkeletonAdjustment",
+        "RaceAdjustment",
+        "SamPoses",
+        "PoseExportType",
+        "PlayIdleMods",
+        "Positioning",
+        "FaceMorphCategories",
+        "Eyes",
+        "Inventory",
+        "LightSelect",
+        "Camera",
+        "Hacks",
+        "Options",
+        "Extensions"
+    ]
+}

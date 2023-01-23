@@ -3,7 +3,10 @@
 #include "f4se/PapyrusVM.h"
 #include "f4se/PapyrusEvents.h"
 
+#include "gfx.h"
+
 bool RegisterPapyrus(VirtualMachine* vm);
+void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GFxValue& args);
 void CallPapyrusGlobal(BSFixedString script, BSFixedString function);
 void CallSamGlobal(BSFixedString function);
 

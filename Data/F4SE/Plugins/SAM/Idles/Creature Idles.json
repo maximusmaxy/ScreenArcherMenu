@@ -1,0 +1,114 @@
+{   
+    "cat": {
+        "race": "000C9ACF",
+        "mod": "Fallout4.esm",
+        "reset": {
+            "mod": "AnimalPosingFramework.esl",
+            "idle": "00001802"
+        },
+        "filter": {
+            "behavior": "Actors\\Cat\\Behaviors\\CatRootBehavior.hkx",
+            "event": "DynamicTransitionLoop"
+        },
+	"apose": {
+	    "mod": "AnimalPosingFramework.esl",
+	    "idle": "0000080C"
+	}
+    },
+    "dog": {
+        "race": "0001D698",
+        "mod": "Fallout4.esm",
+        "reset": {
+            "mod": "AnimalPosingFramework.esl",
+            "idle": "00001808"
+        },
+        "filter": {
+            "behavior": "Actors\\Dogmeat\\Behaviors\\DogmeatDefault.hkx",
+            "event": "dynIdleLoop"
+        },
+	"apose": {
+	    "mod": "AnimalPosingFramework.esl",
+	    "idle": "0000080D"
+	}
+    },
+    "raider dog": {
+        "race": "00187AF9",
+        "mod": "Fallout4.esm",
+        "reset": {
+            "mod": "AnimalPosingFramework.esl",
+            "idle": "00001808"
+        },
+        "filter": {
+            "behavior": "Actors\\Dogmeat\\Behaviors\\DogmeatDefault.hkx",
+            "event": "dynIdleLoop"
+        },
+	"apose": {
+	    "mod": "AnimalPosingFramework.esl",
+	    "idle": "0000080D"
+	}
+    },
+    "vicious dog": {
+        "race": "0003578A",
+        "mod": "Fallout4.esm",
+        "reset": {
+            "mod": "AnimalPosingFramework.esl",
+            "idle": "00001808"
+        },
+        "filter": {
+            "behavior": "Actors\\Dogmeat\\Behaviors\\DogmeatDefault.hkx",
+            "event": "dynIdleLoop"
+        },
+	"apose": {
+	    "mod": "AnimalPosingFramework.esl",
+	    "idle": "0000080D"
+	}
+    },
+    "deathclaw": {
+        "race": "0001DB4A",
+        "mod": "Fallout4.esm",
+        "reset": {
+            "mod": "AnimalPosingFramework.esl",
+            "idle": "00001807"
+        },
+        "filter": {
+            "behavior": "Actors\\Deathclaw\\Behaviors\\DeathclawRootBehavior.hkx",
+            "event": "dynIdleLoop"
+        },
+	"apose": {
+	    "mod": "AnimalPosingFramework.esl",
+	    "idle": "0000080E"
+	}
+    },
+    "gorilla": {
+        "race": "000D9804",
+        "mod": "Fallout4.esm",
+        "reset": {
+            "mod": "AnimalPosingFramework.esl",
+            "idle": "0000180B"
+        },
+        "filter": {
+            "behavior": "Actors\\Gorilla\\Behaviors\\GorillaRootBehavior.hkx",
+            "event": "DynAnimLoop"
+        },
+	"apose": {
+	    "mod": "AnimalPosingFramework.esl",
+	    "idle": "0000080F"
+	}
+    },
+    "feral ghoul": {
+       "race": "0006B4EC",
+       "mod": "Fallout4.esm",
+       "reset": {
+           "mod": "Fallout4.esm",
+           "idle": "000E9855"
+       },
+       "apose": {
+           "mod": "ScreenArcherMenu.esp",
+           "idle": "00000802"
+       },
+       "filter": {
+           "behavior": "actors\\Character\\Behaviors\\RaiderRootBehavior.hkx",
+           "event": "dyn_ActivationLoop"
+       }
+    }
+}

@@ -1,0 +1,20 @@
+{
+    "type": "slider",
+    "update": true,
+    "slider": {
+        "type": "float",
+        "min": -1.0,
+        "max": 1.0,
+        "step": 0.01,
+        "stepkey": 0.05,
+        "fixed": 4
+    },
+    "get": {
+        "type": "sam",
+        "func": "GetEyes"
+    },
+    "set": {
+        "type": "sam",
+        "func": "SetEyes"
+    }
+}

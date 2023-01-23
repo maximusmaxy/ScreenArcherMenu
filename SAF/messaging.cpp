@@ -103,6 +103,16 @@ namespace SAF {
 		messaging->Dispatch(pluginHandle, kSafAdjustmentScale, &message, sizeof(uintptr_t), safName);
 	}
 
+	void SAFDispatcher::MergeAdjustmentDown(UInt32 formId, UInt32 handle) {
+		AdjustmentMessage message{ formId, handle };
+		messaging->Dispatch(pluginHandle, kSafAdjustmentMerge, &message, sizeof(uintptr_t), safName);
+	}
+
+	void SAFDispatcher::MirrorAdjustment(UInt32 formId, UInt32 handle) {
+		AdjustmentMessage message{ formId, handle };
+		messaging->Dispatch(pluginHandle, kSafAdjustmentMirror, &message, sizeof(uintptr_t), safName);
+	}
+
 	void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		switch (msg->type)
@@ -208,6 +218,14 @@ namespace SAF {
 			g_adjustmentManager.SetAdjustmentScale(data->formId, data->handle, data->a);
 			break;
 		}
+		case kSafAdjustmentMerge:
+		{
+			auto data = static_cast<AdjustmentMessage*>(msg->data);
+			g_adjustmentManager.MergeAdjustmentDown(data->formId, data->handle);
+		}
+		case kSafAdjustmentMirror:
+			auto data = static_cast<AdjustmentMessage*>(msg->data);
+			g_adjustmentManager.MirrorAdjustment(data->formId, data->handle);
 		}
 	}
 

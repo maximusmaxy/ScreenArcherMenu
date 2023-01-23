@@ -24,21 +24,7 @@
 		
 		public static const SLIDER_MAX:int = 10;
 		public static const LIST_MAX:int = 15;
-		
-		public static const LIST = 0;
-		public static const TRANSFORM = 1;
-		public static const MORPH = 2;
-		public static const CHECKBOX = 3;
-		public static const EYES = 4;
-		public static const ADJUSTMENT = 5;
-		public static const ADJUSTMENTEDIT = 6;
-		public static const ADJUSTMENTORDER = 7;
-		public static const POSITIONING = 8;
-		public static const FOLDER = 9;
-		public static const CAMERA = 10;
-		public static const LIGHT = 11;
-		public static const LIGHTSETTINGS = 12;
-		public static const FOLDERCHECKBOX = 13;
+		public static const LIST_LENGTH:int = 565;
 		
 		public static const LEFT = 1;
 		public static const UP = 2;
@@ -58,10 +44,17 @@
 		
 		public var isEnabled:Boolean = true;
 		
-		public var listFunc:Function = null;
-		public var checkboxFunc:Function = null;
-		public var sliderFunc:Function = null;
-		public var touchFunc:Function = null;
+		public var defaultProperties = {
+			x: 12,
+			y: 36,
+			margin: 10
+		};
+		
+		public var sliderProperties = {
+			x: 18,
+			y: 55,
+			margin: 10
+		};
 		
 		public function SliderList() {
 			super();
@@ -71,7 +64,7 @@
 			listScroll.maximum = 100;
 			listScroll.StepSize = 1;
 			listScroll.addEventListener(Option_Scrollbar.VALUE_CHANGE, onValueChange);
-			updateScroll(Data.MAIN_MENU.length, LIST_MAX);
+			//updateScroll(Data.MAIN_MENU.length, LIST_MAX);
 			
 			addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
 			addEventListener(EntryEvent.SELECTED, onEntry);
@@ -86,6 +79,14 @@
 				entry.checkbox2.checkId = 1;
 				this.addChild(entry);
 				entries[i] = entry;			
+			}
+		}
+		
+		public function initEntryFunctions(func:EntryFunctions):void
+		{
+			for (var i:int = 0; i < LIST_MAX; i++)
+			{
+				entries[i].initFunctions(func);
 			}
 		}
 
@@ -170,7 +171,7 @@
 					return entry;
 				}
 				//if for some reason the entry is incorrect we should just search the entire list
-				for (var i:int = 0; i < listSize; i++) {
+				for (var i:int = 0; i < this.listSize; i++) {
 					entry = entries[i];
 					if (!entry.visible) {
 						return null;
@@ -230,44 +231,13 @@
 					processDirection(false);
 					break;
 				case UP:
-					if (selectedY > listPosition) {
-						unselect();
-						selectedY--;
-						select();
-					} else {
-						if (listPosition > 0) {
-							unselect();
-							scrollList(1);
-							select();
-						} else {
-							scrollList(-(entrySize - listSize));
-							unselect();
-							selectedY = entrySize - 1;
-							select();
-						}
-					}
-					select();
+					processUp(1);
 					break;
 				case RIGHT:
 					processDirection(true);
 					break;
 				case DOWN:
-					if (selectedY < (listPosition + length - 1)) {
-						unselect();
-						selectedY++;
-						select();
-					} else {
-						if (listPosition < (entrySize - listSize)) {
-							unselect();
-							scrollList(-1);
-							select();
-						} else {
-							scrollList(listPosition);
-							unselect();
-							selectedY = 0;
-							select();
-						}
-					}
+					processDown(1);
 					break;
 				case A:
 					confirm();
@@ -281,13 +251,21 @@
 			if (!entry) return;
 			
 			switch (entry.type) {
-				case SliderListEntry.SLIDER:
+				case Data.ITEM_LIST:
+					if (inc) {
+						processUp(1);
+					}
+					else {
+						processDown(1);
+					}
+					break;
+				case Data.ITEM_SLIDER:
 					if (inc)
 						entry.slider.IncrementPad();
 					else
 						entry.slider.DecrementPad();
 					break;
-				case SliderListEntry.ADJUSTMENT:
+				case Data.ITEM_ADJUSTMENT:
 					if (selectedY != -1)
 						unselect();
 					if (inc) {
@@ -301,9 +279,51 @@
 					}
 					select();
 					break;
-				case SliderListEntry.DRAG:
+				case Data.ITEM_TOUCH:
 					entry.checkbox.forceDrag(inc);
 					break;
+			}
+		}
+		
+		//TODO make variable
+		public function processUp(i:int)
+		{
+			if (selectedY > listPosition) {
+				unselect();
+				selectedY--;
+				select();
+			} else {
+				if (listPosition > 0) {
+					unselect();
+					scrollList(1);
+					select();
+				} else {
+					scrollList(-(entrySize - listSize));
+					unselect();
+					selectedY = entrySize - 1;
+					select();
+				}
+			}
+		}
+		
+		//TODO make variable
+		public function processDown(i:int)
+		{
+			if (selectedY < (listPosition + length - 1)) {
+				unselect();
+				selectedY++;
+				select();
+			} else {
+				if (listPosition < (entrySize - listSize)) {
+					unselect();
+					scrollList(-1);
+					select();
+				} else {
+					scrollList(listPosition);
+					unselect();
+					selectedY = 0;
+					select();
+				}
 			}
 		}
 		
@@ -414,365 +434,50 @@
 			}
 		}
 		
-		public function update(entrySize:int, listSize:int, func:Function, func2 = null, func3 = null)
+		public function getEntryProperties(type:int):Object
 		{
-			updateScroll(entrySize, listSize);
-
+			if (type == Data.ITEM_SLIDER) {
+				return sliderProperties;
+			}
+			return defaultProperties;
+//			switch(type)
+//			{
+//				case SliderListEntry.SLIDER: return sliderProperties;
+//				default: return defaultProperties;
+//			}
+		}
+		
+		//load items until we run out of space
+		public function update():void
+		{
+			var xOffset:int;
+			var yOffset:int = 10;
+			
+			this.entrySize = Data.menuSize;
+			this.listSize = 0;
+			
 			for(var i:int = 0; i < LIST_MAX; i++) 
 			{
-				if (i < length) {
-					entries[i].update(i + listPosition, func, func2, func3);
-					updateType(entries[i]);
+				var pos:int = i + listPosition;
+				
+				if (pos < this.entrySize) {
+					var type:int = Data.getType(pos);
+					var properties = getEntryProperties(type);
+					
+					xOffset = properties.x;
+					
+					entries[i].update(pos, type, xOffset, yOffset);
+					
+					yOffset += properties.y;
+					
+					this.listSize++;
 				} else {
-					entries[i].id = i + listPosition;
+					entries[i].id = pos;
 					entries[i].disable();
 				}
 			}
 			
-			updateLayout();
-		}
-		
-		public function updateLayout():void
-		{
-			var xOffset:int;
-			var yOffset:int;
-			
-			switch (entries[i].type) //init
-			{
-				case SliderListEntry.DIVIDER:
-				case SliderListEntry.SLIDER:
-					xOffset = 18;
-					yOffset = 10;
-					break;
-				default:
-					xOffset = 12;
-					yOffset = 10;
-			}
-			
-			for (var i:int = 0; i < LIST_MAX; i++)
-			{
-				if (entries[i].visible) {
-
-					switch (entries[i].type) { //pre set pos
-						case SliderListEntry.DIVIDER:
-						case SliderListEntry.SLIDER:
-							xOffset = 18;
-							break;
-						default:
-							xOffset = 12;
-					}
-					
-					entries[i].setPos(xOffset, yOffset);
-					
-					switch (entries[i].type) { //post set pos
-						case SliderListEntry.DIVIDER:
-						case SliderListEntry.SLIDER:
-							yOffset += 55;
-							break;
-						default:
-							yOffset += 36;
-					}
-				}
-			}
-		}
-		
-		public function updateType(entry:SliderListEntry):void
-		{
-			switch (type) {
-				case LIST: updateListEntry(entry); break;
-				case TRANSFORM: updateTransformEntry(entry); break;
-				case MORPH: updateMorphsEntry(entry); break;
-				case CHECKBOX: updateCheckboxEntry(entry); break;
-				case EYES: updateEyesEntry(entry); break;
-				case ADJUSTMENT: updateAdjustmentEntry(entry); break;
-				case ADJUSTMENTORDER: updateAdjustmentOrderEntry(entry); break;
-				case ADJUSTMENTEDIT: updateAdjustmentEditEntry(entry); break;
-				case POSITIONING: updatePositioningEntry(entry); break;
-				case FOLDER: updateFolderEntry(entry); break;
-				case CAMERA: updateCameraEntry(entry); break;
-				case LIGHT: updateLightEntry(entry); break;
-				case LIGHTSETTINGS: updateLightSettingsEntry(entry); break;
-				case FOLDERCHECKBOX: updateFolderCheckboxEntry(entry); break;
-			}
-		}
-		
-		public function updateList():void
-		{
-			this.type = LIST;
-			update(Data.menuOptions.length, LIST_MAX, listFunc);
-		}
-		
-		public function updateListEntry(entry:SliderListEntry):void
-		{
-			entry.updateList(Data.items[entry.id].name]);
-		}
-		
-		public function updateCheckboxes(func:Function):void
-		{
-			this.type = CHECKBOX;
-			update(Data.menuOptions.length, LIST_MAX, func);
-		}
-		
-		public function updateCheckboxEntry(entry:SliderListEntry):void
-		{
-			entry.updateCheckbox(Data.menuOptions[entry.id], Data.menuValues[entry.id]);
-		}
-		
-		public function updateAdjustment(func:Function, func2:Function, func3:Function)
-		{
-			this.type = ADJUSTMENT;
-			update(Data.menuOptions.length, LIST_MAX, func, func2, func3);
-		}
-		
-		public function updateAdjustmentEntry(entry:SliderListEntry)
-		{
-			entry.updateAdjustment(Data.menuOptions[entry.id]);
-		}
-		
-		public function updateAdjustmentOrder(func:Function, func2:Function, func3:Function)
-		{
-			this.type = ADJUSTMENTORDER;
-			update(Data.menuOptions.length, LIST_MAX, func, func2, func3);
-		}
-		
-		public function updateAdjustmentOrderEntry(entry:SliderListEntry)
-		{
-			entry.updateAdjustmentOrder(Data.menuOptions[entry.id]);
-		}
-		
-		public function updateAdjustmentEdit(func:Function)
-		{
-			this.type = ADJUSTMENTEDIT;
-			update(Data.menuValues.length, LIST_MAX, func);
-		}
-		
-		public function updateAdjustmentEditEntry(entry:SliderListEntry)
-		{
-			switch (entry.id)
-			{
-				case 0: //Scale
-					entry.updateSliderData(0, 100, 1, 1, 0)
-					entry.updateSlider("$SAM_Scale", SliderListEntry.INT);
-					break;
-				case 1: //Save
-					entry.updateList("$SAM_SaveAdjustment");
-					break;
-				case 2: //Rename
-					entry.updateList("$SAM_RenameAdjustment");
-					break;
-				case 3: //Reset
-					entry.updateList("$SAM_ResetAdjustment");
-					break;
-				default:
-					entry.updateList("Negate " + Translator.translate(Data.menuValues[entry.id]));
-			}
-		}
-		
-		public function updateTransform(func:Function):void
-		{
-			this.type = TRANSFORM;
-			update(Data.TRANSFORM_NAMES.length, SLIDER_MAX, func);
-		}
-	
-		public function updateTransformEntry(entry:SliderListEntry)
-		{
-			if (entry.id < 3) //rot
-			{
-				entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 180.0, 2);
-				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
-			}
-			else if (entry.id < 6) //pos
-			{
-				entry.updateSliderData(0.0, 20.0, 0.01, 0.1, 10.0, 4);
-				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
-			}
-			else if (entry.id < 7)//scale
-			{
-				entry.updateSliderData(0.0, 2.0, 0.01, 0.02, 0.0, 4);
-				entry.updateSlider(Data.TRANSFORM_NAMES[entry.id], SliderListEntry.FLOAT);
-			}
-			else if (entry.id < 10)//rot2
-			{
-				entry.updateDrag(Data.TRANSFORM_NAMES[entry.id])
-				entry.checkbox.increment = 2.0;
-			}
-		}
-		
-		public function updateMorphs(func:Function):void
-		{
-			this.type = MORPH;
-			update(Data.menuOptions.length, SLIDER_MAX, func);
-		}
-		
-		public function updateMorphsEntry(entry:SliderListEntry):void
-		{
-			entry.updateSliderData(0, 100, 1, 1, 0);
-			entry.updateSlider(Data.menuOptions[entry.id], SliderListEntry.INT);
-		}
-		
-		public function updateEyes(func:Function):void
-		{
-			this.type = EYES;
-			update(Data.EYE_NAMES.length, SLIDER_MAX, func);
-		}
-		
-		public function updateEyesEntry(entry:SliderListEntry):void
-		{
-			entry.updateSliderData(0.0, 2.0, 0.01, 0.05, 1.0, 4);
-			entry.updateSlider(Data.EYE_NAMES[entry.id], SliderListEntry.FLOAT);
-		}
-		
-		public function updatePositioning(func:Function):void
-		{
-			this.type = POSITIONING;
-			update(Data.POSITIONING_NAMES.length, LIST_MAX, func);
-		}
-		
-		public function updatePositioningEntry(entry:SliderListEntry):void
-		{
-			if (entry.id < 1) {
-				entry.updateSliderData(0, 500, 1, 1, 0, 0);
-				entry.updateSlider(Data.POSITIONING_NAMES[entry.id], SliderListEntry.INT);
-			}
-			else if (entry.id < 8) {
-				entry.updateDragValue(Data.POSITIONING_NAMES[entry.id]);
-				if (entry.id < 4) { //pos
-					entry.checkbox.increment = 10.0
-				} else if (entry.id < 7){ //rot
-					entry.checkbox.increment = 2.0;
-				} else { //scale
-					entry.checkbox.increment = 1.0;
-				}
-			}
-			else {
-				entry.updateList(Data.POSITIONING_NAMES[entry.id]);
-			}
-		}
-		
-		public function updateFolder(func:Function):void
-		{
-			this.type = FOLDER;
-			update(Data.menuOptions.length, LIST_MAX, func);
-		}
-		
-		public function updateFolderEntry(entry:SliderListEntry):void
-		{
-			if (Data.menuFolder[entry.id].folder) {
-				entry.updateFolder(Data.menuOptions[entry.id]);
-			} else {
-				entry.updateList(Data.menuOptions[entry.id]);
-			}
-		}
-		
-		public function updateCamera(func:Function):void
-		{
-			this.type = CAMERA;
-			update(Data.menuValues.length, LIST_MAX, func);
-		}
-		
-		public function updateCameraEntry(entry:SliderListEntry):void
-		{
-			switch (entry.id) {
-				case 0: //pos
-				case 1:
-				case 2: 
-					entry.updateDragValue(Data.CAMERA_NAMES[entry.id]);
-					entry.checkbox.increment = 10.0
-					break;
-				case 3: //yaw
-					entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 0.0, 2);
-					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
-					break;
-				case 4: //pitch
-					entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 180, 2);
-					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
-					break;
-				case 5: //roll
-					entry.updateSliderData(0.0, 360.0, 0.1, 1.0, 180, 2);
-					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
-					break;
-				case 6: //fov
-					entry.updateSliderData(1.0, 160.0, 0.1, 1.0, 0.0, 2);
-					entry.updateSlider(Data.CAMERA_NAMES[entry.id], SliderListEntry.FLOAT);
-					break;
-				default: //save/load state
-					//save/load are half the remainder each
-					var save:Boolean = entry.id < (7 + ((Data.menuValues.length - 7) / 2));
-					entry.updateList(Translator.translate(save ? "$SAM_SaveState" : "$SAM_LoadState") + " " + (Data.menuValues[entry.id] + 1));
-					break;
-			}
-		}
-		
-		public function updateLight(func:Function):void
-		{
-			this.type = LIGHT;
-			update(Data.LIGHT_NAMES.length, LIST_MAX, func);
-		}
-		
-		public function updateLightEntry(entry:SliderListEntry):void
-		{
-			switch (entry.id) {
-				case 0: //distance
-					entry.updateDragValue(Data.LIGHT_NAMES[entry.id]);
-					entry.checkbox.increment = 10.0;
-					break;
-				case 1: //rotation
-					entry.updateDragValue(Data.LIGHT_NAMES[entry.id]);
-					entry.checkbox.increment = 2.0;
-					break;
-				case 2: //height
-					entry.updateDragValue(Data.LIGHT_NAMES[entry.id]);
-					entry.checkbox.increment = 10.0;
-					break;
-				case 3: //xoffset
-				case 4: //yoffset
-					entry.updateSliderData(0.0, 180, 0.1, 1.0, 90, 2);
-					entry.updateSlider(Data.LIGHT_NAMES[entry.id], SliderListEntry.FLOAT);
-					break;
-				default: //functions
-					entry.updateList(Data.LIGHT_NAMES[entry.id]);
-					break;
-			}
-		}
-		
-		public function updateLightSettings(func:Function):void
-		{
-			this.type = LIGHTSETTINGS;
-			update(Data.LIGHTSETTINGS_NAMES.length, LIST_MAX, func);
-		}
-		
-		public function updateLightSettingsEntry(entry:SliderListEntry):void
-		{
-			switch (entry.id) {
-				case 0: //x
-				case 1: //y
-				case 2: //z
-					entry.updateDragValue(Data.LIGHTSETTINGS_NAMES[entry.id]);
-					entry.checkbox.increment = 10.0;
-					break;
-				case 3: //rotation
-					entry.updateDragValue(Data.LIGHTSETTINGS_NAMES[entry.id]);
-					entry.checkbox.increment = 2.0;
-					break;
-				default: //functions
-					entry.updateList(Data.LIGHTSETTINGS_NAMES[entry.id]);
-					break;
-			}
-		}
-		
-		public function updateFolderCheckbox(func:Function):void
-		{
-			this.type = FOLDERCHECKBOX;
-			update(Data.menuOptions.length, LIST_MAX, func);
-		}
-		
-		public function updateFolderCheckboxEntry(entry:SliderListEntry):void
-		{
-			if (Data.menuFolder[entry.id].folder) {
-				entry.updateFolder(Data.menuOptions[entry.id]);
-			} else {
-				entry.updateCheckbox(Data.menuOptions[entry.id], Data.menuValues[entry.id]);
-			}
+			updateScroll(entrySize, listSize);
 		}
 	}
 }

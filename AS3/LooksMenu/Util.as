@@ -4,6 +4,7 @@
 	import flash.geom.*;
 	import flash.text.*;
 	import flash.ui.*;
+	import flash.utils.*;
 	
     public class Util {
 		public static var debug:Boolean = false;
@@ -48,6 +49,14 @@
 			}
 		}
 		
+		public static function shallowCopyArray(arr:Array):Array {
+			var result:Array = new Array(arr.length);
+			for (var i:int = 0; i < arr.length; i++) {
+				result[i] = arr[i];
+			}
+			return result;
+		}
+		
 		public static function packObjectArray(obj:Array, str:String, arr:Array)
 		{
 			//fill missing objects
@@ -76,16 +85,55 @@
 			clip.height = height;
 		}
 		
+		public static function callFuncArgs(func:Function, args:Array = null):Object
+		{			
+			if (!args)
+				return func();
+			
+			//I don't think AS3 has any other way to do this
+			switch(args.length) {		
+				case 0: return func();
+				case 1: return func(args[0]);
+				case 2: return func(args[0], args[1]);
+				case 3: return func(args[0], args[1], args[2]);
+				case 4: return func(args[0], args[1], args[2], args[3]);
+				case 5: return func(args[0], args[1], args[2], args[3], args[4]);
+				case 6: return func(args[0], args[1], args[2], args[3], args[4], args[5]);
+				case 7: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+				case 8: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+				case 9: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+				case 10: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
+				case 11: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10]);
+				case 12: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11]);
+			}
+			
+			Data.error = "Function exceeded parameter limit";
+			return null;
+		}
+		
 		public static function traceObj(obj:Object):void
 		{
+			if (obj == null) {
+				trace("Obj is null");
+				return;
+			}
+			
 			for (var id:String in obj)
 			{
 				var value:Object = obj[id];
+				var type:String = getQualifiedClassName(value);
 
-				if (getQualifiedClassName(value) == "Object")
+				if (type == "Object")
 				{
 					trace("-->");
 					traceObj(value);
+				}
+				else if (type == "Array")
+				{
+					trace(id, " Array length: ", value.length);
+					for (var i:int = 0; i < value.length; i++) {
+						traceObj(value[i]);
+					}
 				}
 				else
 				{

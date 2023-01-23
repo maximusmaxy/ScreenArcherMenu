@@ -1,0 +1,18 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetBoneCategories",
+        "args": [
+            {
+                "type": "var",
+                "name": "adjustmentHandle"
+            }
+        ]
+    },
+    "set": {
+        "type": "menu",
+        "name": "BoneList",
+        "var": "boneCategory"
+    }
+}

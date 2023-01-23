@@ -1,0 +1,17 @@
+{
+    "type": "checkbox",
+    "get": {
+        "type": "sam",
+        "func": "GetHacks"
+    },
+    "set": {
+        "type": "sam",
+        "func": "SetHacks"
+    },
+    "names": [
+        "$SAM_BlinkHack",
+        "$SAM_MorphHack",
+        "$SAM_EyeTrackingHack"
+    ],
+    "update": true
+}

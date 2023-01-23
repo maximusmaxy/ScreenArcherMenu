@@ -1,0 +1,37 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetFaceMorphCategories"
+    },
+    "set": {
+        "type": "sam",
+        "name": "LoadFaceMorphCategories",
+        "var": "faceMorphCategory"
+    },
+    "load": {
+        "name": "$SAM_Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "type": "full",
+                "path": "Data\\F4SE\\Plugins\\SAM\\FaceMorphs",
+                "ext": ".txt",
+                "pop": false,
+                "func": {
+                    "type": "sam",
+                    "func": "LoadFaceMorphs"
+                }
+            }
+        }
+    },
+    "reset": {
+        "name": "$SAM_Reset",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "ResetFaceMorphs"
+        }
+    }
+}

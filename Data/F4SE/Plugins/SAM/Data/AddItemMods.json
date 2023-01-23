@@ -1,0 +1,12 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetItemMods"
+    },
+    "set": {
+        "type": "menu",
+        "name": "AddItemTypes",
+        "var": "addItemMod"
+    }
+}

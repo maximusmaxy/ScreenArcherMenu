@@ -1,0 +1,13 @@
+{
+    "type": "folder",
+    "folder": {
+        "type": "full",
+        "path": "Data\\F4SE\\Plugins\\SAM\\Adjustments",
+        "ext": ".txt",
+        "pop": false,
+        "func": {
+            "type": "sam",
+            "func": "LoadFaceMorphs"
+        }
+    }
+}

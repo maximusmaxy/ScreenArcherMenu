@@ -1,0 +1,8 @@
+Type	tongue
+
+Category	ZeX
+Tongue_00	$BONE_Tongue0
+Tongue_01	$BONE_Tongue1
+Tongue_02	$BONE_Tongue2
+Tongue_03	$BONE_Tongue3
+Tongue_04	$BONE_Tongue4

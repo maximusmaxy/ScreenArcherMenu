@@ -1,0 +1,47 @@
+{
+    "type": "slider",
+    "slider": {
+        "type": "int",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "stepkey": 1
+    },
+    "get": {
+        "type": "sam",
+        "name": "GetFaceMorphs",
+        "args": [
+            {
+                "type": "var",
+                "name": "faceMorphCategory"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetFaceMorphs",
+        "args": [
+            {
+                "type": "var",
+                "name": "faceMorphCategory"
+            }
+        ]
+    },
+    "load": {
+        "name": "$SAM_Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "type": "full",
+                "path": "Data\\F4SE\\Plugins\\SAM\\FaceMorphs",
+                "ext": ".txt",
+                "pop": false,
+                "func": {
+                    "type": "sam",
+                    "func": "LoadFaceMorphs"
+                }
+            }
+        }
+    }
+}

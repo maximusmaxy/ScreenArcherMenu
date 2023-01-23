@@ -1,0 +1,33 @@
+mod	Fallout4.esm
+race	00013746
+sex	male
+type	nodes
+
+Category	Pose
+LBreast_00_3B
+LBreast_01_skin
+LBreast_02_skin
+LBreast_03_skin
+RBreast_00_3B
+RBreast_01_skin
+RBreast_02_skin
+RBreast_03_skin
+LButt_00_3B
+LButt_01_skin
+LButt_02_skin
+LButt_03_skin
+RButt_00_3B
+RButt_01_skin
+RButt_02_skin
+RButt_03_skin
+LLeg_Thigh_00_FR
+LLeg_Thigh_01_F_skin
+LLeg_Thigh_01_R_skin
+RLeg_Thigh_00_FR
+RLeg_Thigh_01_F_skin
+RLeg_Thigh_01_R_skin
+Tongue_00_skin
+Tongue_01_skin
+Tongue_02_skin
+Tongue_03_skin
+Tongue_04_skin

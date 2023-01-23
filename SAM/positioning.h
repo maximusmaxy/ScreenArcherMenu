@@ -49,7 +49,7 @@ enum {
 void UpdateNonActorRefr();
 void SaveObjectTranslation();
 
-void AdjustObjectPosition(int type, int scalar, int step);
+void AdjustObjectPosition(int type, float delta, int step);
 void ResetObjectPosition();
 void ResetObjectRotation();
 void ResetObjectScale();

@@ -1,0 +1,139 @@
+Race	0001A009
+Mod	Fallout4.esm
+Sex	male
+Type	pose
+
+Category	Main
+COM	COM
+Pelvis	Pelvis
+SPINE1	Spine1
+SPINE2	Spine2
+Chest	Chest
+Neck	Neck
+HEAD	Head
+
+Category	Left Arm
+WeaponLeft	Weapon Left
+L_RibHelper	Left Rib Helper
+LArm_Collarbone	Left Collarbone
+LArm_UpperArm	Left Upper Arm
+LArm_UpperTwist1	Left Upper Twist 1
+LArm_UpperTwist2	Left Upper Twist 2
+LArm_ForeArm1	Left Forearm 1
+LArm_ForeArm2	Left Forearm 2
+LArm_ForeArm3	Left Forearm 3
+LArm_Hand	Left Hand
+LArm_Finger11	Left Finger 11
+LArm_Finger12	Left Finger 12
+LArm_Finger13	Left Finger 13
+LArm_Finger21	Left Finger 21
+LArm_Finger22	Left Finger 22
+LArm_Finger23	Left Finger 23
+LArm_Finger31	Left Finger 31
+LArm_Finger32	Left Finger 32
+LArm_Finger33	Left Finger 33
+LArm_Finger41	Left Finger 41
+LArm_Finger42	Left Finger 42
+LArm_Finger43	Left Finger 43
+LArm_Finger51	Left Finger 51
+LArm_Finger52	Left Finger 52
+LArm_Finger53	Left Finger 53
+
+Category	Right Arm
+WEAPON	Weapon
+R_RibHelper	Right Rib Helper
+RArm_Collarbone	Right Collarbone
+RArm_UpperArm	Right Upper Arm
+RArm_UpperTwist1	Right Upper Twist 1
+RArm_UpperTwist2	Right Upper Twist 2
+RArm_ForeArm1	Right Forearm 1
+RArm_ForeArm2	Right Forearm 2
+RArm_ForeArm3	Right Forearm 3
+RArm_Hand	Right Hand
+RArm_Finger11	Right Finger 11 
+RArm_Finger12	Right Finger 12
+RArm_Finger13	Right Finger 13
+RArm_Finger21	Right Finger 21
+RArm_Finger22	Right Finger 22
+RArm_Finger23	Right Finger 23
+RArm_Finger31	Right Finger 31
+RArm_Finger32	Right Finger 32
+RArm_Finger33	Right Finger 33
+RArm_Finger41	Right Finger 41
+RArm_Finger42	Right Finger 42
+RArm_Finger43	Right Finger 43
+RArm_Finger51	Right Finger 51
+RArm_Finger52	Right Finger 52
+RArm_Finger53	Right Finger 53
+
+Category	Legs
+LLeg_Thigh	Left Thigh
+LLeg_Calf	Left Calf
+LLeg_Foot	Left Foot
+LLeg_Toe1	Left Toe
+RLeg_Thigh	Right Thigh
+RLeg_Calf	Right Calf
+RLeg_Foot	Right Foot
+RLeg_Toe1	Right Toe
+
+Category	Main Skin
+Pelvis_skin	Pelvis Skin
+Spine1_skin	Spine 1 Skin
+Spine2_skin	Spine 2 Skin
+Chest_Skin	Chest Skin
+Belly_skin	Belly Skin
+UpperBelly_skin	Upper Belly Skin
+Neck_skin	Neck Skin
+Neck1_skin	Neck 1 Skin
+Head_skin	Head Skin
+Face_skin	Face Skin
+
+Category	Arm Skin
+LArm_Collarbone_skin	Left Collarbone Skin
+LArm_UpperArm_skin	Left Upper Arm Skin
+LArm_UpperTwist1_skin	Left Upper Twist 1 Skin
+LArm_UpperTwist2_skin	Left Upper Twist 2 Skin
+LArm_UpperFat_skin	Left Upper Fat Skin
+LArm_ForeArm1_skin	Left Forearm 1 Skin
+LArm_ForeArm2_skin	Left Forearm 2 Skin
+LArm_ForeArm3_skin	Left Forearm 3 Skin
+RArm_Collarbone_skin	Right Collarbone Skin
+RArm_UpperArm_skin	Right Upper Arm Skin
+RArm_UpperTwist1_skin	Right Upper Twist 1 Skin
+RArm_UpperTwist2_skin	Right Upper Twist 2 Skin
+RArm_UpperFat_skin	Right Upper Fat Skin
+RArm_ForeArm1_skin	Right Forearm 1 Skin
+RArm_ForeArm2_skin	Right Forearm 2 Skin
+RArm_ForeArm3_skin	Right Forearm 3 Skin
+
+Category	Leg Skin
+LLeg_Thigh_skin	Left Thigh Skin
+LLeg_Calf_skin	Left Calf Skin
+RLeg_Thigh_skin	Right Thigh Skin
+RLeg_Calf_skin	Right Calf Skin
+
+Category	NSFW Skin
+LButtFat_skin	Left Butt Skin
+RButtFat_skin	Right Butt Skin
+LBreast_skin	Left Breast Skin
+RBreast_skin	Right Breast Skin
+
+Category	Offset
+LLeg_Thigh_Sub	Left Thigh Sub Offset
+RLeg_Thigh_Sub	Right Thigh Sub Offset
+LLeg_Calf_Sub	Left Calf Sub Offset
+RLeg_Calf_Sub	Right Calf Sub Offset
+LButt	Left Butt Offset
+RButt	Right Butt Offset
+LBreast	Left Breast Offset
+RBreast	Right Breast Offset
+
+Category	Anim Object
+AnimObjectR1	Anim Object R1
+AnimObjectR2	Anim Object R2
+AnimObjectR3	Anim Object R3
+AnimObjectL1	Anim Object L1
+AnimObjectL2	Anim Object L2
+AnimObjectL3	Anim Object L3
+AnimObjectA	Anim Object A
+AnimObjectB	Anim Object B

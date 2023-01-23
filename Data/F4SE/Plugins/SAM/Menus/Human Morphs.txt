@@ -1,0 +1,74 @@
+Race	00013746
+Mod	Fallout4.esm
+Sex	male
+Type	morphs
+
+Category	$SAM_Lips
+17	$SAM_LeftSmile
+5	$SAM_LeftFrown
+7	$SAM_LeftLipCornerIn
+8	$SAM_LeftLipCornerOut
+20	$SAM_LeftUpperLipDown
+21	$SAM_LeftUpperLipUp
+11	$SAM_LeftLowerLipDown
+12	$SAM_LeftLowerLipUp
+40	$SAM_RightSmile
+28	$SAM_RightFrown
+30	$SAM_RightLipCornerIn
+31	$SAM_RightLipCornerOut
+43	$SAM_RightUpperLipDown
+44	$SAM_RightUpperLipUp
+34	$SAM_RightLowerLipDown
+35	$SAM_RightLowerLipUp
+22	$SAM_LowerLipFunnel
+23	$SAM_LowerLipRollIn
+24	$SAM_LowerLipRollOut
+46	$SAM_UpperLipFunnel
+47	$SAM_UpperLipRollIn
+48	$SAM_UpperLipRollOut
+25	$SAM_Pucker
+45 	$SAM_StickyLips
+
+Category	$SAM_Jaw
+6	$SAM_LeftJaw
+29	$SAM_RightJaw
+1	$SAM_JawForward
+2	$SAM_JawOpen
+
+Category	$SAM_Eyes
+18	$SAM_LeftUpperEyeLidDown
+19	$SAM_LeftUpperEyeLidUp
+9	$SAM_LeftLowerEyeLidDown
+10	$SAM_LeftLowerEyeLidUp
+41	$SAM_RightUpperEyeLidDown
+42	$SAM_RightUpperEyeLidUp
+32	$SAM_RightLowerEyeLidDown
+33	$SAM_RightLowerEyeLidUp
+
+Category	$SAM_Eyebrows
+13	$SAM_LeftMiddleBrowDown
+14	$SAM_LeftMiddleBrowUp
+16	$SAM_LeftOuterBrowDown
+3	$SAM_LeftBrowOuterUp
+36	$SAM_RightMiddleBrowDown
+37	$SAM_RightMiddleBrowUp
+39	$SAM_RightOuterBrowDown
+26	$SAM_RightBrowOuterUp
+0	$SAM_BrowSqueeze
+
+Category	$SAM_Nose
+15	$SAM_LeftNoseUp
+38	$SAM_RightNoseUp
+
+Category	$SAM_Cheeks
+4	$SAM_LeftCheekUp
+27	$SAM_RightCheekUp
+
+Category	$SAM_Tongue
+49	$SAM_TongueLift
+
+Category	$SAM_Extra
+50	$SAM_Extra1
+51	$SAM_Extra2
+52	$SAM_Extra3
+53	$SAM_Extra4

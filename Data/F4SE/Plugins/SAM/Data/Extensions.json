@@ -1,0 +1,11 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetExtensions"
+    },
+    "set": {
+        "type": "sam",
+        "name": "LoadMenuValue"
+    }
+}

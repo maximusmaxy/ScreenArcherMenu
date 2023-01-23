@@ -1,0 +1,8 @@
+Type	tongue
+
+Category	3BBB
+Tongue_00_skin		$BONE_Tongue0
+Tongue_01_skin		$BONE_Tongue1
+Tongue_02_skin		$BONE_Tongue2
+Tongue_03_skin		$BONE_Tongue3
+Tongue_04_skin		$BONE_Tongue4
