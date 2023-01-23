@@ -2,7 +2,7 @@
     "type": "list",
     "get": {
         "type": "sam",
-        "func": "GetExportTypes"
+        "name": "GetExportTypes"
     },
     "set": {
         "type": "menu",

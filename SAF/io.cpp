@@ -125,6 +125,7 @@ namespace SAF {
 		std::ofstream stream;
 		if (!OpenOutFileStream(path, &stream))
 			return false;
+			
 		
 		Json::StyledStreamWriter writer;
 		writer.write(stream, value);

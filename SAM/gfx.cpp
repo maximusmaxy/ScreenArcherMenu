@@ -110,20 +110,6 @@ void GFxResult::PushName(const char* name) {
 	}
 }
 
-void GFxResult::PushValue(GFxValue* var) {
-	if (type == kGFxResultItems) {
-		itemParams[1].PushBack(var);
-	}
-	else {
-		params[1].PushBack(var);
-	}
-}
-
-void GFxResult::PushItem(const char* name, GFxValue* var) {
-	itemParams[0].PushBack(&GFxValue(name));
-	itemParams[1].PushBack(var);
-}
-
 void GFxResult::PushFolder(const char* name, const char* path)
 {
 	GFxValue folder;

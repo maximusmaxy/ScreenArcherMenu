@@ -25,9 +25,10 @@
 #include "lights.h"
 #include "gfx.h"
 #include "inventory.h"
+#include "eyes.h"
+#include "io.h"
 
 #include "SAF/hacks.h"
-#include "SAF/eyes.h"
 #include "SAF/util.h"
 #include "SAF/conversions.h"
 
@@ -42,6 +43,7 @@ GFxFunction(GetMenu, {
 	GetMenuGFx(GFxResult(args), args->args[0].GetString());
 });
 
+//LoadMenu is is a cpp function
 class LoadMenuScaleform : public GFxFunctionHandler
 {
 public:
@@ -167,31 +169,20 @@ GFxFunction(SetEyeTrackingHack, {
 	SetDisableEyecoordUpdate(args->args[0].GetBool());
 });
 
-GFxFunction(GetEyeCoords, {
-	args->movie->movieRoot->CreateArray(args->result);
-	float coords[2];
-	if (SAF::GetEyecoords(SAF::GetEyeNode(selected.refr), coords)) {
-		args->result->PushBack(&GFxValue(coords[0] * -4));
-		args->result->PushBack(&GFxValue(coords[1] * 5));
-	}
-	else {
-		args->result->PushBack(&GFxValue(0.0));
-		args->result->PushBack(&GFxValue(0.0));
-	}
+GFxFunction(GetEyes, {
+	GetEyes(GFxResult(args));
 });
 
-GFxFunction(SetEyeCoords, {
-	if (GetDisableEyecoordUpdate() != kHackEnabled)
-		SetDisableEyecoordUpdate(true);
-	SAF::SetEyecoords(SAF::GetEyeNode(selected.refr), args->args[0].GetNumber() * -0.25, args->args[1].GetNumber() * 0.2);
+GFxFunction(SetEyes, {
+	SetEyes(GFxResult(args), args->args[2].GetNumber(), args->args[3].GetNumber());
 });
 
-GFxFunction(GetAdjustment, {
-	GetAdjustmentGFx(GFxResult(args), args->args[0].GetInt());
+GFxFunction(GetAdjustmentScale, {
+	GetAdjustmentScale(GFxResult(args), args->args[0].GetUInt());
 });
 
 GFxFunction(SetAdjustmentScale, {
-	SetScale(args->args[0].GetInt(), args->args[1].GetInt());
+	SetAdjustmentScale(GFxResult(args), args->args[2].GetUInt(), args->args[1].GetUInt());
 });
 
 GFxFunction(GetAdjustmentList, {
@@ -250,7 +241,8 @@ GFxFunction(ResetTransform, {
 )};
 
 GFxFunction(SaveAdjustment, {
-	SaveAdjustmentFile(args->args[1].GetString(), args->args[0].GetInt());
+	GFxResult result(args);
+	SaveAdjustmentFile(args->args[0].GetString(), args->args[1].GetInt());
 });
 
 GFxFunction(LoadAdjustment, {
@@ -267,15 +259,20 @@ GFxFunction(RemoveAdjustment, {
 });
 
 GFxFunction(ResetAdjustment, {
-	ClearAdjustment(args->args[0].GetInt());
+	GFxResult result(args);
+	ClearAdjustment(args->args[2].GetInt());
 });
 
 GFxFunction(NegateAdjustment, {
 	NegateTransform(args->args[0].GetString(), args->args[1].GetInt());
 });
 
-GFxFunction(NegateAdjustmentGroup, {
-	NegateAdjustments(args->args[0].GetInt(), args->args[1].GetString());
+GFxFunction(GetAdjustmentNegate, {
+	GetAdjustmentNegate(GFxResult(args));
+});
+
+GFxFunction(SetAdjustmentNegate, {
+	SetAdjustmentNegate(GFxResult(args), args->args[1].GetString(), args->args[2].GetUInt());
 });
 
 GFxFunction(MoveAdjustment, {
@@ -283,7 +280,7 @@ GFxFunction(MoveAdjustment, {
 });
 
 GFxFunction(RenameAdjustment, {
-	SetAdjustmentName(args->args[0].GetInt(), args->args[1].GetString());
+	SetAdjustmentName(GFxResult(args), args->args[1].GetInt(), args->args[0].GetString());
 });
 
 GFxFunction(GetIdleCategories, {
@@ -505,6 +502,14 @@ GFxFunction(GetPoseExportTypes, {
 	GetPoseExportTypesGFx(GFxResult(args));
 });
 
+GFxFunction(MergeAdjustmentDown, {
+	MergeAdjustment(GFxResult(args), args->args[2].GetUInt());
+});
+
+GFxFunction(MirrorAdjustment, {
+	MirrorAdjustment(GFxResult(args), args->args[2].GetUInt());
+});
+
 GFxFunction(OpenActorContainer, {
 	OpenActorContainer(GFxResult(args));
 });
@@ -559,9 +564,9 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(SetMorphHack);
 	GFxRegister(GetEyeTrackingHack);
 	GFxRegister(SetEyeTrackingHack);
-	GFxRegister(GetEyeCoords);
-	GFxRegister(SetEyeCoords);
-	GFxRegister(GetAdjustment);
+	GFxRegister(GetEyes);
+	GFxRegister(SetEyes);
+	GFxRegister(GetAdjustmentScale);
 	GFxRegister(SetAdjustmentScale);
 	GFxRegister(GetAdjustmentList);
 	GFxRegister(SaveAdjustment);
@@ -570,7 +575,8 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(RemoveAdjustment);
 	GFxRegister(ResetAdjustment);
 	GFxRegister(NegateAdjustment);
-	GFxRegister(NegateAdjustmentGroup);
+	GFxRegister(GetAdjustmentNegate);
+	GFxRegister(SetAdjustmentNegate);
 	GFxRegister(MoveAdjustment);
 	GFxRegister(RenameAdjustment);
 	GFxRegister(GetCategoryList);

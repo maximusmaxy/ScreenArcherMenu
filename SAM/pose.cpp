@@ -1,5 +1,7 @@
 #include "pose.h"
 
+#include "common/IDirectoryIterator.h"
+
 #include "f4se/NiTypes.h"
 
 #include <regex>
@@ -11,7 +13,8 @@
 #include "constants.h"
 #include "sam.h"
 #include "idle.h"
-#include "common/IDirectoryIterator.h"
+#include "types.h"
+#include "io.h"
 
 #include "SAF/conversions.h"
 #include "SAF/types.h"
@@ -196,17 +199,35 @@ void ClearAdjustment(UInt32 adjustmentHandle)
 	adjustments->UpdateAllAdjustments();
 }
 
-void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup)
+void GetAdjustmentNegate(GFxResult& result)
 {
 	std::shared_ptr<ActorAdjustments> adjustments;
 	if (!GetActorAdjustments(&adjustments))
-		return;
+		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
-	MenuCategoryList* groupsMenu = GetMenu(&groupsMenuCache);
-	if (!groupsMenu) 
-		return;
+	MenuCategoryList* groupsMenu = GetMenu(&selected, &groupsMenuCache);
+	if (!groupsMenu)
+		return result.SetError("Could not find negation groups for targeted actor");
+
+	result.CreateNames();
+
+	for (auto it = groupsMenu->begin(); it != groupsMenu->end(); ++it) {
+		result.PushName(it->first.c_str());
+	}
+}
+
+void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 adjustmentHandle)
+{
+	std::shared_ptr<ActorAdjustments> adjustments;
+	if (!GetActorAdjustments(&adjustments))
+		return result.SetError(ADJUSTMENT_MISSING_ERROR);
+
+	MenuCategoryList* groupsMenu = GetMenu(&selected, &groupsMenuCache);
+	if (!groupsMenu)
+		return result.SetError("Could not find negation groups for targeted actor");
 
 	//find the correct adjustment group and negate all transforms
+
 	for (auto it = groupsMenu->begin(); it < groupsMenu->end(); it++) {
 		if (it->first == adjustmentGroup) {
 			for (auto& kvp : it->second) {
@@ -241,11 +262,11 @@ bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment)
 	return false;
 }
 
-void SetAdjustmentName(UInt32 adjustmentHandle, const char* name)
+void SetAdjustmentName(GFxResult& result, UInt32 adjustmentHandle, const char* name)
 {
 	std::shared_ptr<ActorAdjustments> adjustments;
 	if (!GetActorAdjustments(&adjustments))
-		return;
+		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
 	safDispatcher.RenameAdjustment(selected.refr->formID, adjustmentHandle, name);
 }
@@ -290,18 +311,7 @@ bool NiAVObjectVisitAll(NiAVObject* root, const std::function<bool(NiAVObject*)>
 	return false;
 }
 
-void SetScale(UInt32 adjustmentHandle, int scale)
-{
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
-	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
-		return;
-
-	adjustment->SetScale(scale * 0.01);
-	adjustments->UpdateAllAdjustments(adjustment);
-}
-
-void GetAdjustmentGFx(GFxResult& result, int adjustmentHandle)
+void GetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle)
 {
 	std::shared_ptr<ActorAdjustments> adjustments;
 	std::shared_ptr<Adjustment> adjustment;
@@ -309,31 +319,23 @@ void GetAdjustmentGFx(GFxResult& result, int adjustmentHandle)
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
 	result.CreateValues();
+	result.PushValue((SInt32)std::round(adjustment->scale * 100));
+}
 
-	GFxValue scale((SInt32)std::round(adjustment->scale * 100));
-	result.PushValue(&scale);
+void SetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle, int scale)
+{
+	std::shared_ptr<ActorAdjustments> adjustments;
+	std::shared_ptr<Adjustment> adjustment;
+	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
+		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
-	//TODO: redo groups into new menu
-	
-	//result->SetMember("scale", &scale);
-
-	//GFxValue groups;
-	//root->CreateArray(&groups);
-
-	//MenuCategoryList* groupsMenu = GetMenu(&groupsMenuCache);
-	//if (groupsMenu) {
-	//	for (auto& kvp : *groupsMenu) {
-	//		GFxValue groupName(kvp.first.c_str());
-	//		groups.PushBack(&groupName);
-	//	}
-	//}
-
-	//result->SetMember("groups", &groups);
+	adjustment->SetScale(scale * 0.01);
+	adjustments->UpdateAllAdjustments(adjustment);
 }
 
 MenuCategoryList* GetAdjustmentMenu()
 {
-	MenuCategoryList* menu = GetMenu(&poseMenuCache);
+	MenuCategoryList* menu = GetMenu(&selected, &poseMenuCache);
 
 	if (menu) 
 		return menu;
@@ -366,7 +368,7 @@ void GetAdjustmentsGFx(GFxResult& result)
 	result.CreateMenuItems();
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-		result.PushItem(adjustment->name.c_str(), &GFxValue(adjustment->handle));
+		result.PushItem(adjustment->name.c_str(), adjustment->handle);
 	});
 }
 
@@ -399,7 +401,7 @@ void GetCategoriesGFx(GFxResult& result)
 	for (SInt32 i = 0; i < size; ++i)
 	{
 		if (CheckMenuHasNode(adjustments, (*categories)[i].second)) {
-			result.PushItem((*categories)[i].first.c_str(), &GFxValue(i));
+			result.PushItem((*categories)[i].first.c_str(), i);
 		}
 	}
 }
@@ -424,7 +426,7 @@ void GetNodesGFx(GFxResult& result, int categoryIndex)
 	for (SInt32 i = 0; i < size; ++i)
 	{
 		if (adjustments->HasNode((*category)[i].first.c_str())) {
-			result.PushItem((*category)[i].second.c_str(), &GFxValue(i));
+			result.PushItem((*category)[i].second.c_str(), i);
 		}
 	}
 }
@@ -477,7 +479,7 @@ void GetPoseListGFx(GFxResult& result)
 	result.CreateMenuItems();
 
 	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
-		result.PushItem(adjustment->name.c_str(), &GFxValue(adjustment->file.empty()));
+		result.PushItem(adjustment->name.c_str(), adjustment->file.empty());
 	});
 }
 
@@ -487,7 +489,7 @@ void SaveJsonPose(const char* filename, GFxValue& checkedAdjustments, int export
 	if (!GetActorAdjustments(&adjustments))
 		return;
 
-	auto menu = GetMenu(&exportMenuCache);
+	auto menu = GetMenu(&selected, &exportMenuCache);
 	if (!menu)
 		return;
 
@@ -670,7 +672,7 @@ void RotateAdjustmentXYZ(const char* key, int adjustmentHandle, int type, int di
 
 void GetPoseExportTypesGFx(GFxResult& result)
 {
-	auto menu = GetMenu(&exportMenuCache);
+	auto menu = GetMenu(&selected, &exportMenuCache);
 	if (!menu) {
 		result.SetError(EXPORT_ERROR);
 		return;
@@ -679,11 +681,14 @@ void GetPoseExportTypesGFx(GFxResult& result)
 	result.CreateMenuItems();
 
 	for (SInt32 i = 0; i < menu->size(); ++i) {
-		result.PushItem((*menu)[i].first.c_str(), &GFxValue(i));
+		result.PushItem((*menu)[i].first.c_str(), i);
 	}
 
-	result.PushItem("All", &GFxValue((SInt32)menu->size()));
-	result.PushItem("Outfit Studio", &GFxValue((SInt32)menu->size() + 1));
+	SInt32 allIndex = menu->size();
+	SInt32 osIndex = menu->size() + 1;
+
+	result.PushItem("All", allIndex);
+	result.PushItem("Outfit Studio", osIndex);
 }
 
 void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex)
@@ -779,7 +784,7 @@ void GetPoseFavorites(GFxResult& result)
 	}
 
 	for (auto& item : map) {
-		result.PushItem(item.first.c_str(), &GFxValue(item.second.c_str()));
+		result.PushItem(item.first.c_str(), item.second.c_str());
 	}
 }
 

@@ -26,3 +26,4 @@ void GetMorphCategoriesGFx(GFxResult& result);
 void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex);
 void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex);
 void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex);
+void LoadFaceMorphsGFx(GFxResult& result, int index, UInt32 value);

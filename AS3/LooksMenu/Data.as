@@ -163,7 +163,6 @@
 		
 		public static function updateMenu(name:String, data:Object, result:GFxResult)
 		{
-			trace("updating menu");
 			menuName = name;
 			menuData = data;
 			menuType = data.type;
@@ -178,10 +177,8 @@
 					menuValues = data.values;
 					break;
 				case MENU_MIXED:
-					trace("updating mix");
 					setMenuSize(data.items.length);
 					var items:Object = data.items;
-					trace("menu size", menuSize);
 					for (i = 0; i < menuSize; i++) {
 						if (items[i].name)
 							menuOptions[i] = items[i].name;
@@ -218,6 +215,25 @@
 					break;
 				case MENU_CHECKBOX:
 				case MENU_SLIDER:
+					var sliderValue = (data.slider.type == VALUE_FLOAT ? 0.0 : 0);
+					if (data.names) {
+						setMenuSize(data.names.length);
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = data.names[i];
+							menuValues[i] = sliderValue;
+						}
+					} else {
+						//length specified by get function
+						if (result.type == RESULT_ITEMS) {
+							setMenuSize(result.result.names.length);
+						} else {
+							setMenuSize(result.result.length);
+						}
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = EMPTY;
+							menuValues[i] = sliderValue;
+						}
+					}
 				case MENU_ADJUSTMENT:
 					menuNames = result.names;
 					menuValues = result.values;
@@ -231,7 +247,7 @@
 		public static function updateValues(result:GFxResult) {
 			var i:int;
 			var len:int;
-			trace("result type", result.type);
+
 			switch (result.type)
 			{
 				case Data.RESULT_NAMES:
@@ -242,9 +258,7 @@
 					}
 					break;
 				case Data.RESULT_VALUES:
-					trace("getting values");
 					len = result.result.length;
-					trace("len", len);
 					for (i = 0; i < len; i++) {
 						trace(result.result[i]);
 						menuValues[i] = result.result[i];
@@ -355,7 +369,7 @@
 		
 		public static function getSlider(index:int):Object
 		{
-			var data:Object = (menuType == MENU_SLIDER ? menuData.slider : menuData.items[index].data);
+			var data:Object = (menuType == MENU_SLIDER ? menuData.slider : menuData.items[index].slider);
 			if (data)
 				return data;
 			

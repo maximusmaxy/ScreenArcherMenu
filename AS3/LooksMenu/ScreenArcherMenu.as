@@ -457,9 +457,8 @@
 				if (!CheckError(selectResult))
 					return;
 				
-				if (Data.folderData.pop) {
+				if (Data.folderData.pop)
 					clearFolder();
-				}
 			} else if (type == Data.ITEM_FOLDER) {
 				
 				var folderResult:GFxResult = Data.getFolder(Data.menuFolder[i].path, Data.folderData.ext);
@@ -521,7 +520,7 @@
 			//go to first folder then pop to get current state
 			stateStack.length = stateStack.length - Data.folderStack.length;
 			Data.folderStack.length = 0;
-			
+			Data.menuFolder = null;
 			PopMenu();
 		}
 		
@@ -583,10 +582,10 @@
 			if (!CheckWait(menuResult, getResult, PAPYRUS_GET))
 				return;
 				
-			trace("menuResult");
-			Util.traceObj(menuResult.result);
-			trace("getResult");
-			Util.traceObj(getResult.result);
+//			trace("menuResult");
+//			Util.traceObj(menuResult.result);
+//			trace("getResult");
+//			Util.traceObj(getResult.result);
 				
 			//Check if result is a folder and load that instead
 			if (getResult.type == Data.MENU_FOLDER) {
@@ -604,12 +603,24 @@
 		
 		public function PopMenu():void
 		{
-			//pop folder
-			if (Data.folderStack.length > 0) {
+			//entry
+			if (this.filenameInput.visible)
+			{
+				clearEntry();
+				return;
+			}
+			//folder
+			else if (Data.folderStack.length > 0) {
 				popFolder();
 				return;
 			}
-			
+			//exit
+			else if (this.stateStack.length == 1)
+			{
+				exit();
+				return;
+			}
+
 			currentState = stateStack.pop();
 			
 			var menuResult:GFxResult = Data.getMenu(currentState.menu, true);
@@ -622,15 +633,13 @@
 			if (!CheckError(getResult))
 				return;
 			
+			Data.menuFolder = null;
 			sliderList.updateState(currentState.pos);
-			
 			LoadMenu(currentState.menu, menuResult.result, getResult);
 		}
 		
 		public function PopMenuTo(name:String):void
 		{
-			//TODO account for folder stack
-			
 			//do not pop from main
 			if (stateStack.length < 2)
 				return;
@@ -647,9 +656,14 @@
 			//menu not found
 			if (index < 0)
 				return;
+
+			stateStack.length = stateStack.length - Data.folderStack.length;
+			Data.folderStack.length = 0;
+			Data.menuFolder = null;
 			
 			//go to menu above index and pop
 			Data.folderStack.length = 0;
+			Data.menuFolder = null;
 			stateStack.length = index + 1;
 			if (filenameInput.visible) {
 				setTextInput(false);
@@ -725,17 +739,17 @@
 		
 		public function CallSet(... args)
 		{
-			trace("get set data");
+
 			var data:Object = GetSetData(args);
-			trace("has data");
+
 			if (!data)
 				return;
-			trace("call data function");
+
 			var result:GFxResult = callDataFunction(data, args);
-			trace("checking error");
+
 			if (!CheckError(result))
 				return;
-			trace("finalize");
+				
 			if (data.pop) {
 				PopMenu();
 			} else if (data.popto) {
@@ -827,7 +841,6 @@
 		
 		public function selectCheckbox(i:int, checked:Boolean = false)
 		{
-			trace("select checkbox");
 			switch (Data.menuType) 
 			{
 				case Data.MENU_CHECKBOX:
@@ -839,11 +852,9 @@
 					CallSet(i);
 					break;
 				case Data.MENU_MIXED: 
-					trace("mixed");
 					switch(Data.getType(i)) 
 					{
 						case Data.ITEM_CHECKBOX:
-							trace("item checkbox");
 							CallSet(i, checked);
 							break;
 					}
@@ -906,7 +917,6 @@
 		
 		public function callDataFunction(data:Object, args:Array = null):GFxResult
 		{
-			trace("data");
 			if (data["var"]) {
 				if (data.all) {
 					Data.locals[data["var"]] = Util.shallowCopyArray(Data.menuValues);
@@ -918,7 +928,7 @@
 					Data.locals[data["var"]] = Data.menuValues[args[0]];
 				}
 			}
-			trace("type");
+
 			switch (data.type) {
 				case Data.FUNC_GLOBAL:
 					if (!data.script) {
@@ -942,7 +952,7 @@
 					PushMenu(data.name);
 					return Data.resultSuccess;
 			}
-			trace("args");
+
 			if (data.args) {
 				if (!args) {
 					args = [];
@@ -966,7 +976,7 @@
 					}
 				}
 			}
-			trace("type 2");
+
 			switch (data.type)
 			{
 				case Data.FUNC_SAM: return callSamFunction(data.name, args);
@@ -1699,18 +1709,7 @@
 
 		internal function backButton():void
 		{
-			if (this.filenameInput.visible)
-			{
-				clearEntry();
-			}
-			else if (this.stateStack.length == 1)
-			{
-				exit();
-			}
-			else
-			{
-				PopMenu();
-			}
+			PopMenu();
 			Util.playCancel();
 		}
 //		

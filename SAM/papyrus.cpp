@@ -9,6 +9,7 @@
 #include "sam.h"
 #include "positioning.h"
 #include "constants.h"
+#include "io.h"
 
 #include "json/json.h"
 
@@ -206,8 +207,6 @@ bool RegisterPapyrus(VirtualMachine* vm) {
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ForceQuit", "SAM", PapyrusForceQuit, vm));
 
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ToggleMenu", "SAM", PapyrusToggleMenu, vm));
-
-	
 
 	return true;
 }

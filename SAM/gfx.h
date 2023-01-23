@@ -57,9 +57,23 @@ public:
 	void CreateFolder();
 	void CreateFolderCheckbox();
 	
+	template <class T>
+	void PushValue(T var) {
+		if (type == kGFxResultItems) {
+			itemParams[1].PushBack(&GFxValue(var));
+		}
+		else {
+			params[1].PushBack(&GFxValue(var));
+		}
+	}
+
+	template <class T>
+	void PushItem(const char* name, T var) {
+		itemParams[0].PushBack(&GFxValue(name));
+		itemParams[1].PushBack(&GFxValue(var));
+	}
+
 	void PushName(const char* name);
-	void PushValue(GFxValue* var);
-	void PushItem(const char* name, GFxValue* var);
 	void PushFolder(const char* name, const char* path);
 	void PushFile(const char* name, const char* path);
 	void PushFileCheckbox(const char* name, const char* path, bool checked);

@@ -2,11 +2,11 @@
     "type": "checkbox",
     "get": {
         "type": "sam",
-        "func": "GetHacks"
+        "name": "GetHacks"
     },
     "set": {
         "type": "sam",
-        "func": "SetHacks"
+        "name": "SetHacks"
     },
     "names": [
         "$SAM_BlinkHack",

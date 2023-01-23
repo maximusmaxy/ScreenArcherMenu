@@ -4,7 +4,7 @@
 
 #define SAM_MENU_NAME "ScreenArcherMenu"
 #define CURSOR_MENU_NAME "CursorMenu"
-#define CONSOLE_MENU_NAME "ConsoleMenu"
+#define CONSOLE_MENU_NAME "Console"
 #define PHOTO_MENU_NAME "PhotoMenu"
 #define CONTAINER_MENU_NAME "ContainerMenu"
 
@@ -23,26 +23,19 @@
 #define IDLE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\IdleFavorites.txt"
 #define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"
 
-//selected.refr is null
-#define CONSOLE_ERROR "$SAM_ConsoleError" 
-//skeleton for targeted actor failed to load
-#define SKELETON_ERROR "$SAM_SkeletonError"
-//cannot find eye texture
-#define EYE_ERROR "$SAM_EyeError"
-//Cannot get morph pointer
-#define MORPHS_ERROR "$SAM_MorphsError"
-//Camera not in free state
-#define CAMERA_ERROR "$SAM_CameraError"
-//failed to get export types
-#define EXPORT_ERROR "$SAM_ExportError"
-//menu cache did not have name, maybe failed to parse
-#define MENU_MISSING_ERROR "$SAM_MenuMissingError"
-//papyrus names,values have different length
-#define MENU_ITEM_LENGTH_ERROR "$SAM_PapyrusArrayLengthError"
-//No adjustment for character found
-#define ADJUSTMENT_MISSING_ERROR "$SAM_AdjustmentMissing"
-//Papyrus function not found
-#define PAPYRUS_FUNCTION_ERROR "$SAM_PapyrusFunctionError"
+//Errors 
+#define CONSOLE_ERROR "$SAM_ConsoleError"						//selected.refr is null
+#define SKELETON_ERROR "$SAM_SkeletonError"						//skeleton for targeted actor failed to load
+#define EYE_ERROR "$SAM_EyeError"								//cannot find eye texture
+#define MORPHS_ERROR "$SAM_MorphsError"							//Cannot get morph pointer
+#define CAMERA_ERROR "$SAM_CameraError"							//Camera not in free state
+#define EXPORT_ERROR "$SAM_ExportError"							//failed to get export types
+#define MENU_MISSING_ERROR "$SAM_MenuMissingError"				//menu cache did not have name, maybe failed to parse
+#define MENU_ITEM_LENGTH_ERROR "$SAM_PapyrusArrayLengthError"	//papyrus names,values have different length
+#define ADJUSTMENT_MISSING_ERROR "$SAM_AdjustmentMissing"		//No adjustment for character found
+#define PAPYRUS_FUNCTION_ERROR "$SAM_PapyrusFunctionError"		//Papyrus function not found
+
+#define TONGUE_BONES_MENU "$SAM_TongueBones"
 
 #define LIGHTS_SERIALIZE_VERSION 2
 #define CAM_SERIALIZE_VERSION 1

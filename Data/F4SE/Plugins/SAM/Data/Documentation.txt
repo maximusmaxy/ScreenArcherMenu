@@ -221,7 +221,7 @@ pop - Optional, Defaults to true, if set to false it will prevent the folder men
         "pop": false,
         "func": {
             "type": "sam",
-            "func": "LoadAdjustment"
+            "name": "LoadAdjustment"
         }
     }
 }
@@ -244,17 +244,11 @@ To add hotkeys to the folder they must be properties of the folder unlike the ot
 # Extension
 Notifies sam to add it to the extension list
 
-"extension": true
-
 # Refresh
-After you interact with a menu item and the set function is called, refresh will call the get function again. Use this if you are updating multiple values dynamically
-
-"refresh": true
+After you interact with a menu item and the set function is called, refresh will call the get function again and update the values. Use this if you are updating multiple values dynamically
 
 # Console Update
-By default, menus will boot you back to the main menu when the console target is updated to prevent logic errors. If your menu does not change based on information on the target it is usually safe to update instead with this property
-
-"update": true
+By default, menus will boot you back to the main menu when the console target is updated to prevent logic errors. If your menu does not require local variables it is usually safe to use this property
 
 {
     "type": "mixed",
@@ -266,6 +260,43 @@ By default, menus will boot you back to the main menu when the console target is
 #------------------------------------------------------------
 # Function Types
 #------------------------------------------------------------
+
+# Form
+Calls a papyrus function on the specified form
+
+type - "form"
+name - Function name
+mod - Filename of the esp/esl including extension
+id - The ID number of the form, make sure it is surrounded by quotes
+wait (optional) - You may request set functions to wait for a callback. This allows you to add error messaging to your functions. Callbacks are explained in the Papyrus Callbacks section. Disabled by default.
+timeout (optional) - To prevent hanging from get functions, sam will wait a specified time in milliseconds for papyrus to return a value. After which it will instead recieve a "Papyrus has timed out" error. The default is 1000ms
+
+{
+    "type": "form",
+    "name": "FuncName",
+    "mod": "MyMod.esp",
+    "id": "1D162",
+    "wait": true,
+    "timeout: 1000
+}
+
+# Global
+
+Calls a global papyrus function
+
+type - "global"
+script - Script name
+name - Function name
+wait (optional) - You may request set functions to wait for a callback. This allows you to add error messaging to your functions. Callbacks are explained in the Papyrus Callbacks section. Disabled by default.
+timeout (optional) - To prevent hanging from get functions, sam will wait a specified time in milliseconds for papyrus to return a value. After which it will instead recieve a "Papyrus has timed out" error. The default is 1000ms
+
+{
+    "type": "global",
+    "script" "ScriptName",
+    "name": "FuncName",
+    "wait": true,
+    "timeout": 1000
+}
 
 # Sam
 Calls a native function registered in the ScreenArcherMenu.dll
@@ -326,67 +357,6 @@ Opens a folder and calls the function with the specified file/path string. A ful
         }
     }
 }
-
-#------------------------------------------------------------
-# Papyrus Functions
-#------------------------------------------------------------
-
-# Form
-Calls a papyrus function on the specified form
-
-type - "form"
-script - Script name
-name - Function name
-mod - Filename of the esp/esl
-id - The ID number of the form, make sure it is surrounded by quotes
-wait (optional) - To prevent hanging from get functions, sam will wait a specified time in milliseconds for papyrus to return a value. After which it will instead recieve a "Papyrus has timed out" error. The default is 1000ms
-
-{
-    "type": "form",
-    "name": "FuncName",
-    "mod": "MyMod.esp",
-    "id": "1D162"
-    "wait": 1000
-}
-
-# Global
-
-Calls a global papyrus function
-
-type - "global"
-script - Script name
-name - Function name
-wait (optional) - To prevent hanging from get functions, sam will wait a specified time in milliseconds for papyrus to return a value. After which it will instead recieve a "Papyrus has timed out" error. The default is 1000ms
-
-{
-    "type": "global",
-    "script" "ScriptName",
-    "name": "FuncName",
-    "wait": 1000
-}
-
-#------------------------------------------------------------
-# Papyrus Callbacks
-#------------------------------------------------------------
-
-Papyrus functions do not have the ability to return values when called dynamically from SAM. To return values to sam for use with get functions use the following functions
-
-# SAM.SetMenuValues(var[] values)
-List types can be any type and will send the (index, value) as params for set functions
-Checkboxes must be boolean values
-Sliders must be Int or Float depending on the type specified in the 
-
-# SAM.SetMenuItems(string[] names, var[] values)
-Same as set menu values but you may supply the names as well for dynamically assigning the menu item names
-
-# SAM.SetError(string)
-Returns an error, preventing get functions from loading the menu
-
-# SAM.SetString(string)
-Used for notification and title callback
-
-# SAM.SetSuccess()
-You may optionally call set functions that require a callback. This allows you to add error messaging to your set calls. Use this to return a success
 
 #------------------------------------------------------------
 # Optional Function Properties
@@ -533,7 +503,7 @@ Hotkey calls a function, you can use any of the function types in the functions 
                 "ext": ".json",
                 "func": {
                     "type": "sam",
-                    "func": "LoadBone"
+                    "name": "LoadBone"
                 }
             }
         }
@@ -585,3 +555,50 @@ Title functions recieve no initial params and must return a string
         "name": "GetBoneName"
     }
 }
+
+#------------------------------------------------------------
+# Papyrus Menu Actions
+#------------------------------------------------------------
+
+You may control the menu directly with papyrus using the following functions
+
+# SAM.OpenMenu(string)
+Use this to open an extension menu directly. This won't do anything if sam was opened normally. If the specified extension is already opened it will instead close the menu
+
+# SAM.PushMenu(string)
+Pushes a new menu to the top of the menu stack
+
+# SAM.PopMenu()
+Pops the top menu from the stack
+
+# SAM.PopMenuTo(string)
+Pops the top menu from the stack until the desired menu is reached
+
+# SAM.ShowNotification(string)
+Shows the notification message in the top left. Notifcations are used for error messaging as well so don't rely on this being visible
+
+#------------------------------------------------------------
+# Papyrus Callbacks
+#------------------------------------------------------------
+
+Papyrus functions do not have the ability to return values when called dynamically from SAM. To return values to sam for use with get functions use the following functions
+
+# SAM.SetMenuValues(var[] values)
+List types can be any type and will send the (index, value) as params for set functions
+Checkboxes must be boolean values
+Sliders must be Int or Float depending on the type specified in the 
+
+# SAM.SetMenuItems(string[] names, var[] values)
+Same as set menu values but you may supply the names as well for dynamically assigning the menu item names
+
+# SAM.SetError(string)
+Returns an error, preventing get functions from loading the menu. You may also request set functions to wait for a callback using the "wait": true function property
+
+# SAM.SetSuccess()
+You may optionally call set functions that require a callback. This allows you to add error messaging to your set calls. Use this to return a success
+
+# SAM.SetNotification(string)
+Used for notification callbacks
+
+# SAM.SetTitle(string)
+Used for title callbacks

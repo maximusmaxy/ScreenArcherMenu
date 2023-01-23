@@ -24,7 +24,7 @@
                 "ext": ".json",
                 "func": {
                     "type": "sam",
-                    "func": "LoadAdjustment"
+                    "name": "LoadAdjustment"
                 }
             }
         }
@@ -53,15 +53,15 @@
         },
         "remove": {
             "type": "sam",
-            "func": "RemoveAdjustment"
+            "name": "RemoveAdjustment"
         },
         "up": {
             "type": "local",
-            "func": "MoveAdjustmentUp"
+            "name": "MoveAdjustmentUp"
         },
         "down": {
             "type": "local",
-            "func": "MoveAdjustmentDown"
+            "name": "MoveAdjustmentDown"
         }
     }
 }

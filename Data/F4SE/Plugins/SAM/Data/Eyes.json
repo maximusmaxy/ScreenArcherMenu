@@ -9,12 +9,26 @@
         "stepkey": 0.05,
         "fixed": 4
     },
+    "names": [
+        "$SAM_EyeX",
+        "$SAM_EyeY"
+    ],
     "get": {
         "type": "sam",
-        "func": "GetEyes"
+        "name": "GetEyes"
     },
     "set": {
         "type": "sam",
-        "func": "SetEyes"
+        "name": "SetEyes",
+        "args": [
+            {
+                "type": "index",
+                "index": 0
+            },
+            {
+                "type": "index",
+                "index": 1
+            }
+        ]
     }
 }

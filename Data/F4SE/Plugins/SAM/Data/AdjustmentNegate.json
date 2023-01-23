@@ -2,10 +2,16 @@
     "type": "list",
     "get": {
         "type": "sam",
-        "func": "GetAdjustmentNegation"
+        "name": "GetAdjustmentNegate"
     },
     "set": {
         "type": "sam",
-        "func": "SetAdjustmentNegation"
+        "name": "SetAdjustmentNegate",
+        "args": [ 
+            {
+                "type": "var",
+                "name": "adjustmentHandle"
+            }
+        ]
     }
 }

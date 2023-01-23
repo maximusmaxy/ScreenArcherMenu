@@ -1,5 +1,25 @@
 {
     "type": "mixed",
+    "get": {
+        "type": "sam",
+        "name": "GetAdjustmentScale",
+        "args": [
+            {
+                "type": "var",
+                "name": "adjustmentHandle"
+            }
+        ]
+    },
+    "set": {
+       "type": "sam",
+       "name": "SetAdjustmentScale",
+       "args": [
+        {
+                "type": "var",
+                "name": "adjustmentHandle"
+            }
+        ]
+    },
     "items": [
         {
             "name": "$SAM_Scale",
@@ -20,7 +40,13 @@
                 "entry": {
                     "func": {
                         "type": "sam",
-                        "func": "SaveAdjustment"
+                        "name": "SaveAdjustment",
+                        "args": [
+                            {
+                                "type": "var",
+                                "name": "adjustmentHandle"
+                            }
+                        ]
                     }
                 }
             }
@@ -33,7 +59,13 @@
                 "entry": {
                     "func": {
                         "type": "sam",
-                        "func": "RenameAdjustment"
+                        "name": "RenameAdjustment",
+                        "args": [
+                            {
+                                "type": "var",
+                                "name": "adjustmentHandle"
+                            }
+                        ]
                     }
                 }
             }
@@ -43,7 +75,13 @@
             "type": "list",
             "func": {
                 "type": "sam",
-                "name": "ResetAdjustment"
+                "name": "ResetAdjustment",
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "adjustmentHandle"
+                    }
+                ]
             }
         },
         {
@@ -51,7 +89,13 @@
             "type": "list",
             "func": {
                 "type": "sam",
-                "name": "MergeAdjustmentDown"
+                "name": "MergeAdjustmentDown",
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "adjustmentHandle"
+                    }
+                ]
             }
         },
         {
@@ -59,7 +103,13 @@
             "type": "list",
             "func": {
                 "type": "sam",
-                "name": "MirrorAdjustment"
+                "name": "MirrorAdjustment",
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "adjustmentHandle"
+                    }
+                ]
             }
         },
         {

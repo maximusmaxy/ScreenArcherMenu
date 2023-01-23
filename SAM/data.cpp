@@ -169,7 +169,7 @@ SAF::InsensitiveUInt32Map jsonPathTypeMap = {
 
 void JsonMenuValidator::LogError(const char* error) {
 	if (!hasError) {
-		errorStream << menuName << " failed validation";
+		errorStream << menuName << " failed validation:";
 		hasError = true;
 	}
 	errorStream << std::endl << error;
@@ -177,7 +177,7 @@ void JsonMenuValidator::LogError(const char* error) {
 
 void JsonMenuValidator::LogError(const char* error, const char* error2) {
 	if (!hasError) {
-		errorStream << menuName << " failed validation";
+		errorStream << menuName << " failed validation:";
 		hasError = true;
 	}
 	errorStream << std::endl << error << error2;
@@ -320,15 +320,16 @@ void JsonMenuValidator::ValidateFolder(Json::Value& value)
 void JsonMenuValidator::ValidateEntry(Json::Value& value)
 {
 	Json::Value* func = GetValue(value, "func", "Failed to get function data for entry");
-		if (func) {
-			ValidateFunc(*func);
-		}
+	if (func)
+		ValidateFunc(*func);
 }
 
 void JsonMenuValidator::ValidateFunc(Json::Value& value)
 {
 	int type;
-	if (GetType(jsonFuncTypeMap, value, "Failed to parse function type: ", &type))
+	GetType(jsonFuncTypeMap, value, "Failed to parse function type: ", &type);
+
+	SetDefault(value, "pop", false);
 
 	switch (type) {
 	case kJsonFuncFolder:
@@ -349,35 +350,60 @@ void JsonMenuValidator::ValidateFunc(Json::Value& value)
 	}
 	case kJsonFuncForm:
 	{
-		RequireProperty(value, "id", "Papyrus form function requires an id");
+		if (RequireProperty(value, "name", "Papyrus form function requires a name for the function") &&
+			RequireProperty(value, "mod", "Papyrus form function requires a mod name") &&
+			RequireProperty(value, "id", "Papyrus form function requires an id"))
+		{
+			//It is likely an int is used instead of string, so make certain that doesn't happen
+			Json::Value id = value.get("id", 0);
+			if (id.isInt() || id.isInt64()) {
+				LogError("Papyrus form function id has int type instead of string type, make sure id is surrounded by quotes eg. \"id\": \"0005DE4D\"");
+			}
+			else if (!id.isString()) {
+				LogError("Papyrus form function id is not a string type");
+			}
+			else {
 
-		//It is likely an int is used instead of string, so make certain that doesn't happen
-		Json::Value id = value.get("id", 0);
-		if (id.isInt() || id.isInt64()) {
-			LogError("Papyrus form function id has int type instead of string type, make sure it is \"surrounded by quotes\"");
-		}
-		else if (!id.isString()) {
-			_DMESSAGE("Papyrus form function id is not a string type");
-		}
-		else {
-			//resolve form id while we're here i guess
-			int formId = GetFormId(value.get("mod", "").asCString(), id.asCString());
-			value["id"] = HexToString(formId);
-			value.removeMember("mod");
+				//resolve form id while we're here i guess
+				Json::Value modValue = value.get("mod", "");
+				if (!modValue.isString()) {
+					LogError("Papyrus form function mod is not a string type");
+				}
+				else {
+					int formId = GetFormId(modValue.asCString(), id.asCString());
+					value["id"] = HexToString(formId);
+					value.removeMember("mod");
 
+					SetDefault(value, "wait", false);
+					SetDefault(value, "timeout", 1000);
+				}
+			}
+		}
+		break;
+	}
+	case kJsonFuncGlobal:
+	{
+		if (RequireProperty(value, "script", "Papyrus global function requires a script name") &&
+			RequireProperty(value, "name", "Papyrus global function requires a name for the function"))
+		{
+			SetDefault(value, "script", "");
 			SetDefault(value, "name", "");
 			SetDefault(value, "wait", false);
 			SetDefault(value, "timeout", 1000);
 		}
 		break;
 	}
-	case kJsonFuncGlobal:
-		SetDefault(value, "script", "");
-		SetDefault(value, "name", "");
-		SetDefault(value, "wait", false);
-		SetDefault(value, "timeout", 1000);
-
+	case kJsonFuncSam:
+	{
+		RequireProperty(value, "name", "Sam function requires a name");
 		break;
+	}
+	case kJsonFuncLocal:
+	{
+		RequireProperty(value, "name", "Local function requires a name");
+		break;
+	}
+
 	}
 
 	Json::Value* args = GetValue(value, "args", nullptr);
@@ -595,7 +621,7 @@ void JsonMenuValidator::ValidateMenuProperties(Json::Value& value)
 			//if (GetValue(*it, "type", nullptr, &typeProp)) {
 			//	int type = typeProp.asInt();
 			//	if (type == kJsonFuncEntry || type == kJsonFuncMenu || type == kJsonFuncFolder) {
-			//		_DMESSAGE("Get function type cannot be menu, entry or folder");
+			//		LogError("Get function type cannot be menu, entry or folder");
 			//		return false;
 			//	}
 			//}

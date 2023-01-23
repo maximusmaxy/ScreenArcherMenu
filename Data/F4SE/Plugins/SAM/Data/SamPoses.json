@@ -8,7 +8,7 @@
         "pop": false,
         "func": {
             "type": "sam",
-            "func": "LoadPose"
+            "name": "LoadPose"
         }
     }
 }

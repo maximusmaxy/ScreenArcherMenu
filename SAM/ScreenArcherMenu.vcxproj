@@ -115,11 +115,13 @@
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="data.cpp" />
+    <ClCompile Include="eyes.cpp" />
     <ClCompile Include="gfx.cpp" />
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="idle.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="inventory.cpp" />
+    <ClCompile Include="io.cpp" />
     <ClCompile Include="lights.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mfg.cpp" />
@@ -131,6 +133,7 @@
     <ClCompile Include="scaleform.cpp" />
     <ClCompile Include="scripts.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
+    <ClCompile Include="types.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -138,10 +141,12 @@
     <ClInclude Include="console.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="data.h" />
+    <ClInclude Include="eyes.h" />
     <ClInclude Include="gfx.h" />
     <ClInclude Include="idle.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="inventory.h" />
+    <ClInclude Include="io.h" />
     <ClInclude Include="lights.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="options.h" />
@@ -153,6 +158,7 @@
     <ClInclude Include="scaleform.h" />
     <ClInclude Include="scripts.h" />
     <ClInclude Include="strnatcmp.h" />
+    <ClInclude Include="types.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

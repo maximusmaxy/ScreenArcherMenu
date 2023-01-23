@@ -5,8 +5,9 @@
 #include "f4se/GameReferences.h"
 #include "f4se/GameRTTI.h"
 
-#include "constants.h"
 #include "sam.h"
+#include "types.h"
+#include "constants.h"
 #include "pose.h"
 #include "SAF/util.h"
 #include "SAF/adjustments.h"
@@ -445,7 +446,7 @@ void GetIdleFavorites(GFxResult& result)
 	}
 
 	for (auto& item : set) {
-		result.PushItem(item.c_str(), &GFxValue(item.c_str()));
+		result.PushItem(item.c_str(), item.c_str());
 	}
 }
 

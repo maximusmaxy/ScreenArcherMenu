@@ -10,15 +10,12 @@
 #include "f4se/GameMenus.h"
 
 #include "json.h"
-#include "strnatcmp.h"
-#include "SAF/io.h"
 #include "SAF/adjustments.h"
 #include "SAF/types.h"
 
 #include "gfx.h"
 
 #include <unordered_map>
-#include <regex>
 #include <mutex>
 
 class SelectedRefr {
@@ -34,21 +31,6 @@ public:
 };
 
 extern SelectedRefr selected;
-
-extern MenuCache poseMenuCache;
-extern MenuCache morphsMenuCache;
-extern MenuCache groupsMenuCache;
-extern MenuCache exportMenuCache;
-
-extern MenuCategoryList lightsMenuCache;
-extern MenuCategoryList tongueMenuCache;
-
-struct NaturalSort {
-	bool operator()(const std::string& a, const std::string& b) const;
-};
-
-typedef std::set<std::string, NaturalSort> NaturalSortedSet;
-typedef std::map<std::string, std::string, NaturalSort> NaturalSortedMap;
 
 class SamManager {
 private:
@@ -97,7 +79,6 @@ extern SamManager samManager;
 
 TESObjectREFR* GetRefr();
 GFxMovieRoot* GetRoot(BSFixedString name);
-MenuCategoryList* GetMenu(MenuCache* cache);
 
 //void RegisterSam();
 void StartSamQuest();
@@ -113,24 +94,6 @@ void OnMenuClose();
 void OnConsoleUpdate();
 
 void ToggleMenu();
-
-typedef std::map<std::string, Json::Value, SAF::CaseInsensitiveCompareStr> JsonCache;
-extern JsonCache menuDataCache;
-extern SAF::InsensitiveStringSet extensionSet;
-
-void LoadMenuFiles();
-void ReloadJsonMenus();
-Json::Value* GetCachedMenu(const char* name);
-void GetMenuGFx(GFxResult& result, const char* name);
-
-void GetExtensionMenusGFx(GFxResult& result);
-
-bool isDotOrDotDot(const char* cstr);
-void GetSortedFilesAndFolders(const char* path, const char* ext, NaturalSortedMap& files, NaturalSortedMap& folders);
-void GetFolderGFx(GFxResult& result, const char* path, const char* ext);
-
-void GetPathStem(GFxResult& result, const char* path);
-void GetPathRelative(GFxResult& result, const char* root, const char* ext, const char* path);
 
 extern SAF::SAFDispatcher safDispatcher;
 

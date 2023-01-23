@@ -21,7 +21,7 @@
                 "ext": ".json",
                 "func": {
                     "type": "sam",
-                    "func": "LoadLights"
+                    "name": "LoadLights"
                 }
             }
         }

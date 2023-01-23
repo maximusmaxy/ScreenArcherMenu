@@ -21,6 +21,7 @@ using namespace Serialization;
 #include "sam.h"
 #include "papyrus.h"
 #include "positioning.h"
+#include "io.h"
 
 #include "SAF/util.h"
 #include "SAF/conversions.h"
@@ -993,7 +994,6 @@ void DeserializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 	}
 	}
 }
-
 
 void RevertLights()
 {

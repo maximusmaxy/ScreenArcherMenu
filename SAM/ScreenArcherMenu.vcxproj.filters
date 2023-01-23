@@ -21,6 +21,9 @@
     <ClCompile Include="gfx.cpp" />
     <ClCompile Include="data.cpp" />
     <ClCompile Include="inventory.cpp" />
+    <ClCompile Include="eyes.cpp" />
+    <ClCompile Include="io.cpp" />
+    <ClCompile Include="types.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -43,6 +46,9 @@
     <ClInclude Include="data.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="inventory.h" />
+    <ClInclude Include="eyes.h" />
+    <ClInclude Include="io.h" />
+    <ClInclude Include="types.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

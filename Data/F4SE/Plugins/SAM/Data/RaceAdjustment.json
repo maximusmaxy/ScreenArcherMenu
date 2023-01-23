@@ -7,7 +7,7 @@
         "pop": false,
         "func": {
             "type": "sam",
-            "func": "LoadFaceMorphs"
+            "name": "LoadFaceMorphs"
         }
     }
 }

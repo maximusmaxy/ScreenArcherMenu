@@ -3,7 +3,7 @@
     "refresh": true,
     "get": {
         "type": "sam",
-        "func": "GetLight",
+        "name": "GetLight",
         "args": [
             {
                 "type": "var",
@@ -13,7 +13,7 @@
     },
     "set": {
         "type": "sam",
-        "func": "SetLight"
+        "name": "SetLight"
     },
     "items": [
         {

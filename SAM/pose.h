@@ -22,7 +22,6 @@ void SetAdjustmentRot(const char* key, UInt32 adjustmentHandle, float yaw, float
 void SetAdjustmentSca(const char* key, UInt32 adjustmentHandle, float scale);
 void ResetAdjustmentTransform(const char* key, int adjustmentHandle);
 void NegateTransform(const char* key, UInt32 adjustmentHandle);
-void SetScale(UInt32 adjustmentHandle, int scale);
 
 void SaveAdjustmentFile(const char* filename, int adjustmentHandle);
 bool LoadAdjustmentFile(const char* filename);
@@ -30,14 +29,16 @@ bool LoadAdjustmentPath(const char* path);
 void PushNewAdjustment(const char* name);
 void EraseAdjustment(UInt32 adjustmentHandle);
 void ClearAdjustment(UInt32 adjustmentHandle);
-void NegateAdjustments(UInt32 adjustmentHandle, const char* adjustmentGroup);
+void GetAdjustmentNegate(GFxResult& result);
+void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 adjustmentHandle);
 bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment);
-void SetAdjustmentName(UInt32 adjustmentHandle, const char* name);
+void SetAdjustmentName(GFxResult& result, UInt32 adjustmentHandle, const char* name);
 
 bool CheckMenuHasNode(std::shared_ptr<SAF::ActorAdjustments> adjustments, MenuList& list);
 
 MenuCategoryList* GetAdjustmentMenu();
-void GetAdjustmentGFx(GFxResult& result, int adjustmentHandle);
+void SetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle, int scale);
+void GetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle);
 void GetAdjustmentsGFx(GFxResult& result);
 void GetCategoriesGFx(GFxResult& result);
 void GetNodesGFx(GFxResult& result, int categoryIndex);
