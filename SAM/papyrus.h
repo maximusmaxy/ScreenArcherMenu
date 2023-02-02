@@ -10,11 +10,7 @@ void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GF
 void CallPapyrusGlobal(BSFixedString script, BSFixedString function);
 void CallSamGlobal(BSFixedString function);
 
-typedef void (*_PapyrusDeleteInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr);
-extern RelocAddr<_PapyrusDeleteInternal> PapyrusDeleteInternal;
-
-typedef void (*_PapyrusPlayGamebryoAnimationInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr, BSFixedString* animation, bool unk5);
-extern RelocAddr<_PapyrusPlayGamebryoAnimationInternal> PapyrusPlayGamebryoAnimationInternal;
-
 void PapyrusDelete(TESObjectREFR* refr);
 void PapyrusPlayGamebryoAnimation(TESObjectREFR* refr, BSFixedString* animation);
+void PapyrusAddItem(TESObjectREFR* refr, TESForm* form, UInt32 amount, bool silent);
+void PapyrusAttachModToInventoryItem(TESObjectREFR* refr, TESForm* form, TESForm* mod);

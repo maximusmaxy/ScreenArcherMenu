@@ -42,8 +42,8 @@ IdleData* GetIdleData(UInt32 raceId);
 void PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();
 void PlayAPose();
-void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
-void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategory);
+void GetIdleMenuCategories(GFxResult& result);
+void GetIdleMenu(GFxResult& result, SInt32 selectedCategory);
 
 const char* GetCurrentIdleName();
 

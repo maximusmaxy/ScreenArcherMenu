@@ -13,7 +13,12 @@
 		public function traceResult():void
 		{
 			trace("Type: " + this.type);
-			Util.traceObj(this.result);
+            if (type == Data.RESULT_ITEMS) {
+                Util.traceObj(this.result.names);
+                Util.traceObj(this.result.values);
+            } else {
+                Util.traceObj(this.result);
+            }
 		}
     }
 }

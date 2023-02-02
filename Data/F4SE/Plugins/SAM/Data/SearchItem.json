@@ -1,23 +1,9 @@
 {
     "type": "list",
     "update": true,
-    "init": {
-        "type": "local",
-        "name": "InitEquipItem"
-    },
     "get": {
         "type": "sam",
-        "name": "GetItemList",
-        "args": [
-            {
-                "type": "var",
-                "name": "addItemMod"
-            },
-            {
-                "type": "var",
-                "name": "addItemGroup"
-            }
-        ]
+        "name": "GetLastSearchResult"
     },
     "set": {
         "type": "sam",
@@ -28,6 +14,24 @@
                 "name": "addItemEquip"
             }
         ]
+    },
+    "init": {
+        "type": "local",
+        "name": "InitEquipItem"
+    },
+    "extra": {
+        "name": "$SAM_Search",
+        "type": "func",
+        "func": {
+            "type": "entry",
+            "entry": {
+                "func": {
+                    "type": "sam",
+                    "name": "SearchItems",
+                    "update": true
+                }
+            }
+        }
     },
     "load": {
         "name": "$SAM_Add",

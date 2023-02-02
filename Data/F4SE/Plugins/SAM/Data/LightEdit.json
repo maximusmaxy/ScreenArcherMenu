@@ -1,9 +1,8 @@
 {
     "type": "mixed",
-    "refresh": true,
     "get": {
         "type": "sam",
-        "name": "GetLight",
+        "name": "GetLightEdit",
         "args": [
             {
                 "type": "var",
@@ -13,7 +12,53 @@
     },
     "set": {
         "type": "sam",
-        "name": "SetLight"
+        "name": "EditLight",
+        "refresh": true,
+        "args": [
+            {
+                "type": "var",
+                "name": "selectedLight"
+            }
+        ]
+    },
+    "init": {
+        "type": "local",
+        "name": "InitLightVisible",
+        "args": [
+            {
+                "type": "var",
+                "name": "selectedLight"
+            }
+        ]
+    },
+    "reset": {
+        "name": "$SAM_Reset",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "ResetLight",
+            "refresh": true,
+            "args": [
+                {
+                    "type": "var",
+                    "name": "selectedLight"
+                }
+            ]
+        }
+    },
+    "extra": {
+        "name": "$SAM_Visible",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "ToggleLightVisible",
+            "args": [
+                {
+                    "type": "var",
+                    "name": "selectedLight"
+                }
+            ]
+        }
     },
     "items": [
         {
@@ -78,7 +123,13 @@
                 "entry": {
                     "func": {
                         "type": "sam",
-                        "name": "RenameLight"
+                        "name": "RenameLight",
+                        "args": [
+                            {
+                                "type": "var",
+                                "name": "selectedLight"
+                            }
+                        ]
                     }
                 }
             }

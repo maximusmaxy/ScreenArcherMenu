@@ -17,12 +17,10 @@ enum {
 	kGFxResultItems,
 	kGFxResultNames,
 	kGFxResultString,
-	kGFxResultBool,
-	kGFxResultInt,
-	kGFxResultFloat,
-	kGFxResultObject,
 	kGFxResultFolder,
-	kGFxResultFolderCheckbox
+	kGFxResultFolderCheckbox,
+	kGFxResultNotification,
+	kGFxResultTitle
 };
 
 class GFxResult {
@@ -40,15 +38,14 @@ public:
 	GFxValue* GetResult(GFxMovieRoot* root);
 	void Finalize(GFxMovieRoot* root);
 	void Invoke(GFxMovieRoot* root, const char* functionPath);
+	void InvokeCallback(GFxMovieRoot* root);
 
 	void SetError(const char* message);
 	void SetWaiting();
-	void SetString(const char* name);
 	void SetManagedString(GFxMovieRoot* _root, const char* name);
-	void SetBool(bool checked);
-	void SetInt(SInt32 num);
-	void SetFloat(double num);
 	void SetMenu(Json::Value* menu);
+	void SetNotification(GFxMovieRoot* _root, const char* message);
+	void SetTitle(GFxMovieRoot* _root, const char* message);
 
 	void CreateNames();
 	void CreateValues();
@@ -77,27 +74,4 @@ public:
 	void PushFolder(const char* name, const char* path);
 	void PushFile(const char* name, const char* path);
 	void PushFileCheckbox(const char* name, const char* path, bool checked);
-};
-
-void JsonToGFx(GFxMovieRoot* root, GFxValue* result, const Json::Value& value);
-Json::Value GFxToJson(GFxValue* value);
-
-class GFxToJsonObjVisitor : public GFxValue::ObjectInterface::ObjVisitor
-{
-public:
-	Json::Value& json;
-
-	GFxToJsonObjVisitor(Json::Value& json) : json(json) {};
-
-	void Visit(const char* member, GFxValue* value);
-};
-
-class GFxToJsonArrVisitor : public GFxValue::ObjectInterface::ArrayVisitor
-{
-public:
-	Json::Value& json;
-
-	GFxToJsonArrVisitor(Json::Value& json) : json(json) {};
-
-	void Visit(UInt32 idx, GFxValue* val);
 };

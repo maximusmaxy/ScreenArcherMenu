@@ -1,0 +1,226 @@
+{
+    "menu": {
+        "types": [
+            {
+                "name": "mixed",
+                "props": [
+                    {
+                        "name": "items",
+                        "type": "vector",
+                        "vectortype": "mixeditem"
+                    }
+                ]
+            },
+            {
+                "name": "list",
+                "props": [
+                    {
+                        "name": "list",
+                        "type": "vector",
+                        "vectortype": "listitem",
+                        "optional": true
+                    }
+                ]
+            }
+        ],
+        "props": [
+            {
+                "name": "get",
+                "type": "func",
+                "optional": true
+            },
+            {
+                "name": "set",
+                "type": "func",
+                "optional": true
+            },
+            {
+                "name": "enter",
+                "type": "func",
+                "optional": true
+            },
+            {
+                "name": "leave",
+                "type": "func",
+                "optional": true
+            },
+            {
+                "name": "save",
+                "type": "hotkey",
+                "optional": true
+            },
+            {
+                "name": "load",
+                "type": "hotkey",
+                "optional": true
+            }
+        ]
+    },
+    "func": {
+        "types": [
+            {
+                "name": "sam",
+                "props": [
+                    {
+                        "name": "name",
+                        "type": "string"
+                    }
+                ]
+            },
+            {
+                "name": "form",
+                "props": [
+                    {
+                        "name": "name",
+                        "type": ""
+                    }
+                ]
+            },
+            {
+                "name": "folder",
+                "props": [
+                    {
+                        "name": "folder",
+                        "type": "folder"
+                    }
+                ]
+            },
+            {
+                "name": "entry",
+                "props": [
+                    {
+                        "name": "entry",
+                        "type": "entry"
+                    }
+                ]
+            }
+        ],
+        "props": [
+            {
+                "name": "args",
+                "type": "vector",
+                "vectortype": "args",
+                "optional": true
+            },
+            {
+                "name": "var",
+                "type": "string",
+                "optional": true
+            },
+            {
+                "name": "all",
+                "type": "bool",
+                "optional": true
+            },
+            {
+                "name": "refreah",
+                "type": "bool",
+                "optional": true
+            },
+            {
+                "name": "pop",
+                "type": "bool",
+                "optional": true
+            },
+            {
+                "name": "popto",
+                "type": "string",
+                "optional": true
+            }
+        ]
+    },
+    "hotkey": {
+        "types": [
+            {
+                "name": "func",
+                "props": [
+                    {
+                        "name": "func",
+                        "type": "func"
+                    }
+                ]
+            },
+            {
+                "name": "hold",
+                "props": [
+                    {
+                        "name": "hold",
+                        "type": "hold"
+                    }
+                ]
+            }
+        ]
+    },
+    "hold": {
+        "props": [
+            {
+                "name": "step",
+                "type": "float",
+                "default": 1.0
+            },
+            {
+                "name": "mod",
+                "type": "float",
+                "default": 1.0
+            },
+            {
+                "name": "func",
+                "type": "func"
+            }
+        ]
+    },
+    "folder": {
+        
+    },
+    "entry": {
+        "props": [
+            {
+                "name": "type",
+                "type": "enum",
+                "enum": [
+                    "file",
+                    "relative",
+                    "full"
+                ],
+                "default": "full"
+            }
+        ]
+    },
+    "args": {
+        "types": [
+            {
+                "name": "var",
+                "props": [
+                    {
+                        "name": "name",
+                        "type": "string"
+                    }
+                ]
+            },
+            {
+                "name": "index",
+                "props": [
+                    {
+                        "name": "index",
+                        "type": "int"
+                    }
+                ]
+            },
+            {
+                "name": "value",
+                "prop": [
+                    {
+                        "name": "value",
+                        "type": "primitive"
+                    }
+                ]
+            }
+        ]
+    },
+    "listitem": {
+
+    },
+    "mixeditem": {
+
+    }
+}

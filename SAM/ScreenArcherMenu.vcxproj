@@ -56,8 +56,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>D:\Projects\F4SE2\f4se\Eigen;D:\Projects\F4SE2\common\x64_vc11;D:\Projects\F4SE2\f4se\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;D:\Projects\F4SE2\f4se\f4se\x64\Debug;D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\common\x64_vc11;$(SolutionDir)x64\Debug;$(SolutionDir);$(SolutionDir)..;$(SolutionDir)f4se;$(SolutionDir)f4se\x64\Debug;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeader>
@@ -73,7 +73,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;"D:\Projects\F4SE2\f4se\x64\Debug\f4se_1_10_163.lib";"D:\Projects\F4SE2\f4se\x64\Debug\f4se_common.lib";"D:\Projects\vcpkg\vcpkg\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib";"D:\Projects\F4SE2\f4se\x64\Debug\SAF.lib";%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
@@ -91,7 +91,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\..;$(SolutionDir)\..\..;$(SolutionDir)\f4se;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\..;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)\..\common\x64_vc11;$(SolutionDir)\x64\Debug;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -107,7 +107,7 @@
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)\..\common\x64_vc11;$(SolutionDir)\x64\Debug;$(SolutionDir);$(SolutionDir)\..;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

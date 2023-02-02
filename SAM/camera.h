@@ -31,14 +31,15 @@ struct CameraSaveState
 
 FreeCameraState* GetFreeCameraState();
 
-void GetCameraGFx(GFxResult& result);
+void GetCamera(GFxResult& result);
 void SetCamera(GFxResult& result, int index, float value);
-bool SaveCamera(int index);
-bool LoadCamera(int index);
+bool SaveCameraState(int index);
+bool LoadCameraState(int index);
 
-bool SaveCameraPath(const char* path);
+bool SaveCameraFile(const char* file);
 bool LoadCameraFile(const char* file);
 bool LoadCameraPath(const char* path);
+void LoadCameraGFx(GFxResult& result, const char* path);
 
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version);

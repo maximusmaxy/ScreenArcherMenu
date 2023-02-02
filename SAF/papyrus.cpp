@@ -1078,42 +1078,42 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("SavePose", "SAF", PapyrusSavePose, vm));
 		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, TESObjectREFR*>("ResetPose", "SAF", PapyrusResetPose, vm));
 
-		vm->RegisterFunction(new NativeFunction0 <StaticFunctionTag, UInt32>("CreateTransformHandle", "SAF", PapyrusCreateTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, UInt32, Transform>("CreateTransformHandleLocal", "SAF", PapyrusCreateTransformHandleLocal, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, UInt32>("SetTransformHandle", "SAF", PapyrusSetTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, UInt32, UInt32>("CopyTransformHandle", "SAF", PapyrusCopyTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, UInt32>("DeleteTranformHandle", "SAF", PapyrusDeleteTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction0 <StaticFunctionTag, UInt32>("CreateTransformHandle", "SAF", PapyrusCreateTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, UInt32, Transform>("CreateTransformHandleLocal", "SAF", PapyrusCreateTransformHandleLocal, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, UInt32>("SetTransformHandle", "SAF", PapyrusSetTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, UInt32, UInt32>("CopyTransformHandle", "SAF", PapyrusCopyTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, UInt32>("DeleteTranformHandle", "SAF", PapyrusDeleteTransformHandle, vm));
 
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, BSFixedString, UInt32>("RegisterTransformHandle", "SAF", PapyrusRegisterTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, BSFixedString>("DeleteRegisteredTransformHandles", "SAF", PapyrusDeleteRegisteredTransformHandles, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, BSFixedString, UInt32>("RegisterTransformHandle", "SAF", PapyrusRegisterTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, BSFixedString>("DeleteRegisteredTransformHandles", "SAF", PapyrusDeleteRegisteredTransformHandles, vm));
 
-		vm->RegisterFunction(new NativeFunction4 <StaticFunctionTag, UInt32, TESObjectREFR*, UInt32, BSFixedString, bool>("GetAdjustmentTransformHandle", "SAF", PapyrusGetAdjustmentTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString>("GetSkeletonTransformHandle", "SAF", PapyrusGetSkeletonTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString>("GetBaseTransformHandle", "SAF", PapyrusGetBaseTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction5 <StaticFunctionTag, void, TESObjectREFR*, UInt32, BSFixedString, bool, UInt32>("SetAdjustmentTransformHandle", "SAF", PapyrusSetAdjustmentTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction5 <StaticFunctionTag, bool, TESObjectREFR*, UInt32, BSFixedString, bool, UInt32>("CopyAdjustmentTransformHandle", "SAF", PapyrusCopyAdjustmentTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, bool, TESObjectREFR*, BSFixedString, UInt32>("CopySkeletonTransformHandle", "SAF", PapyrusCopySkeletonTransformHandle, vm));
-		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, bool, TESObjectREFR*, BSFixedString, UInt32>("CopyBaseTransformHandle", "SAF", PapyrusCopyBaseTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction4 <StaticFunctionTag, UInt32, TESObjectREFR*, UInt32, BSFixedString, bool>("GetAdjustmentTransformHandle", "SAF", PapyrusGetAdjustmentTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString>("GetSkeletonTransformHandle", "SAF", PapyrusGetSkeletonTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString>("GetBaseTransformHandle", "SAF", PapyrusGetBaseTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction5 <StaticFunctionTag, void, TESObjectREFR*, UInt32, BSFixedString, bool, UInt32>("SetAdjustmentTransformHandle", "SAF", PapyrusSetAdjustmentTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction5 <StaticFunctionTag, bool, TESObjectREFR*, UInt32, BSFixedString, bool, UInt32>("CopyAdjustmentTransformHandle", "SAF", PapyrusCopyAdjustmentTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, bool, TESObjectREFR*, BSFixedString, UInt32>("CopySkeletonTransformHandle", "SAF", PapyrusCopySkeletonTransformHandle, vm));
+		//vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, bool, TESObjectREFR*, BSFixedString, UInt32>("CopyBaseTransformHandle", "SAF", PapyrusCopyBaseTransformHandle, vm));
 
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, Transform, UInt32>("GetTransformLocal", "SAF", PapyrusGetTransformLocal, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, Transform>("SetTransformLocal", "SAF", PapyrusSetTransformLocal, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, Transform, UInt32>("GetTransformLocal", "SAF", PapyrusGetTransformLocal, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, Transform>("SetTransformLocal", "SAF", PapyrusSetTransformLocal, vm));
 
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, UInt32, UInt32>("GetAppliedTransform", "SAF", PapyrusGetAppliedTransform, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, UInt32>("ApplyTransform", "SAF", PapyrusApplyTransform, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, UInt32, UInt32>("GetInverseTransform", "SAF", PapyrusGetInverseTransform, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, UInt32>("InverseTransform", "SAF", PapyrusInverseTransform, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, UInt32, UInt32>("GetDifferenceTransform", "SAF", PapyrusGetDifferenceTransform, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, UInt32>("DifferenceTransform", "SAF", PapyrusDifferenceTransform, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, UInt32, float>("GetBetweenTransform", "SAF", PapyrusGetBetweenTransform, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, float>("BetweenTransform", "SAF", PapyrusBetweenTransform, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, UInt32, UInt32>("GetAppliedTransform", "SAF", PapyrusGetAppliedTransform, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, UInt32>("ApplyTransform", "SAF", PapyrusApplyTransform, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, UInt32, UInt32>("GetInverseTransform", "SAF", PapyrusGetInverseTransform, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, void, UInt32>("InverseTransform", "SAF", PapyrusInverseTransform, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, UInt32, UInt32>("GetDifferenceTransform", "SAF", PapyrusGetDifferenceTransform, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, UInt32>("DifferenceTransform", "SAF", PapyrusDifferenceTransform, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, UInt32, UInt32, float>("GetBetweenTransform", "SAF", PapyrusGetBetweenTransform, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, float>("BetweenTransform", "SAF", PapyrusBetweenTransform, vm));
 
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, UInt32>("GetTransformPosition", "SAF", PapyrusGetTransformPos, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, VMArray<float>>("SetTransformPosition", "SAF", PapyrusSetTransformPos, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, UInt32>("GetTransformRotation", "SAF", PapyrusGetTransformRotation, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, VMArray<float>>("SetTransformRotation", "SAF", PapyrusSetTransformRotation, vm));
-		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, UInt32, UInt32, float>("RotateTransformAxis", "SAF", PapyrusRotateTransformAxis, vm));
-		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, float, UInt32>("GetTransformScale", "SAF", PapyrusGetTransformScale, vm));
-		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, float>("SetTransformScale", "SAF", PapyrusSetTransformScale, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, UInt32>("GetTransformPosition", "SAF", PapyrusGetTransformPos, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, VMArray<float>>("SetTransformPosition", "SAF", PapyrusSetTransformPos, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, UInt32>("GetTransformRotation", "SAF", PapyrusGetTransformRotation, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, VMArray<float>>("SetTransformRotation", "SAF", PapyrusSetTransformRotation, vm));
+		//vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, UInt32, UInt32, float>("RotateTransformAxis", "SAF", PapyrusRotateTransformAxis, vm));
+		//vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, float, UInt32>("GetTransformScale", "SAF", PapyrusGetTransformScale, vm));
+		//vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, UInt32, float>("SetTransformScale", "SAF", PapyrusSetTransformScale, vm));
 
 		vm->RegisterFunction(new NativeFunction1 <StaticFunctionTag, VMArray<float>, TESObjectREFR*>("GetEyeCoords", "SAF", PapyrusGetEyeCoords, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, float, float>("SetEyeCoords", "SAF", PapyrusSetEyeCoords, vm));

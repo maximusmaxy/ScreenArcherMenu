@@ -28,13 +28,21 @@ MenuCategoryList* GetMenu(SelectedRefr* refr, MenuCache* cache);
 void LoadMenuFiles();
 void ReloadJsonMenus();
 Json::Value* GetCachedMenu(const char* name);
-void GetMenuGFx(GFxResult& result, const char* name);
+void GetMenuData(GFxResult& result, const char* name);
 
-void GetExtensionMenusGFx(GFxResult& result);
+void GetExtensionMenus(GFxResult& result);
 
 bool isDotOrDotDot(const char* cstr);
 void GetSortedFilesAndFolders(const char* path, const char* ext, NaturalSortedMap& files, NaturalSortedMap& folders);
-void GetFolderGFx(GFxResult& result, const char* path, const char* ext);
+void GetFolder(GFxResult& result, const char* path, const char* ext);
 
 void GetPathStem(GFxResult& result, const char* path);
 void GetPathRelative(GFxResult& result, const char* root, const char* ext, const char* path);
+
+template <class Type>
+Type readstream(std::ifstream& stream)
+{
+	Type n;
+	stream.read(reinterpret_cast<char*>(&n), sizeof(Type));
+	return n;
+}

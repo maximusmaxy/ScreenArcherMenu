@@ -15,14 +15,30 @@
 
 #include <filesystem>
 
+typedef void (*_PapyrusDeleteInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr);
 RelocAddr<_PapyrusDeleteInternal> PapyrusDeleteInternal(0x1404960);
+
+typedef void (*_PapyrusPlayGamebryoAnimationInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr, BSFixedString* animation, bool unk5);
 RelocAddr<_PapyrusPlayGamebryoAnimationInternal> PapyrusPlayGamebryoAnimationInternal(0x140BD60);
+
+typedef void (*_PapyrusAttachModToInventoryItemInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr, TESForm* form, TESForm* mod);
+RelocAddr<_PapyrusAttachModToInventoryItemInternal> PapyrusAttachModToInventoryItemInternal(0x1403BF0);
+
+struct Vmref {
+	TESForm* form;
+	UInt16 type;
+	UInt16 pad;
+	UInt32 pad2;
+};
+
+typedef void (*_PapyrusAddItemInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr, Vmref* vmref, UInt32 amount, bool silent);
+RelocAddr<_PapyrusAddItemInternal> PapyrusAddItemInternal(0x1402B40);
 
 void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GFxValue& args)
 {
 	try
 	{
-		UInt32 formId = std::stoul(id, nullptr, 16);
+		UInt32 formId = HexStringToUInt32(id);
 		TESForm* form = LookupFormByID(formId);
 		if (form) {
 
@@ -83,6 +99,21 @@ void PapyrusPlayGamebryoAnimation(TESObjectREFR* refr, BSFixedString* str)
 	PapyrusPlayGamebryoAnimationInternal(vm, 0, refr, str, true);
 }
 
+void PapyrusAddItem(TESObjectREFR* refr, TESForm* item, UInt32 amount, bool silent)
+{
+	VirtualMachine* vm = (*g_gameVM)->m_virtualMachine;
+
+	Vmref itemRef{ item, 0 };
+	PapyrusAddItemInternal(vm, 0, refr, &itemRef, amount, silent);
+}
+
+void PapyrusAttachModToInventoryItem(TESObjectREFR* refr, TESForm* armor, TESForm* mod)
+{
+	VirtualMachine* vm = (*g_gameVM)->m_virtualMachine;
+
+	PapyrusAttachModToInventoryItemInternal(vm, 0, refr, armor, mod);
+}
+
 TESObjectREFR* PapyrusGetRefr(StaticFunctionTag*) 
 {
 	return selected.refr;
@@ -123,6 +154,11 @@ void PapyrusSetTitle(StaticFunctionTag*, BSFixedString title)
 	samManager.SetTitle(title.c_str());
 }
 
+void PapyrusSetNotification(StaticFunctionTag*, BSFixedString msg)
+{
+	samManager.SetNotification(msg.c_str());
+}
+
 void PapyrusSetMenuValues(StaticFunctionTag*, VMArray<VMVariable> values) {
 	samManager.SetMenuValues(values);
 }
@@ -133,11 +169,6 @@ void PapyrusSetMenuItems(StaticFunctionTag*, VMArray<BSFixedString> names, VMArr
 
 void PapyrusSetMenuNames(StaticFunctionTag*, VMArray<BSFixedString> names) {
 	samManager.SetMenuNames(names);
-}
-
-void PapyrusSetString(StaticFunctionTag*, BSFixedString msg)
-{
-	samManager.SetString(msg.c_str());
 }
 
 void PapyrusSetSuccess(StaticFunctionTag*)
@@ -166,22 +197,20 @@ void PapyrusLogMenu(StaticFunctionTag*, BSFixedString menuName)
 {
 	auto menu = GetCachedMenu(menuName.c_str());
 
+	if (!menu)
+		return;
+
 	Json::StyledWriter writer;
 	std::string styled = writer.write(*menu);
 	_DMESSAGE(styled.c_str());
 }
 
 void PapyrusReloadMenus(StaticFunctionTag*) {
-	static BSFixedString samMenuName(SAM_MENU_NAME);
-	samManager.CloseMenu(samMenuName);
-	samManager.ClearData();
 	ReloadJsonMenus();
 }
 
 void PapyrusForceQuit(StaticFunctionTag*) {
-	static BSFixedString samMenuName(SAM_MENU_NAME);
-	samManager.CloseMenu(samMenuName);
-	samManager.ClearData();
+	samManager.ForceQuit();
 }
 
 bool RegisterPapyrus(VirtualMachine* vm) {
@@ -190,12 +219,12 @@ bool RegisterPapyrus(VirtualMachine* vm) {
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("PopMenu", "SAM", PapyrusPopMenu, vm));
 	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("PopMenuTo", "SAM", PapyrusPopMenuTo, vm));
 	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("ShowNotification", "SAM", PapyrusShowNotification, vm));
-	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("SetTitle", "SAM", PapyrusSetTitle, vm));
 
 	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, VMArray<BSFixedString>>("SetNames", "SAM", PapyrusSetMenuNames, vm));
 	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, VMArray<VMVariable>>("SetValues", "SAM", PapyrusSetMenuValues, vm));
 	vm->RegisterFunction(new NativeFunction2<StaticFunctionTag, void, VMArray<BSFixedString>, VMArray<VMVariable>>("SetItems", "SAM", PapyrusSetMenuItems, vm));
-	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("SetString", "SAM", PapyrusSetString, vm));
+	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("SetNotification", "SAM", PapyrusSetNotification, vm));
+	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("SetTitle", "SAM", PapyrusSetTitle, vm));
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("SetSuccess", "SAM", PapyrusSetSuccess, vm));
 	vm->RegisterFunction(new NativeFunction1<StaticFunctionTag, void, BSFixedString>("SetError", "SAM", PapyrusSetError, vm));
 

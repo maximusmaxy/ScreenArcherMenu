@@ -100,7 +100,7 @@ std::pair<std::string, std::string>* GetLightPair(UInt32 formId)
 {
 	for (auto& categories : lightsMenuCache) {
 		for (auto& light : categories.second) {
-			UInt32 menuId = std::stoul(light.first, nullptr, 16);
+			UInt32 menuId = HexStringToUInt32(light.first.c_str());
 			if (menuId == formId) {
 				return &light;
 			}
@@ -325,9 +325,22 @@ MenuLight* LightManager::GetLight(UInt32 id)
 void LightManager::ForEach(const std::function<void(MenuLight*)>& functor)
 {
 	if (lights) {
+
 		for (auto& light : *lights) {
 			if (light.GetRefr()) {
 				functor(&light);
+			}
+		}
+	}
+}
+
+void LightManager::ForEachWithIndex(const std::function<void(MenuLight*,SInt32)>& functor)
+{
+	if (lights) {
+		for (SInt32 i = 0; i < lights->size(); ++i) {
+			auto& light = (*lights)[i];
+			if (light.GetRefr()) {
+				functor(&light, i);
 			}
 		}
 	}
@@ -459,63 +472,87 @@ bool LightManager::GetVisible()
 	return true;
 }
 
-void GetLightSelectGFx(GFxMovieRoot* root, GFxValue* result)
+void GetLightSelect(GFxResult& result)
 {
-	root->CreateArray(result);
+	result.CreateMenuItems();
 
 	lightManager.UpdateLightList();
 	lightManager.ValidateLights();
 
-	lightManager.ForEach([&](MenuLight* light) {
-		result->PushBack(&GFxValue(light->name.c_str()));
+	//TODO using the index is unsafe because a light might get deleted while this menu is open. Need better method
+	lightManager.ForEachWithIndex([&](MenuLight* light, SInt32 i) {
+		result.PushItem(light->name.c_str(), i);
 	});
+
+	SInt32 size = lightManager.lights->size();
+
+	result.PushItem(LIGHTS_ADD_NEW, size);
+	result.PushItem(LIGHTS_ADD_CONSOLE, size + 1);
+	result.PushItem(LIGHTS_GLOBAL_SETTINGS, size + 2);
 }
 
-void GetLightEditGFx(GFxMovieRoot* root, GFxValue* result, UInt32 id)
+void SetLightSelect(GFxResult& result, SInt32 index)
 {
-	root->CreateArray(result);
+	SInt32 size = lightManager.lights->size();
+	if (index < size)
+		samManager.PushMenu("LightEdit");
+	else if (index == size)
+		samManager.PushMenu("LightAddCategories");
+	else if (index == size + 1)
+	{
+		AddLight(result);
+		samManager.UpdateMenu();
+	}
+	else if (index == size + 2)
+		samManager.PushMenu("LightGlobal");
+	else
+		result.SetError(LIGHT_INDEX_ERROR);
+}
 
-	MenuLight* light = lightManager.GetLight(id);
+void GetLightEdit(GFxResult& result, UInt32 selectedLight)
+{
+	MenuLight* light = lightManager.GetLight(selectedLight);
 	if (!light)
-		return;
+		return result.SetError("Light index out of range");
 
-	result->PushBack(&GFxValue(light->distance));
-	result->PushBack(&GFxValue(light->rotation * RADIAN_TO_DEGREE));
-	result->PushBack(&GFxValue(light->height));
-	result->PushBack(&GFxValue(light->xOffset * RADIAN_TO_DEGREE));
-	result->PushBack(&GFxValue(light->yOffset * RADIAN_TO_DEGREE));
+	result.CreateValues();
+
+	result.PushValue(light->distance);
+	result.PushValue(light->rotation * RADIAN_TO_DEGREE);
+	result.PushValue(light->height);
+	result.PushValue(light->xOffset * RADIAN_TO_DEGREE);
+	result.PushValue(light->yOffset * RADIAN_TO_DEGREE);
 }
 
-void GetLightCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
+void GetLightCategories(GFxResult& result)
 {
-	root->CreateArray(result);
+	result.CreateMenuItems();
 
-	for (auto& category : lightsMenuCache) {
-		GFxValue name(category.first.c_str());
-		result->PushBack(&name);
+	for (SInt32 i = 0; i < lightsMenuCache.size(); ++i) {
+		result.PushItem(lightsMenuCache[i].first.c_str(), i);
 	}
 }
 
-void GetLightObjectsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryId)
+void GetLightForms(GFxResult& result, SInt32 categoryIndex)
 {
-	root->CreateArray(result);
+	if (categoryIndex < 0 || categoryIndex >= lightsMenuCache.size())
+		return result.SetError("Light category index out of range");
 
-	if (categoryId < 0 || categoryId >= lightsMenuCache.size())
-		return;
+	result.CreateMenuItems();
 
-	for (auto& light : lightsMenuCache[categoryId].second) {
-		result->PushBack(&GFxValue(light.second.c_str()));
+	for (auto& kvp : lightsMenuCache[categoryIndex].second) {
+		UInt32 formId = HexStringToUInt32(kvp.first.c_str());
+		result.PushItem(kvp.second.c_str(), formId);
 	}
 }
 
-void GetLightSettingsGFx(GFxMovieRoot* root, GFxValue* result)
+void GetLightSettings(GFxResult& result)
 {
-	root->CreateArray(result);
-
-	result->PushBack(&GFxValue(lightManager.pos.x));
-	result->PushBack(&GFxValue(lightManager.pos.y));
-	result->PushBack(&GFxValue(lightManager.pos.z));
-	result->PushBack(&GFxValue(lightManager.rot * RADIAN_TO_DEGREE));
+	result.CreateValues();
+	result.PushValue(lightManager.pos.x);
+	result.PushValue(lightManager.pos.y);
+	result.PushValue(lightManager.pos.z);
+	result.PushValue(lightManager.rot * RADIAN_TO_DEGREE);
 }
 
 MenuLight CreateLightFromId(UInt32 formId)
@@ -545,24 +582,26 @@ MenuLight CreateLightFromId(UInt32 formId)
 	return light;
 }
 
-MenuLight CreateLightFromMenu(UInt32 categoryId, UInt32 lightId)
+MenuLight CreateLightFromMenu(UInt32 formId)
 {
-	UInt32 formId = std::stoul(lightsMenuCache[categoryId].second[lightId].first, nullptr, 16);
-
 	MenuLight light = CreateLightFromId(formId);
 	if (light.formId == 0)
 		return light;
+
+	auto pair = GetLightPair(formId);
+	if (!pair)
+		return light;
 	
-	light.name = lightsMenuCache[categoryId].second[lightId].second;
+	light.name = pair->second;
 
 	return light;
 }
 
-bool CreateLight(UInt32 categoryId, UInt32 lightId)
+void CreateLight(GFxResult& result, UInt32 formId)
 {
-	MenuLight light = CreateLightFromMenu(categoryId, lightId);
+	MenuLight light = CreateLightFromMenu(formId);
 	if (!light.formId)
-		return false;
+		return result.SetError(LIGHT_FORM_ERROR);
 
 	light.distance = 100;
 	light.rotation = 0;
@@ -572,25 +611,22 @@ bool CreateLight(UInt32 categoryId, UInt32 lightId)
 	light.Update();
 
 	lightManager.Push(light);
-
-	return true;
 }
 
-void AddLight()
+void AddLight(GFxResult& result)
 {
 	if (!selectedNonActor.refr)
-		return;
+		return result.SetError("Console target could not be found");
 
 	if (selectedNonActor.refr->baseForm->GetFormType() != kFormType_LIGH)
-		return;
+		return result.SetError("Console target is not a light");
 
-	//Don't add if already exists
 	if (lightManager.HasRefr(selectedNonActor.refr))
-		return;
+		return result.SetError("Light has already been added");
 
 	auto pair = GetLightPair(selectedNonActor.refr->baseForm->formID);
 	if (!pair)
-		return;
+		return result.SetError("This light is not manageable by SAM");
 
 	MenuLight light(selectedNonActor.refr, pair->second);
 	light.Initialize();
@@ -600,11 +636,11 @@ void AddLight()
 	return;
 }
 
-void EditLight(UInt32 id, UInt32 type, float value)
+void EditLight(GFxResult& result, UInt32 type, float value, SInt32 selectedLight)
 {
-	MenuLight* light = lightManager.GetLight(id);
+	MenuLight* light = lightManager.GetLight(selectedLight);
 	if (!light)
-		return;
+		return result.SetError(LIGHT_INDEX_ERROR);
 
 	switch (type)
 	{
@@ -614,13 +650,9 @@ void EditLight(UInt32 id, UInt32 type, float value)
 			light->distance = 0.0f;
 		break;
 	case kLightRotation:
-		light->rotation += value * DEGREE_TO_RADIAN; 
-		if (light->rotation > 360.0f)
-			light->rotation -= 360.0f;
-		else if (light->rotation < 0.0f)
-			light->rotation += 360.0f;
+		light->rotation = Modulo(light->rotation + (value * DEGREE_TO_RADIAN), 360.0f * DEGREE_TO_RADIAN); 
 		break;
-	case kLightHeight: light->height += value;
+	case kLightHeight: light->height += value; break;
 	case kLightX: light->xOffset = value * DEGREE_TO_RADIAN; break;
 	case kLightY: light->yOffset = value * DEGREE_TO_RADIAN; break;
 	}
@@ -628,11 +660,11 @@ void EditLight(UInt32 id, UInt32 type, float value)
 	light->Update();
 }
 
-void ResetLight(UInt32 id)
+void ResetLight(GFxResult& result, SInt32 selectedLight)
 {
-	MenuLight* light = lightManager.GetLight(id);
+	MenuLight* light = lightManager.GetLight(selectedLight);
 	if (!light)
-		return;
+		return result.SetError(LIGHT_INDEX_ERROR);
 
 	light->distance = 100;
 	light->rotation = 0;
@@ -643,24 +675,24 @@ void ResetLight(UInt32 id)
 	light->Update();
 }
 
-void RenameLight(UInt32 id, const char* name)
+void RenameLight(GFxResult& result, const char* name, SInt32 selectedLight)
 {
-	MenuLight* light = lightManager.GetLight(id);
+	MenuLight* light = lightManager.GetLight(selectedLight);
 	if (!light)
-		return;
+		return result.SetError(LIGHT_INDEX_ERROR);
 
 	light->Rename(name);
 }
 
-bool SwapLight(UInt32 id, UInt32 categoryId, UInt32 lightId)
+void SwapLight(GFxResult& result, UInt32 formId, SInt32 selectedLight)
 {
-	MenuLight* light = lightManager.GetLight(id);
+	MenuLight* light = lightManager.GetLight(selectedLight);
 	if (!light)
-		return false;
+		return result.SetError(LIGHT_INDEX_ERROR);
 
-	MenuLight newLight = CreateLightFromMenu(categoryId, lightId);
+	MenuLight newLight = CreateLightFromMenu(formId);
 	if (!newLight.formId)
-		return false;
+		return result.SetError(LIGHT_FORM_ERROR);
 
 	NiPoint3 pos = light->lightRefr->pos;
 	NiPoint3 rot = light->lightRefr->rot;
@@ -674,11 +706,9 @@ bool SwapLight(UInt32 id, UInt32 categoryId, UInt32 lightId)
 	light->lightRefr = newLight.lightRefr;
 	light->formId = newLight.formId;
 	light->MoveTo(pos, rot);
-
-	return true;
 }
 
-bool GetLightVisible(UInt32 id)
+bool GetLightVisible(SInt32 id)
 {
 	MenuLight* light = lightManager.GetLight(id);
 	if (!light)
@@ -687,7 +717,7 @@ bool GetLightVisible(UInt32 id)
 	return light->GetVisible();
 }
 
-bool ToggleLightVisible(UInt32 id)
+bool ToggleLightVisible(SInt32 id)
 {
 	MenuLight* light = lightManager.GetLight(id);
 	if (!light)
@@ -696,13 +726,15 @@ bool ToggleLightVisible(UInt32 id)
 	return light->ToggleVisible();
 }
 
-void EditLightSettings(UInt32 type, float value)
+void EditLightSettings(GFxResult& result, UInt32 type, float value)
 {
 	switch (type) {
-	case kLightSettingsX: lightManager.pos.x = value; break;
-	case kLightSettingsY: lightManager.pos.y = value; break;
-	case kLightSettingsZ: lightManager.pos.z = value; break;
-	case kLightSettingsRotation: lightManager.rot = value * DEGREE_TO_RADIAN; break;
+	case kLightSettingsX: lightManager.pos.x += value; break;
+	case kLightSettingsY: lightManager.pos.y += value; break;
+	case kLightSettingsZ: lightManager.pos.z += value; break;
+	case kLightSettingsRotation: 
+		lightManager.rot = Modulo(lightManager.rot + (value * DEGREE_TO_RADIAN), 360.0f * DEGREE_TO_RADIAN); 
+		break;
 	}
 
 	lightManager.Update();
@@ -717,18 +749,18 @@ void ResetLightSettings()
 	lightManager.Update();
 }
 
-void RecalculateLight(UInt32 id)
+void RecalculateLight(SInt32 selectedLight)
 {
-	MenuLight* light = lightManager.GetLight(id);
+	MenuLight* light = lightManager.GetLight(selectedLight);
 	if (!light)
 		return;
 
 	light->Initialize();
 }
 
-void DeleteLight(UInt32 id)
+void DeleteLight(GFxResult& result, SInt32 selectedLight)
 {
-	lightManager.Erase(id);
+	lightManager.Erase(selectedLight);
 }
 
 void UpdateAllLights()
@@ -776,7 +808,7 @@ bool SaveLightsJson(const char* filename)
 		Json::Value lightValue;
 		lightValue["name"] = light->name;
 		lightValue["mod"] = lightModMap[GetModId(light->lightRefr->baseForm->formID)];
-		lightValue["id"] = HexToString(GetBaseId(light->lightRefr->baseForm->formID));
+		lightValue["id"] = UInt32ToHexString(GetBaseId(light->lightRefr->baseForm->formID));
 		WriteJsonFloat(lightValue, "distance", light->distance, buffer, "%.06f");
 		WriteJsonFloat(lightValue, "rotation", light->rotation, buffer, "%.06f");
 		WriteJsonFloat(lightValue, "height", light->height, buffer, "%.06f");

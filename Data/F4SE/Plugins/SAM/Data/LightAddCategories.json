@@ -1,12 +1,13 @@
 {
     "type": "list",
+    "update": true,
     "get": {
         "type": "sam",
         "name": "GetLightCategories"
     },
     "set": {
         "type": "menu",
-        "name": "LightAddList",
+        "name": "LightAddForms",
         "var": "lightCategory"
     }
 }

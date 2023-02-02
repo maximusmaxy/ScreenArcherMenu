@@ -16,10 +16,32 @@
     },
     "set": {
         "type": "sam",
-        "name": "SetBoneTransform"
+        "name": "SetBoneTransform",
+        "args": [
+            {
+                "type": "var",
+                "name": "adjustmentHandle"
+            },
+            {
+                "type": "var",
+                "name": "boneName"
+            },
+            {
+                "type": "index",
+                "index": 0
+            },
+            {
+                "type": "index",
+                "index": 1
+            },
+            {
+                "type": "index",
+                "index": 2
+            }
+        ]
     },
     "init": {
-        "type": "sam",
+        "type": "local",
         "name": "InitOffset"
     },
     "load": {
@@ -35,7 +57,18 @@
         "type": "func",
         "func": {
             "type": "sam",
-            "name": "ResetBoneTransform"
+            "name": "ResetBoneTransform",
+            "refresh": true,
+            "args": [
+                {
+                    "type": "var",
+                    "name": "adjustmentHandle"
+                },
+                {
+                    "type": "var",
+                    "name": "boneName"
+                }
+            ]
         }
     },
     "extra": {
@@ -43,7 +76,18 @@
         "type": "func",
         "func": {
             "type": "sam",
-            "name": "NegateBoneTransform"
+            "name": "NegateBoneTransform",
+            "refresh": true,
+            "args": [
+                {
+                    "type": "var",
+                    "name": "adjustmentHandle"
+                },
+                {
+                    "type": "var",
+                    "name": "boneName"
+                }
+            ]
         }
     },
     "items": [
@@ -137,8 +181,24 @@
             "touch": {
                 "type": "float",
                 "visible": false,
-                "step": 2.0,
+                "step": 0.04,
+                "mod": 0.01,
                 "fixed": 2
+            },
+            "func": {
+                "type": "sam",
+                "name": "RotateBoneTransform",
+                "refresh": true,
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "adjustmentHandle"
+                    },
+                    {
+                        "type": "var",
+                        "name": "boneName"
+                    }
+                ]
             }
         },
         {
@@ -147,8 +207,24 @@
             "touch": {
                 "type": "float",
                 "visible": false,
-                "step": 2.0,
+                "step": 0.04,
+                "mod": 0.01,
                 "fixed": 2
+            },
+            "func": {
+                "type": "sam",
+                "name": "RotateBoneTransform",
+                "refresh": true,
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "adjustmentHandle"
+                    },
+                    {
+                        "type": "var",
+                        "name": "boneName"
+                    }
+                ]
             }
         },
         {
@@ -157,8 +233,24 @@
             "touch": {
                 "type": "float",
                 "visible": false,
-                "step": 2.0,
+                "step": 0.04,
+                "mod": 0.01,
                 "fixed": 2
+            },
+            "func": {
+                "type": "sam",
+                "name": "RotateBoneTransform",
+                "refresh": true,
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "adjustmentHandle"
+                    },
+                    {
+                        "type": "var",
+                        "name": "boneName"
+                    }
+                ]
             }
         }
     ]

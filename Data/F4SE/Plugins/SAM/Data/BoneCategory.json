@@ -2,17 +2,11 @@
     "type": "list",
     "get": {
         "type": "sam",
-        "name": "GetBoneCategories",
-        "args": [
-            {
-                "type": "var",
-                "name": "adjustmentHandle"
-            }
-        ]
+        "name": "GetBoneCategories"
     },
     "set": {
         "type": "menu",
-        "name": "BoneList",
+        "name": "BoneNames",
         "var": "boneCategory"
     }
 }

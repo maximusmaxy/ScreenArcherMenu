@@ -46,7 +46,7 @@ float* GetMorphPointer() {
 	return faceGenAnimData->mfgMorphs;
 }
 
-void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale)
+void SetFaceMorph(SInt32 morphIndex, SInt32 scale, SInt32 categoryIndex)
 {
 	MenuCategoryList* menu = GetMenu(&selected, &morphsMenuCache);
 	if (!menu) 
@@ -56,7 +56,18 @@ void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale)
 	if (!ptr) 
 		return;
 
-	UInt32 key = std::stoul((*menu)[categoryIndex].second[morphIndex].first);
+	if (GetForceMorphUpdate() != kHackEnabled)
+		SetForceMorphUpdate(true);
+
+	if (categoryIndex < 0 || categoryIndex >= menu->size())
+		return;
+
+	auto& category = (*menu)[categoryIndex];
+
+	if (morphIndex < 0 || morphIndex >= category.second.size())
+		return;
+
+	UInt32 key = StringToUInt32(category.second[morphIndex].first.c_str());
 
 	ptr[key] = scale * 0.0099999998f;
 
@@ -325,7 +336,6 @@ void ResetMfg() {
 	safDispatcher.LoadTongueAdjustment(selected.refr->formID, nullptr);
 }
 
-
 UInt32 GetOrCreateTongueHandle(std::shared_ptr<SAF::ActorAdjustments> adjustments) {
 	//if no tongue handle, create
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
@@ -344,7 +354,7 @@ UInt32 GetOrCreateTongueHandle(std::shared_ptr<SAF::ActorAdjustments> adjustment
 	return tongueHandle;
 }
 
-void GetMorphCategoriesGFx(GFxResult& result)
+void GetMorphCategories(GFxResult& result)
 {
 	result.CreateMenuItems();
 
@@ -374,19 +384,21 @@ void GetMorphCategoriesGFx(GFxResult& result)
 	}
 }
 
-void LoadFaceMorphsGFx(GFxResult& result, int index, UInt32 value)
+void SetFaceMorphCategory(GFxResult& result, SInt32 index, UInt32 value)
 {
 	MenuCategoryList* menu = GetMenu(&selected, &morphsMenuCache);
 	if (!menu)
 		return result.SetError("Could not get morph information for targeted race");
 
 	if (index < menu->size())
-		samManager.PushMenu("FaceMorphsList");
-
-	
+		samManager.PushMenu("FaceMorphSliders");
+	else {
+		samManager.SetLocal("adjustmentHandle", &GFxValue(value));
+		samManager.PushMenu("TongueBones");
+	}
 }
 
-void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex)
+void GetMorphs(GFxResult& result, SInt32 categoryIndex)
 {
 	result.CreateMenuItems();
 
@@ -399,7 +411,7 @@ void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex)
 		return;
 
 	for (auto& kvp : (*menu)[categoryIndex].second) {
-		UInt32 key = std::stoul(kvp.first);
+		UInt32 key = StringToUInt32(kvp.first.c_str());
 		key = max(0, min(MORPH_MAX - 1, key));
 
 		SInt32 rounded = std::round(ptr[key] * 100);
@@ -407,73 +419,54 @@ void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex)
 	}
 }
 
-void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex)
+void GetMorphsTongueNodes(GFxResult& result)
 {
-	root->CreateArray(result);
-
-	GFxValue names;
-	root->CreateArray(&names);
-
-	GFxValue values;
-	root->CreateArray(&values);
-
-	result->SetMember("names", &names);
-	result->SetMember("values", &values);
-
-	if (!selected.refr) 
-		return;
-
-	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) 
-		return;
+	std::shared_ptr<SAF::ActorAdjustments> adjustments;
+	if (!GetActorAdjustments(&adjustments))
+		return result.SetError(SKELETON_ERROR);
 
 	//TODO: We're just taking the first available for now
 	auto tongueMenu = FindFirstTongueMenu(adjustments);
 
-	//if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
-	//	return;
+	if (!tongueMenu)
+		return result.SetError(TONGUE_BONES_ERROR);
 
-	//auto& category = tongueMenuCache[categoryIndex].second;
+	result.CreateMenuItems();
 
-	if (tongueMenu) {
-		for (SInt32 i = 0; i < tongueMenu->size(); ++i) {
-			if (adjustments->HasNode((*tongueMenu)[i].first.c_str())) {
-				GFxValue node((*tongueMenu)[i].second.c_str());
-				names.PushBack(&node);
-				GFxValue index(i);
-				values.PushBack(&index);
-			}
+	for (auto& kvp : *tongueMenu) {
+		if (adjustments->HasNode(kvp.first.c_str())) {
+			result.PushItem(kvp.second.c_str(), kvp.first.c_str());
 		}
 	}
 }
 
 //need to get or create the new tongue adjustment and pass back the menu info to get the correct node
-void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex)
-{
-	root->CreateArray(result);
-
-	if (!selected.refr)
-		return;
-
-	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments)
-		return;
-
-	//TODO: We're just taking the first available for now
-	auto tongueMenu = FindFirstTongueMenu(adjustments);
-
-	//if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
-	//	return;
-
-	//auto& category = tongueMenuCache[categoryIndex].second;
-
-	if (tongueIndex < 0 || tongueIndex >= tongueMenu->size())
-		return;
-
-	SAF::NodeKey nodeKey((*tongueMenu)[tongueIndex].first.c_str(), false);
-
-	UInt32 tongueHandle = GetOrCreateTongueHandle(adjustments);
-
-	result->PushBack(&GFxValue(nodeKey.name));
-	result->PushBack(&GFxValue(tongueHandle));
-}
+//void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex)
+//{
+//	root->CreateArray(result);
+//
+//	if (!selected.refr)
+//		return;
+//
+//	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+//	if (!adjustments)
+//		return;
+//
+//	//TODO: We're just taking the first available for now
+//	auto tongueMenu = FindFirstTongueMenu(adjustments);
+//
+//	//if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
+//	//	return;
+//
+//	//auto& category = tongueMenuCache[categoryIndex].second;
+//
+//	if (tongueIndex < 0 || tongueIndex >= tongueMenu->size())
+//		return;
+//
+//	SAF::NodeKey nodeKey((*tongueMenu)[tongueIndex].first.c_str(), false);
+//
+//	UInt32 tongueHandle = GetOrCreateTongueHandle(adjustments);
+//
+//	result->PushBack(&GFxValue(nodeKey.name));
+//	result->PushBack(&GFxValue(tongueHandle));
+//}

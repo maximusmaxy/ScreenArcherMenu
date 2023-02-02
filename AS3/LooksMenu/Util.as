@@ -39,7 +39,7 @@
 				Data.selectedText.value.selectable = false;
 				try
 				{
-					Data.f4seObj.AllowTextInput(false);
+					Data.f4se.AllowTextInput(false);
 				}
 				catch (e:Error)
 				{
@@ -87,27 +87,40 @@
 		
 		public static function callFuncArgs(func:Function, args:Array = null):Object
 		{			
-			if (!args)
-				return func();
+			try {
+				if (!args)
+					return func();
 			
-			//I don't think AS3 has any other way to do this
-			switch(args.length) {		
-				case 0: return func();
-				case 1: return func(args[0]);
-				case 2: return func(args[0], args[1]);
-				case 3: return func(args[0], args[1], args[2]);
-				case 4: return func(args[0], args[1], args[2], args[3]);
-				case 5: return func(args[0], args[1], args[2], args[3], args[4]);
-				case 6: return func(args[0], args[1], args[2], args[3], args[4], args[5]);
-				case 7: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
-				case 8: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
-				case 9: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
-				case 10: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
-				case 11: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10]);
-				case 12: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11]);
+				//I don't think AS3 has any other way to do this
+				switch(args.length) {		
+					case 0: return func();
+					case 1: return func(args[0]);
+					case 2: return func(args[0], args[1]);
+					case 3: return func(args[0], args[1], args[2]);
+					case 4: return func(args[0], args[1], args[2], args[3]);
+					case 5: return func(args[0], args[1], args[2], args[3], args[4]);
+					case 6: return func(args[0], args[1], args[2], args[3], args[4], args[5]);
+					case 7: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+					case 8: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+					case 9: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+					case 10: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9]);
+					case 11: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10]);
+					case 12: return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11]);
+				}
+				
+				Data.error = "Function exceeded parameter limit";
+				return null;
+			} 
+			catch (e:Error) 
+			{
+				if (e.errorID == 1006) 
+				{
+					Data.error = "Function name could not be found";
+					return null;
+				}
 			}
-			
-			Data.error = "Function exceeded parameter limit";
+	
+			Data.error = "Failed to call function";
 			return null;
 		}
 		
@@ -125,12 +138,13 @@
 
 				if (type == "Object")
 				{
-					trace("-->");
+					trace(id, "--->");
 					traceObj(value);
+					trace("<---")
 				}
 				else if (type == "Array")
 				{
-					trace(id, " Array length: ", value.length);
+					trace(id, "Array length: ", value.length);
 					for (var i:int = 0; i < value.length; i++) {
 						traceObj(value[i]);
 					}

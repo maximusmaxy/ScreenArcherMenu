@@ -1,8 +1,12 @@
 #pragma once
 
+#include "f4se/ScaleformMovie.h"
+#include "f4se/ScaleformValue.h"
+
 #include "SAF/types.h"
 #include "json.h"
 #include <sstream>
+#include <vector>
 
 class JsonMenuValidator {
 public:
@@ -28,6 +32,7 @@ public:
 	void ValidateList(Json::Value& value);
 	void ValidateHotkey(Json::Value& value);
 	void ValidateFunc(Json::Value& value);
+	void ValidateArgs(Json::Value& value);
 	void ValidateEntry(Json::Value& value);
 	void ValidateFolder(Json::Value& value);
 	void ValidateHold(Json::Value& value);
@@ -43,3 +48,28 @@ public:
 	void SetDefault(Json::Value& value, const char* key, const Json::Value& defaultValue);
 	bool RequireProperty(Json::Value& value, const char* key, const char* error);
 };
+
+void JsonToGFx(GFxMovieRoot* root, GFxValue* result, const Json::Value& value);
+Json::Value GFxToJson(GFxValue* value);
+
+class GFxToJsonObjVisitor : public GFxValue::ObjectInterface::ObjVisitor
+{
+public:
+	Json::Value& json;
+
+	GFxToJsonObjVisitor(Json::Value& json) : json(json) {};
+
+	void Visit(const char* member, GFxValue* value);
+};
+
+class GFxToJsonArrVisitor : public GFxValue::ObjectInterface::ArrayVisitor
+{
+public:
+	Json::Value& json;
+
+	GFxToJsonArrVisitor(Json::Value& json) : json(json) {};
+
+	void Visit(UInt32 idx, GFxValue* val);
+};
+
+void MergeJsons(Json::Value& src, Json::Value* dst);

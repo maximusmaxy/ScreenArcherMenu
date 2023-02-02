@@ -1,8 +1,9 @@
 {
     "type": "list",
+    "update": true,
     "get": {
         "type": "sam",
-        "name": "GetItemTypes",
+        "name": "GetItemGroups",
         "args": [
             {
                 "type": "var",
@@ -13,6 +14,6 @@
     "set": {
         "type": "menu",
         "name": "AddItemList",
-        "var": "addItemType"
+        "var": "addItemGroup"
     }
 }

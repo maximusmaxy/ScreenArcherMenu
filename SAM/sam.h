@@ -57,6 +57,7 @@ public:
 	void SaveData(GFxValue* data);
 	bool LoadData(GFxMovieRoot* root, GFxValue* res);
 	void ClearData();
+	void ForceQuit();
 
 	void CursorAlwaysOn(bool enabled);
 	void SetVisible(bool visible);
@@ -65,14 +66,17 @@ public:
 	void PushMenu(const char* name);
 	void PopMenu();
 	void PopMenuTo(const char* name);
+	void RefreshMenu();
+	void UpdateMenu();
 	void ShowNotification(const char* name);
 	void SetTitle(const char* name);
+	void SetNotification(const char* name);
 	void SetMenuNames(VMArray<BSFixedString>& names);
 	void SetMenuValues(VMArray<VMVariable>& values);
 	void SetMenuItems(VMArray<BSFixedString>& names, VMArray<VMVariable>& values);
-	void SetString(const char* msg);
 	void SetSuccess();
 	void SetError(const char* error);
+	void SetLocal(const char* key, GFxValue* value);
 };
 
 extern SamManager samManager;
@@ -87,7 +91,7 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 
 bool GetCursor(SInt32* pos);
 bool SetCursor(SInt32 x, SInt32 y);
-void GetCursorPositionGFx(GFxMovieRoot* root, GFxValue* result);
+void GetCursorPosition(GFxResult& result);
 
 void OnMenuOpen();
 void OnMenuClose();

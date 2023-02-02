@@ -2,11 +2,11 @@
     "type": "list",
     "get": {
         "type": "sam",
-        "name": "GetLightList",
+        "name": "GetLightForms",
         "args": [
             {
                 "type": "var",
-                "name": "lightCategories"
+                "name": "lightCategory"
             }
         ]
     },

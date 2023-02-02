@@ -17,7 +17,7 @@ enum {
 	kOptionMax
 };
 
-void GetMenuOptionsGFx(GFxResult& result);
+void GetMenuOptions(GFxResult& result);
 bool GetMenuOption(int index);
 void SetMenuOption(int index, bool value);
 

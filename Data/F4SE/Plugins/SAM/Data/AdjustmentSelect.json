@@ -4,14 +4,14 @@
         "type": "sam",
         "name": "GetAdjustments"
     },
-    "init": {
-        "type": "local",
-        "name": "InitOrder"
-    },
-    "set" :{
+    "set": {
         "type": "menu",
         "name": "BoneCategory",
         "var": "adjustmentHandle"
+    },
+    "enter": {
+        "type": "local",
+        "name": "EnterOrder"
     },
     "load": {
         "name": "$SAM_Load",
@@ -19,7 +19,7 @@
         "func": {
             "type": "folder",
             "folder": {
-                "type": "full",
+                "format": "full",
                 "path": "Data\\F4SE\\Plugins\\SAF\\Adjustments",
                 "ext": ".json",
                 "func": {
@@ -33,8 +33,9 @@
         "name": "$SAM_New",
         "type": "func",
         "func": {
-            "type": "local",
-            "name": "NewAdjustment"
+            "type": "sam",
+            "name": "NewAdjustment",
+            "update": true
         }
     },
     "reset": {
@@ -42,18 +43,20 @@
         "type": "func",
         "func": {
             "type": "local",
-            "name": "ToggleAdjustments"
+            "name": "ToggleOrder",
+            "update": true
         }
     },
     "adjustment": {
         "edit": {
             "type": "menu",
-            "name": "EditAdjustment",
+            "name": "AdjustmentEdit",
             "var": "adjustmentHandle"
         },
         "remove": {
             "type": "sam",
-            "name": "RemoveAdjustment"
+            "name": "RemoveAdjustment",
+            "update": true
         },
         "up": {
             "type": "local",

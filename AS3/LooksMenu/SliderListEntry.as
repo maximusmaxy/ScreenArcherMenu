@@ -90,7 +90,7 @@
 		public function onValueChange(event:Event)
 		{
 			//Util.playFocus();
-			switch(this.type) {
+			switch(this.valueType) {
 				case Data.VALUE_INT:
 					functions.valueInt(id, event.target.value - valueMod);
 					break;
@@ -104,14 +104,14 @@
 		public function onValueInput(event:Event)
 		{
 			var menuValue:Number;
-			switch (valueType)
+			switch (this.valueType)
 			{
 				case Data.VALUE_INT:
 				{
 					menuValue = parseInt(value.text);
 					if (!isNaN(menuValue)) {
 						var parsedInt:int = int(menuValue);
-						func.call(null, id, parsedInt);
+						functions.valueInt(id, parsedInt);
 						slider.position = parsedInt + valueMod;
 					}
 					break;
@@ -120,7 +120,7 @@
 				{
 					menuValue = parseFloat(value.text);
 					if (!isNaN(menuValue)) {
-						func.call(null, id, menuValue);
+						functions.valueFloat(id, menuValue);
 						slider.position = menuValue + valueMod;
 					}
 					break;
@@ -130,10 +130,10 @@
 		
 		public function onValueClick(event:MouseEvent)
 		{
-			if (value.visible && valueSelectable) {
+			if (value.visible && this.valueSelectable) {
 				if (Data.selectedText == null) {
 					try {
-						Data.f4seObj.AllowTextInput(true);
+						Data.f4se.AllowTextInput(true);
 					} catch (e:Error) {
 						trace("Failed to allow text input");
 					}
@@ -170,6 +170,14 @@
 			this.y = yPos;
 			
 			updateType();
+		}
+		
+		public function updatePosition(id:int, type:int)
+		{
+			this.visible = true;
+			this.type = type;
+			this.id = id;
+			
 		}
 		
 		public function clear()
@@ -290,7 +298,7 @@
 			slider.maximum = data.max + this.valueMod;
 			
 			slider.StepSize = data.step;
-			slider.StepSizePad = data.stepKey;
+			slider.StepSizePad = data.stepkey;
 			
 			this.valueType = data.type;
 			if (this.valueType == Data.VALUE_NONE) {
@@ -313,13 +321,13 @@
 			slider.visible = false;
 			value.visible = false;
 			checkbox.init(1, this.id, Data.CHECKBOX_CHECK, false);
-			checkbox.setCheck(Data.getBool(this.id));
+			checkbox.setCheck(Data.getCheckbox(this.id));
 			checkbox2.disable();
 			Util.setRect(background, 31, -3.25, 258, 32);
 			this.valueType = Data.NONE;
 		}
 		
-		public function updateAdjustment() 
+		public function updateAdjustment()
 		{
 			setSelectable(true);
 			setText(0, 0, 218, Data.getName(this.id));
@@ -329,11 +337,11 @@
 			this.valueType = Data.NONE;
 			
 			if (Data.locals.order) {
-				checkbox.init(222, this.id, Data.CHECKBOX_SETTINGS, true);
-				checkbox2.init(256, this.id, Data.CHECKBOX_RECYCLE, true);
-			} else {
 				checkbox.init(222, this.id, Data.CHECKBOX_DOWN, true);
 				checkbox2.init(256, this.id, Data.CHECKBOX_UP, true);
+			} else {
+				checkbox.init(222, this.id, Data.CHECKBOX_SETTINGS, true);
+				checkbox2.init(256, this.id, Data.CHECKBOX_RECYCLE, true);
 			}
 		}
 		
@@ -350,15 +358,16 @@
 			this.valueType = data.type;
 			this.value.visible = data.visible;
 			
+			checkbox.increment = data.step;
+			checkbox.mod = data.mod;
+			
 			if (this.value.visible) {
 				value.visible = true;
 				value.x = 219.7;
 				value.y = 1;
 				valueSelectable = false;
 				valueMod = 0;
-				checkbox.increment = data.step;
-				checkbox.mod = data.mod;
-				
+
 				if (data.fixed) {
 					this.valueFixed = data.fixed;
 				} else {

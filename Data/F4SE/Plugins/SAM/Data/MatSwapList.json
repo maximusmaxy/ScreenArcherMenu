@@ -12,7 +12,7 @@
     },
     "set": {
         "type": "sam",
-        "name": "SetMatSwap",
+        "name": "ApplyMatSwap",
         "args": [
             {
                 "type": "var",

@@ -5,7 +5,7 @@
 
     public class Data {
 		public static var sam:Object;
-		public static var f4seObj:Object;
+		public static var f4se:Object;
 		public static var stage:DisplayObject;
 		
 		public static var menuName:String = "";
@@ -29,14 +29,28 @@
 		public static var cursorPosX:int = -1;
 		public static var cursorPosY:int = -1;
 
-		public static var delayClose:Boolean;
-		
 		public static var selectedText:SliderListEntry = null;
 		
-		public static var papyrusWaiting:Boolean = false;
-		public static var papyrusMenuData:Object = null;
-		public static var papyrusTimer:Timer = null;
-		public static var papyrusType = 0;
+		public static var latentWaiting:Boolean = false;
+		public static var latentMenuData:Object;
+		public static var latentMenuName:String;
+		public static var latentAction:int;
+
+		public static var latentCallbacks:Vector.<LatentCallback> = new Vector.<LatentCallback>(4);
+		public static var latentGet:LatentCallback;
+		public static var latentNotification:LatentCallback;
+		public static var latentTitle:LatentCallback;
+		public static var latentSet:LatentCallback;
+		
+		public static const LATENT_GET = 0;
+		public static const LATENT_NOTIF = 1;
+		public static const LATENT_TITLE = 2;
+		public static const LATENT_SET = 3;
+		public static const LATENT_MAX = 4;
+		public static const LATENT_PUSH = 5;
+		public static const LATENT_POP = 6;
+		public static const LATENT_REFRESH = 7;
+		public static const LATENT_RELOAD = 8;
 	
 		public static const EMPTY:String = "";
 		public static const ERROR:String = "Error";
@@ -52,12 +66,10 @@
 		public static const RESULT_ITEMS:int = 6;
 		public static const RESULT_NAMES:int = 7;
 		public static const RESULT_STRING:int = 8;
-		public static const RESULT_BOOL:int = 9;
-		public static const RESULT_INT:int = 10;
-		public static const RESULT_FLOAT:int = 11;
-		public static const RESULT_OBJECT:int = 12;
-		public static const RESULT_FOLDER:int = 13;
-		public static const RESULT_FOLDERCHECKBOX:int = 14;
+		public static const RESULT_FOLDER:int = 9;
+		public static const RESULT_FOLDERCHECKBOX:int = 10;
+		public static const RESULT_NOTIFICATION:int = 11;
+		public static const RESULT_TITLE:int = 12;
 		
 		public static const MENU_MAIN:int = 1;
 		public static const MENU_MIXED:int = 2;
@@ -75,6 +87,8 @@
 		public static const FUNC_ENTRY:int = 5;
 		public static const FUNC_MENU:int = 6;
 		public static const FUNC_FOLDER:int = 7;
+		
+		public static const FUNC_DEBUG:int = 0xDEADBEEF;
 		
 		public static const HOTKEY_FUNC:int = 1;
 		public static const HOTKEY_HOLD:int = 2;
@@ -132,11 +146,14 @@
 		public static var resultWaiting:GFxResult = new GFxResult(RESULT_WAITING, null);
 		public static var resultError:GFxResult = new GFxResult(RESULT_ERROR, ERROR);
 		
-		public static var popFail:GFxResult = new GFxResult(RESULT_MENU, {
+		public static var popFailMenu:GFxResult = new GFxResult(RESULT_MENU, {
 			type: MENU_LIST,
 			names: []
 		});
-
+		
+		public static var popFailGet:GFxResult = new GFxResult(RESULT_VALUES, []);
+		public static var popFailFolder:GFxResult = new GFxResult(RESULT_FOLDER, []);
+		
 		public static function getMenu(name:String, pop:Boolean = false):GFxResult
 		{
 			try {
@@ -146,19 +163,15 @@
 				if (result && result.type == RESULT_MENU)
 					return result;
 			}
-			catch(e:Error) {
-				if (Util.debug) {
-					var menu:Object = getDebugMenu(name);
-					if (menu)
-						return new GFxResult(RESULT_MENU, menu);
-				}
+			catch(e:Error) {}
+			
+			if (Util.debug) {
+				var menu:Object = getDebugMenu(name);
+				if (menu)
+					return new GFxResult(RESULT_MENU, menu);
 			}
 			
-			if (pop)
-				return popFail;
-				
-			error = "$SAM_MenuMissingError";
-			return null;
+			return new GFxResult(RESULT_ERROR, "$SAM_MenuMissingError");
 		}
 		
 		public static function updateMenu(name:String, data:Object, result:GFxResult)
@@ -214,6 +227,25 @@
 					}
 					break;
 				case MENU_CHECKBOX:
+					if (data.names) {
+						setMenuSize(data.names.length);
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = data.names[i];
+							menuValues[i] = false;
+						}
+					} else {
+						//length specified by get function
+						if (result.type == RESULT_ITEMS) {
+							setMenuSize(result.result.names.length);
+						} else {
+							setMenuSize(result.result.length);
+						}
+						for (i = 0; i < menuSize; i++) {
+							menuOptions[i] = EMPTY;
+							menuValues[i] = false;
+						}
+					}
+					break;
 				case MENU_SLIDER:
 					var sliderValue = (data.slider.type == VALUE_FLOAT ? 0.0 : 0);
 					if (data.names) {
@@ -234,10 +266,11 @@
 							menuValues[i] = sliderValue;
 						}
 					}
+					break;
 				case MENU_ADJUSTMENT:
-					menuNames = result.names;
-					menuValues = result.values;
-					menuSize = result.values.length;
+					menuOptions = result.result.names;
+					menuValues = result.result.values;
+					menuSize = result.result.values.length;
 					break;
 			}
 			
@@ -260,7 +293,6 @@
 				case Data.RESULT_VALUES:
 					len = result.result.length;
 					for (i = 0; i < len; i++) {
-						trace(result.result[i]);
 						menuValues[i] = result.result[i];
 					}
 					break;
@@ -291,9 +323,16 @@
 				case MENU_CHECKBOX: return ITEM_CHECKBOX;
 				case MENU_LIST: return ITEM_LIST;
 				case MENU_SLIDER: return ITEM_SLIDER;
-				case MENU_FOLDER: return (menuFolder[index].folder ? ITEM_FOLDER : ITEM_LIST);
-				case MENU_FOLDERCHECKBOX: return (menuFolder[index].folder ? ITEM_FOLDER : ITEM_CHECKBOX);
 				case MENU_ADJUSTMENT: return ITEM_ADJUSTMENT;
+				case MENU_FOLDER: return (menuFolder[index].folder ? ITEM_FOLDER : ITEM_LIST);
+				case MENU_FOLDERCHECKBOX: 
+				{
+					if (menuFolder[index].folder) {
+						return ITEM_FOLDER
+					} else {
+						return (locals.folderCheckbox ? ITEM_CHECKBOX : ITEM_LIST);
+					}
+				}				
 			}
 			
 			return 0;
@@ -334,13 +373,22 @@
 			return menuValues[index];
 		}
 		
+		public static function getCheckbox(index:int):Boolean
+		{
+			if (menuType == MENU_FOLDERCHECKBOX) {
+				return menuFolder[index].checked;
+			} else {
+				return menuValues[index];
+			}
+		}
+		
 		public static function getHotkey(type:int):Object
 		{
 			switch (type) {
-				case BUTTON_SAVE: if (menuData.save) return menuData.save;
-				case BUTTON_LOAD: if (menuData.load) return menuData.load;
-				case BUTTON_RESET: if (menuData.reset) return menuData.reset;
-				case BUTTON_EXTRA: if (menuData.extra) return menuData.extra;
+				case BUTTON_SAVE: if (menuData.save) return menuData.save; break;
+				case BUTTON_LOAD: if (menuData.load) return menuData.load; break;
+				case BUTTON_RESET: if (menuData.reset) return menuData.reset; break;
+				case BUTTON_EXTRA: if (menuData.extra) return menuData.extra; break;
 			}
 			
 			return null;
@@ -349,10 +397,10 @@
 		public static function getFolderHotkey(type:int):Object
 		{
 			switch (type) {
-				case BUTTON_SAVE: if (folderData.save) return folderData.save;
-				case BUTTON_LOAD: if (folderData.load) return folderData.load;
-				case BUTTON_RESET: if (folderData.reset) return folderData.reset;
-				case BUTTON_EXTRA: if (folderData.extra) return folderData.extra;
+				case BUTTON_SAVE: if (folderData.save) return folderData.save; break;
+				case BUTTON_LOAD: if (folderData.load) return folderData.load; break;
+				case BUTTON_RESET: if (folderData.reset) return folderData.reset; break;
+				case BUTTON_EXTRA: if (folderData.extra) return folderData.extra; break;
 			}
 			
 			return null;
@@ -376,21 +424,64 @@
 			return defaultSliderData;
 		}
 		
-		public static function setPapyrusWaiting(data:Object, type:int)
+		public static function initLatents(func:Function)
 		{
-			papyrusWaiting = true;
-			papyrusMenuData = data;
-			papyrusType = type;
+			for (var i:int = 0; i < LATENT_MAX; i++) {
+				latentCallbacks[i] = new LatentCallback(func);
+			}
+			
+			latentGet = latentCallbacks[0];
+			latentNotification = latentCallbacks[1];
+			latentTitle = latentCallbacks[2];
+			latentSet = latentCallbacks[3];
 		}
 		
-		public static function clearPapyrusWaiting()
+		public static function clearLatents()
 		{
-			papyrusWaiting = false;
-			papyrusMenuData = null;
-			if (papyrusTimer) {
-				papyrusTimer.stop();
-				papyrusTimer = null;
+			for (var i:int = 0; i < LATENT_MAX; i++) {
+				latentCallbacks[i].Clear();
 			}
+			
+			latentMenuData = null;
+			latentMenuName = null;
+			latentWaiting = false;
+		}
+		
+		public static function updateLatent(latent:LatentCallback, result:GFxResult, data:Object)
+		{
+			if (result) 
+			{
+				if (result.type == RESULT_WAITING) 
+				{
+					latent.Init(data.timeout);
+					latentWaiting = true;
+				}
+				else
+				{
+					latent.Store(result);
+				}
+			}
+			else {
+				latent.Clear();
+			}
+		}
+		
+		public static function startLatents(data:Object, name:String, type:int):Boolean
+		{
+			if (!latentWaiting)
+				return true;
+				
+			latentMenuData = data;
+			latentMenuName = name;
+			latentAction = type;
+			
+			var latent:LatentCallback;
+			for (var i:int = 0; i < LATENT_MAX; i++) {
+				latent = latentCallbacks[i];
+				latent.Start();
+			}
+			
+			return false;
 		}
 		
 		public static function getDebugMenu(name:String):Object
@@ -424,7 +515,7 @@
 					"ExportType",
 					"PlayIdle",
 					"Positioning",
-					"FaceMorphs",
+					"FaceMorphCategories",
 					"Eyes",
 					"Inventory",
 					"Lights",
@@ -434,6 +525,20 @@
 					"Extensions"
 				]
 			};
+			
+			case "SkeletonAdjustment": return {
+				type: MENU_FOLDER,
+				folder: {
+					"type": "full",
+					"path": "Data\\F4SE\\Plugins\\SAM\\FaceMorphs",
+					"ext": ".txt",
+					"pop": false,
+					"func": {
+						"type": "local",
+						"name": "LoadAdjustment"
+					}
+				}
+			}
 			
 			case "Options": return {
 				type: MENU_MIXED,
@@ -468,6 +573,92 @@
 						}
 					}
 				]
+			};
+			
+			case "Eyes": return {
+				"type": MENU_SLIDER,
+				"update": true,
+				"slider": {
+					"type": VALUE_FLOAT,
+					"min": -1.0,
+					"max": 1.0,
+					"step": 0.01,
+					"stepkey": 0.05,
+					"fixed": 4
+				},
+				"names": [
+					"$SAM_EyeX",
+					"$SAM_EyeY"
+				],
+				"get": {
+					"type": FUNC_SAM,
+					"name": "GetEyes"
+				},
+				"set": {
+					"type": FUNC_DEBUG,
+					"name": "SetEyes",
+					"args": [
+						{
+							"type": ARGS_INDEX,
+							"index": 0
+						},
+						{
+							"type": ARGS_INDEX,
+							"index": 1
+						}
+					]
+				}
+			};
+			
+			case "FaceMorphCategories": return {
+				"type": MENU_LIST,
+				"get": {
+					"type": FUNC_SAM,
+					"name": "GetFaceMorphCategories"
+				},
+				"set": {
+					"type": FUNC_DEBUG,
+					"name": "SetFaceMorphCategory",
+					"var": "faceMorphCategory"
+				},
+				"reset": {
+					"name": "$SAM_Reset",
+					"type": "func",
+					"func": {
+						"type": "sam",
+						"name": "ResetFaceMorphs"
+					}
+				},
+				"save": {
+					"name": "$SAM_Save",
+					"type": "func",
+					"func": {
+						"type": "entry",
+						"entry": {
+							"func": {
+								"type": "sam",
+								"name": "SaveFaceMorphs"
+							}
+						}
+					}
+				},
+				"load": {
+					"name": "$SAM_Load",
+					"type": "func",
+					"func": {
+						"type": "folder",
+						"folder": {
+							"type": "full",
+							"path": "Data\\F4SE\\Plugins\\SAM\\FaceMorphs",
+							"ext": ".txt",
+							"pop": false,
+							"func": {
+								"type": "sam",
+								"name": "LoadFaceMorphs"
+							}
+						}
+					}
+				}
 			};
 			
 			case "Positioning": return {
@@ -601,30 +792,118 @@
 				],
 				load: {
 					"name": "$SAM_Load",
-					"type": FUNC_FOLDER,
-					"folder": {
-						"type": PATH_FULL,
-						"path": "Data\\F4SE\\Plugins\\SAF\\Adjustments",
-						"ext": ".json",
-						"pop": false,
-						"func": {
-							"type": FUNC_SAM,
-							"name": "LoadAdjustment"
+					"type": HOTKEY_FUNC,
+					"func": {
+						"type": FUNC_FOLDER,
+						"folder": {
+							"type": PATH_FULL,
+							"path": "Data\\F4SE\\Plugins\\SAF\\Adjustments",
+							"ext": ".json",
+							"pop": false,
+							"func": {
+								"type": FUNC_DEBUG,
+								"name": "LoadAdjustment"
+							}
 						}
 					}
 				},
 				save: {
 					"name": "$SAM_SAVE",
-					"type": FUNC_ENTRY,
-					"entry": {
-						"func": {
-							"type": FUNC_SAM,
-							"name": "SaveAdjustment"
+					"type": HOTKEY_FUNC,
+					"func": {
+						"type": FUNC_ENTRY,
+						"entry": {
+							"func": {
+								"type": FUNC_DEBUG,
+								"name": "SaveAdjustment"
+							}
 						}
 					}
 				}
 			};
 			
+			case "FaceMorphSliders": return {
+				"type": "slider",
+				"slider": {
+					"type": "int",
+					"min": 0,
+					"max": 100,
+					"step": 1,
+					"stepkey": 1
+				},
+				"get": {
+					"type": FUNC_SAM,
+					"name": "GetFaceMorphs",
+					"args": [
+						{
+							"type": ARGS_VAR,
+							"name": "faceMorphCategory"
+						}
+					]
+				},
+				"set": {
+					"type": "sam",
+					"name": "SetFaceMorph",
+					"args": [
+						{
+							"type": "var",
+							"name": "faceMorphCategory"
+						}
+					]
+				},
+				"reset": {
+					"name": "$SAM_Reset",
+					"type": "func",
+					"func": {
+						"type": "sam",
+						"name": "ResetFaceMorphs"
+					}
+				},
+				"save": {
+					"name": "$SAM_Save",
+					"type": "func",
+					"func": {
+						"type": "entry",
+						"entry": {
+							"func": {
+								"type": "sam",
+								"name": "SaveFaceMorphs"
+							}
+						}
+					}
+				},
+				"load": {
+					"name": "$SAM_Load",
+					"type": "func",
+					"func": {
+						"type": "folder",
+						"folder": {
+							"type": "full",
+							"path": "Data\\F4SE\\Plugins\\SAM\\FaceMorphs",
+							"ext": ".txt",
+							"pop": false,
+							"func": {
+								"type": "sam",
+								"name": "LoadFaceMorphs"
+							}
+						}
+					}
+				}
+			};
+			
+			case "TongueBones": return {
+				"type": MENU_LIST,
+				"get": {
+					"type": FUNC_SAM,
+					"name": "GetTongueBones"
+				},
+				"set": {
+					"type": FUNC_MENU,
+					"name": "BoneEdit",
+					"var": "boneName"
+				}
+			};
+						
 			}
 			
 			error = "$SAM_MenuMissing";
@@ -644,17 +923,43 @@
 				 100, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 1.0
 			]);
 			
-			}
+			case "GetEyes": return new GFxResult(RESULT_VALUES, [
+				0.0, 0.0
+			]);
 			
+			case "GetFaceMorphCategories": return new GFxResult(RESULT_ITEMS, new GFxItems(
+				["Lips", "Jaw", "Eyes","Eyebrows", "Tongue Bones"],
+				[0, 1, 2, 3, 4]
+			));
+			
+			case "GetTongueBones": return new GFxResult(RESULT_ITEMS, {
+				names: ["Tongue 0", "Tongue 1", "Tongue 2"],
+				values: [0, 1, 2]
+			});
+			
+//			case "GetFolder": return new GFxResult(RESULT_FOLDER, [
+//				{
+//					name: "folder",
+//					path: "test",
+//					folder: true
+//				},
+//				{
+//					name: "file",
+//					path: "test2",
+//					folder: false
+//				}
+//			]);
+			
+			}
+
 			error = "$SAM_SamFunctionMissing";
 			return null;
 		}
 		
-		public static function load(data:Object, samObj:Object, f4se:Object, stageObj:DisplayObject)
+		public static function load(data:Object, samObj:Object, f4seObj:Object, stageObj:DisplayObject)
 		{
 			sam = samObj;
-			f4seObj = f4se;
-			delayClose = data.delayClose;
+			f4se = f4seObj;
 			stage = stageObj;
 			
 			if (data.saved) {
@@ -757,18 +1062,21 @@
 		public static function storeCursorPos()
 		{
 			try {
-				var result:Object = sam.GetCursorPosition();
-				cursorStored = result.success;
-				if (cursorStored) {
-					cursorPosX = result.x;
-					cursorPosY = result.y;
+				var result:GFxResult = sam.GetCursorPosition();
+				
+				if (result.type == RESULT_VALUES) {
+					cursorStored = true;
+					cursorPosX = result.result[0];
+					cursorPosY = result.result[1];
+					return;
 				}
 			}
 			catch (e:Error)
 			{
 				trace("Failed to store cursor pos");
-				cursorStored = false;
 			}
+			
+			cursorStored = false;
 		}
 		
 		public static function updateCursorDrag():int
@@ -776,10 +1084,10 @@
 			if (cursorStored) {
 				try 
 				{
-					var result:Object = sam.GetCursorPosition();
-					if (result.success) {
+					var result:GFxResult = sam.GetCursorPosition();
+					if (result.type == RESULT_VALUES) {
 						sam.SetCursorPosition(cursorPosX, cursorPosY);
-						return result.x - cursorPosX;
+						return result.result[0] - cursorPosX;
 					}
 				}
 				catch (e:Error)
@@ -787,6 +1095,7 @@
 					trace("Failed to update cursor pos");
 				}
 			}
+			
 			return 0;
 		}
 		
@@ -821,88 +1130,88 @@
 			return false;
 		}
 		
-		public static function loadAdjustmentList()
-		{
-			try {
-				var adjustments:Object = sam.GetAdjustmentList();
-				menuOptions = adjustments.names;
-				menuValues = adjustments.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load adjustment list");
-				if (Util.debug) {
-					menuOptions = [
-						"New Adjustment 1",
-						"New Adjustment 2",
-						"New Adjustment 3",
-						"New Adjustment 4"
-					];
-					menuValues = [0, 1, 2, 3];
-				}
-			}
-		}
+//		public static function loadAdjustmentList()
+//		{
+//			try {
+//				var adjustments:Object = sam.GetAdjustmentList();
+//				menuOptions = adjustments.names;
+//				menuValues = adjustments.values;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load adjustment list");
+//				if (Util.debug) {
+//					menuOptions = [
+//						"New Adjustment 1",
+//						"New Adjustment 2",
+//						"New Adjustment 3",
+//						"New Adjustment 4"
+//					];
+//					menuValues = [0, 1, 2, 3];
+//				}
+//			}
+//		}
+//		
+//		public static function loadAdjustmentFiles()
+//		{
+//
+//			if (!getFileListing(ADJUSTMENT_DIRECTORY, "*.json"))
+//			{
+//				if (Util.debug) {
+//					for (var y:int = 0; y < 1000; y++) {
+//						menuFiles[y] = y.toString();
+//					}
+//				}
+//			}
+//		}
+//		
+//		public static function saveAdjustment(filename:String)
+//		{
+//			try
+//			{
+//				sam.SaveAdjustment(selectedAdjustment, filename);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to save adjustment");
+//			}
+//		}
+//		
+//		public static function loadAdjustment(id:int)
+//		{
+//			try
+//			{
+//				sam.LoadAdjustment(menuOptions[id]);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load adjustment");
+//			}
+//		}
 		
-		public static function loadAdjustmentFiles()
-		{
-
-			if (!getFileListing(ADJUSTMENT_DIRECTORY, "*.json"))
-			{
-				if (Util.debug) {
-					for (var y:int = 0; y < 1000; y++) {
-						menuFiles[y] = y.toString();
-					}
-				}
-			}
-		}
-		
-		public static function saveAdjustment(filename:String)
-		{
-			try
-			{
-				sam.SaveAdjustment(selectedAdjustment, filename);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to save adjustment");
-			}
-		}
-		
-		public static function loadAdjustment(id:int)
-		{
-			try
-			{
-				sam.LoadAdjustment(menuOptions[id]);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load adjustment");
-			}
-		}
-		
-		public static function editAdjustment()
-		{
-			try
-			{
-				menuValues = [100, 0, 0, 0];
-				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
-				if (adjustment.scale != null) {
-					menuValues[0] = adjustment.scale;
-				}
-				if (adjustment.groups) {
-					for (var i:int = 0; i < adjustment.groups.length; i++) {
-						menuValues.push(adjustment.groups[i]);
-					}
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get adjustment");
-				if (Util.debug) {
-					menuValues = [100, 0, 0, 0, "Head", "Left Arm", "Left Leg"]
-				}
-			}
-		}
+//		public static function editAdjustment()
+//		{
+//			try
+//			{
+//				menuValues = [100, 0, 0, 0];
+//				var adjustment:Object = sam.GetAdjustment(selectedAdjustment);
+//				if (adjustment.scale != null) {
+//					menuValues[0] = adjustment.scale;
+//				}
+//				if (adjustment.groups) {
+//					for (var i:int = 0; i < adjustment.groups.length; i++) {
+//						menuValues.push(adjustment.groups[i]);
+//					}
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get adjustment");
+//				if (Util.debug) {
+//					menuValues = [100, 0, 0, 0, "Head", "Left Arm", "Left Leg"]
+//				}
+//			}
+//		}
 		
 		public static function setAdjustmentPersistent(persistent:Boolean)
 		{
@@ -940,23 +1249,6 @@
 			}
 		}
 		
-		public static function newAdjustment()
-		{
-			try
-			{
-				var adjustments:Object = sam.NewAdjustment();
-				menuOptions = adjustments.names;
-				menuValues = adjustments.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to create new adjustment");
-				if (Util.debug){
-					menuOptions.push((menuOptions.length + 1).toString());
-				}
-			}
-		}
-		
 		public static function removeAdjustment(id:int)
 		{
 			try
@@ -969,29 +1261,29 @@
 			}
 		}
 		
-		public static function negateAdjustment()
-		{
-			try
-			{
-				sam.NegateAdjustment(boneName, selectedAdjustment);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to negate adjustment");
-			}
-		}
-		
-		public static function negateAdjustmentGroup(id:int)
-		{
-			try
-			{
-				sam.NegateAdjustmentGroup(selectedAdjustment, menuValues[id]);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to negate adjustment group");
-			}
-		}
+//		public static function negateAdjustment()
+//		{
+//			try
+//			{
+//				sam.NegateAdjustment(boneName, selectedAdjustment);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to negate adjustment");
+//			}
+//		}
+//		
+//		public static function negateAdjustmentGroup(id:int)
+//		{
+//			try
+//			{
+//				sam.NegateAdjustmentGroup(selectedAdjustment, menuValues[id]);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to negate adjustment group");
+//			}
+//		}
 		
 		public static function moveAdjustment(id:int, inc:Boolean):Boolean
 		{
@@ -1006,67 +1298,67 @@
 			return false;
 		}
 		
-		public static function renameAdjustment(name:String)
-		{
-			try {
-				sam.RenameAdjustment(selectedAdjustment, name);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to rename adjustment");
-			}
-		}
-		
-		public static function loadCategories()
-		{
-			try {
-				var categories:Object = sam.GetCategoryList();
-				menuOptions = categories.names;
-				menuValues = categories.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load categories");
-				if (Util.debug){
-					menuOptions = [
-						"Main",
-						"Left Arm",
-						"Right Arm",
-						"Legs",
-						"Tongue",
-						"NSFW",
-						"Knee Fix",
-						"Misc"
-					];
-					menuValues = [];
-				} else {
-					menuOptions = [];
-					menuValues = [];
-				}
-			}
-		}
-		
-		public static function loadBones()
-		{
-			try {
-				var nodes:Object = sam.GetNodeList(selectedCategory);
-				menuOptions = nodes.names;
-				menuValues = nodes.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load bones");
-				menuOptions = [];
-				menuValues = [];
-				if (Util.debug) {
-					for (var i:int = 0; i < 30; i++)
-					{
-						menuOptions[i] = i.toString();
-						menuValues[i] = i;
-					}
-				}
-			}
-		}
+//		public static function renameAdjustment(name:String)
+//		{
+//			try {
+//				sam.RenameAdjustment(selectedAdjustment, name);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to rename adjustment");
+//			}
+//		}
+//		
+//		public static function loadCategories()
+//		{
+//			try {
+//				var categories:Object = sam.GetCategoryList();
+//				menuOptions = categories.names;
+//				menuValues = categories.values;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load categories");
+//				if (Util.debug){
+//					menuOptions = [
+//						"Main",
+//						"Left Arm",
+//						"Right Arm",
+//						"Legs",
+//						"Tongue",
+//						"NSFW",
+//						"Knee Fix",
+//						"Misc"
+//					];
+//					menuValues = [];
+//				} else {
+//					menuOptions = [];
+//					menuValues = [];
+//				}
+//			}
+//		}
+//		
+//		public static function loadBones()
+//		{
+//			try {
+//				var nodes:Object = sam.GetNodeList(selectedCategory);
+//				menuOptions = nodes.names;
+//				menuValues = nodes.values;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load bones");
+//				menuOptions = [];
+//				menuValues = [];
+//				if (Util.debug) {
+//					for (var i:int = 0; i < 30; i++)
+//					{
+//						menuOptions[i] = i.toString();
+//						menuValues[i] = i;
+//					}
+//				}
+//			}
+//		}
 		
 		public static function getNodeName()
 		{
@@ -1103,299 +1395,299 @@
 			return false;
 		}
 
-		public static function loadTransforms() 
-		{
-			try {
-				menuValues = sam.GetNodeTransform(boneName, selectedAdjustment);
-				if (menuValues.length == 0) {
-					menuValues = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ];
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load bone transform");
-				menuValues = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ];
-			}
-		}
-		
-		public static function setTransform(id:int, value:Number)
-		{
-			if (id < 7) {
-				menuValues[id] = value;
-			}
-			if (boneName == ""){
-				return;
-			}
-			try 
-			{
-				if (id < 3) //rot
-				{ 
-					sam.SetNodeRotation(boneName, selectedAdjustment, menuValues[0], menuValues[1], menuValues[2]);
-				} 
-				else if (id < 6) //pos
-				{
-					sam.SetNodePosition(boneName, selectedAdjustment, menuValues[3], menuValues[4], menuValues[5]);
-				}
-				else if (id < 7)//scale
-				{
-					sam.SetNodeScale(boneName, selectedAdjustment, menuValues[6]);
-				}
-				else
-				{
-					var dif:int = updateCursorDrag(value);
-					menuValues = sam.AdjustNodeRotation(boneName, selectedAdjustment, id, dif);
-					if (menuValues.length == 0) {
-						menuValues = [
-							0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
-						];
-						boneName = "";
-					}
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Set transform failed");
-			}
-		}
-		
-		public static function resetTransform()
-		{
-			for (var i:int = 0; i < 6; i++) {
-				menuValues[i] = 0.0;
-			}
-			menuValues[6] = 1.0;
-			if (boneName == "") {
-				return;
-			}
-			try 
-			{
-				sam.ResetTransform(boneName, selectedAdjustment);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to reset transform");
-			}
-		}
-		
-		public static function loadMorphCategories()
-		{
-			try
-			{
-				var categories:Object = sam.GetMorphCategories();
-				menuOptions = categories.names;
-				menuValues = categories.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load morph categories");
-				if (Util.debug) {
-					menuOptions = [
-						"Lips",
-						"Jaw",
-						"Eyes",
-						"Eyebrows",
-						"Nose",
-						"Cheek",
-						"Tongue",
-						"Tongue Bones"
-					];
-				}
-			}
-		}
-		
-		public static function loadMorphs()
-		{
-			try
-			{
-				var morphs:Object = sam.GetMorphs(selectedCategory);
-				menuOptions = morphs.names;
-				menuValues = morphs.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load morphs");
-				menuOptions = new Array();
-				menuValues = new Array();
-				if (Util.debug) {
-					for (var i:int = 0; i < 10; i++) {
-						menuOptions[i] = "Test" + i;
-						menuValues[i] = i;
-					}
-				}
-			}
-		}
-		
-		public static function setMorph(id:int, value:int)
-		{
-			menuValues[id] = value;
-			try
-			{
-				sam.ModifyFacegenMorph(selectedCategory, id, value);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set morph");
-			}
-		}
-		
-		public static function saveMfg(filename:String)
-		{
-			try
-			{
-				sam.SaveMorphsPreset(filename);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to save preset");
-			}
-		}
-		
-		public static function resetMorphs(update:Boolean)
-		{
-			try 
-			{
-				sam.ResetMorphs();
-				if (update) {
-					var len:int = menuValues.length;
-					for (var i:int = 0; i < len; i++)
-					{
-						menuValues[i] = 0;
-					}
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Morph reset failed");
-			}
-		}
-		
-		public static function loadEyes()
-		{
-			try 
-			{
-				menuValues = sam.GetEyeCoords();
-				var eyeHack:Boolean = sam.GetEyeTrackingHack();
-				menuValues.push(eyeHack);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load eye coords");
-				menuValues = [0.0, 0.0, false];
-			}
-		}
-		
-		public static function setEye(id:int, value:Object)
-		{
-			menuValues[id] = value;
-			try
-			{
-				sam.SetEyeCoords(menuValues[0], menuValues[1]);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set eye coords");
-			}
-		}
-		
-		public static function loadHacks()
-		{
-			try 
-			{
-				menuValues = sam.GetHacks();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load hacks");
-				menuValues = [false, true, false];
-			}
-		}
-		
-		public static function setHack(id:int, enabled:Boolean)
-		{
-			menuValues[id] = enabled;
-			try {
-				switch (id)
-				{
-					case 0: sam.SetBlinkHack(enabled); break;
-					case 1: sam.SetMorphHack(enabled); break;
-					case 2: sam.SetEyeTrackingHack(enabled); break;
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set hack");
-			}
-		}
-		
-		public static function loadIdleCategories()
-		{
-			try {
-				menuOptions = sam.GetIdleCategories();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get idle categories")
-				if (Util.debug) {
-					menuOptions = ["Pose mod"];
-				} else {
-					menuOption = new Array();
-				}
-			}
-		}
-		
-		public static function loadIdles()
-		{
-			try {
-				var idles:Object = sam.GetIdles(selectedCategory);
-				menuOptions = idles.names;
-				menuValues = idles.values;
-			} 
-			catch (e:Error)
-			{
-				trace("Failed to load idles");
-				if (Util.debug) {
-					menuOptions =  ["Idle 1", "Idle 2", "Idle 3"];
-					menuValues = [0, 1, 2];
-				} else {
-					menuOptions = new Array();
-					menuValues = new Array();
-				}
-			}
-		}
-		
-		public static function playIdle(id:int)
-		{
-			try {
-				sam.PlayIdle(menuValues[id]);
-			} 
-			catch (e:Error)
-			{
-				trace("Failed to play idle");
-			}
-		}
-		
-		public static function resetIdle()
-		{
-			try {
-				sam.ResetIdle();
-			} 
-			catch (e:Error)
-			{
-				trace("Failed to reset idle");
-			}
-		}
-		
-		public static function rotateIdle(value:Number)
-		{
-			try {
-				var dif:int = updateCursorDrag(value);
-				sam.AdjustPositioning(6, dif, 100);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to rotate idle");
-			}
-		}
+//		public static function loadTransforms() 
+//		{
+//			try {
+//				menuValues = sam.GetNodeTransform(boneName, selectedAdjustment);
+//				if (menuValues.length == 0) {
+//					menuValues = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ];
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load bone transform");
+//				menuValues = [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 ];
+//			}
+//		}
+//		
+//		public static function setTransform(id:int, value:Number)
+//		{
+//			if (id < 7) {
+//				menuValues[id] = value;
+//			}
+//			if (boneName == ""){
+//				return;
+//			}
+//			try 
+//			{
+//				if (id < 3) //rot
+//				{ 
+//					sam.SetNodeRotation(boneName, selectedAdjustment, menuValues[0], menuValues[1], menuValues[2]);
+//				} 
+//				else if (id < 6) //pos
+//				{
+//					sam.SetNodePosition(boneName, selectedAdjustment, menuValues[3], menuValues[4], menuValues[5]);
+//				}
+//				else if (id < 7)//scale
+//				{
+//					sam.SetNodeScale(boneName, selectedAdjustment, menuValues[6]);
+//				}
+//				else
+//				{
+//					var dif:int = updateCursorDrag(value);
+//					menuValues = sam.AdjustNodeRotation(boneName, selectedAdjustment, id, dif);
+//					if (menuValues.length == 0) {
+//						menuValues = [
+//							0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0
+//						];
+//						boneName = "";
+//					}
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Set transform failed");
+//			}
+//		}
+//		
+//		public static function resetTransform()
+//		{
+//			for (var i:int = 0; i < 6; i++) {
+//				menuValues[i] = 0.0;
+//			}
+//			menuValues[6] = 1.0;
+//			if (boneName == "") {
+//				return;
+//			}
+//			try 
+//			{
+//				sam.ResetTransform(boneName, selectedAdjustment);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to reset transform");
+//			}
+//		}
+//		
+//		public static function loadMorphCategories()
+//		{
+//			try
+//			{
+//				var categories:Object = sam.GetMorphCategories();
+//				menuOptions = categories.names;
+//				menuValues = categories.values;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load morph categories");
+//				if (Util.debug) {
+//					menuOptions = [
+//						"Lips",
+//						"Jaw",
+//						"Eyes",
+//						"Eyebrows",
+//						"Nose",
+//						"Cheek",
+//						"Tongue",
+//						"Tongue Bones"
+//					];
+//				}
+//			}
+//		}
+//		
+//		public static function loadMorphs()
+//		{
+//			try
+//			{
+//				var morphs:Object = sam.GetMorphs(selectedCategory);
+//				menuOptions = morphs.names;
+//				menuValues = morphs.values;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load morphs");
+//				menuOptions = new Array();
+//				menuValues = new Array();
+//				if (Util.debug) {
+//					for (var i:int = 0; i < 10; i++) {
+//						menuOptions[i] = "Test" + i;
+//						menuValues[i] = i;
+//					}
+//				}
+//			}
+//		}
+//		
+//		public static function setMorph(id:int, value:int)
+//		{
+//			menuValues[id] = value;
+//			try
+//			{
+//				sam.ModifyFacegenMorph(selectedCategory, id, value);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to set morph");
+//			}
+//		}
+//		
+//		public static function saveMfg(filename:String)
+//		{
+//			try
+//			{
+//				sam.SaveMorphsPreset(filename);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to save preset");
+//			}
+//		}
+//		
+//		public static function resetMorphs(update:Boolean)
+//		{
+//			try 
+//			{
+//				sam.ResetMorphs();
+//				if (update) {
+//					var len:int = menuValues.length;
+//					for (var i:int = 0; i < len; i++)
+//					{
+//						menuValues[i] = 0;
+//					}
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Morph reset failed");
+//			}
+//		}
+//		
+//		public static function loadEyes()
+//		{
+//			try 
+//			{
+//				menuValues = sam.GetEyeCoords();
+//				var eyeHack:Boolean = sam.GetEyeTrackingHack();
+//				menuValues.push(eyeHack);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load eye coords");
+//				menuValues = [0.0, 0.0, false];
+//			}
+//		}
+//		
+//		public static function setEye(id:int, value:Object)
+//		{
+//			menuValues[id] = value;
+//			try
+//			{
+//				sam.SetEyeCoords(menuValues[0], menuValues[1]);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to set eye coords");
+//			}
+//		}
+//		
+//		public static function loadHacks()
+//		{
+//			try 
+//			{
+//				menuValues = sam.GetHacks();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load hacks");
+//				menuValues = [false, true, false];
+//			}
+//		}
+//		
+//		public static function setHack(id:int, enabled:Boolean)
+//		{
+//			menuValues[id] = enabled;
+//			try {
+//				switch (id)
+//				{
+//					case 0: sam.SetBlinkHack(enabled); break;
+//					case 1: sam.SetMorphHack(enabled); break;
+//					case 2: sam.SetEyeTrackingHack(enabled); break;
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to set hack");
+//			}
+//		}
+//		
+//		public static function loadIdleCategories()
+//		{
+//			try {
+//				menuOptions = sam.GetIdleCategories();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get idle categories")
+//				if (Util.debug) {
+//					menuOptions = ["Pose mod"];
+//				} else {
+//					menuOption = new Array();
+//				}
+//			}
+//		}
+//		
+//		public static function loadIdles()
+//		{
+//			try {
+//				var idles:Object = sam.GetIdles(selectedCategory);
+//				menuOptions = idles.names;
+//				menuValues = idles.values;
+//			} 
+//			catch (e:Error)
+//			{
+//				trace("Failed to load idles");
+//				if (Util.debug) {
+//					menuOptions =  ["Idle 1", "Idle 2", "Idle 3"];
+//					menuValues = [0, 1, 2];
+//				} else {
+//					menuOptions = new Array();
+//					menuValues = new Array();
+//				}
+//			}
+//		}
+//		
+//		public static function playIdle(id:int)
+//		{
+//			try {
+//				sam.PlayIdle(menuValues[id]);
+//			} 
+//			catch (e:Error)
+//			{
+//				trace("Failed to play idle");
+//			}
+//		}
+//		
+//		public static function resetIdle()
+//		{
+//			try {
+//				sam.ResetIdle();
+//			} 
+//			catch (e:Error)
+//			{
+//				trace("Failed to reset idle");
+//			}
+//		}
+//		
+//		public static function rotateIdle(value:Number)
+//		{
+//			try {
+//				var dif:int = updateCursorDrag(value);
+//				sam.AdjustPositioning(6, dif, 100);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to rotate idle");
+//			}
+//		}
 		
 		public static function getIdleName():String
 		{
@@ -1409,114 +1701,114 @@
 			return null;
 		}
 		
-		public static function getPoseList() 
-		{
-			try {
-				var poses:Object = sam.GetPoseList();
-				menuOptions = poses.names;
-				menuValues = poses.values;
-				poseHandles = poses.handles;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get pose list");
-				if (Util.debug) {
-					menuOptions = ["1", "2", "3"];
-					menuValues = [false, true, false];
-					poseHandles = [1, 2, 3];
-				} else {
-					menuOptions = [];
-					menuValues = [];
-					poseHandles = [];
-				}
-			}
-		}
-		
-		public static function savePose(filename:String)
-		{
-			try 
-			{
-				var handles:Array = [];
-				for (var i:int = 0; i < menuValues.length; i++) {
-					if (menuValues[i]) {
-						handles.push(poseHandles[i]);
-					}
-				}
-				sam.SavePose(filename, handles, selectedCategory);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to save pose");
-			}
-		}
-		
-		public static function loadPose(id:int)
-		{
-			try 
-			{
-				sam.LoadPose(POSE_DIRECTORY + "\\Exports\\" + menuFiles[id] + ".json");
-			}
-			catch (e:Error)
-			{
-				trace("failed to load pose");
-			}
-		}
-		
-		public static function loadPoseFiles()
-		{
-			if (!getFileListing(POSE_DIRECTORY + "\\Exports", "*.json"))
-			{
-				if (Util.debug){
-					for (var y:int = 0; y < 1000; y++) {
-						menuFiles[y] = y.toString();
-					}
-				}
-			}
-		}
-		
-		public static function resetPose(id:int)
-		{
-			try
-			{
-				sam.ResetPose(id);
-			}
-			catch (e:Error)
-			{
-				trace("Reset pose failed");
-			}
-		}
-		
-		public static function loadSkeletonAdjustment(id:int, race:Boolean, clear:Boolean, enabled:Boolean)
-		{
-			if (clear) {
-				for (var i:int = 0; i < menuValues.length; i++) {
-					menuValues[i] = false;
-				}
-			}
-			
-			menuValues[id] = enabled;
-			
-			try 
-			{
-				sam.LoadSkeletonAdjustment(menuOptions[id], race, clear, enabled);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load skeleton adjustment");
-			}
-		}
-		
-		public static function resetSkeletonAdjustment(race:Boolean)
-		{
-			try 
-			{
-				sam.ResetSkeletonAdjustment(race);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to reset skeleton adjustment");
-			}
-		}
+//		public static function getPoseList() 
+//		{
+//			try {
+//				var poses:Object = sam.GetPoseList();
+//				menuOptions = poses.names;
+//				menuValues = poses.values;
+//				poseHandles = poses.handles;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get pose list");
+//				if (Util.debug) {
+//					menuOptions = ["1", "2", "3"];
+//					menuValues = [false, true, false];
+//					poseHandles = [1, 2, 3];
+//				} else {
+//					menuOptions = [];
+//					menuValues = [];
+//					poseHandles = [];
+//				}
+//			}
+//		}
+//		
+//		public static function savePose(filename:String)
+//		{
+//			try 
+//			{
+//				var handles:Array = [];
+//				for (var i:int = 0; i < menuValues.length; i++) {
+//					if (menuValues[i]) {
+//						handles.push(poseHandles[i]);
+//					}
+//				}
+//				sam.SavePose(filename, handles, selectedCategory);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to save pose");
+//			}
+//		}
+//		
+//		public static function loadPose(id:int)
+//		{
+//			try 
+//			{
+//				sam.LoadPose(POSE_DIRECTORY + "\\Exports\\" + menuFiles[id] + ".json");
+//			}
+//			catch (e:Error)
+//			{
+//				trace("failed to load pose");
+//			}
+//		}
+//		
+//		public static function loadPoseFiles()
+//		{
+//			if (!getFileListing(POSE_DIRECTORY + "\\Exports", "*.json"))
+//			{
+//				if (Util.debug){
+//					for (var y:int = 0; y < 1000; y++) {
+//						menuFiles[y] = y.toString();
+//					}
+//				}
+//			}
+//		}
+//		
+//		public static function resetPose(id:int)
+//		{
+//			try
+//			{
+//				sam.ResetPose(id);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Reset pose failed");
+//			}
+//		}
+//		
+//		public static function loadSkeletonAdjustment(id:int, race:Boolean, clear:Boolean, enabled:Boolean)
+//		{
+//			if (clear) {
+//				for (var i:int = 0; i < menuValues.length; i++) {
+//					menuValues[i] = false;
+//				}
+//			}
+//			
+//			menuValues[id] = enabled;
+//			
+//			try 
+//			{
+//				sam.LoadSkeletonAdjustment(menuOptions[id], race, clear, enabled);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load skeleton adjustment");
+//			}
+//		}
+//		
+//		public static function resetSkeletonAdjustment(race:Boolean)
+//		{
+//			try 
+//			{
+//				sam.ResetSkeletonAdjustment(race);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to reset skeleton adjustment");
+//			}
+//		}
 		
 //		public static function updatePositioning()
 //		{
@@ -1526,21 +1818,21 @@
 //			}
 //		}
 		
-		public static function loadPositioning()
-		{
-			try {
-				menuValues = sam.GetPositioning();
-				updatePositioning();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load positioning");
-				if (Util.debug) {
-					menuValues = [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-					updatePositioning();
-				}
-			}
-		}
+//		public static function loadPositioning()
+//		{
+//			try {
+//				menuValues = sam.GetPositioning();
+//				updatePositioning();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load positioning");
+//				if (Util.debug) {
+//					menuValues = [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+//					updatePositioning();
+//				}
+//			}
+//		}
 		
 //		public static function selectPositioning(id:int, value:Number = 0)
 //		{
@@ -1565,32 +1857,24 @@
 //			}
 //		}
 		
-		public static function resetPositioning()
-		{
-			try
-			{
-				menuValues = sam.ResetPositioning();
-				updatePositioning();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to reset position");
-			}
-		}
+//		public static function resetPositioning()
+//		{
+//			try
+//			{
+//				menuValues = sam.ResetPositioning();
+//				updatePositioning();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to reset position");
+//			}
+//		}
 		
 		public static function updateFolderNames():Array
 		{
 			setMenuSize(menuFolder.length);
 			for (var i:int = 0; i < menuFolder.length; i++) {
 				menuOptions[i] = menuFolder[i].name;
-			}
-		}
-		
-		public static function updateFolderCheckbox():Array
-		{
-			menuValues.length = menuFolder.length;
-			for (var i:int = 0; i < menuFolder.length; i++) {
-				menuValues[i] = menuFolder[i].checked;
 			}
 		}
 //		
@@ -1609,63 +1893,84 @@
 //			}
 //		}
 		
-		public static function popSkeletonAdjustment(race:Boolean)
-		{
-			folderStack.pop();
-			try {
-				var path:String = (folderStack.length == 0) ? ADJUSTMENT_DIRECTORY : folderStack[folderStack.length - 1];
-				menuFolder = sam.GetSkeletonAdjustments(path, race);
-				updateFolderNames();
-				updateFolderCheckbox();
-			}
-			catch (e:Error) {
-				trace("Failed to get skeleton adjustments");
-				menuOptions = [];
-				menuFolder = [];
-			}
-		}
+//		public static function popSkeletonAdjustment(race:Boolean)
+//		{
+//			folderStack.pop();
+//			try {
+//				var path:String = (folderStack.length == 0) ? ADJUSTMENT_DIRECTORY : folderStack[folderStack.length - 1];
+//				menuFolder = sam.GetSkeletonAdjustments(path, race);
+//				updateFolderNames();
+//				updateFolderCheckbox();
+//			}
+//			catch (e:Error) {
+//				trace("Failed to get skeleton adjustments");
+//				menuOptions = [];
+//				menuFolder = [];
+//			}
+//		}
 		
-		public static function getFolder(path:String, ext:String, pop:Boolean = false):GFxResult
+		public static function getFolder(path:String, ext:String):GFxResult
 		{
 			try {
-				//var path:String = (folderStack.length == 0) ? folderData.path : folderStack[folderStack.length - 1];
 				var result:GFxResult = sam.GetFolder(path, ext);
 				
 				if (result && result.type == RESULT_FOLDER)
 					return result;
 			}
-			catch (e:Error) {
-				if (Util.debug) {
-					var debugFolder:Object = getDebugFolder(path);
-					if (debugFolder)
-						return new GFxResult(RESULT_FOLDER, debugFolder);
-				}
-			}
+			catch (e:Error) {}
 			
-			if (pop)
-				return popFail;
+			if (Util.debug) {
+				var debugFolder:Object = getDebugFolder(path);
+				if (debugFolder)
+					return new GFxResult(RESULT_FOLDER, debugFolder);
+			}
 			
 			error = "Failed to get folder";
 			return null;
 		}
 		
-		public static function setFolder(data:Object, result:Object)
+		//Hard coded to work with skeleton/race adjustments menus
+		public static function getFolderCheckbox(path:String, ext:String, race:Boolean):GFxResult
 		{
-			menuType = MENU_FOLDER;
+			try {
+				var result:GFxResult = sam.GetSkeletonAdjustments(path, ext, race);
+				
+				if (result && result.type == RESULT_FOLDERCHECKBOX)
+					return result;
+			}
+			catch (e:Error) {}
+
+			error = "Failed to get folder";
+			return null;
+		}
+		
+		public static function setFolder(data:Object, result:GFxResult)
+		{
+			trace("set folder");
+			trace("result type", result.type);
+			menuType = (result.type == RESULT_FOLDERCHECKBOX ? MENU_FOLDERCHECKBOX : MENU_FOLDER);
+			trace("menu type");
 			folderData = data;
+			Util.traceObj(folderData);
 			folderStack.length = 0;
-			menuFolder = result;
+			menuFolder = result.result;
+			Util.traceObj(menuFolder);
 			updateFolderNames();
 		}
 		
-		public static function pushFolder(i:int, result:Object)
+		public static function pushFolder(path:String, result:Object)
 		{
-			folderStack.push(menuFolder[i].path);
-			menuFolder = result;
-			updateFolderNames();
+			folderStack.push(path);
+			updateFolder(result);
 		}
 		
-		public static function popFolder(result:Object):String
+		public static function popFolder():String
+		{
+			folderStack.pop();
+			return (folderStack.length == 0 ? Data.folderData.path : folderStack[folderStack.length - 1]);
+		}
+		
+		public static function updateFolder(result:Object)
 		{
 			menuFolder = result;
 			updateFolderNames();
@@ -1674,7 +1979,7 @@
 		public static function getFolderPath(i:int)
 		{
 			try {
-				switch(folderData.type) {
+				switch(folderData.format) {
 					case PATH_FILE:
 						var fileResult:GFxResult = sam.GetPathStem(menuFolder[i].path);
 						if (fileResult && fileResult.type == RESULT_STRING)
@@ -1712,8 +2017,7 @@
 					"path": "test"
 				}
 			];
-			
-			error = "Failed to get folder";
+
 			return null;
 		}
 		
@@ -1748,42 +2052,42 @@
 //			}
 //		}
 		
-		public static function getAdjustmentFolder(race:Boolean)
-		{
-			try {
-				var path:String = (folderStack.length == 0) ? ADJUSTMENT_DIRECTORY : folderStack[folderStack.length - 1];
-				menuFolder = sam.GetSkeletonAdjustments(path, race);
-				updateFolderNames();
-				updateFolderCheckbox();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get skeleton adjustments");
-				if (Util.debug) {
-					menuFolder = [
-						{
-							"name": "Folder",
-							"folder": true,
-							"path": "test"
-						},
-						{
-							"name": "File",
-							"path": "test",
-							"checked": true
-						},
-						{
-							"name": "File",
-							"path": "test",
-							"checked": false
-						}
-					];
-					updateFolderNames();
-				} else {
-					menuOptions = [];
-					menuFolder = [];
-				}
-			}
-		}
+//		public static function getAdjustmentFolder(race:Boolean)
+//		{
+//			try {
+//				var path:String = (folderStack.length == 0) ? ADJUSTMENT_DIRECTORY : folderStack[folderStack.length - 1];
+//				menuFolder = sam.GetSkeletonAdjustments(path, race);
+//				updateFolderNames();
+//				updateFolderCheckbox();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get skeleton adjustments");
+//				if (Util.debug) {
+//					menuFolder = [
+//						{
+//							"name": "Folder",
+//							"folder": true,
+//							"path": "test"
+//						},
+//						{
+//							"name": "File",
+//							"path": "test",
+//							"checked": true
+//						},
+//						{
+//							"name": "File",
+//							"path": "test",
+//							"checked": false
+//						}
+//					];
+//					updateFolderNames();
+//				} else {
+//					menuOptions = [];
+//					menuFolder = [];
+//				}
+//			}
+//		}
 		
 //		public static function selectSubFolder(id:int, ext:String, func:Function):Boolean
 //		{
@@ -1809,19 +2113,19 @@
 //			return false;
 //		}
 		
-		public static function selectSkeletonFile(id:int, race:Boolean, clear:Boolean, enabled:Boolean):Boolean
-		{
-			try {
-				if (menuFolder[id].folder) {
-					var path:String = menuFolder[id].path;
-					menuFolder = sam.GetSkeletonAdjustments(path, race);
-					folderStack.push(path);
-					updateFolderNames();
-					updateFolderCheckbox();
-					return true;
-				} 
-				else 
-				{
+//		public static function selectSkeletonFile(id:int, race:Boolean, clear:Boolean, enabled:Boolean):Boolean
+//		{
+//			try {
+//				if (menuFolder[id].folder) {
+//					var path:String = menuFolder[id].path;
+//					menuFolder = sam.GetSkeletonAdjustments(path, race);
+//					folderStack.push(path);
+//					updateFolderNames();
+//					updateFolderCheckbox();
+//					return true;
+//				} 
+//				else 
+//				{
 //					if (clear) {
 //						for (var i:int = 0; i < menuValues.length; i++) {
 //							menuFolder[i].checked = false;
@@ -1831,195 +2135,195 @@
 //					menuFolder[id].checked = enabled;
 //					updateFolderCheckbox();
 //					
-					sam.LoadSkeletonAdjustment(menuFolder[id].path, race, clear, enabled);
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to select adjustment folder");
-				menuOptions = [];
-				menuFolder = [];
-			}
-			return false;
-		}
+//					sam.LoadSkeletonAdjustment(menuFolder[id].path, race, clear, enabled);
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to select adjustment folder");
+//				menuOptions = [];
+//				menuFolder = [];
+//			}
+//			return false;
+//		}
 
-		public static function selectSamPose(id:int):Boolean
-		{
-			return selectSubFolder(id, JSON_EXT, sam.LoadPose);
-		}
-		
-		public static function selectLightFile(id:int):Boolean
-		{
-			return selectSubFolder(id, JSON_EXT, sam.LoadLights);
-		}
-		
-		public static function selectMfgFile(id:int):Boolean
-		{
-			return selectSubFolder(id, TXT_EXT, sam.LoadMorphsPreset);
-		}
-		
-		public static function selectAdjustmentFile(id:int):Boolean
-		{
-			return selectSubFolder(id, JSON_EXT, sam.LoadAdjustment);
-		}
-		
-		public static function loadOptions()
-		{
-			menuOptions = OPTION_NAMES;
-			try {
-				menuValues = sam.GetOptions();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load options");
-				menuValues = [];
-				for (var i:int = 0; i < OPTION_NAMES; i++) {
-					menuValues[i] = false;
-				}
-			}
-		}
-		
-		public static function setOption(id:int, enabled:Boolean)
-		{
-			try {
-				sam.SetOption(id, enabled);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set option");
-			}
-		}
-		
-		public static function loadCamera()
-		{
-			menuOptions = CAMERA_NAMES;
-			try 
-			{
-				menuValues = sam.GetCamera();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load camera");
-				menuValues = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 1, 2, 0, 1, 2];
-			}
-		}
-		
-		public static function setCamera(id:int, value:Number)
-		{
-			try
-			{
-				if (id < 3)
-				{
-					var dif:int = updateCursorDrag(value);
-					menuValues[id] += dif * 0.5;
-					sam.SetCameraPosition(menuValues[0], menuValues[1], menuValues[2]);
-				} 
-				else if (id < 6)
-				{
-					menuValues[id] = value;
-					sam.SetCameraRotation(menuValues[3], menuValues[4], menuValues[5]);
-				}
-				else if (id < 7)
-				{
-					menuValues[id] = value;
-					sam.SetCameraFOV(menuValues[6]);
-				}
-				else
-				{
-					var save:Boolean = id < (7 + ((Data.menuValues.length - 7) / 2));
-					if (save) {
-						sam.SaveCameraState(menuValues[id]);
-					} else {
-						sam.LoadCameraState(menuValues[id]);
-					}
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set camera");
-			}
-		}
-
-		public static function loadLightSelect()
-		{
-			try
-			{
-				menuOptions = sam.GetLightSelect();
-				menuOptions.push("$SAM_AddNew");
-				menuOptions.push("$SAM_AddConsole");
-				menuOptions.push("$SAM_LightGlobal");
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load lights");
-				if (Util.debug) {
-					menuOptions = ["Light", "Light", "Light", "$SAM_AddNew", "$SAM_AddConsole", "$SAM_LightGlobal"];
-				} else {
-					menuOptions = [];
-				}
-			}
-		}
-		
-		public static function loadLightEdit()
-		{
-			menuOptions = LIGHT_NAMES;
-			try
-			{
-				menuValues = sam.GetLightEdit(selectedAdjustment);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load light");
-				menuValues = [100.0, 0.0, 100.0, 0.0, 0.0];
-			}
-		}
-		
-		public static function loadLightCategory()
-		{
-			try
-			{
-				menuOptions = sam.GetLightCategories();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load light categories");
-				if (Util.debug) {
-					menuOptions = ["Hemisphere", "Spotlight", "Omni"];
-				} else {
-					menuOptions = [];
-				}
-			}
-		}
-		
-		public static function loadLightObject()
-		{
-			try
-			{
-				menuOptions = sam.GetLightObjects(selectedCategory);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to load light Objects");
-				if (Util.debug) {
-					menuOptions = ["White", "Warm", "Cold"];
-				} else {
-					menuOptions = [];
-				}
-			}
-		}
-		
-		public static function loadLightSettings()
-		{
-			try
-			{
-				menuValues = sam.GetLightSettings();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get light settings");
-				menuValues = [0.0, 0.0, 0.0, 0.0];
-			}
-		}
+//		public static function selectSamPose(id:int):Boolean
+//		{
+//			return selectSubFolder(id, JSON_EXT, sam.LoadPose);
+//		}
+//		
+//		public static function selectLightFile(id:int):Boolean
+//		{
+//			return selectSubFolder(id, JSON_EXT, sam.LoadLights);
+//		}
+//		
+//		public static function selectMfgFile(id:int):Boolean
+//		{
+//			return selectSubFolder(id, TXT_EXT, sam.LoadMorphsPreset);
+//		}
+//		
+//		public static function selectAdjustmentFile(id:int):Boolean
+//		{
+//			return selectSubFolder(id, JSON_EXT, sam.LoadAdjustment);
+//		}
+//		
+//		public static function loadOptions()
+//		{
+//			menuOptions = OPTION_NAMES;
+//			try {
+//				menuValues = sam.GetOptions();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load options");
+//				menuValues = [];
+//				for (var i:int = 0; i < OPTION_NAMES; i++) {
+//					menuValues[i] = false;
+//				}
+//			}
+//		}
+//		
+//		public static function setOption(id:int, enabled:Boolean)
+//		{
+//			try {
+//				sam.SetOption(id, enabled);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to set option");
+//			}
+//		}
+//		
+//		public static function loadCamera()
+//		{
+//			menuOptions = CAMERA_NAMES;
+//			try 
+//			{
+//				menuValues = sam.GetCamera();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load camera");
+//				menuValues = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 1, 2, 0, 1, 2];
+//			}
+//		}
+//		
+//		public static function setCamera(id:int, value:Number)
+//		{
+//			try
+//			{
+//				if (id < 3)
+//				{
+//					var dif:int = updateCursorDrag(value);
+//					menuValues[id] += dif * 0.5;
+//					sam.SetCameraPosition(menuValues[0], menuValues[1], menuValues[2]);
+//				} 
+//				else if (id < 6)
+//				{
+//					menuValues[id] = value;
+//					sam.SetCameraRotation(menuValues[3], menuValues[4], menuValues[5]);
+//				}
+//				else if (id < 7)
+//				{
+//					menuValues[id] = value;
+//					sam.SetCameraFOV(menuValues[6]);
+//				}
+//				else
+//				{
+//					var save:Boolean = id < (7 + ((Data.menuValues.length - 7) / 2));
+//					if (save) {
+//						sam.SaveCameraState(menuValues[id]);
+//					} else {
+//						sam.LoadCameraState(menuValues[id]);
+//					}
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to set camera");
+//			}
+//		}
+//
+//		public static function loadLightSelect()
+//		{
+//			try
+//			{
+//				menuOptions = sam.GetLightSelect();
+//				menuOptions.push("$SAM_AddNew");
+//				menuOptions.push("$SAM_AddConsole");
+//				menuOptions.push("$SAM_LightGlobal");
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load lights");
+//				if (Util.debug) {
+//					menuOptions = ["Light", "Light", "Light", "$SAM_AddNew", "$SAM_AddConsole", "$SAM_LightGlobal"];
+//				} else {
+//					menuOptions = [];
+//				}
+//			}
+//		}
+//		
+//		public static function loadLightEdit()
+//		{
+//			menuOptions = LIGHT_NAMES;
+//			try
+//			{
+//				menuValues = sam.GetLightEdit(selectedAdjustment);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load light");
+//				menuValues = [100.0, 0.0, 100.0, 0.0, 0.0];
+//			}
+//		}
+//		
+//		public static function loadLightCategory()
+//		{
+//			try
+//			{
+//				menuOptions = sam.GetLightCategories();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load light categories");
+//				if (Util.debug) {
+//					menuOptions = ["Hemisphere", "Spotlight", "Omni"];
+//				} else {
+//					menuOptions = [];
+//				}
+//			}
+//		}
+//		
+//		public static function loadLightObject()
+//		{
+//			try
+//			{
+//				menuOptions = sam.GetLightObjects(selectedCategory);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to load light Objects");
+//				if (Util.debug) {
+//					menuOptions = ["White", "Warm", "Cold"];
+//				} else {
+//					menuOptions = [];
+//				}
+//			}
+//		}
+//		
+//		public static function loadLightSettings()
+//		{
+//			try
+//			{
+//				menuValues = sam.GetLightSettings();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get light settings");
+//				menuValues = [0.0, 0.0, 0.0, 0.0];
+//			}
+//		}
 		
 //		public static function editLight(id:int, value:Number)
 //		{
@@ -2050,97 +2354,98 @@
 //			}
 //		}
 		
-		public static function resetLight()
-		{
-			menuValues = [100.0, 0.0, 100.0, 0.0, 0.0];
-			try
-			{
-				sam.ResetLight(selectedAdjustment);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to reset adjustment");
-			}
-		}
+//		public static function resetLight()
+//		{
+//			menuValues = [100.0, 0.0, 100.0, 0.0, 0.0];
+//			try
+//			{
+//				sam.ResetLight(selectedAdjustment);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to reset adjustment");
+//			}
+//		}
+//		
+//		public static function deleteLight()
+//		{
+//			try
+//			{
+//				sam.DeleteLight(selectedAdjustment);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to delete light");
+//			}
+//		}
+//		
+//		public static function swapLight(id:int)
+//		{
+//			try
+//			{
+//				sam.SwapLight(selectedAdjustment, selectedCategory, id);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to swap light");
+//			}
+//		}
+//		
+//		public static function renameLight(name:String)
+//		{
+//			try
+//			{
+//				sam.RenameLight(selectedAdjustment, name);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to rename light");
+//			}
+//		}
+//		
+//		public static function createLight(id:int)
+//		{
+//			try
+//			{
+//				sam.CreateLight(selectedCategory, id);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to create light");
+//			}
+//		}
+//		
+//		public static function addLight()
+//		{
+//			try
+//			{
+//				sam.AddLight();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to add light");
+//			}
+//		}
 		
-		public static function deleteLight()
+		public static function getLightVisible(selectedLight:int):Boolean
 		{
 			try
 			{
-				sam.DeleteLight(selectedAdjustment);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to delete light");
-			}
-		}
-		
-		public static function swapLight(id:int)
-		{
-			try
-			{
-				sam.SwapLight(selectedAdjustment, selectedCategory, id);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to swap light");
-			}
-		}
-		
-		public static function renameLight(name:String)
-		{
-			try
-			{
-				sam.RenameLight(selectedAdjustment, name);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to rename light");
-			}
-		}
-		
-		public static function createLight(id:int)
-		{
-			try
-			{
-				sam.CreateLight(selectedCategory, id);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to create light");
-			}
-		}
-		
-		public static function addLight()
-		{
-			try
-			{
-				sam.AddLight();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to add light");
-			}
-		}
-		
-		public static function getLightVisible():Boolean
-		{
-			try
-			{
-				return sam.GetLightVisible(selectedAdjustment);
+				return sam.GetLightVisible(selectedLight);
 			}
 			catch (e:Error)
 			{
 				trace("Failed to get light visibility");
-				return false;
 			}
+			
+			return false;
 		}
 		
-		public static function toggleLightVisible():Boolean
+		public static function toggleLightVisible(selectedLight:int):Boolean
 		{
 			try
 			{
-				return sam.ToggleLightVisible(selectedAdjustment);
+				return sam.ToggleLightVisible(selectedLight);
 			}
 			catch (e:Error)
 			{
@@ -2149,7 +2454,7 @@
 			}
 		}
 		
-		public static function getLightsVisibility():Boolean
+		public static function getAllLightsVisible():Boolean
 		{
 			try
 			{
@@ -2162,7 +2467,7 @@
 			}
 		}
 		
-		public static function toggleLightsVisibility():Boolean
+		public static function toggleAllLightsVisible():Boolean
 		{
 			try
 			{
@@ -2175,127 +2480,127 @@
 			}
 		}
 		
-		public static function editLightSettings(id:int, value:Number)
-		{
-			try
-			{
-				var dif:int = updateCursorDrag(value);
-				menuValues[id] += dif * 0.5;
-				if (id == 3) { //rotation clamp
-					if (menuValues[id] < 0) {
-						menuValues[id] += 360;
-					} else if (menuValues[id] >= 360) {
-						menuValues[id] -= 360;
-					}
-				}
-				sam.EditLightSettings(id, menuValues[id]);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to edit light settings");
-			}
-		}
-		
-		public static function resetLightSettings()
-		{
-			menuValues = [0.0, 0.0, 0.0, 0.0];
-			try
-			{
-				sam.ResetLightSettings();
-			}
-			catch (e:Error)
-			{
-				trace("Reset light settings");
-			}
-		}
-		
-		public static function updateAllLights()
-		{
-			try
-			{
-				sam.UpdateAllLights();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to update lights");
-			}
-		}
-		
-		public static function deleteAllLights()
-		{
-			try 
-			{
-				sam.DeleteAllLights();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to delete lights");
-			}
-		}
-		
-		public static function saveLights(filename:String)
-		{
-			try
-			{
-				sam.SaveLights(filename);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to save lights");
-			}
-		}
-		
-		public static function loadPoseExport()
-		{
-			try
-			{
-				menuOptions = sam.GetPoseExportTypes();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get pose export types");
-				if (Util.debug) {
-					menuOptions = ["Vanilla", "ZeX", "All", "Outfit Studio"];
-				} else {
-					menuOptions = [];
-				}
-			}
-		}
-		
-		public static function getMorphsTongueNodes()
-		{
-			try 
-			{
-				var nodes:Object = sam.GetMorphsTongueNodes(selectedCategory);
-				menuOptions = nodes.names;
-				menuValues = nodes.values;
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get tongue nodes");
-				menuOptions = [];
-				menuValues = [];
-			}
-		}
-		
-		public static function getMorphsTongue(id:int)
-		{
-			try {
-				var tongue:Array = sam.GetMorphsTongue(selectedCategory, menuValues[id]);
-				if (tongue.length == 0) {
-					boneName = "";
-					selectedAdjustment = 0;
-				} else {
-					boneName = tongue[0];
-					selectedAdjustment = tongue[1];
-				}
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get morphs tongue");
-				boneName = "";
-				selectedAdjustment = 0;
-			}
-		}
+//		public static function editLightSettings(id:int, value:Number)
+//		{
+//			try
+//			{
+//				var dif:int = updateCursorDrag(value);
+//				menuValues[id] += dif * 0.5;
+//				if (id == 3) { //rotation clamp
+//					if (menuValues[id] < 0) {
+//						menuValues[id] += 360;
+//					} else if (menuValues[id] >= 360) {
+//						menuValues[id] -= 360;
+//					}
+//				}
+//				sam.EditLightSettings(id, menuValues[id]);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to edit light settings");
+//			}
+//		}
+//		
+//		public static function resetLightSettings()
+//		{
+//			menuValues = [0.0, 0.0, 0.0, 0.0];
+//			try
+//			{
+//				sam.ResetLightSettings();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Reset light settings");
+//			}
+//		}
+//		
+//		public static function updateAllLights()
+//		{
+//			try
+//			{
+//				sam.UpdateAllLights();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to update lights");
+//			}
+//		}
+//		
+//		public static function deleteAllLights()
+//		{
+//			try 
+//			{
+//				sam.DeleteAllLights();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to delete lights");
+//			}
+//		}
+//		
+//		public static function saveLights(filename:String)
+//		{
+//			try
+//			{
+//				sam.SaveLights(filename);
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to save lights");
+//			}
+//		}
+//		
+//		public static function loadPoseExport()
+//		{
+//			try
+//			{
+//				menuOptions = sam.GetPoseExportTypes();
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get pose export types");
+//				if (Util.debug) {
+//					menuOptions = ["Vanilla", "ZeX", "All", "Outfit Studio"];
+//				} else {
+//					menuOptions = [];
+//				}
+//			}
+//		}
+//		
+//		public static function getMorphsTongueNodes()
+//		{
+//			try 
+//			{
+//				var nodes:Object = sam.GetMorphsTongueNodes(selectedCategory);
+//				menuOptions = nodes.names;
+//				menuValues = nodes.values;
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get tongue nodes");
+//				menuOptions = [];
+//				menuValues = [];
+//			}
+//		}
+//		
+//		public static function getMorphsTongue(id:int)
+//		{
+//			try {
+//				var tongue:Array = sam.GetMorphsTongue(selectedCategory, menuValues[id]);
+//				if (tongue.length == 0) {
+//					boneName = "";
+//					selectedAdjustment = 0;
+//				} else {
+//					boneName = tongue[0];
+//					selectedAdjustment = tongue[1];
+//				}
+//			}
+//			catch (e:Error)
+//			{
+//				trace("Failed to get morphs tongue");
+//				boneName = "";
+//				selectedAdjustment = 0;
+//			}
+//		}
 	}
 }

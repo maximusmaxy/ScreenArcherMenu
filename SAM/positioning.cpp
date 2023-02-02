@@ -3,9 +3,12 @@
 #include "SAF/conversions.h"
 #include "SAF/util.h"
 
+#include "constants.h"
+
 #include <math.h>
 
 NonActorRefr selectedNonActor;
+SInt32 positioningStep = 100;
 
 //typedef UInt32 (*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationValue value);
 //RelocAddr<_UpdateTranslationInternal> UpdateTranslationInternal(0xD583F0);
@@ -46,7 +49,8 @@ TESObjectREFR* GetNonActorRefr() {
 }
 
 void SaveObjectTranslation() {
-	if (!selectedNonActor.refr) return;
+	if (!selectedNonActor.refr) 
+		return;
 
 	selectedNonActor.translation.position = selectedNonActor.refr->pos;
 	selectedNonActor.translation.rotation = selectedNonActor.refr->rot;
@@ -223,34 +227,41 @@ void SetRefrScale(double value)
 	SetRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x);
 }
 
-void AdjustObjectPosition(int type, float delta, int step) {
-	if (!selectedNonActor.refr) return;
+void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool hasStep) {
+	if (!selectedNonActor.refr)
+		return result.SetError(CONSOLE_ERROR);
+	
+	if (type == kAdjustPositionStep) {
+		positioningStep = value.GetInt();
+		return;
+	}
 
-	float mod = step * 0.01;
+	float step = hasStep ? positioningStep * 0.01f : 1.0f;
+	float dif = value.GetNumber() * step;
 
 	switch (type) {
 	case kAdjustPositionX:
-		UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, delta * mod);
+		UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, dif);
 		break;
 	case kAdjustPositionY:
-		UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, delta * mod);
+		UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, dif);
 		break;
 	case kAdjustPositionZ:
-		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, delta * mod);
+		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, dif);
 		break;
 	case kAdjustRotationX:
 		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
-		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, delta * mod);
+		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, dif);
 		break;
 	case kAdjustRotationY:
 		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
-		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, delta * mod);
+		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, dif);
 		break;
 	case kAdjustRotationZ:
-		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, delta * mod);
+		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, dif);
 		break;
 	case kAdjustScale:
-		float scale = (UInt16)selectedNonActor.refr->unk104 * 0.01 + delta * mod;
+		float scale = (UInt16)selectedNonActor.refr->unk104 * 0.01 + dif;
 		if (scale < 0.01) {
 			scale = 0.01;
 		}
@@ -273,7 +284,8 @@ void ResetObjectPosition() {
 }
 
 void ResetObjectRotation() {
-	if (!selectedNonActor.refr) return;
+	if (!selectedNonActor.refr) 
+		return;
 
 	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.translation.rotation);
 
@@ -295,14 +307,16 @@ void ResetObjectRotation() {
 }
 
 void ResetObjectScale() {
-	if (!selectedNonActor.refr) return;
+	if (!selectedNonActor.refr) 
+		return;
 
 	SetRefrScale(selectedNonActor.translation.scale * 0.01);
 	selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(selectedNonActor.translation.scale);
 }
 
 void SetDefaultObjectTranslation() {
-	if (!selectedNonActor.refr) return;
+	if (!selectedNonActor.refr) 
+		return;
 
 	//sca
 	SetRefrScale(selectedNonActor.translation.scale * 0.01);
@@ -345,20 +359,21 @@ void SelectPositioningMenuOption(UInt32 option) {
 	}
 }
 
-void GetPositioningGFx(GFxMovieRoot* root, GFxValue* result) {
-	root->CreateArray(result);
+void GetPositioning(GFxResult& result) {
+	if (!selectedNonActor.refr)
+		return result.SetError(CONSOLE_ERROR);
 
-	if (!selectedNonActor.refr) return;
+	result.CreateValues();
 
-	result->PushBack(&GFxValue(100));
-	result->PushBack(&GFxValue(selectedNonActor.refr->pos.x));
-	result->PushBack(&GFxValue(selectedNonActor.refr->pos.y));
-	result->PushBack(&GFxValue(selectedNonActor.refr->pos.z));
+	result.PushValue(positioningStep);
+	result.PushValue(selectedNonActor.refr->pos.x);
+	result.PushValue(selectedNonActor.refr->pos.y);
+	result.PushValue(selectedNonActor.refr->pos.z);
 
 	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.refr->rot);
-	result->PushBack(&GFxValue(rot.x));
-	result->PushBack(&GFxValue(rot.y));
-	result->PushBack(&GFxValue(rot.z));
+	result.PushValue(rot.x);
+	result.PushValue(rot.y);
+	result.PushValue(rot.z);
 
-	result->PushBack(&GFxValue((UInt16)selectedNonActor.refr->unk104 * 0.01));
+	result.PushValue(((UInt16)selectedNonActor.refr->unk104) * 0.01);
 }

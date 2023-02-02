@@ -5,13 +5,20 @@
 #include "sam.h"
 
 void GetEyes(GFxResult& result) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	auto eyeNode = SAF::GetEyeNode(selected.refr);
+	if (!eyeNode)
+		return result.SetError(EYE_ERROR);
+
 	float coords[2];
-	if (!SAF::GetEyecoords(SAF::GetEyeNode(selected.refr), coords))
+	if (!SAF::GetEyecoords(eyeNode, coords))
 		return result.SetError(EYE_ERROR);
 
 	result.CreateValues();
-	result.PushValue(&GFxValue(coords[0] * -4));
-	result.PushValue(&GFxValue(coords[1] * 5));
+	result.PushValue(coords[0] * -4);
+	result.PushValue(coords[1] * 5);
 }
 
 void SetEyes(GFxResult& result, float x, float y) {

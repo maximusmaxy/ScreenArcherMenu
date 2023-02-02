@@ -78,8 +78,8 @@ namespace SAF {
 		messaging->Dispatch(pluginHandle, kSafPoseReset, &message, sizeof(uintptr_t), safName);
 	}
 
-	void SAFDispatcher::LoadSkeletonAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable) {
-		SkeletonMessage message{ raceId, isFemale, filename, npc, clear, enable };
+	void SAFDispatcher::LoadSkeletonAdjustment(UInt32 raceId, bool isFemale, const char* path, bool npc, bool clear, bool enable) {
+		SkeletonMessage message{ raceId, isFemale, path, npc, clear, enable };
 		messaging->Dispatch(pluginHandle, kSafSkeletonAdjustmentLoad, &message, sizeof(uintptr_t), safName);
 	}
 
@@ -222,10 +222,12 @@ namespace SAF {
 		{
 			auto data = static_cast<AdjustmentMessage*>(msg->data);
 			g_adjustmentManager.MergeAdjustmentDown(data->formId, data->handle);
+			break;
 		}
 		case kSafAdjustmentMirror:
 			auto data = static_cast<AdjustmentMessage*>(msg->data);
 			g_adjustmentManager.MirrorAdjustment(data->formId, data->handle);
+			break;
 		}
 	}
 

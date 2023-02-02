@@ -31,6 +31,7 @@
 #include "input.h"
 #include "gfx.h"
 #include "io.h"
+#include "data.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -119,7 +120,7 @@ void SamManager::SaveAndClose(BSFixedString name)
 				if (root) {
 
 					GFxValue gfxResult;
-					root->Invoke("root1.Menu_mc.tryClose", &gfxResult, nullptr, 0);
+					root->Invoke("root1.Menu_mc.TryClose", &gfxResult, nullptr, 0);
 					result = gfxResult.GetBool();
 				}
 			}
@@ -134,7 +135,7 @@ void SamManager::SaveAndClose(BSFixedString name)
 
 void SamManager::Invoke(BSFixedString name, const char* func, GFxValue* result, GFxValue* args, UInt32 numArgs)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	if (menuOpened) {
 		GFxMovieRoot* root = GetRoot(name);
@@ -145,7 +146,7 @@ void SamManager::Invoke(BSFixedString name, const char* func, GFxValue* result, 
 
 void SamManager::SetVariable(BSFixedString name, const char* pVarPath, const GFxValue* value, UInt32 setType)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	if (menuOpened) {
 		GFxMovieRoot* root = GetRoot(name);
@@ -171,7 +172,7 @@ void SamManager::SaveData(GFxValue* saveData)
 
 bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	if (!menuOpened)
 		return false;
@@ -199,9 +200,25 @@ void SamManager::ClearData()
 	refr = nullptr;
 }
 
+void SamManager::ForceQuit()
+{
+	//std::lock_guard<std::mutex> lock(mutex);
+
+	static BSFixedString samMenuName(SAM_MENU_NAME);
+
+	ClearData();
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	root->Invoke("root1.Menu_mc.CleanUp", nullptr, nullptr, 0);
+	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
+}
+
 void SamManager::OpenExtensionMenu(const char* name)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	static BSFixedString samMenuName(SAM_MENU_NAME);
 
@@ -222,7 +239,7 @@ void SamManager::OpenExtensionMenu(const char* name)
 
 void SamManager::PushMenu(const char* name)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+//	std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -235,7 +252,7 @@ void SamManager::PushMenu(const char* name)
 
 void SamManager::PopMenu()
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -247,7 +264,7 @@ void SamManager::PopMenu()
 
 void SamManager::PopMenuTo(const char* name)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -257,9 +274,31 @@ void SamManager::PopMenuTo(const char* name)
 	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &GFxValue(name), 1);
 }
 
+void SamManager::RefreshMenu() {
+	//std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue ret;
+	root->Invoke("root1.Menu_mc.RefreshValues", nullptr, nullptr, 0);
+}
+
+void SamManager::UpdateMenu() {
+	//std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue ret;
+	root->Invoke("root1.Menu_mc.ReloadMenu", nullptr, nullptr, 0);
+}
+
 void SamManager::ShowNotification(const char* msg)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -267,25 +306,40 @@ void SamManager::ShowNotification(const char* msg)
 
 	GFxValue args(msg);
 	GFxValue ret;
-	root->Invoke("root1.Menu_mc.showNotification", &ret, &args, 1);
+	root->Invoke("root1.Menu_mc.ShowNotification", &ret, &args, 1);
 }
 
-void SamManager::SetTitle(const char* title)
+void SamManager::SetNotification(const char* msg)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
 		return;
 
-	GFxValue args(title);
-	GFxValue ret;
-	root->Invoke("root1.Menu_mc.setTitle", &ret, &args, 1);
+	GFxValue args;
+	GFxResult result(&args);
+	result.SetNotification(root, msg);
+	result.InvokeCallback(root);
+}
+
+void SamManager::SetTitle(const char* title)
+{
+	//std::lock_guard<std::mutex> lock(mutex);
+
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args;
+	GFxResult result(&args);
+	result.SetTitle(root, title);
+	result.InvokeCallback(root);
 }
 
 void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -301,12 +355,12 @@ void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 		result.PushName(name.c_str());
 	}
 
-	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+	result.InvokeCallback(root);
 }
 
 void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -326,12 +380,12 @@ void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 		result.PushValue(&value);
 	}
 
-	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+	result.InvokeCallback(root);
 }
 
 void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariable>& vmValues)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -364,26 +418,12 @@ void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariabl
 		result.PushValue(&value);
 	}
 
-	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
-}
-
-void SamManager::SetString(const char* msg)
-{
-	std::lock_guard<std::mutex> lock(mutex);
-
-	auto root = GetSamRoot();
-	if (!root)
-		return;
-
-	GFxValue value;
-	GFxResult result(&value);
-	result.SetString(msg);
-	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+	result.InvokeCallback(root);
 }
 
 void SamManager::SetSuccess()
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -391,12 +431,12 @@ void SamManager::SetSuccess()
 
 	GFxValue value;
 	GFxResult result(&value); 
-	result.Invoke(root, "root1.Menu_mc.PapyrusResult"); //success is default
+	result.InvokeCallback(root);
 }
 
 void SamManager::SetError(const char* error)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	auto root = GetSamRoot();
 	if (!root)
@@ -405,58 +445,25 @@ void SamManager::SetError(const char* error)
 	GFxValue value;
 	GFxResult result(&value);
 	result.SetError(error);
-	result.Invoke(root, "root1.Menu_mc.PapyrusResult");
+	result.InvokeCallback(root);
 }
 
-//typedef void (*_ScaleformRefCountImplAddRef)(IMenu* menu);
-//RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
-//
-//typedef void (*_ScaleformRefCountImplRelease)(IMenu* menu);
-//RelocAddr<_ScaleformRefCountImplRelease> ScaleformRefCountImplRelease(0x210EC90);
-//
-//IMenu* SamManager::AddRef(BSFixedString& name)
-//{
-//	std::lock_guard<std::mutex> lock(mutex);
-//
-//	IMenu* menu = (*g_ui)->GetMenu(name);
-//
-//	if (menu) {
-//		ScaleformRefCountImplAddRef(menu);
-//		return menu;
-//	}
-//
-//	return nullptr;
-//}
+void SamManager::SetLocal(const char* key, GFxValue* value)
+{
+	//std::lock_guard<std::mutex> lock(mutex);
 
-//void SamManager::Release()
-//{
-//	std::lock_guard<std::mutex> lock(mutex);
-//
-//	static BSFixedString samMenuName(SAM_MENU_NAME);
-//	static BSFixedString cursorMenuName(CURSOR_MENU_NAME);
-//
-//	if (samMenu) {
-//		ScaleformRefCountImplRelease(samMenu);
-//		_Log("Sam ref count: ", samMenu->refCount);
-//	}
-//	else {
-//		_DMESSAGE("Sam null");
-//	}
-//
-//	if (cursorMenu) {
-//		ScaleformRefCountImplRelease(cursorMenu);
-//		_Log("Cursor ref count: ", samMenu->refCount);
-//	}
-//	else {
-//		_DMESSAGE("Cursor null");
-//	}
-//
-//	samMenu = nullptr;
-//	cursorMenu = nullptr;
-//}
+	auto root = GetSamRoot();
+	if (!root)
+		return;
+
+	GFxValue args[2];
+	args[0] = GFxValue(key);
+	args[1] = *value;
+	root->Invoke("root1.Menu_mc.SetLocalVariable", nullptr, args, 2);
+}
 
 void SamManager::CursorAlwaysOn(bool enabled) {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	static BSFixedString cursorMenuName(CURSOR_MENU_NAME);
 
@@ -470,7 +477,7 @@ void SamManager::CursorAlwaysOn(bool enabled) {
 }
 
 void SamManager::SetVisible(bool visible) {
-	std::lock_guard<std::mutex> lock(mutex);
+	//std::lock_guard<std::mutex> lock(mutex);
 
 	static BSFixedString samMenuName(SAM_MENU_NAME);
 	SetMenuVisible(samMenuName, "root1.Menu_mc.visible", visible);
@@ -503,15 +510,15 @@ bool SetCursor(SInt32 x, SInt32 y)
 	return SetCursorPos(x, y);
 }
 
-void GetCursorPositionGFx(GFxMovieRoot* root, GFxValue* result) {
-	root->CreateObject(result);
+void GetCursorPosition(GFxResult& result) {
+	result.CreateValues();
 
 	SInt32 pos[2];
-	bool success = GetCursor(pos);
+	if (!GetCursor(pos))
+		return result.SetError("Failed to get cursor position");
 
-	result->SetMember("success", &GFxValue(success));
-	result->SetMember("x", &GFxValue(pos[0]));
-	result->SetMember("y", &GFxValue(pos[1]));
+	result.PushValue(pos[0]);
+	result.PushValue(pos[1]);
 }
 
 TESObjectREFR * GetRefr() {
@@ -605,9 +612,6 @@ void OnMenuOpen() {
 
 	data.SetMember("menuName", &GFxValue(samManager.menuName.c_str()));
 
-	GFxValue delayClose((*g_ui)->IsMenuOpen(photoMenu));
-	data.SetMember("delayClose", &delayClose);
-
 	GetMenuTarget(data);
 
 	GFxValue saved;
@@ -620,7 +624,7 @@ void OnMenuOpen() {
 	GFxValue alignment(GetMenuOption(kOptionAlignment));
 	data.SetMember("swap", &alignment);
 
-	samManager.Invoke(samMenu, "root1.Menu_mc.menuOpened", nullptr, &data, 1);
+	samManager.Invoke(samMenu, "root1.Menu_mc.MenuOpened", nullptr, &data, 1);
 }
 
 void OnMenuClose() {
@@ -666,7 +670,7 @@ void OnConsoleUpdate() {
 
 	GetMenuTarget(data);
 
-	samManager.Invoke(samMenu, "root1.Menu_mc.consoleRefUpdated", nullptr, &data, 1);
+	samManager.Invoke(samMenu, "root1.Menu_mc.ConsoleRefUpdated", nullptr, &data, 1);
 }
 
 void ToggleMenu() {
@@ -707,6 +711,7 @@ public:
 					(*g_menuControls)->inputEvents.Push(handlerPtr);
 				}
 				OnMenuOpen();
+				samManager.SetVisible(true);
 			}
 			else {
 				OnMenuClose();

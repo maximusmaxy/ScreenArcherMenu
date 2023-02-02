@@ -2,17 +2,27 @@
 
 #include "SAF/hacks.h"
 
-void GetHacksGFx(GFxMovieRoot* root, GFxValue* hacks)
+void GetHacks(GFxResult& result)
 {
-	root->CreateArray(hacks);
-	GFxValue blinkState(GetBlinkState() == 1);
-	hacks->PushBack(&blinkState);
+	result.CreateValues();
+	result.PushValue(GetBlinkState() == 1);
+	result.PushValue(GetForceMorphUpdate() == 1);
+	result.PushValue(GetDisableEyecoordUpdate() == 1);
+}
 
-	GFxValue forceMorphUpdate(GetForceMorphUpdate() == 1);
-	hacks->PushBack(&forceMorphUpdate);
+enum {
+	kHackBlink = 0,
+	kHackMorphs,
+	kHackEyeCoords
+};
 
-	GFxValue eyeState(GetDisableEyecoordUpdate() == 1);
-	hacks->PushBack(&eyeState);
+void SetHack(SInt32 index, bool enabled)
+{
+	switch (index) {
+	case kHackBlink: SetBlinkState(enabled);
+	case kHackMorphs: SetForceMorphUpdate(enabled);
+	case kHackEyeCoords: SetDisableEyecoordUpdate(enabled);
+	}
 }
 
 //RelocPtr<UInt8> cursorFlags(0x126ABA8);

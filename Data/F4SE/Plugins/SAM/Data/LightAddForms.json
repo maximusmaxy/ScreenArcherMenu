@@ -1,18 +1,19 @@
 {
     "type": "list",
+    "update": true,
     "get": {
         "type": "sam",
-        "name": "GetLightList",
+        "name": "GetLightForms",
         "args": [
             {
                 "type": "var",
-                "name": "lightCategories"
+                "name": "lightCategory"
             }
         ]
     },
     "set": {
         "type": "sam",
-        "name": "AddLight",
+        "name": "CreateLight",
         "popto": "LightSelect"
     }
 }

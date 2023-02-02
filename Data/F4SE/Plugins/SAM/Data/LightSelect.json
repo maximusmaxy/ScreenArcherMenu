@@ -3,12 +3,37 @@
     "update": true,
     "get": {
         "type": "sam",
-        "name": "GetLights"
+        "name": "GetLightSelect"
     },
     "set": {
         "type": "sam",
-        "name": "SetLights",
+        "name": "SetLightSelect",
         "var": "selectedLight"
+    },
+    "init": {
+        "type": "local",
+        "name": "InitAllLightsVisible"
+    },
+    "extra": {
+        "name": "$SAM_Visible",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "ToggleAllLightsVisible"
+        }
+    },
+    "save": {
+        "name": "$SAM_Save",
+        "type": "func",
+        "func": {
+            "type": "entry",
+            "entry": {
+                "func": {
+                    "type": "sam",
+                    "name": "SaveLights"
+                }
+            }
+        }
     },
     "load": {
         "name": "$SAM_Load",
@@ -16,7 +41,7 @@
         "func": {
             "type": "folder",
             "folder": {
-                "type": "full",
+                "format": "full",
                 "path": "Data\\F4SE\\Plugins\\SAM\\Lights",
                 "ext": ".json",
                 "func": {

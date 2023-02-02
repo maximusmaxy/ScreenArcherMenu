@@ -23,12 +23,12 @@ bool menuOptionDefaults[] = {
 	false
 };
 
-void GetMenuOptionsGFx(GFxResult& result)
+void GetMenuOptions(GFxResult& result)
 {
 	result.CreateValues();
 
 	for (int i = 0; i < kOptionMax; ++i) {
-		result.PushValue(&GFxValue(GetMenuOption(i)));
+		result.PushValue(GetMenuOption(i));
 	}
 }
 

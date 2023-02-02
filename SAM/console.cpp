@@ -10,12 +10,15 @@
 
 #include "SAF/adjustments.h"
 #include "SAF/util.h"
+#include "SAF/types.h"
 
 #include "pose.h"
 #include "sam.h"
 #include "lights.h"
 #include "mfg.h"
 #include "constants.h"
+#include "camera.h"
+#include "io.h"
 
 #include <filesystem>
 
@@ -24,6 +27,44 @@ RelocAddr<_ParseObString> ParseObString(0x4E37D0);
 
 typedef bool (*_ParseObString2)(void* paramInfo, void* scriptData, UInt32* opcodeOffsetPtr, TESObjectREFR* thisObj, void* containingObj, void* scriptObj, void* locals, char* str1, char* str2);
 RelocAddr<_ParseObString2> ParseObString2(0x4E37D0);
+
+enum {
+	kConsoleSingleReset = 1,
+	kConsoleSingleReloadMenus,
+	kConsoleSingleForceQuit
+};
+
+SAF::InsensitiveUInt32Map obscriptSingleMap = {
+	{"reset", kConsoleSingleReset},
+	{"reloadmenus", kConsoleSingleReloadMenus},
+	{"forcequit", kConsoleSingleForceQuit}
+};
+
+enum {
+	kConsolePairAdjustment = 1,
+	kConsolePairPose,
+	kConsolePairFaceMorphs,
+	kConsolePairLights,
+	kConsolePairCamera
+};
+
+SAF::InsensitiveUInt32Map obscriptPairMap = {
+	{"a", kConsolePairAdjustment},
+	{"adjustment", kConsolePairAdjustment},
+	{"adjustments", kConsolePairAdjustment},
+	{"p", kConsolePairPose},
+	{"pose", kConsolePairPose},
+	{"poses", kConsolePairPose},
+	{"f", kConsolePairFaceMorphs},
+	{"facemorph", kConsolePairFaceMorphs},
+	{"facemorphs", kConsolePairFaceMorphs},
+	{"mfg", kConsolePairFaceMorphs},
+	{"l", kConsolePairLights},
+	{"light", kConsolePairLights},
+	{"lights", kConsolePairLights},
+	{"c", kConsolePairCamera},
+	{"camera", kConsolePairCamera}
+};
 
 // Show Bones
 static ObScriptCommand* samObScriptCommand = nullptr;
@@ -57,29 +98,6 @@ void ConsolePrintConcat(const char* st1, const char* st2) {
 
 	CALL_MEMBER_FN(mgr, Print)(ss.str().c_str());
 }
-
-enum {
-	kObscriptAdjustment = 1,
-	kObscriptPose,
-	kObscriptFaceMorphs,
-	kObscriptLights
-};
-
-SAF::InsensitiveUInt32Map obscriptTypes = {
-	{"a", kObscriptAdjustment},
-	{"adjustment", kObscriptAdjustment},
-	{"adjustments", kObscriptAdjustment},
-	{"p", kObscriptPose},
-	{"pose", kObscriptPose},
-	{"poses", kObscriptPose},
-	{"f", kObscriptFaceMorphs},
-	{"facemorph", kObscriptFaceMorphs},
-	{"facemorphs", kObscriptFaceMorphs},
-	{"mfg", kObscriptFaceMorphs},
-	{"l", kObscriptLights},
-	{"light", kObscriptLights},
-	{"lights", kObscriptLights}
-};
 
 std::string FindPathInSubfolder(const char* folder, const char* stem, const char* ext)
 {
@@ -119,8 +137,8 @@ bool LoadSamFile(const char* filename)
 
 bool LoadSamFolder(const char* typeStr, const char* filename)
 {
-	auto it = obscriptTypes.find(typeStr);
-	if (it == obscriptTypes.end()) {
+	auto it = obscriptPairMap.find(typeStr);
+	if (it == obscriptPairMap.end()) {
 		ConsolePrintConcat("Could not recognize type: ", typeStr);
 		return false;
 	}
@@ -131,10 +149,11 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 	const char* ext;
 
 	switch (type) {
-	case kObscriptAdjustment: folder = ADJUSTMENTS_PATH; ext = ".json";  break;
-	case kObscriptPose: folder = POSES_PATH; ext = ".json";  break;
-	case kObscriptLights: folder = LIGHTS_PATH; ext = ".json";  break;
-	case kObscriptFaceMorphs: folder = FACEMORPHS_PATH; ext = ".txt";  break;
+	case kConsolePairAdjustment: folder = ADJUSTMENTS_PATH; ext = ".json";  break;
+	case kConsolePairPose: folder = POSES_PATH; ext = ".json";  break;
+	case kConsolePairLights: folder = LIGHTS_PATH; ext = ".json";  break;
+	case kConsolePairFaceMorphs: folder = FACEMORPHS_PATH; ext = ".txt";  break;
+	case kConsolePairCamera: folder = CAMERA_PATH; ext = ".json"; break;
 	}
 
 	std::string path;
@@ -151,10 +170,11 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 
 	if (!path.empty()) {
 		switch (type) {
-		case kObscriptAdjustment: success = LoadAdjustmentPath(path.c_str()); break;
-		case kObscriptPose: success = LoadPosePath(path.c_str()); break;
-		case kObscriptLights: success = LoadLightsPath(path.c_str()); break;
-		case kObscriptFaceMorphs: success = LoadMfgPath(path.c_str()); break;
+		case kConsolePairAdjustment: success = LoadAdjustmentPath(path.c_str()); break;
+		case kConsolePairPose: success = LoadPosePath(path.c_str()); break;
+		case kConsolePairLights: success = LoadLightsPath(path.c_str()); break;
+		case kConsolePairFaceMorphs: success = LoadMfgPath(path.c_str()); break;
+		case kConsolePairCamera: success = LoadCameraPath(path.c_str()); break;
 		}
 	}
 
@@ -163,10 +183,11 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 
 	const char* error;
 	switch (type) {
-	case kObscriptAdjustment: error = "Could not find adjustment: "; break;
-	case kObscriptPose: error = "Could not find pose: "; break;
-	case kObscriptLights: error = "Could not find lights: "; break;
-	case kObscriptFaceMorphs: error = "Could not find morphs: "; break;
+	case kConsolePairAdjustment: error = "Could not find adjustment: "; break;
+	case kConsolePairPose: error = "Could not find pose: "; break;
+	case kConsolePairLights: error = "Could not find lights: "; break;
+	case kConsolePairFaceMorphs: error = "Could not find morphs: "; break;
+	case kConsolePairCamera: error = "Could not find camera state: "; break;
 	}
 
 	ConsolePrintConcat(error, filename);
@@ -195,19 +216,24 @@ bool samObScriptExecute(void* paramInfo, void* scriptData, TESObjectREFR* thisOb
 					selected.Update(refr);
 			}
 
-			//If string 2 exists
+			//If param 2 exists
 			if (str2[0]) 
 			{
 				if (selected.refr) {
 					LoadSamFolder(str1, str2);
 				}
 			}
-			//only string 1
+			//only param 1
 			else {
-				//check for reset
-				if (!_stricmp(str1, "reset"))
-				{
-					ResetJsonPose();
+
+				//check for single commands
+				auto it = obscriptSingleMap.find(str1);
+				if (it != obscriptSingleMap.end()) {
+					switch (it->second) {
+					case kConsoleSingleReset: ResetJsonPose(); break;
+					case kConsoleSingleReloadMenus: ReloadJsonMenus(); break;
+					case kConsoleSingleForceQuit: samManager.ForceQuit(); break;
+					}
 				}
 
 				//open file name

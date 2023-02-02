@@ -1,6 +1,7 @@
 {
     "type": "list",
-    "items": [
+    "update": true,
+    "list": [
         {
             "name": "$SAM_OpenContainer",
             "func": {
@@ -16,10 +17,17 @@
             }
         },
         {
+            "name": "$SAM_SearchItem",
+            "func": {
+                "type": "menu",
+                "name": "SearchItem"
+            }
+        },
+        {
             "name": "$SAM_MaterialSwap",
             "func": {
                 "type": "menu",
-                "name": "MaterialSwap"
+                "name": "MatSwapEquipment"
             }
         }
     ]

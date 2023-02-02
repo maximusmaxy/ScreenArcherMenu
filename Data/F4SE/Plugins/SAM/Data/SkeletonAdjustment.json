@@ -1,13 +1,40 @@
 {
-    "type": "folder",
+    "type": "foldercheckbox",
+    "race": false,
+    "enter": {
+        "type": "local",
+        "name": "EnterFolderCheckbox"
+    },
     "folder": {
-        "type": "full",
-        "path": "Data\\F4SE\\Plugins\\SAM\\Adjustments",
-        "ext": ".txt",
+        "format": "full",
+        "path": "Data\\F4SE\\Plugins\\SAF\\Adjustments",
+        "ext": ".json",
         "pop": false,
         "func": {
-            "type": "sam",
-            "name": "LoadAdjustment"
+            "type": "local",
+            "name": "LoadSkeletonAdjustment"
+        },
+        "reset": {
+            "name": "$SAM_Reset",
+            "type": "func",
+            "func": {
+                "type": "sam",
+                "name": "ResetSkeletonAdjustment",
+                "args": [
+                    {
+                        "type": "value",
+                        "value": false
+                    }
+                ]
+            }
+        },
+        "load": {
+            "name": "$SAM_Single",
+            "type": "func",
+            "func": {
+                "type": "local",
+                "name": "ToggleFolderCheckbox"
+            }
         }
     }
 }

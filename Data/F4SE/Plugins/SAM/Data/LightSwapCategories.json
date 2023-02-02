@@ -6,7 +6,7 @@
     },
     "set": {
         "type": "menu",
-        "name": "LightSwapCategories",
+        "name": "LightSwapForms",
         "var": "lightCategory"
     }
 }

@@ -226,7 +226,7 @@ namespace SAF {
 		auto found = map.find(key);
 		NiTransform transform = found != map.end() ? found->second : TransformIdentity();
 
-		MatrixFromEulerYPR(transform.rot, yaw * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, roll * DEGREE_TO_RADIAN);
+		MatrixFromEulerYPR(transform.rot, yaw, pitch, roll);
 
 		map[key] = transform;
 		scaled[key] = SlerpNiTransform(transform, scale);
@@ -870,8 +870,10 @@ namespace SAF {
 		auto& selected = *it;
 
 		//find next visible below
-		while (it != list.end() && !(*it)->IsVisible())
+		do {
 			++it;
+		}
+		while (it != list.end() && !(*it)->IsVisible());
 
 		if (it == list.end())
 			return 0;
@@ -949,15 +951,15 @@ namespace SAF {
 
 		//Swap left result to right transform
 		NiTransform leftResult = GetMirroredTransform(adjustment, *leftBase, leftPose->m_localTransform, left);
-		leftResult = MultiplyNiTransform(leftResult, InvertNiTransform(rightPose->m_localTransform));
-		leftResult = MultiplyNiTransform(leftResult, *rightBase);
+		leftResult = MultiplyNiTransform(leftResult, InvertNiTransform(leftPose->m_localTransform));
+		leftResult = MultiplyNiTransform(leftResult, *leftBase);
 		leftResult = NegateNiTransform(*rightBase, leftResult);
 		*rightMirrored = leftResult;
 
 		//Swap right result to left transform
 		NiTransform rightResult = GetMirroredTransform(adjustment, *rightBase, rightPose->m_localTransform, right);
-		rightResult = MultiplyNiTransform(rightResult, InvertNiTransform(leftPose->m_localTransform));
-		rightResult = MultiplyNiTransform(rightResult, *leftBase);
+		rightResult = MultiplyNiTransform(rightResult, InvertNiTransform(rightPose->m_localTransform));
+		rightResult = MultiplyNiTransform(rightResult, *rightBase);
 		rightResult = NegateNiTransform(*leftBase, rightResult);
 		*leftMirrored = rightResult;
 
@@ -966,8 +968,6 @@ namespace SAF {
 
 	bool ActorAdjustments::MirrorAdjustment(UInt32 handle)
 	{
-		std::lock_guard<std::shared_mutex> lock(mutex);
-
 		auto adjustment = GetAdjustment(handle);
 		if (!adjustment)
 			return false;

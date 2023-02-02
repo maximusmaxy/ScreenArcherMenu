@@ -29,11 +29,13 @@ The set function will be called whenever you interact with a menu item
     "set": {}
 }
 
-There are two optional functions you may use
-Enter is called when the menu is first entered
+There are optional functions you may use
+Enter is called before you enter a new menu
+Init is called after the menu has loaded
 Leave is called when you are leaving the menu
 {
     "enter": {},
+    "init": {},
     "leave": {}
 }
 
@@ -136,6 +138,12 @@ set - function that is called with an index and a boolean
 }
 
 #------------------------------------------------------------
+# Slider
+#------------------------------------------------------------
+
+TODO
+
+#------------------------------------------------------------
 # Mixed
 #------------------------------------------------------------
 
@@ -198,7 +206,7 @@ type - "folder"
 folder - a folder object
 
 # folder object 
-type - "file", "relative" or "full". specifies how the parameter string is formatted when the function is called. As an example we'll use the following path:
+format - "file", "relative" or "full". specifies how the parameter string is formatted when the function is called. As an example we'll use the following path:
 Data\F4SE\Plugins\SAM\Adjustments\Subfolder\MyAdjustment.json
 
 "file" = MyAdjustment
@@ -215,7 +223,7 @@ pop - Optional, Defaults to true, if set to false it will prevent the folder men
 {
     "type": "folder",
     "folder": {
-        "type: "full",
+        "format": "full",
         "path": "Data\\F4SE\\Plugins\\SAM\\Adjustments",
         "ext": ".json",
         "pop": false,
@@ -244,16 +252,12 @@ To add hotkeys to the folder they must be properties of the folder unlike the ot
 # Extension
 Notifies sam to add it to the extension list
 
-# Refresh
-After you interact with a menu item and the set function is called, refresh will call the get function again and update the values. Use this if you are updating multiple values dynamically
-
 # Console Update
 By default, menus will boot you back to the main menu when the console target is updated to prevent logic errors. If your menu does not require local variables it is usually safe to use this property
 
 {
     "type": "mixed",
     "extension": true,
-    "refresh": true,
     "update": true
 }
 
@@ -348,7 +352,7 @@ Opens a folder and calls the function with the specified file/path string. A ful
 {
     "type": "folder',
     "folder": {
-        "type": "full"
+        "format": "full"
         "path": "Data\\F4SE\\plugins\\SAM\\Adjustments"
         "ext": ".json",
         "func": {
@@ -381,6 +385,24 @@ You can also choose to send or store the entire array of menu values by specifyi
     "func": "SetFunc",
     "var": "itemValue",
     "all": true
+}
+
+# Refresh
+Refresh the menu values after the function is called
+
+{
+    "type": "sam",
+    "name": "ResetValues",
+    "refresh": true
+}
+
+# Update
+Reloads the entire menu after calling. Use this if the number of menu items changes after a function call
+
+{
+    "type": "sam",
+    "name": "AddMenuItem",
+    "update": true
 }
 
 # Pop
@@ -421,36 +443,8 @@ When calling a function you can supply additional arguments. It is an array of o
         {
             "type": "value",    //constant value
             "value": 2.0
-        },
-
-    ]
-}
-
-#------------------------------------------------------------
-# Sam Functions
-#------------------------------------------------------------
-These are built in sam functions you can use
-
-# LoadMenu 
-
-Loads a menu from a string
-{
-    "type": "sam",
-    "func": "LoadMenu",
-    "args": [
-        {
-            "type": "value",
-            "value": "NewMenu"
         }
     ]
-}
-
-# LoadMenuValue 
-
-Loads a menu using the value from the selected menu item. Intended for use by set functions
-"set": {
-    "type: "sam",
-    "func": "LoadMenuValue"
 }
 
 #------------------------------------------------------------
@@ -498,7 +492,7 @@ Hotkey calls a function, you can use any of the function types in the functions 
         "func": {
             "type": "folder",
             "folder": {
-                "type": "full",
+                "format": "full",
                 "path": "Data\\F4SE\\Plugins\\SAM\\Bones",
                 "ext": ".json",
                 "func": {
@@ -602,3 +596,164 @@ Used for notification callbacks
 
 # SAM.SetTitle(string)
 Used for title callbacks
+
+#------------------------------------------------------------
+# Overrides
+#------------------------------------------------------------
+
+Overrides overwrite the data in the "SAM\Data" folder and "SAM\Extensions" folder. This allows you to replace and append your own data without having to directly replace the entire thing. You are required to specify the name of the menu, this allows for multiple overrides with different file names. It is recommended to use a descriptive name for your override file to prevent conflicts.
+
+For everything aside from arrays you can override the values directly. Say you wanted to override the path of the following folder.
+
+{
+    "name": "AdjustmentSelect",
+    "type": "mixed",
+    "load": {
+        "name": "Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "format": "full",
+                "path": "Data\\F4SE\\Plugins\\SAM\\Adjustments",
+                "ext": ".json",
+                "func": {
+                    "type": "sam",
+                    "name": "LoadBone"
+                }
+            }
+        }
+    }
+}
+
+You only need to specify the menu name, object keys and the value you want to override
+
+{
+    "name": "AdjustmentSelect",
+    "load": {
+        "func": {
+            "folder": {
+                "path": "Data\\F4SE\\Plugins\\SAM\\NewAdjustmentFolder"
+            }
+        }
+    }
+}
+
+For arrays however you will need to create an override property on the same level as the array you want to override.
+override - An array of override objects
+
+# override object
+name - The name of the array you want to override
+append - An array of objects you want to append to the array. Objects must be the same type as the original array.
+replace - An array of replace objects
+merge - An array of merge objects
+
+# replace/merge object
+index - The index number of the item you want to replace
+replace/merge - The object you want to replace/merge it with
+
+For example i will show you the original menu, the override menu, and what the result would look like
+
+# Base menu
+{
+    "type": "mixed",
+    "set": {
+        "type": "sam"
+        "name": "SetFunction"
+        "args": [
+            {
+                "type": "value",
+                "value": 5
+            }
+        ]
+    },
+    "items": [
+        {
+            "name": "Open Actor Container"
+            "type": "list",
+            "func: {
+                "type": "sam",
+                "name": "OpenActorContainer"
+            }
+        }
+    ]
+}
+
+# Override menu
+{
+    "name": "MenuName",
+    "set": {                
+        "override": [
+            {
+                "name": "args",
+                "replace": [    //Overriding the set args to use a value of 10 for the first argument
+                    {
+                        "index": 0,
+                        "replace": {
+                            "type": "value",
+                            "value": 10
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "override": [
+        {
+            "name": "items",
+            "merge": [     //Replace the "Open Actor Container" name by merging in a new one
+                {
+                    "index": 0
+                    "merge": {
+                        "name": "Open Inventory"
+                    }
+                }
+            ],
+            "append": [    //Add a menu item to add materials from a papyrus function
+                {
+                    "name": "Add Materials",
+                    "type": "func",
+                    "func": {
+                        "type": "global",
+                        "script": "MyScript",
+                        "name": "AddMaterials"
+                    }
+                }
+            ]
+        }
+    ]
+}
+
+# Base + Override menu
+{
+    "type": "mixed",
+    "set": {
+        "type": "sam"
+        "name": "SetFunction"
+        "args": [
+            {
+                "type": "value",
+                "value": 10             //5 changed to 10
+            }
+        ]
+    },
+    "items": [
+        {
+            "name": "Open Inventory"    //"Open Actor Container" replaced with "Open Inventory"
+            "type": "list",
+            "func: {
+                "type": "sam",
+                "name": "OpenActorContainer"
+            }
+        },
+        {
+            "name": "Add Materials",   //New "Add Materials" list item appended
+            "type": "list",
+            "func": {
+                "type": "global",
+                "script": "MyScript",
+                "name": "AddMaterials"
+            }
+        }
+    ]
+}

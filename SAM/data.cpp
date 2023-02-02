@@ -29,6 +29,7 @@ enum {
 	kJsonPropGet = 1,
 	kJsonPropSet,
 	kJsonPropEnter,
+	kJsonPropInit,
 	kJsonPropLeave,
 	kJsonPropSave,
 	kJsonPropLoad,
@@ -42,6 +43,7 @@ SAF::InsensitiveUInt32Map jsonMenuPropertyMap = {
 	{"get", kJsonPropGet},
 	{"set", kJsonPropSet},
 	{"enter", kJsonPropEnter},
+	{"init", kJsonPropInit},
 	{"leave", kJsonPropLeave},
 	{"save", kJsonPropSave},
 	{"load", kJsonPropLoad},
@@ -49,6 +51,13 @@ SAF::InsensitiveUInt32Map jsonMenuPropertyMap = {
 	{"extra", kJsonPropExtra},
 	{"notification", kJsonPropNotification},
 	{"title", kJsonPropTitle}
+};
+
+SAF::InsensitiveUInt32Map jsonMenuHotkeyMap = {
+	{"save", kJsonPropSave},
+	{"load", kJsonPropLoad},
+	{"reset", kJsonPropReset},
+	{"extra", kJsonPropExtra}
 };
 
 enum {
@@ -309,12 +318,19 @@ void JsonMenuValidator::ValidateFolder(Json::Value& value)
 			value["ext"] = ('.' + ext->asString());
 	}
 
-	int type;
-	GetType(jsonPathTypeMap, value, "type", "Failed to find path type", &type);
+	SetDefault(value, "format", "full");
+	int format;
+	GetType(jsonPathTypeMap, value, "format", "Failed to find folder format", &format);
 
 	Json::Value* func = GetValue(value, "func", "Failed to get function data for folder");
 	if (func)
 		ValidateFunc(*func);
+
+	for (auto& hotkey : jsonMenuHotkeyMap) {
+		if (value.isMember(hotkey.first)) {
+			ValidateHotkey(value[hotkey.first]);
+		}
+	}
 }
 
 void JsonMenuValidator::ValidateEntry(Json::Value& value)
@@ -324,12 +340,25 @@ void JsonMenuValidator::ValidateEntry(Json::Value& value)
 		ValidateFunc(*func);
 }
 
+void JsonMenuValidator::ValidateArgs(Json::Value& value)
+{
+	int type;
+	GetType(jsonArgsTypeMap, value, "Failed to parse args type: ", &type);
+
+	switch (type) {
+	case kJsonArgsVar: RequireProperty(value, "name", "Var argument requires a name property"); break;
+	case kJsonArgsIndex: RequireProperty(value, "index", "Index argument requires an index property"); break;
+	case kJsonArgsValue: RequireProperty(value, "value", "Value argument requires a value property"); break;
+	}
+}
+
 void JsonMenuValidator::ValidateFunc(Json::Value& value)
 {
 	int type;
 	GetType(jsonFuncTypeMap, value, "Failed to parse function type: ", &type);
 
 	SetDefault(value, "pop", false);
+	SetDefault(value, "refresh", false);
 
 	switch (type) {
 	case kJsonFuncFolder:
@@ -371,7 +400,7 @@ void JsonMenuValidator::ValidateFunc(Json::Value& value)
 				}
 				else {
 					int formId = GetFormId(modValue.asCString(), id.asCString());
-					value["id"] = HexToString(formId);
+					value["id"] = UInt32ToHexString(formId);
 					value.removeMember("mod");
 
 					SetDefault(value, "wait", false);
@@ -411,8 +440,7 @@ void JsonMenuValidator::ValidateFunc(Json::Value& value)
 		//might accidently use object type
 		if (args->isArray()) {
 			for (auto it = args->begin(); it != args->end(); ++it) {
-				int argType;
-				GetType(jsonArgsTypeMap, *it, "Failed to parse args type: ", &argType);
+				ValidateArgs(*it);
 			}
 		}
 		else {
@@ -490,7 +518,7 @@ void JsonMenuValidator::ValidateTouch(Json::Value& value)
 	//touch slider defaults
 	SetDefault(*touch, "type", "float");
 	SetDefault(*touch, "visible", true);
-	SetDefault(*touch, "mod", 0.01);
+	SetDefault(*touch, "mod", 1.0);
 	SetDefault(*touch, "step", 1.0);
 	SetDefault(*touch, "fixed", 2);
 
@@ -552,13 +580,13 @@ void JsonMenuValidator::ValidateFolderMenu(Json::Value& value)
 void JsonMenuValidator::ValidateListMenu(Json::Value& value)
 {
 	//default sort if exists
-	if (value.isMember("sort")) {
-		int sortType;
-		GetType(jsonSortTypeMap, value, "sort", "Failed to get sort type: ", &sortType);
-	}
-	else {
-		value["sort"] = 0;
-	}
+	//if (value.isMember("sort")) {
+	//	int sortType;
+	//	GetType(jsonSortTypeMap, value, "sort", "Failed to get sort type: ", &sortType);
+	//}
+	//else {
+	//	value["sort"] = 0;
+	//}
 
 	Json::Value* list = GetValue(value, "list", nullptr);
 	if (list) {
@@ -631,6 +659,7 @@ void JsonMenuValidator::ValidateMenuProperties(Json::Value& value)
 		}
 		case kJsonPropSet:
 		case kJsonPropEnter:
+		case kJsonPropInit:
 		case kJsonPropLeave:
 		case kJsonPropNotification:
 		case kJsonPropTitle:
@@ -660,11 +689,221 @@ void JsonMenuValidator::ValidateMenu()
 	case kJsonMenuCheckbox: ValidateCheckboxMenu(*menuValue); break;
 	case kJsonMenuSlider: ValidateSliderMenu(*menuValue); break;
 	case kJsonMenuFolder: ValidateFolderMenu(*menuValue); break;
+	case kJsonMenuFolderCheckbox: ValidateFolderMenu(*menuValue); break;
 	case kJsonMenuAdjustment: ValidateAdjustmentMenu(*menuValue); break;
 	}
 
 	//Defaults
 	SetDefault(*menuValue, "extension", false);
-	SetDefault(*menuValue, "refresh", false);
 	SetDefault(*menuValue, "update", false);
+}
+
+void JsonToGFx(GFxMovieRoot* root, GFxValue* result, const Json::Value& value) {
+	switch (value.type()) {
+	case Json::ValueType::booleanValue:
+		result->SetBool(value.asBool());
+		break;
+	case Json::ValueType::intValue:
+		result->SetInt((SInt32)value.asInt());
+		break;
+	case Json::ValueType::uintValue:
+		result->SetUInt((UInt32)value.asUInt());
+		break;
+	case Json::ValueType::realValue:
+		result->SetNumber(value.asDouble());
+		break;
+	case Json::ValueType::stringValue:
+		result->SetString(value.asCString());
+		break;
+	case Json::ValueType::arrayValue:
+	{
+		root->CreateArray(result);
+
+		for (auto& member : value) {
+			GFxValue arrValue;
+			JsonToGFx(root, &arrValue, member);
+			result->PushBack(&arrValue);
+		}
+
+		break;
+	}
+	case Json::ValueType::objectValue:
+	{
+		root->CreateObject(result);
+
+		for (auto it = value.begin(); it != value.end(); ++it) {
+			GFxValue objValue;
+			JsonToGFx(root, &objValue, *it);
+			result->SetMember(it.key().asCString(), &objValue);
+		}
+
+		break;
+	}
+	}
+}
+
+Json::Value GFxToJson(GFxValue* value)
+{
+	switch (value->GetType()) {
+	case GFxValue::kType_Bool:
+		return Json::Value(value->GetBool());
+	case GFxValue::kType_Int:
+		return Json::Value(value->GetInt());
+	case GFxValue::kType_UInt:
+	{
+		UInt64 uint = value->GetUInt();
+		return Json::Value(uint);
+	}
+	case GFxValue::kType_Number:
+		return Json::Value(value->GetNumber());
+	case GFxValue::kType_String:
+		return Json::Value(value->GetString());
+	case GFxValue::kType_Array:
+	{
+		Json::Value arr(Json::ValueType::arrayValue);
+		GFxToJsonArrVisitor arrVisitor(arr);
+		value->VisitElements(&arrVisitor, 0, value->GetArraySize());
+		return arr;
+	}
+	case GFxValue::kType_Object:
+	{
+		Json::Value obj(Json::ValueType::objectValue);
+		GFxToJsonObjVisitor visitor(obj);
+		value->VisitMembers(&visitor);
+		return obj;
+	}
+	default:
+		return Json::Value(Json::ValueType::nullValue);
+	}
+}
+
+void GFxToJsonObjVisitor::Visit(const char* member, GFxValue* value) {
+	json[member] = GFxToJson(value);
+}
+
+void GFxToJsonArrVisitor::Visit(UInt32 idx, GFxValue* value) {
+	json[(int)idx] = GFxToJson(value);
+}
+
+//enum {
+//	kJsonOverrideAppend = 1,
+//	kJsonOverrideReplace,
+//	kJsonOverrideMerge
+//};
+//
+//SAF::InsensitiveUInt32Map jsonOverridePropertyMap = {
+//	{"appends", kJsonOverrideAppend},
+//	{"replace", kJsonOverrideReplace},
+//	{"merge", kJsonOverrideMerge}
+//};
+
+#define JSON_OVERRIDE_KEY "override"
+#define JSON_OVERRIDE_NAME "name"
+#define JSON_OVERRIDE_APPEND "append"
+#define JSON_OVERRIDE_REPLACE "replace"
+#define JSON_OVERRIDE_MERGE "merge"
+#define JSON_OVERRIDE_INDEX "index"
+
+void OverrideJson(Json::Value& overrides, Json::Value* dst) {
+	if (!overrides.isArray()) {
+		_DMESSAGE("Override is not an array type");
+		return;
+	}
+
+	for (auto& overrider : overrides) {
+
+		//must be overriding an array
+		Json::Value name = overrider.get(JSON_OVERRIDE_NAME, Json::Value());
+		if (name.isString()) {
+			if (dst->isMember(name.asString())) {
+				Json::Value* overidee = &(*dst)[name.asString()];
+				if (overidee->isArray()) {
+
+					//appends first
+					Json::Value append = overrider.get(JSON_OVERRIDE_APPEND, Json::Value());
+					if (append.isArray()) {
+						for (auto& item : append) {
+							overidee->append(item);
+						}
+					}
+
+					//replaces
+					Json::Value replace = overrider.get(JSON_OVERRIDE_REPLACE, Json::Value());
+					if (replace.isArray()) {
+						for (auto& item : replace) {
+							Json::Value index = replace.get(JSON_OVERRIDE_INDEX, Json::Value());
+							if (index.isInt()) {
+								int i = index.asInt();
+								if (i < overidee->size()) {
+									Json::Value replacer = replace.get(JSON_OVERRIDE_REPLACE, Json::Value());
+									(*overidee)[i] = replacer;
+								}
+							}
+						}
+					}
+
+					//merges
+					Json::Value merge = overrider.get(JSON_OVERRIDE_MERGE, Json::Value());
+					if (merge.isArray()) {
+						for (auto& item : merge) {
+							Json::Value index = merge.get(JSON_OVERRIDE_INDEX, Json::Value());
+							if (index.isInt()) {
+								int i = index.asInt();
+								if (i < overidee->size()) {
+									Json::Value merger = merge.get(JSON_OVERRIDE_MERGE, Json::Value());
+									MergeJsons(merger, &(*overidee)[i]);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void MergeJsons(Json::Value& src, Json::Value* dst) {
+	Json::ValueType srcType = src.type();
+
+	//if not same type ignore
+	if (srcType != dst->type()) {
+		return;
+	}
+
+	switch (srcType) {
+	case Json::ValueType::arrayValue:
+	{
+		for (int i = 0; i < src.size(); ++i) 
+		{
+			//if in bounds merge, else add direct
+			if (i < dst->size()) 
+				MergeJsons(src[i], &(*dst)[i]);
+			else 
+				(*dst)[i] = src[i];
+		}
+		break;
+	}
+				
+	case Json::ValueType::objectValue:
+	{
+		for (auto it = src.begin(); it != src.end(); ++it) {
+
+			//check for override
+			if (!_stricmp(it.name().c_str(), JSON_OVERRIDE_KEY))
+				OverrideJson(*it, dst);
+
+			//if member merge
+			else if (dst->isMember(it.name()))
+				MergeJsons(*it, &(*dst)[it.name()]);
+
+			//else add direct
+			else
+				(*dst)[it.name()] = *it;
+		}
+		break;
+	}
+
+	default: *dst = src; 
+		break;
+	}
 }

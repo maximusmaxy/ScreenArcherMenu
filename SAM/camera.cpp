@@ -30,7 +30,7 @@ FreeCameraState* GetFreeCameraState()
 	return nullptr;
 }
 
-void GetCameraGFx(GFxResult& result)
+void GetCamera(GFxResult& result)
 {
 	FreeCameraState* state = GetFreeCameraState();
 	if (!state)
@@ -38,20 +38,20 @@ void GetCameraGFx(GFxResult& result)
 
 	result.CreateValues();
 
-	result.PushValue(&GFxValue(state->x));
-	result.PushValue(&GFxValue(state->y));
-	result.PushValue(&GFxValue(state->z));
-	result.PushValue(&GFxValue(state->yaw * RADIAN_TO_DEGREE));
+	result.PushValue(state->x);
+	result.PushValue(state->y);
+	result.PushValue(state->z);
+	result.PushValue(state->yaw * RADIAN_TO_DEGREE);
 	float adjustedPitch = (state->pitch < MATH_PI) ? state->pitch : (MATH_PI * -2) + state->pitch;
-	result.PushValue(&GFxValue(adjustedPitch * RADIAN_TO_DEGREE));
-	result.PushValue(&GFxValue(GetCameraRoll() * RADIAN_TO_DEGREE));
-	result.PushValue(&GFxValue(*cameraFOV));
-	result.PushValue(&GFxValue(0));
-	result.PushValue(&GFxValue(1));
-	result.PushValue(&GFxValue(2));
-	result.PushValue(&GFxValue(0));
-	result.PushValue(&GFxValue(1));
-	result.PushValue(&GFxValue(2));
+	result.PushValue(adjustedPitch * RADIAN_TO_DEGREE);
+	result.PushValue(GetCameraRoll() * RADIAN_TO_DEGREE);
+	result.PushValue(*cameraFOV);
+	result.PushValue(0);
+	result.PushValue(1);
+	result.PushValue(2);
+	result.PushValue(0);
+	result.PushValue(1);
+	result.PushValue(2);
 }
 
 enum {
@@ -77,9 +77,9 @@ void SetCamera(GFxResult& result, int index, float value)
 	case kCameraYaw: state->yaw = value * DEGREE_TO_RADIAN; break;
 	case kCameraPitch:
 	{
-		float adjustedPitch = state->pitch += value * DEGREE_TO_RADIAN;
+		float adjustedPitch = state->pitch = value * DEGREE_TO_RADIAN;
 		if (adjustedPitch < 0)
-			adjustedPitch += 360;
+			adjustedPitch += (360 * DEGREE_TO_RADIAN);
 		state->pitch = adjustedPitch;
 		break;
 	}
@@ -88,7 +88,7 @@ void SetCamera(GFxResult& result, int index, float value)
 	}
 }
 
-bool SaveCamera(int index)
+bool SaveCameraState(int index)
 {
 	FreeCameraState* state = GetFreeCameraState();
 	if (!state)
@@ -109,7 +109,7 @@ bool SaveCamera(int index)
 	return true;
 }
 
-bool LoadCamera(int index)
+bool LoadCameraState(int index)
 {
 	FreeCameraState* state = GetFreeCameraState();
 	if (!state)
@@ -129,18 +129,10 @@ bool LoadCamera(int index)
 	return true;
 }
 
-bool SaveCameraPath(const char* path)
+bool SaveCameraFile(const char* file)
 {
 	FreeCameraState* state = GetFreeCameraState();
 	if (!state)
-		return false;
-
-	TESObjectREFR* player = *g_player;
-	if (!player)
-		return false;
-
-	TESObjectCELL* cell = player->parentCell;
-	if (!cell)
 		return false;
 
 	Json::Value value;
@@ -158,16 +150,25 @@ bool SaveCameraPath(const char* path)
 	WriteJsonFloat(camera, "fov", *cameraFOV, buffer, "%.06f");
 
 	//Try storing the cell, dw if it doesn't actually work
-	const char* mod = GetModName(cell->formID);
-	if (mod) {
-		int form = GetBaseId(cell->formID);
-		camera["mod"] = mod;
-		camera["form"] = form;
+	TESObjectREFR* player = *g_player;
+	if (player) {
+		TESObjectCELL* parentCell = player->parentCell;
+		if (parentCell) {
+			const char* mod = GetModName(parentCell->formID);
+			if (mod) {
+				Json::Value cell;
+				cell["mod"] = mod;
+				cell["id"] = UInt32ToHexString(GetBaseId(parentCell->formID));
+				camera["cell"] = cell;
+			}
+		}
 	}
 
 	value["camera"] = camera;
 
-	return SAF::WriteJsonFile(path, value);
+	std::string path = GetPathWithExtension(CAMERA_PATH, file, ".json");
+
+	return SAF::WriteJsonFile(path.c_str(), value);
 }
 
 bool LoadCameraFile(const char* filename)
@@ -187,30 +188,101 @@ bool LoadCameraPath(const char* path)
 	if (!SAF::ReadJsonFile(path, value))
 		return false;
 
+	Json::Value camera = value.get("camera", Json::Value());
+	if (!camera.isObject())
+		return false;
+
+	TESObjectREFR* player = *g_player;
+
 	//verify cell if available
-	Json::Value mod = value.get("mod", Json::Value());
-	if (!mod.isNull()) {
-		UInt32 formId = GetFormId(mod.asCString(), value.get("form", 0).asInt());
-		
-		TESObjectREFR* player = *g_player;
-		if (player) {
-			TESObjectCELL* cell = player->parentCell;
-			if (cell) {
-				if (formId != cell->formID)
-					return false;
+	Json::Value cell = camera.get("cell", Json::Value());
+	if (cell.isObject()) {
+		Json::Value mod = cell.get("mod", Json::Value());
+		Json::Value id = cell.get("id", Json::Value());
+		if (mod.isString() && id.isString()) {
+			UInt32 formId = GetFormId(mod.asCString(), HexStringToUInt32(id.asCString()));
+			if (player) {
+				TESObjectCELL* parentCell = player->parentCell;
+				if (parentCell) {
+					if (formId != parentCell->formID)
+						return false;
+				}
 			}
 		}
 	}
 
-	state->x = value.get("x", 0.0f).asFloat();
-	state->y = value.get("y", 0.0f).asFloat();
-	state->z = value.get("z", 0.0f).asFloat();
-	state->yaw = value.get("yaw", 0.0f).asFloat();
-	state->pitch = value.get("pitch", 0.0f).asFloat();
-	SetCameraRoll(value.get("roll", 0.0f).asFloat());
-	*cameraFOV = value.get("fov", 0.0f).asFloat();
+	//use player as default to prevent void outs
+	float x, y, z;
+	if (player) {
+		x = player->pos.x;
+		y = player->pos.y;
+		z = player->pos.z;
+	}
+	else {
+		x = y = z = 0.0f;
+	}
+
+	state->x = ReadJsonFloat(camera, "x", x);
+	state->y = ReadJsonFloat(camera, "y", y);
+	state->z = ReadJsonFloat(camera, "z", z);
+	state->yaw = ReadJsonFloat(camera, "yaw", 0.0f);
+	state->pitch = ReadJsonFloat(camera, "pitch", 0.0f);
+	SetCameraRoll(ReadJsonFloat(camera, "roll", 0.0f));
+	*cameraFOV = ReadJsonFloat(camera, "fov", 70.0f);
 
 	return true;
+}
+
+void LoadCameraGFx(GFxResult& result, const char* path) {
+	FreeCameraState* state = GetFreeCameraState();
+	if (!state)
+		return result.SetError(CAMERA_ERROR);
+
+	Json::Value value;
+	if (!SAF::ReadJsonFile(path, value))
+		return result.SetError("Failed to read camera json file");
+
+	Json::Value camera = value.get("camera", Json::Value());
+	if (!camera.isObject())
+		return result.SetError("Failed to read camera json file");
+
+	TESObjectREFR* player = *g_player;
+
+	//verify cell if available
+	Json::Value cell = camera.get("cell", Json::Value());
+	if (cell.isObject()) {
+		Json::Value mod = cell.get("mod", Json::Value());
+		Json::Value id = cell.get("id", Json::Value());
+		if (mod.isString() && id.isString()) {
+			UInt32 formId = GetFormId(mod.asCString(), HexStringToUInt32(id.asCString()));
+			if (player) {
+				TESObjectCELL* parentCell = player->parentCell;
+				if (parentCell) {
+					if (formId != parentCell->formID)
+						return result.SetError("Cannot load this camera state from this cell");
+				}
+			}
+		}
+	}
+
+	//use player as default to prevent void outs
+	float x, y, z;
+	if (player) {
+		x = player->pos.x;
+		y = player->pos.y;
+		z = player->pos.z;
+	}
+	else {
+		x = y = z = 0.0f;
+	}
+
+	state->x = ReadJsonFloat(camera, "x", x);
+	state->y = ReadJsonFloat(camera, "y", y);
+	state->z = ReadJsonFloat(camera, "z", z);
+	state->yaw = ReadJsonFloat(camera, "yaw", 0.0f);
+	state->pitch = ReadJsonFloat(camera, "pitch", 0.0f);
+	SetCameraRoll(ReadJsonFloat(camera, "roll", 0.0f));
+	*cameraFOV = ReadJsonFloat(camera, "fov", 70.0f);
 }
 
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version)

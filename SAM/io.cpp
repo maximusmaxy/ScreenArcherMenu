@@ -154,7 +154,7 @@ public:
 	{
 		if (header.type == kMenuTypeLights) {
 			//merge the mod id in now
-			UInt32 formId = std::stoul(m1, nullptr, 16) & 0xFFFFFF;
+			UInt32 formId = HexStringToUInt32(m1.c_str()) & 0xFFFFFF;
 
 			UInt32 flags = mod->recordFlags;
 			if (flags & (1 << 9)) {
@@ -166,7 +166,7 @@ public:
 				formId |= mod->modIndex << 24;
 			}
 
-			(*menu)[categoryIndex].second.push_back(std::make_pair(HexToString(formId), m2));
+			(*menu)[categoryIndex].second.push_back(std::make_pair(UInt32ToHexString(formId), m2));
 		}
 		else {
 			(*menu)[categoryIndex].second.push_back(std::make_pair(m1, m2));
@@ -223,7 +223,14 @@ bool LoadJsonMenu(const char* path)
 	std::string stem = std::filesystem::path(path).stem().string();
 
 	JsonMenuValidator validator(stem.c_str(), &value);
-	validator.ValidateMenu();
+
+	try {
+		validator.ValidateMenu();
+	}
+	catch (...) {
+		_Log("Error while trying to validate json menu: ", stem.c_str());
+	}
+
 	if (validator.hasError) {
 		_DMESSAGE(validator.errorStream.str().c_str());
 		return false;
@@ -253,7 +260,13 @@ bool OverrideJsonMenu(const char* path)
 	std::string overrider = stem + " Override";
 
 	JsonMenuValidator validator(overrider.c_str(), &value);
-	validator.ValidateMenu();
+	try {
+		validator.ValidateMenu();
+	}
+	catch (...) {
+		_Log("Error while trying to validate override menu: ", stem.c_str());
+	}
+	
 	if (validator.hasError) {
 		_DMESSAGE(validator.errorStream.str().c_str());
 		return false;
@@ -285,6 +298,16 @@ void LoadJsonMenus()
 	{
 		OverrideJsonMenu(iter.GetFullPath().c_str());
 	}
+}
+
+void ReloadJsonMenus()
+{
+	samManager.ForceQuit();
+
+	menuDataCache.clear();
+	extensionSet.clear();
+
+	LoadJsonMenus();
 }
 
 void LoadMenuFiles() {
@@ -325,14 +348,6 @@ void LoadMenuFiles() {
 	LoadPoseFavorites();
 }
 
-void ReloadJsonMenus()
-{
-	menuDataCache.clear();
-	extensionSet.clear();
-
-	LoadJsonMenus();
-}
-
 Json::Value* GetCachedMenu(const char* name)
 {
 	auto it = menuDataCache.find(name);
@@ -342,7 +357,7 @@ Json::Value* GetCachedMenu(const char* name)
 	return nullptr;
 }
 
-void GetMenuGFx(GFxResult& result, const char* name)
+void GetMenuData(GFxResult& result, const char* name)
 {
 	Json::Value* menu = GetCachedMenu(name);
 	if (!menu)
@@ -351,7 +366,7 @@ void GetMenuGFx(GFxResult& result, const char* name)
 	result.SetMenu(menu);
 }
 
-void GetExtensionMenusGFx(GFxResult& result) {
+void GetExtensionMenus(GFxResult& result) {
 	result.CreateMenuItems();
 
 	//sort the extensions
@@ -400,7 +415,7 @@ void GetSortedFilesAndFolders(const char* path, const char* ext, NaturalSortedMa
 	}
 }
 
-void GetFolderGFx(GFxResult& result, const char* path, const char* ext) {
+void GetFolder(GFxResult& result, const char* path, const char* ext) {
 	result.CreateFolder();
 
 	NaturalSortedMap files;

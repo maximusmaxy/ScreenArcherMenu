@@ -2,7 +2,7 @@
     "type": "list",
     "get": {
         "type": "sam",
-        "name": "GetTongueNodes"
+        "name": "GetTongueBones"
     },
     "set": {
         "type": "menu",

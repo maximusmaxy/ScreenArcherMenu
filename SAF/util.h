@@ -18,7 +18,9 @@ const char* GetModName(UInt32 formId);
 
 float Modulo(float a, float b);
 
-std::string HexToString(UInt32 hex);
+UInt32 HexStringToUInt32(const char* str);
+UInt32 StringToUInt32(const char* str);
+std::string UInt32ToHexString(UInt32 hex);
 UInt32 ComparePostfix(const char* comparer, UInt32 cLength, const char* postfix, UInt32 pLength);
 std::string GetPathWithExtension(const char* folder, const char* path, const char* ext);
 
@@ -27,3 +29,6 @@ constexpr size_t constStrLen(const char* str) {
 }
 
 std::string GetRelativePath(int rootLen, int extLen, const char* path);
+
+void GetLoweredCString(char* buffer, const char* str);
+bool HasInsensitiveSubstring(const char* str, const char* substr);

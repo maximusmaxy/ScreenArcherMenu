@@ -6,7 +6,20 @@
     },
     "set": {
         "type": "sam",
-        "name": "SetLightsGlobal"
+        "name": "SetLightsGlobal",
+        "refresh": true
+    },
+    "init": {
+        "type": "local",
+        "name": "InitAllLightsVisible"
+    },
+    "extra": {
+        "name": "$SAM_Visible",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "ToggleAllLightsVisible"
+        }
     },
     "items": [
         {
@@ -15,7 +28,8 @@
             "touch": {
                 "type": "float",
                 "step": 10.0,
-                "fixed": 2
+                "fixed": 2,
+                "mod": 0.5
             }
         },
         {
@@ -24,7 +38,8 @@
             "touch": {
                 "type": "float",
                 "step": 10.0,
-                "fixed": 2
+                "fixed": 2,
+                "mod": 0.5
             }
         },
         {
@@ -33,7 +48,8 @@
             "touch": {
                 "type": "float",
                 "step": 10.0,
-                "fixed": 2
+                "fixed": 2,
+                "mod": 0.5
             }
         },
         {
@@ -42,7 +58,8 @@
             "touch": {
                 "type": "float",
                 "step": 2.0,
-                "fixed": 2
+                "fixed": 2,
+                "mod": 0.5
             }
         },
         {

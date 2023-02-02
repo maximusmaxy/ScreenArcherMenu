@@ -17,13 +17,13 @@ public:
 };
 
 float* GetMorphPointer();
-void SetFaceMorph(UInt32 categoryIndex, UInt32 morphIndex, UInt32 scale);
+void SetFaceMorph(SInt32 categoryIndex, SInt32 morphIndex, SInt32 scale);
 void SaveMfg(const char* filename);
 bool LoadMfgFile(const char* filename);
 bool LoadMfgPath(const char* filename);
 void ResetMfg();
-void GetMorphCategoriesGFx(GFxResult& result);
-void GetMorphsGFx(GFxResult& result, UInt32 categoryIndex);
-void GetMorphsTongueNodesGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex);
-void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex);
-void LoadFaceMorphsGFx(GFxResult& result, int index, UInt32 value);
+void GetMorphCategories(GFxResult& result);
+void GetMorphs(GFxResult& result, SInt32 categoryIndex);
+void GetMorphsTongueNodes(GFxResult& result);
+//void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex);
+void SetFaceMorphCategory(GFxResult& result, SInt32 index, UInt32 value);

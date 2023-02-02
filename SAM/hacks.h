@@ -1,6 +1,6 @@
 #pragma once
 
-#include "f4se/ScaleformMovie.h"
-#include "f4se/ScaleformValue.h"
+#include "gfx.h"
 
-void GetHacksGFx(GFxMovieRoot* root, GFxValue* hacks);
+void GetHacks(GFxResult& result);
+void SetHack(SInt32 index, bool enabled);

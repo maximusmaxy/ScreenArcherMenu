@@ -22,9 +22,9 @@
 	public class ScreenArcherMenu extends Shared.IMenu
 	{
 		public var state:int = 0;
-		public var currentState:MenuState;
-		public var stateStack:Array;
-		public var sam:Object;
+		public var currentState:Object = {};
+		public var stateStack:Array = [];
+		public var sam:Object = {};
 		
 		public var sliderList:SliderList;
 		public var ButtonHintBar_mc:BSButtonHintBar;
@@ -36,7 +36,6 @@
 		public var rootMenu:String;
 		
 		internal var buttonHintData:Vector.<BSButtonHintData > ;
-		internal var buttonHintExit:BSButtonHintData;
 		internal var buttonHintSave:BSButtonHintData;
 		internal var buttonHintLoad:BSButtonHintData;
 		internal var buttonHintReset:BSButtonHintData;
@@ -44,13 +43,11 @@
 		internal var buttonHintConfirm:BSButtonHintData;
 		internal var buttonHintHide:BSButtonHintData;
 		internal var buttonHintExtra:BSButtonHintData;
-		//internal var buttonHintTarget:BSButtonHintData;
 		
 		internal var closeTimer:Timer;
-		private var delayClose:Boolean = false;
 		
 		public var BGSCodeObj:Object;
-		public var f4seObj:Object;
+		public var f4seObj:Object = {};
 
 		public var swapped:Boolean = false;
 		public var widescreen:Boolean = false;
@@ -60,31 +57,30 @@
 		public var hold:Boolean = false;
 		public var holdType:int = 0;
 		
-		public var papyrusWaiting:Boolean = false;
+		public var isOpen:Boolean = false;
 		
 		public static const NAME_MAIN:String = "Main";
 		
 		public static const STATE_MAIN = 1;
 		public static const STATE_FOLDER = 2;
 		public static const STATE_ENTRY = 3;
-		
-		public static const PAPYRUS_GET = 1;
-		public static const PAPYURS_SET = 2;
-		public static const PAPYRUS_REFRESH = 3;
-		
+
 		public function ScreenArcherMenu()
 		{
 			super();
+			//trace("SAM Constructed");
 			
 			Util.debug = true;
 			widescreen = false;
+			isOpen = true;
 			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
 			Translator.Create(root);
 			
-			initButtonHints();
-			initSliderFuncs();
+			InitButtonHints();
+			InitSliderFuncs();
+			Data.initLatents(LatentTimeout);
 			
 			filenameInput.visible = false;
 			sliderList.bUseShadedBackground = false;
@@ -93,44 +89,51 @@
 			ButtonHintBar_mc.ShadedBackgroundMethod = "Flash";
 			notification.visible = false;
 			
-			state = STATE_MAIN;
-			stateStack = [];
-			
-			currentState = new MenuState(NAME_MAIN, 0, 0, 0);
+			InitState();
 			
 //			if (Util.debug) {
-//				menuName = "Main";
+//				Data.menuName = "Main";
+//				rootMenu = "Main";
 //				PushMenu(NAME_MAIN);
 //			}
 			
-			updateAlignment();
+			UpdateAlignment();
 		}
 		
-		internal function initSliderFuncs():void
+		internal function InitState():void
+		{
+			state = STATE_MAIN;
+			stateStack.length = 0;
+			currentState.menu = NAME_MAIN;
+			currentState.x = 0;
+			currentState.y = 0;
+			currentState.pos = 0;
+		}
+		
+		internal function InitSliderFuncs():void
 		{
 			//Define callback functions for the slider list entries to avoid generating events
 			var functions:EntryFunctions = new EntryFunctions();
 			
-			functions.list = this.selectList;
-			functions.valueInt = this.selectInt;
-			functions.valueFloat = this.selectFloat;
-			functions.checkbox = this.selectCheckbox;
-			functions.checkbox2 = this.selectCheckbox2;
+			functions.list = this.SelectList;
+			functions.valueInt = this.SelectInt;
+			functions.valueFloat = this.SelectFloat;
+			functions.checkbox = this.SelectCheckbox;
+			functions.checkbox2 = this.SelectCheckbox2;
 
 			sliderList.initEntryFunctions(functions);
 		}
 		
-		internal function initButtonHints():void
+		internal function InitButtonHints():void
 		{
 			buttonHintData = new Vector.<BSButtonHintData>();
-			buttonHintBack = new BSButtonHintData("$SAM_Back","Tab","PSN_B","Xenon_B",1,backButton);
-			buttonHintSave = new BSButtonHintData("$SAM_Save","Q","PSN_L1","Xenon_L1",1,saveButton);
-			buttonHintLoad = new BSButtonHintData("$SAM_Load","E","PSN_R1","Xenon_R1",1,loadButton);
-			buttonHintReset = new BSButtonHintData("$SAM_Reset","R","PSN_Y","Xenon_Y",1,resetButton);
-			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,confirmButton);
-			buttonHintHide = new BSButtonHintData("$SAM_Hide","F","PSN_Select","Xenon_Select",1,hideButton);
-			buttonHintExtra = new BSButtonHintData("","X","PSN_X","Xenon_X",1,extraButton);
-			buttonHintData.push(buttonHintExit);
+			buttonHintBack = new BSButtonHintData("$SAM_Back","Tab","PSN_B","Xenon_B",1,BackButton);
+			buttonHintSave = new BSButtonHintData("$SAM_Save","Q","PSN_L1","Xenon_L1",1,SaveButton);
+			buttonHintLoad = new BSButtonHintData("$SAM_Load","E","PSN_R1","Xenon_R1",1,LoadButton);
+			buttonHintReset = new BSButtonHintData("$SAM_Reset","R","PSN_Y","Xenon_Y",1,ResetButton);
+			buttonHintConfirm = new BSButtonHintData("$SAM_Confirm","Enter","PSN_A","Xenon_A",1,ConfirmButton);
+			buttonHintHide = new BSButtonHintData("$SAM_Hide","F","PSN_Select","Xenon_Select",1,HideButton);
+			buttonHintExtra = new BSButtonHintData("","X","PSN_X","Xenon_X",1,ExtraButton);
 			buttonHintData.push(buttonHintBack);
 			buttonHintData.push(buttonHintHide);
 			buttonHintData.push(buttonHintSave);
@@ -141,15 +144,18 @@
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
 		}
 		
-		public function menuOpened(data:Object)
+		public function MenuOpened(data:Object)
 		{
-			this.sam = root.f4se.plugins.ScreenArcherMenu;
-			Data.load(data, this.sam, this.f4seObj, stage);
+			trace("Menu Opened");
 			
-			if (data.title) {
-				updateTitle(data.title);
-			}
+			this.sam = root.f4se.plugins.ScreenArcherMenu;
+			
+			Data.load(data, this.sam, this.f4seObj, stage);
 
+			if (data.title) {
+				titleName = data.title;
+			}
+			
 			var alignment:Boolean = false;
 			if (data.swap) {
 				swapped = data.swap;
@@ -160,9 +166,8 @@
 				alignment = true;
 			}
 			if (alignment) {
-				updateAlignment();
+				UpdateAlignment();
 			}
-
 			this.rootMenu = data.menuName;
 			Data.menuName = data.menuName;
 			
@@ -179,31 +184,55 @@
 				PushMenu(Data.menuName);
 			}
 			
+			isOpen = true;
+			
 			Util.playOk();
 		}
 		
-		public function consoleRefUpdated(data:Object)
+		public function SaveState() {
+			trace("Save state");
+			sliderList.getState(currentState);
+			currentState.menu = Data.menuName;
+
+			var data:Object = {
+				rootMenu: this.rootMenu,
+				menuName: Data.menuName,
+				state: this.state,
+				current: currentState,
+				stack: stateStack,
+				focused: sliderList.focused
+			}
+			
+			Data.saveState(data);
+		}
+		
+		public function ConsoleRefUpdated(data:Object)
 		{
+			trace("Console ref updated");
+			if (data.title)
+				titleName = data.title;
+				
 			if (data.updated) {
 				
 				var isUpdated:Boolean = false;
 				
-				if (Data.menuData.consoleupdate) {
-					var result:GFxResult = GetResult(Data.menuData);
-					if (result) {
-						LoadMenu(Data.menuName, Data.menuData, result);
+				if (Data.menuData.update) {
+					
+					var result:int = this.GetMenuGetLatent(Data.menuData, Data.menuName, Data.LATENT_REFRESH);
+					if (result != Data.RESULT_ERROR) {
 						isUpdated = true;
+					} 
+					if (result == Data.RESULT_SUCCESS) {
+						LoadMenu(Data.menuName, Data.menuData, Data.latentGet.result);
 					}
 				}
 				
 				if (!isUpdated) {
-					resetState();
+					ResetState();
 				}
 
 				Util.playOk();
 			}
-
-			updateTitle(data.title);
 		}
 		
 		public function onF4SEObjCreated(obj:Object)
@@ -231,24 +260,27 @@
 //			processKeyUp(event.keyCode);
 //		}
 
-		public function processKeyDown(keyCode:uint)
+		public function ProcessKeyDown(keyCode:uint)
 		{
+			//trace("Process Key Down", keyCode);
 			//https://www.creationkit.com/fallout4/index.php?title=DirectX_Scan_Codes
-			if (this.isWaiting() || hold)
-				return
+			if (this.IsWaiting() || hold)
+				return true;
+				
+			ProcessKeyRepeat(keyCode);
 
 			switch (keyCode)
 			{
 				case 9://Tab
 				case 277://Pad B
 					if (buttonHintBack.ButtonVisible) {
-						backButton();
+						BackButton();
 					}
 					break;
 				case 13://Enter
 				case 276://Pad A
 					if (buttonHintConfirm.ButtonVisible) {
-						confirmButton();
+						ConfirmButton();
 					} else {
 						sliderList.processInput(SliderList.A);
 					}
@@ -258,7 +290,7 @@
 				case 273://Pad R1
 				case 275://Pad R2
 					if (buttonHintLoad.ButtonVisible) {
-						loadButton();
+						LoadButton();
 					} 
 //					else if (buttonHintTarget.ButtonVisible) {
 //						targetButton();
@@ -268,25 +300,25 @@
 				case 272://Pad L1
 				case 274://Pad L2
 					if (buttonHintSave.ButtonVisible) {
-						saveButton();
+						SaveButton();
 					}
 					break;
 				case 82://R
 				case 279://Pad Y
 					if (buttonHintReset.ButtonVisible) {
-						resetButton();
+						ResetButton();
 					}
 					break;
 				case 88://X
 				case 278://Pad X
 					if (buttonHintExtra.ButtonVisible) {
-						extraButton();
+						ExtraButton();
 					}
 					break;
 				case 70://F
 				case 271://Pad Select
 					if (buttonHintHide.ButtonVisible) {
-						hideButton();
+						HideButton();
 					}
 					break;
 //				case 257://Mouse2
@@ -305,33 +337,36 @@
 			}
 		};
 		
-		public function processKeyHold(keyCode:uint)
+		public function ProcessKeyHold(keyCode:uint)
 		{
+			//trace("Process Key Hold", keyCode);
 			switch (keyCode)
 			{
 				case 37://Left
 				case 65://A
 				case 268://Pad Left
-					onHoldStep(false);
+					OnHoldStep(false);
 					break;
 				case 39://Right
 				case 68://D
 				case 269://Pad Right
-					onHoldStep(true);
+					OnHoldStep(true);
 					break;
 			}
 		}
 		
-		public function processKeyRepeat(keyCode:uint)
+		public function ProcessKeyRepeat(keyCode:uint)
 		{
 			//block while waiting for latent functions
-			if (isWaiting())
+			if (IsWaiting())
 				return;
 			
 			if (hold) {
-				processKeyHold(keyCode);
+				ProcessKeyHold(keyCode);
 				return;
 			}
+			
+			//trace("Process Key Repeat", keyCode);
 			
 			//block inputs during text selection
 			if (Data.selectedText != null)
@@ -370,30 +405,31 @@
 			}
 		}
 		
-		public function processKeyUp(keyCode:uint)
+		public function ProcessKeyUp(keyCode:uint)
 		{
+			//trace("Process Key Up", keyCode);
 			switch (keyCode)
 			{
 				case 69://E
 				case 273://Pad R1
 				case 275://Pad R2
-					disableHold(Data.BUTTON_LOAD);
+					DisableHold(Data.BUTTON_LOAD);
 					break;
 					
 				case 81://Q
 				case 272://Pad L1
 				case 274://Pad L2
-					disableHold(Data.BUTTON_SAVE);
+					DisableHold(Data.BUTTON_SAVE);
 					break;
 					
 				case 82://R
 				case 279://Pad Y
-					disableHold(Data.BUTTON_RESET);
+					DisableHold(Data.BUTTON_RESET);
 					break;
 					
 				case 88://X
 				case 278://Pad X
-					disableHold(Data.BUTTON_EXTRA);
+					DisableHold(Data.BUTTON_EXTRA);
 					break;
 				
 //				case 257://Mouse2
@@ -402,7 +438,7 @@
 			}
 		}
 		
-		public function showNotification(msg:String)
+		public function ShowNotification(msg:String)
 		{
 			if (msg && msg.length > 0) {
 				notification.visible = true;
@@ -412,83 +448,146 @@
 			}
 		}
 		
-		public function hideNotification()
+		public function HideNotification()
 		{
 			notification.visible = false;
 		}
 		
-		public function setFolder(data:Object)
+		public function SetFolder(data:Object)
 		{
+			trace("Set folder");
 			var folderResult:GFxResult = Data.getFolder(data.path, data.ext);
 			if (!CheckError(folderResult))
 				return;
 				
-			loadFolder(data, folderResult);
+			LoadFolder(data, folderResult);
 		}
 		
-		public function loadFolder(data:Object, result:GFxResult):void
+		public function LoadMenuFolder(data:Object, result:GFxResult, name:String):void
 		{
-			Data.setFolder(data, folderResult.result);
+			trace("Load menu folder");
+//			Data.menuName = name;
+		
+			//update enter and leave functions
+			UpdateEnterLeave(Data.menuData, data.enter);
+			Data.menuData = data;
+
+			LoadFolder(data.folder, result);
+			
+			//update init function
+			UpdateInit(data.init);
+		}
+		
+		public function LoadFolder(data:Object, result:GFxResult):void
+		{
+			trace("Load folder");
+			Data.setFolder(data, result);
 			
 			state = STATE_FOLDER;
+			trace("pushing state, length", stateStack.length);
 			stateStack.push(GetState());
 			sliderList.updateState(0);
 			sliderList.update();
 			sliderList.updateSelected(0, 0);
 			
-			updateMenus();
+			UpdateMenus();
 		}
-		
-		public function loadMenuFolder(data:Object, result:GFxResult, name:String):void
-		{
-			Data.menuData = data;
-			Data.menuName = name;
-			loadFolder(data.folder, result);
-		}
-		
-		public function selectFolder(i:int)
+	
+		public function SelectFolder(i:int)
 		{
 			var type:int = Data.getType(i);
 			if (type == Data.ITEM_LIST) {
-				
+				trace("Select folder list");
 				var path:String = Data.getFolderPath(i);
-				var selectResult:GFxResult = callDataFunction(Data.folderData.func, [path]);
+				var selectResult:GFxResult = CallDataFunction(Data.folderData.func, [path]);
 				
 				if (!CheckError(selectResult))
 					return;
 				
 				if (Data.folderData.pop)
-					clearFolder();
+					ClearFolder();
 			} else if (type == Data.ITEM_FOLDER) {
-				
+				trace("Select folder, folder");
 				var folderResult:GFxResult = Data.getFolder(Data.menuFolder[i].path, Data.folderData.ext);
 				
 				if (!CheckError(folderResult))
 					return;
 					
-				Data.pushFolder(i, folderResult.result);
-				
-				stateStack.push(GetState());
-				sliderList.updateState(0);
-				sliderList.update();
-				sliderList.updateSelected(0, 0);
-				
-				updateMenus();
+				PushFolder(Data.menuFolder[i].path, folderResult);
 			}
 		}
 		
-		public function popFolder() 
+		public function SelectFolderCheckbox(i:int, checked:Boolean = true)
 		{
-			var folderPath:String = Data.folderStack.pop();
-			var folderResult:GFxResult = Data.getFolder(folderPath, Data.folderData.ext, true);
-			Data.popFolder(folderResult.result);
+			//trace("Select folder checkbox", i, checked);
+			var type:int = Data.getType(i);
+			if (type == Data.ITEM_FOLDER) {
+				var folderResult:GFxResult = Data.getFolderCheckbox(Data.menuFolder[i].path, Data.folderData.ext, Data.menuData.race);
+				if (!CheckError(folderResult))
+					return;
+				PushFolder(Data.menuFolder[i].path, folderResult);
+			} else {
+				var checkbox:Boolean;
+				
+				if (type == Data.ITEM_CHECKBOX) {
+					checkbox = true;
+					Data.menuFolder[i].checked = checked;
+					
+				} else {
+					checkbox = false;
+					for (var i:int = 0; i < Data.menuFolder.length; i++) {
+						Data.menuFolder[i].checked = false;
+					}
+					Data.menuFolder[i].checked = true;
+				}
+				
+				var path:String = Data.getFolderPath(i);
+				var race:Boolean = Data.menuData.race;
+				
+				var selectResult:GFxResult = sam.LoadSkeletonAdjustment(path, checked, checkbox, race);
+
+				if (!CheckError(selectResult))
+					return;
+
+				if (Data.folderData.pop)
+					ClearFolder();
+			}
+		}
+		
+		public function PushFolder(path:String, result:GFxResult) 
+		{
+			trace("data push folder");
+			Data.pushFolder(path, result.result);
 			
+			trace("pushing folder", stateStack.length)
+			stateStack.push(GetState());
+			sliderList.updateState(0);
+			sliderList.update();
+			sliderList.updateSelected(0, 0);
+			
+			UpdateMenus();
+		}
+		
+		public function PopFolder() 
+		{
+			var folderPath:String = Data.popFolder();
+			trace("Pop folder", folderPath);
+
+			var folderResult:GFxResult = Data.getFolder(folderPath, Data.folderData.ext);
+			
+			//need to force a result on pop fail to prevent locks
+			if (!folderResult || folderResult.type != Data.RESULT_FOLDER)
+				folderResult = Data.popFailFolder;
+
+			Data.updateFolder(folderResult.result);
+
+			trace("popping state, length", stateStack.length);
 			currentState = stateStack.pop();
 			sliderList.updateState(currentState.pos);
 			sliderList.update();
 			sliderList.updateSelected(currentState.x, currentState.y);
-			
-			updateMenus();
+
+			UpdateMenus();
 		}
 		
 //		public function pushFolderCheckbox(id:int, func:Function)
@@ -515,26 +614,44 @@
 //			sliderList.updateSelected(currentState.x, currentState.y);
 //		}
 		
-		public function clearFolder()
+		public function ClearFolder()
 		{
 			//go to first folder then pop to get current state
+			trace("clearing folder, length:", stateStack.length);
 			stateStack.length = stateStack.length - Data.folderStack.length;
+			trace("post length:", stateStack.length);
 			Data.folderStack.length = 0;
 			Data.menuFolder = null;
 			PopMenu();
 		}
 		
+		public function PushState()
+		{
+			trace("Pushing state, length:", stateStack.length);
+			stateStack.push(GetState());
+			currentState.x = 0;
+			currentState.y = 0;
+			sliderList.updateState(0);
+		}
+		
+//		public function PopState()
+//		{
+//			Data.menuFolder = null;
+//			currentState = stateStack.pop();
+//			sliderList.updateState(currentState.pos);
+//		}
+		
 		public function CheckError(result:GFxResult):Boolean
 		{
 			//no result
 			if (!result) {
-				showNotification(Data.error)
+				ShowNotification(Data.error)
 				return false;
 			}
 			
 			//show error message
 			if (result.type == Data.RESULT_ERROR) {
-				showNotification(result.result);
+				ShowNotification(result.result);
 				return false;
 			}
 			
@@ -542,196 +659,373 @@
 			return true;
 		}
 		
-		public function CheckWait(menuResult:GFxResult, getResult:GFxResult, type:int):Boolean
+//		public function CheckWait(menuResult:GFxResult, getResult:GFxResult, type:int):Boolean
+//		{
+//			if (getResult.type != Data.RESULT_WAITING)
+//				return true;
+//				
+//			Data.setPapyrusWaiting(menuResult.result, type);
+//			
+//			Data.papyrusTimer.Timer = new Timer(menuResult.result.get.timeout, 1);
+//			Data.papyrusTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) 
+//			{
+//				ShowNotification("$SAM_PapyrusTimeout");
+//				Util.playCancel();
+//				Data.clearPapyrusWaiting();
+//			});
+//			
+//			Data.papyrusTimer.start();
+//
+//			return false;
+//		}
+		
+		public function GetState():Object
 		{
-			if (getResult.type != Data.RESULT_WAITING)
-				return true;
-				
-			Data.setPapyrusWaiting(menuResult.result, type);
-			
-			Data.papyrusTimer.Timer = new Timer(menuResult.result.get.timeout, 1);
-			Data.papyrusTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) 
-			{
-				showNotification("$SAM_PapyrusTimeout");
-				Util.playCancel();
-				Data.clearPapyrusWaiting();
-			});
-			
-			Data.papyrusTimer.start();
-
-			return false;
+			trace("get state");
+			return {
+				"menu": Data.menuName,
+				"x": sliderList.selectedX,
+				"y": sliderList.selectedY,
+				"pos": sliderList.listPosition
+			};
 		}
 		
-		public function GetState():MenuState
+		public function GetMenuData(name:String):GFxResult
 		{
-			return new MenuState(Data.menuName, sliderList.listPosition, sliderList.selectedX, sliderList.selectedY);
+			trace("Get menu data");
+			var menuResult:GFxResult = Data.getMenu(name);
+			
+			if (!CheckError(menuResult))
+				return null;
+				
+			return menuResult
+		}
+		
+		public function GetMenuGetLatent(data:Object, name:String, type:int):int
+		{
+			trace("Get Menu Get Latent");
+			//get menu result
+			var getResult:GFxResult = GetResult(data);
+			
+			if (!CheckError(getResult))
+				return Data.RESULT_ERROR;
+				
+			//notification and title are optional
+			var notifResult:GFxResult = null;
+			var titleResult:GFxResult = null;
+			
+			if (type != Data.LATENT_REFRESH) {
+				if (data.notification) {
+					notifResult = CallDataFunction(data.notification);
+					if (notifResult && notifResult.type == Data.RESULT_ERROR) //ignore error
+						notifResult = null;
+				}
+	
+				if (data.title) {
+					titleResult = CallDataFunction(data.title);
+					if (titleResult && titleResult.type == Data.RESULT_ERROR)  //ignore error
+						titleResult = null;
+				}
+			}
+			
+			//update latent callbacks
+			Data.latentWaiting = false;
+			Data.updateLatent(Data.latentGet, getResult, data.get);
+			Data.updateLatent(Data.latentNotification, notifResult, data.notification);
+			Data.updateLatent(Data.latentTitle, titleResult, data.title);
+			
+			//halt if any callbacks are waiting
+			if (!Data.startLatents(data, name, type))
+				return Data.RESULT_WAITING;
+			
+			//continue if no callbacks are waiting
+			return Data.RESULT_SUCCESS;
+		}
+		
+		public function LatentTimeout() {
+			trace("Latent timeout");
+			//pop cannot fail
+			if (Data.latentAction == Data.LATENT_POP) {
+				LoadMenu(currentState.menu, Data.popFailMenu.result, Data.popFailGet);
+			} else {
+				ShowNotification("$SAM_PapyrusTimeout");
+			}
+
+			Data.clearLatents();
+		}
+		
+		public function CheckPushFolder(data:Object, result:GFxResult, name:String):Boolean
+		{
+			if (result.type == Data.RESULT_FOLDER ||
+				result.type == Data.RESULT_FOLDERCHECKBOX) {
+				LoadMenuFolder(data, result, name);
+				return false;
+			}
+			
+			return true;
 		}
 		
 		public function PushMenu(name:String)
 		{
-			var menuResult:GFxResult = Data.getMenu(name);
+			trace("Push menu", name);
+			//get menu data
+			var menuData:GFxResult = GetMenuData(name);
+			if (!menuData)
+				return;
+				
+			//get result of get function
+			var getResult:int = GetMenuGetLatent(menuData.result, name, Data.LATENT_PUSH);
+			if (getResult != Data.RESULT_SUCCESS)
+				return;
 			
-			if (!CheckError(menuResult))
+			UpdatePush(menuData.result, Data.latentGet.result, name);
+		}
+		
+		public function UpdatePush(data:Object, result:GFxResult, name:String)
+		{
+			trace("Update Push", name);
+			//check if menu is a folder and push that instead
+			if (!CheckPushFolder(data, result, name))
 				return;
-				
-			var getResult:GFxResult = GetResult(menuResult.result);
+	
+			//push new state
+			PushState();
 			
-			if (!CheckError(getResult))
-				return;
-				
-			if (!CheckWait(menuResult, getResult, PAPYRUS_GET))
-				return;
-				
-//			trace("menuResult");
-//			Util.traceObj(menuResult.result);
-//			trace("getResult");
-//			Util.traceObj(getResult.result);
-				
-			//Check if result is a folder and load that instead
-			if (getResult.type == Data.MENU_FOLDER) {
-				loadMenuFolder(menuResult.result, getResult, name);
-				return;
+			//update enter and leave functions
+			UpdateEnterLeave(Data.menuData, data.enter);
+			
+			//load the menu
+			LoadMenu(name, data, result);
+			
+			//update init function
+			UpdateInit(data.init);
+		}
+		
+		public function LatentCallback(result:GFxResult):void
+		{
+			trace("Latent callback");
+			switch (result.type) {
+				case Data.RESULT_ERROR:
+					ShowNotification(result.result);
+					Data.clearLatents();
+					break;
+				case Data.RESULT_SUCCESS:
+					Data.latentSet.Clear();
+					Data.clearLatents();
+					break;
+				case Data.RESULT_NAMES:
+				case Data.RESULT_VALUES:
+				case Data.RESULT_ITEMS:
+					Data.latentGet.Recieve(result);
+					UpdateLatentGet();
+					break;
+				case Data.RESULT_NOTIFICATION:
+					Data.latentNotification.Recieve(result);
+					UpdateLatentGet();
+					break;
+				case Data.RESULT_TITLE:
+					Data.latentTitle.Recieve(result);
+					UpdateLatentGet();
+					break;
 			}
-			
-			stateStack.push(GetState());
-			currentState.x = 0;
-			currentState.y = 0;
-			sliderList.updateState(0);
-			
-			LoadMenu(name, menuResult.result, getResult);
+		}
+		
+		public function UpdateLatentGet():void
+		{
+			trace("Update Latent Get");
+			if (Data.latentGet.success) {
+				if (Data.latentNotification.waiting || Data.latentTitle.waiting)
+					return;
+				
+				switch (Data.latentAction)
+				{
+					case Data.LATENT_PUSH:
+						UpdatePush(Data.latentMenuData, Data.latentGet.result, Data.latentMenuName);
+						break;
+					case Data.LATENT_POP:
+						UpdatePop(Data.latentMenuData, Data.latentGet.result, Data.latentMenuName);
+						break;
+					case Data.LATENT_REFRESH:
+						UpdateValues();
+						break;
+					case Data.LATENT_RELOAD:
+						UpdateReload();
+						break;
+				}
+				Data.latentWaiting = false;
+			}
 		}
 		
 		public function PopMenu():void
 		{
-			//entry
+			trace("Pop Menu");
 			if (this.filenameInput.visible)
 			{
-				clearEntry();
+				ClearEntry();
 				return;
 			}
 			//folder
 			else if (Data.folderStack.length > 0) {
-				popFolder();
+				PopFolder();
 				return;
 			}
 			//exit
 			else if (this.stateStack.length == 1)
 			{
-				exit();
+				Exit();
+				return;
+			}
+			
+			trace("popping menu state", stateStack.length);
+			currentState = stateStack.pop();
+			var menuData:GFxResult = GetMenuData(currentState.menu);
+			
+			//if menu data get fails, need to use a dummy menu and dummy get result to prevent locks
+			if (!menuData) {
+				LoadMenu(currentState.menu, Data.popFailMenu.result, Data.popFailGet);
 				return;
 			}
 
-			currentState = stateStack.pop();
+			var getResult:int = GetMenuGetLatent(menuData.result, name, Data.LATENT_POP);
 			
-			var menuResult:GFxResult = Data.getMenu(currentState.menu, true);
-			
-			if (!CheckError(menuResult))
+			//If get fails load dummy menu
+			if (getResult == Data.RESULT_ERROR) {
+				LoadMenu(currentState.menu, Data.popFailMenu.result, Data.popFailGet);
 				return;
-			
-			var getResult:GFxResult = GetResult(menuResult.result);
-			
-			if (!CheckError(getResult))
+			}
+				
+			//If waiting, it's safe to return without loading a menu
+			if (getResult == Data.RESULT_WAITING)
 				return;
+				
+			UpdatePop(menuData.result, Data.latentGet.result, currentState.menu);
+		}
+		
+		public function UpdatePop(data:Object, result:GFxResult, name:String)
+		{
+			trace("Update pop");
+			UpdateEnterLeave(Data.menuData, data.enter);
 			
-			Data.menuFolder = null;
-			sliderList.updateState(currentState.pos);
-			LoadMenu(currentState.menu, menuResult.result, getResult);
+			LoadMenu(name, data, result);
+			
+			UpdateInit(data.init);
 		}
 		
 		public function PopMenuTo(name:String):void
 		{
+			trace("Pop menu to");
 			//do not pop from main
 			if (stateStack.length < 2)
 				return;
 				
 			//find stack index
-			var index:int = stateStack.length - 2;
-			while (index >= 0) {
-				var popState:MenuState = stateStack[index];
-				if (popState.menu == name)
-					break;
+			var index:int = stateStack.length;
+			trace("start index", index);
+			while (index > 0) {
 				index--;
+				var menuName:Object = stateStack[index].menu.toLowerCase();
+				if (menuName == name.toLowerCase())
+					break;
 			}
-			
+			trace("found index", index);
 			//menu not found
-			if (index < 0)
+			if (index <= 0)
 				return;
-
-			stateStack.length = stateStack.length - Data.folderStack.length;
-			Data.folderStack.length = 0;
-			Data.menuFolder = null;
 			
 			//go to menu above index and pop
 			Data.folderStack.length = 0;
 			Data.menuFolder = null;
+			
+			trace("state stack length", stateStack.length);
 			stateStack.length = index + 1;
+			trace("new state stack length", stateStack.length);
 			if (filenameInput.visible) {
-				setTextInput(false);
+				SetTextInput(false);
 			}
 			
+			trace("pop menu to complete");
 			PopMenu();
 		}
 		
 		public function ResetState():void
 		{
+			trace("Reset state");
 			state = STATE_MAIN;
-			currentState = new MenuState(NAME_MAIN, 0, 0, 0);
+			currentState.menu = rootMenu;
+			currentState.pos = 0;
+			currentState.x = 0;
+			currentState.y = 0;
+			trace("resetting state", stateStack.length);
 			stateStack.length = 0;
 			Data.folderStack.length = 0;
 
 			if (filenameInput.visible) {
-				setTextInput(false);
+				SetTextInput(false);
 			}
 			
 			PushMenu(NAME_MAIN);
 		}
 		
-		public function LoadMenu(name:String, data:Object, get:GFxResult):void
+		public function UpdateEnterLeave(previousMenuData:Object, enterData:Object):void
 		{
-			//leave previous menu
-			if (Data.menuData && Data.menuData.leave) {
-				callDataFunction(Data.menuData.leave);
-			}
-			
-			//enter new menu
-			if (data.enter) {
-				callDataFunction(data.enter);
-			}
-			
-			Data.updateMenu(name, data, get);
-	
-			state = STATE_MAIN;
-			Util.unselectText();
-			sliderList.update();
-			sliderList.updateSelected(currentState.x, currentState.y);
-			updateMenus();
+			if (previousMenuData && previousMenuData.leave)
+				CallDataFunction(previousMenuData.leave);
+
+			if (enterData)
+				CallDataFunction(enterData);
 		}
 		
-		public function updateMenus()
+		public function UpdateInit(initData:Object):void
 		{
-			updateButtonHints();
-			updateNotification();
-			updateTitle();
+			if (initData)
+				CallDataFunction(initData);
+		}
+		
+		public function LoadMenu(name:String, data:Object, get:GFxResult):void
+		{
+			trace("Load Menu", data, get);
+			Data.updateMenu(name, data, get);
+			state = STATE_MAIN;
+			Util.unselectText();
+			trace("slider list update");
+			sliderList.updateState(0);
+			sliderList.update();
+			sliderList.updateSelected(currentState.x, currentState.y);
+			trace("update menus");
+			UpdateMenus();
+			Data.latentGet.Clear();
+		}
+		
+		public function UpdateMenus()
+		{
+			trace("Update Menus");
+			UpdateButtonHints();
+			UpdateNotification();
+			UpdateTitle();
 		}
 		
 		public function GetResult(menu:Object):GFxResult
 		{
+			trace("Get Result");
 			switch (menu.type) {
-				case Data.MENU_MAIN:
-					return Data.resultSuccess;
 				case Data.MENU_MIXED:
 				case Data.MENU_CHECKBOX:
-				case Data.MENU_SLIDERS:
-					return callDataFunction(menu.get);
+				case Data.MENU_SLIDER:
+				case Data.MENU_ADJUSTMENT:
+					return CallDataFunction(menu.get);
 				case Data.MENU_LIST:
 					//optional
 					if (menu.get) {
-						return callDataFunction(menu.get);
+						return CallDataFunction(menu.get);
 					} else {
 						return Data.resultSuccess;
 					}
 				case Data.MENU_FOLDER:
 					return Data.getFolder(menu.folder.path, menu.folder.ext);
+				case Data.MENU_FOLDERCHECKBOX:
+					return Data.getFolderCheckbox(menu.folder.path, menu.folder.ext, menu.race);
+				case Data.MENU_MAIN:
+					return Data.resultSuccess;
 			}
 			
 			return null;
@@ -739,56 +1033,110 @@
 		
 		public function CallSet(... args)
 		{
-
+			trace("Call Set");
 			var data:Object = GetSetData(args);
 
 			if (!data)
 				return;
 
-			var result:GFxResult = callDataFunction(data, args);
-
-			if (!CheckError(result))
-				return;
-				
+			var result:GFxResult = CallDataFunction(data, args);
+			
+			if (result) {
+				if (result.type == Data.RESULT_ERROR) {
+					ShowNotification(result.result);
+					return;
+				} else if (result.type == Data.RESULT_WAITING) {
+					//Wait for latent function only if specified
+					if (data.wait) {
+						Data.latentSet.Init(data.timeout)
+						Data.latentWaiting = true;
+						Data.latentSet.Start();
+						Data.latentAction = Data.LATENT_SET;
+						return;
+					}
+				}
+			} else {
+				ShowNotification(Data.error);
+			}
+			
+			UpdateDataFunction(data);
+		}
+		
+		public function UpdateDataFunction(data:Object)
+		{
+			trace("Update Data Function");
 			if (data.pop) {
 				PopMenu();
 			} else if (data.popto) {
 				PopMenuTo(data.popto);
-			} else if (Data.menuData.refresh) {
+			} else if (data.update) {
+				ReloadMenu();
+			} else if (data.refresh) {
 				RefreshValues();
 			}
 		}
 		
 		public function RefreshValues() {
-			var result:GFxResult = GetResult(Data.menuData);
-				
-			if (!CheckError(result))
+			trace("Refresh Values");
+			var getResult:int = GetMenuGetLatent(Data.menuData, Data.menuName, Data.LATENT_REFRESH);
+			if (getResult != Data.RESULT_SUCCESS)
 				return;
-				
-			if (!CheckWait(Data.menuData, result, PAPYRUS_REFRESH))
-				return;
-				
-			Data.updateValues(result);
+			
+			UpdateValues();
+		}
+		
+		public function UpdateValues()
+		{
+			trace("UpdateValues");
+			Data.updateValues(Data.latentGet.result);
 			sliderList.updateValues();
+			Data.latentGet.Clear();
 		}
 		
 		public function ReloadMenu() {
-			var result:GFxResult = GetResult(Data.menuData);
-			
-			if (!CheckError(result))
+			if (this.state == STATE_FOLDER) {
+				ReloadFolder();
 				return;
-				
-			if (!CheckWait(Data.menuData, result, PAPYRUS_GET))
+			}
+			
+			trace("Reload Menu");
+			var getResult:int = GetMenuGetLatent(Data.menuData, Data.menuName, Data.LATENT_RELOAD);
+			if (getResult != Data.RESULT_SUCCESS)
 				return;
 			
+			UpdateReload();
+		}
+		
+		public function UpdateReload()
+		{
+			trace("Update reload");
+			Data.updateMenu(Data.menuName, Data.menuData, Data.latentGet.result);
+			Data.latentGet.Clear();
 			sliderList.storeSelected();
-			Data.updateMenu(Data.menuName, Data.menuData, result);
 			sliderList.update();
 			sliderList.restoreSelected();
+			UpdateMenus();
+		}
+		
+		public function ReloadFolder()
+		{
+			trace("reload folder");
+			var result:GFxResult;
+			if (Data.menuType == Data.MENU_FOLDERCHECKBOX) {
+				result = Data.getFolderCheckbox(Data.folderData.path, Data.folderData.ext, Data.menuData.race);
+			} else {
+				result = Data.getFolder(Data.folderData.path, Data.folderData.ext);
+			}
+			
+			if (!CheckResult(result))
+				return;
+			
+			LoadMenuFolder(Data.menuData, result, Data.menuName);
 		}
 		
 		public function GetSetData(args:Array):Object
 		{
+			trace("Get Set Data");
 			switch (Data.menuType) {
 				case Data.MENU_MIXED:
 					if (Data.menuData.items[args[0]].func)
@@ -807,8 +1155,15 @@
 			return null;
 		}
 		
-		public function selectList(i:int) 
+		public function SetLocalVariable(name:String, value:Object)
 		{
+			trace("Set local variable", name, value);
+			Data.locals[name] = value;
+		}
+		
+		public function SelectList(i:int) 
+		{
+			trace("Select List", i);
 			switch (Data.menuType) {
 				case Data.MENU_LIST:
 				case Data.MENU_MIXED:
@@ -819,37 +1174,42 @@
 					PushMenu(Data.menuData.values[i])
 					break;
 				case Data.MENU_FOLDER:
-					selectFolder(i);
+					SelectFolder(i);
 					break;
 				case Data.MENU_FOLDERCHECKBOX:
-					selectFolderCheckbox(i);
+					SelectFolderCheckbox(i);
 					break;
 			}
 		}
 		
-		public function selectInt(i:int, value:int)
+		public function SelectInt(i:int, value:int)
 		{
+			trace("Select Int", i, value);
 			Data.menuValues[i] = value;
 			CallSet(i, value);
 		}
 		
-		public function selectFloat(i:int, value:Number)
+		public function SelectFloat(i:int, value:Number)
 		{
-			Data.menuValues[i] = value;
+			trace("Select Float", i, value);
+			var type:int = Data.getType(i);
+			if (type != Data.ITEM_TOUCH) {
+				Data.menuValues[i] = value;
+			}
 			CallSet(i, value);
 		}
 		
-		public function selectCheckbox(i:int, checked:Boolean = false)
+		public function SelectCheckbox(i:int, checked:Boolean = false)
 		{
+			trace("Select Checkbox", i, checked);
 			switch (Data.menuType) 
 			{
 				case Data.MENU_CHECKBOX:
-				case Data.MENU_FOLDERCHECKBOX:
 					Data.menuValues[i] = checked;
 					CallSet(i, checked);
 					break;
-				case Data.MENU_ADJUSTMENT:
-					CallSet(i);
+				case Data.MENU_FOLDERCHECKBOX:
+					SelectFolderCheckbox(i, checked);
 					break;
 				case Data.MENU_MIXED: 
 					switch(Data.getType(i)) 
@@ -861,62 +1221,64 @@
 					break;
 				case Data.MENU_ADJUSTMENT:
 					if (Data.locals.order) {
-						callDatafunction(menuData.adjustment.down, [i]);
+						CallDataFunction(Data.menuData.adjustment.down, [i]);
 					} else {
-						callDataFunction(menuData.adjustment.edit, [i, Data.menuValues[i]]);
+						CallDataFunction(Data.menuData.adjustment.edit, [i, Data.menuValues[i]]);
 					}
 					break;
 			}
 		}
 		
-		public function selectCheckbox2(i:int, checked:Boolean = false)
+		public function SelectCheckbox2(i:int, checked:Boolean = false)
 		{
+			trace("Select Checkbox2", i, checked);
 			if (Data.locals.order) {
-				callDataFunction(menuData.adjustment.up, [i]);
+				CallDataFunction(Data.menuData.adjustment.up, [i]);
 			} else {
-				callDataFunction(menuData.adjustment.remove, [i, Data.menuValues[i]]);
+				CallDataFunction(Data.menuData.adjustment.remove, [i, Data.menuValues[i]]);
 				ReloadMenu();
 			}
 		}
 		
 		//Prevent user input when waiting for return values
-		public function isWaiting():Boolean {
-			return Data.papyrusWaiting;
+		public function IsWaiting():Boolean {
+			return Data.latentWaiting || !isOpen;
 		}
 
-		public function PapyrusResult(result:GFxResult):void
-		{
-			if (Data.papyrusWaiting)
-			{
-				if (!CheckError(result)) {
-					Util.playCancel();
-					Data.clearPapyrusWaiting();
-					return;
-				}
-				
-				switch (Data.papyrusType) {
-					case PAPYRUS_GET:
-						stateStack.push(GetState());
-						currentState.x = 0;
-						currentState.y = 0;
-						sliderList.updateState(0);
-				
-						LoadMenu(name, Data.papyrusMenuData, result);
-						break;
-						
-					case PAPYRUS_REFRESH:
-						sliderList.updateValues();
-						break;
-						
-					//case PAPYRUS_SET: //ignore
-				}
-				
-				Data.clearPapyrusWaiting();
-			}
-		}
+//		public function PapyrusResult(result:GFxResult):void
+//		{
+//			if (Data.papyrusWaiting)
+//			{
+//				if (!CheckError(result)) {
+//					Util.playCancel();
+//					Data.clearPapyrusWaiting();
+//					return;
+//				}
+//				
+//				switch (Data.papyrusType) {
+//					case PAPYRUS_GET:
+//						stateStack.push(GetState());
+//						currentState.x = 0;
+//						currentState.y = 0;
+//						sliderList.updateState(0);
+//				
+//						LoadMenu(name, Data.papyrusMenuData, result);
+//						break;
+//						
+//					case PAPYRUS_REFRESH:
+//						sliderList.updateValues();
+//						break;
+//						
+//					//case PAPYRUS_SET: //ignore
+//				}
+//				
+//				Data.clearPapyrusWaiting();
+//			}
+//		}
 		
-		public function callDataFunction(data:Object, args:Array = null):GFxResult
+		public function CallDataFunction(data:Object, args:Array = null):GFxResult
 		{
+			trace("Call Data Function");
 			if (data["var"]) {
 				if (data.all) {
 					Data.locals[data["var"]] = Util.shallowCopyArray(Data.menuValues);
@@ -949,7 +1311,16 @@
 					args.push(data.func);
 					break;
 				case Data.FUNC_MENU:
+					trace("calling menu func");
 					PushMenu(data.name);
+					return Data.resultSuccess;
+				case Data.FUNC_ENTRY: 
+					trace("calling entry func");
+					SetEntry(data.entry);
+					return Data.resultSuccess;
+				case Data.FUNC_FOLDER:
+					trace("calling folder func");
+					SetFolder(data.folder);
 					return Data.resultSuccess;
 			}
 
@@ -958,17 +1329,20 @@
 					args = [];
 				}
 				
-				for (var i:int = 0; i < args.length; i++) {
+				for (var i:int = 0; i < data.args.length; i++) {
 					switch (data.args[i].type) {
 						case Data.ARGS_VAR:
 							var property:String = data.args[i].name;
 							//need to use hasOwnProperty because of falsy values
 							if (Data.locals.hasOwnProperty(property)) {
 								args.push(Data.locals[property]);
+							} else {
+								Data.error = ("Local property not found: " + property);
+								return null;
 							}
 							break;
 						case Data.ARGS_INDEX:
-							args.push(menuValues[data.args[i]]);
+							args.push(Data.menuValues[data.args[i].index]);
 							break;
 						case Data.ARGS_VALUE:
 							args.push(data.args[i].value)
@@ -976,85 +1350,125 @@
 					}
 				}
 			}
-
+			
+			trace("calling data function");
+			Util.traceObj(data);
+			trace("args");
+			Util.traceObj(args);
+			
 			switch (data.type)
 			{
-				case Data.FUNC_SAM: return callSamFunction(data.name, args);
-				case Data.FUNC_LOCAL: return callLocalFunction(data.name, args);
-				case Data.FUNC_FORM: return callPapyrusForm(data, args);
-				case Data.FUNC_GLOBAL: return callPapyrusGlobal(args, data.wait);
-				case Data.FUNC_ENTRY: 
-				{
-					//Store data and args and open text entry
-					Data.entryData = data.entry.func;
-					Data.entryArgs = args;
-					
-					setTextInput(true);
-					updateMenus();
-
-					return Data.resultSuccess;
-				}
-				case Data.FUNC_FOLDER:
-				{
-					setFolder(data.folder);
-
-					return Data.resultSuccess;
-				}
+				case Data.FUNC_SAM: return CallSamFunction(data.name, args);
+				case Data.FUNC_LOCAL: return CallLocalFunction(data.name, args);
+				case Data.FUNC_FORM: return CallPapyrusForm(data, args);
+				case Data.FUNC_GLOBAL: return CallPapyrusGlobal(args);
+				case Data.FUNC_DEBUG: return CallDebugFunction(data.name, args);
 			}
 			
 			Data.error = "Could not resolve function type";
 			return null;
 		}
 		
-		public function callSamFunction(name:String, args:Array):GFxResult 
+		public function CallSamFunction(name:String, args:Array):GFxResult 
 		{
-			if (this.sam[name])
-				return Util.callFuncArgs(this.sam[name], args);
-			else if (Util.debug)
+			try {
+				var result:GFxResult = Util.callFuncArgs(this.sam[name], args);
+				
+				if (result)
+					return result;
+			} catch (e:Error) { 
+				Data.error = "$SAM_SamFunctionMissing";
+				trace(e.message)
+			}
+			
+			if (Util.debug)
 				return Data.getSamDebugFunction(name);
 			
-			Data.error = "$SAM_SamFunctionMissing";
 			return null;
 		}
 		
-		public function callLocalFunction(name:String, args:Array) {
-			if (this[name])
-				return Util.callFuncArgs(this[name], args);
-			else if (Util.debug)
-				return getLocalDebugFunction(name);
+		public function CallLocalFunction(name:String, args:Array):GFxResult
+		{
+			try {
+				var result:GFxResult = Util.callFuncArgs(this[name], args);
+				
+				if (result)
+					return result;
+			}
+			catch (e:Error) { 
+				Data.error = "$SAM_LocalFunctionMissing";
+				trace(e.message)
+			}
 
-			Data.error = "$SAM_LocalFunctionMissing";
 			return null;
 		}
 		
 		//Calls a papyrus global function
-		public function callPapyrusForm(data:Object, args:Array):GFxResult
+		public function CallPapyrusForm(data:Object, args:Array):GFxResult
 		{
+			var result:GFxResult;
 			try {
-				return this.sam.CallPapyrusForm(data.id, data.func, args);
+				result = this.sam.CallPapyrusForm(data.id, data.func, args);
+				if (result)
+					return result;
 			}
-			catch (e:Error) {}
+			catch (e:Error) { trace(e.message) }
 			
 			Data.error = "$SAM_PapyrusTimeout";
 			return null;
 		}
 		
-		public function callPapyrusGlobal(args:Array, timeout:int):GFxResult
+		public function CallPapyrusGlobal(args:Array):GFxResult
 		{
-			try {
-				return Util.callFuncArgs(this.f4seObj.CallGlobalFunctionNoWait, args); 			
-			} 
-			catch (e:Error) {}
+			
+			var result:GFxResult = Util.callFuncArgs(this.f4seObj.CallGlobalFunctionNoWait, args); 			
+			if (result)
+				return result;
 			
 			Data.error = "$SAM_PapyrusTimeout";
 			return null;
 		}
 		
-		public function getLocalDebugFunction(name:String):Object
+		public function CallDebugFunction(name:String, args:Array):GFxResult
 		{
-			return null;
+			var func:Object = GetLocalDebugFunction(name);
+			if (func) {
+				Util.callFuncArgs(func, args);
+			}
+			return Data.resultSuccess;
 		}
 		
+		public function GetLocalDebugFunction(name:String)
+		{
+			switch (name)
+			{
+				
+			case "SetEyes": return (function(index:int, value:Number, left:Number, right:Number) {
+				trace(index, value, left, right);
+			});
+			
+			case "LoadAdjustment": return (function(name:String) {
+				trace(name);
+			});
+			
+			case "SaveAdjustment": return (function(name:String) {
+				trace(name);
+			});
+			
+			case "SetFaceMorphCategory": return (function(index:int, value:int) {
+				 if (index < 4) {
+					 PushMenu("FaceMorphSliders");
+				 } else {
+					 PushMenu("TongueBones");
+				 }
+			});
+				
+			}
+			
+			error = "$SAM_LocalFunctionMissing";
+			return null;
+		}
+
 //		internal function updateState()
 //		{
 //			
@@ -1106,7 +1520,7 @@
 //				case RENAMEADJUSTMENT_STATE:
 //				case SAVELIGHT_STATE:
 //				case RENAMELIGHT_STATE:
-//					setTextInput(true);
+//					SetTextInput(true);
 //					break;
 //				case EYE_STATE:
 //					Data.loadEyes();
@@ -1244,11 +1658,20 @@
 //			sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
 //			sliderList.restoreSelected();
 //		}
+//
+//		public function NewAdjustment():void
+//		{
+//			try {
+//				sam.NewAdjustment();
+//			}
+//			catch (e:Error) {}
+//			ReloadMenu();
+//		}
 		
-		public function MoveAdjustmentDown(id:int):void
+		public function MoveAdjustmentDown(id:int):GFxResult
 		{
 			if (Data.moveAdjustment(id, true)) {
-				var result:GFxResult = callDataFunction(Data.menuData.get);
+				var result:GFxResult = CallDataFunction(Data.menuData.get);
 				if (result && result.type != Data.RESULT_ERROR) {
 					Data.updateMenu(Data.menuName, Data.menuData, result);
 					sliderList.storeSelected();
@@ -1259,12 +1682,14 @@
 					sliderList.restoreSelected();
 				}
 			}
+			
+			return Data.resultSuccess;
 		}
 		
-		public function MoveAdjustmentUp(id:int):void
+		public function MoveAdjustmentUp(id:int):GFxResult
 		{
 			if (Data.moveAdjustment(id, false)) {
-				var result:GFxResult = callDataFunction(Data.menuData.get);
+				var result:GFxResult = CallDataFunction(Data.menuData.get);
 				if (result && result.type != Data.RESULT_ERROR) {
 					Data.updateMenu(Data.menuName, Data.menuData, result);
 					sliderList.storeSelected();
@@ -1275,6 +1700,8 @@
 					sliderList.restoreSelected();
 				}
 			}
+			
+			return Data.resultSuccess;
 		}
 		
 //		public function selectCategory(id:int):void
@@ -1335,27 +1762,43 @@
 //			}
 //		}
 		
-		internal function confirmButton():void
+		internal function ConfirmButton():void
 		{
 			if (this.filenameInput.visible) 
 			{
-				var result:GFxResult = callDataFunction(Data.entryData, Data.entryArgs);
-				CheckError(result);
+				var func:Object = Data.entryData.func;
+				var result:GFxResult = CallDataFunction(func, [this.filenameInput.Input_tf.text]);
 				
-				clearEntry();
-				Util.playOk();
+				ClearEntry();
+				
+				if (CheckError(result))	
+					Util.playOk();
+				else
+					Util.playCancel();
+				
+				//check for these only, ignore pops
+				if (func.refresh)
+					RefreshValues();
+				else if (func.update)
+					ReloadMenu();
 			}
 		}
 		
-		internal function clearEntry():void
+		public function SetEntry(data:Object):void
 		{
-			setTextInput(false);
+			Data.entryData = data;
+			SetTextInput(true);
+			UpdateMenus();
+		}
+		
+		public function ClearEntry():void
+		{
+			SetTextInput(false);
 			Data.entryData = null;
-			Data.entryArgs = null;
-			updateMenus();
+			UpdateMenus();
 		}
 
-//		internal function confirmButton():void
+//		internal function ConfirmButton():void
 //		{
 //			switch (this.state) {
 //				case SAVEMFG_STATE: Data.saveMfg(filenameInput.Input_tf.text); break;
@@ -1365,12 +1808,12 @@
 //				case SAVELIGHT_STATE: Data.saveLights(filenameInput.Input_tf.text); break;
 //				case RENAMELIGHT_STATE: Data.renameLight(filenameInput.Input_tf.text); break;
 //			}
-//			setTextInput(false);
+//			SetTextInput(false);
 //			PopMenu();
 //			Util.playOk();
 //		}
 //		
-		internal function setTextInput(enabled:Boolean)
+		internal function SetTextInput(enabled:Boolean)
 		{
 			if (enabled)
 			{
@@ -1382,7 +1825,7 @@
 				filenameInput.Input_tf.maxChars = 100;
 				stage.focus = filenameInput.Input_tf;
 				filenameInput.Input_tf.setSelection(0, filenameInput.Input_tf.text.length);
-				allowTextInput(true);
+				AllowTextInput(true);
 			}
 			else
 			{
@@ -1392,14 +1835,14 @@
 				filenameInput.Input_tf.setSelection(0,0);
 				filenameInput.Input_tf.selectable = false;
 				filenameInput.Input_tf.maxChars = 0;
-				allowTextInput(false);
+				AllowTextInput(false);
 				filenameInput.visible = false;
 				sliderList.visible = true;
 				stage.focus = sliderList;
 			}
 		}
 
-//		internal function saveButton():void
+//		internal function SaveButton():void
 //		{
 //			switch (this.state) {
 //				case MORPH_STATE:
@@ -1411,7 +1854,7 @@
 //			}
 //		}
 //
-//		internal function loadButton():void
+//		internal function LoadButton():void
 //		{
 //			switch (this.state) {
 //				case MORPH_STATE: 
@@ -1448,7 +1891,7 @@
 //		internal function selectIdle(id:int)
 //		{
 //			Data.playIdle(id);
-//			showNotification(Data.menuOptions[id]);
+//			ShowNotification(Data.menuOptions[id]);
 //		}
 //		
 //		internal function selectPose(id:int, enabled:Boolean)
@@ -1521,11 +1964,11 @@
 //					break;
 //				case 1://alignment
 //					swapped = enabled;
-//					updateAlignment();
+//					UpdateAlignment();
 //					break;
 //				case 2://widescreen
 //					widescreen = enabled;
-//					updateAlignment();
+//					UpdateAlignment();
 //					break;
 //				case 3://autoplay
 //					Data.autoPlay = enabled;
@@ -1621,44 +2064,52 @@
 //			pushState(TRANSFORM_STATE);
 //		}
 		
-		public function resetButton()
+		public function ResetButton()
 		{
-			callHotkeyFunction(Data.BUTTON_RESET);
+			CallHotkeyFunction(Data.BUTTON_RESET);
 		}
 		
-		public function extraButton()
+		public function ExtraButton()
 		{
-			callHotkeyFunction(Data.BUTTON_EXTRA);
+			CallHotkeyFunction(Data.BUTTON_EXTRA);
 		}
 		
-		public function saveButton()
+		public function SaveButton()
 		{
-			callHotkeyFunction(Data.BUTTON_SAVE);
+			CallHotkeyFunction(Data.BUTTON_SAVE);
 		}
 		
-		public function loadButton()
+		public function LoadButton()
 		{
-			callHotkeyFunction(Data.BUTTON_LOAD);
+			CallHotkeyFunction(Data.BUTTON_LOAD);
 		}
 		
-		public function callHotkeyFunction(type:int)
+		public function CallHotkeyFunction(type:int)
 		{
-			var data:Object = Data.getHotkey(type);
+			trace("Call hotkey function", this.state, type);
+			Util.traceObj(Data.folderData);
+			var data:Object = (this.state == STATE_FOLDER ? Data.getFolderHotkey(type) : Data.getHotkey(type));
+			Util.traceObj(data);
 			if (!data)
 				return;
 			
 			switch (data.type) {
 				case Data.HOTKEY_FUNC:
-					var result:GFxResult = callDataFunction(data);
-					CheckError(result);
+					var result:GFxResult = CallDataFunction(data.func);
+					if (CheckError(result)) {
+						UpdateDataFunction(data.func);
+						Util.playOk();
+					} else  {
+						Util.playCancel();
+					}
 					break;
 				case Data.HOTKEY_HOLD:
-					enableHold(data.hold, type);
+					EnableHold(data.hold, type);
 					break;
 			}
 		}
 
-//		public function resetButton():void
+//		public function ResetButton():void
 //		{
 //			switch (this.state) {
 //				case ADJUSTMENT_STATE:
@@ -1676,7 +2127,7 @@
 //				case IDLECATEGORY_STATE:
 //				case IDLE_STATE:
 //					Data.resetIdle();
-//					hideNotification();
+//					HideNotification();
 //					break;
 //				case POSEEXPORT_STATE:
 //				case POSEPLAY_STATE:
@@ -1707,7 +2158,7 @@
 //			Util.playOk();
 //		}
 
-		internal function backButton():void
+		internal function BackButton():void
 		{
 			PopMenu();
 			Util.playCancel();
@@ -1744,28 +2195,29 @@
 //			}
 //		}
 		
-		public function exit():void
+		public function Exit():void
 		{
-			Util.unselectText();
+			isOpen = false;
+			CleanUp();
 			if (!saved) {
 				Data.clearState();
 			}
-//			if (Data.delayClose)
-//			{
-				//delay close event so it doesn't close multiple menus at once
-				closeTimer = new Timer(100,1);
-				closeTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) {
-					close();
-				});
-				closeTimer.start();
-//			}
-//			else
-//			{
-//				close();
-//			}
+			
+			closeTimer = new Timer(100,1);
+			closeTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) {
+				try {
+					this.BGSCodeObj.CloseMenu("ScreenArcherMenu");
+				} 
+				catch (e:Error) 
+				{
+					Close();
+				}
+			});
+			
+			closeTimer.start();
 		}
 		
-		public function close()
+		public function Close()
 		{
 			try {
 				this.sam.SamCloseMenu("ScreenArcherMenu");
@@ -1776,7 +2228,7 @@
 			}
 		}
 
-//		public function extraButton():void
+//		public function ExtraButton():void
 //		{
 //			switch(this.state)
 //			{
@@ -1820,7 +2272,7 @@
 //				case IDLECATEGORY_STATE: //z-rotate
 //				case IDLE_STATE:
 //				case POSEPLAY_STATE:
-//					enableHold(HELD_X, onZMove, onZLeft, onZRight);
+//					EnableHold(HELD_X, onZMove, onZLeft, onZRight);
 //					break;
 //				case LIGHTSELECT_STATE: //visible
 //				case LIGHTSETTINGS_STATE:
@@ -1832,12 +2284,12 @@
 //			}
 //		}
 
-		public function enableHold(data:Object, type:int)
+		public function EnableHold(data:Object, type:int)
 		{
 			if (!hold) {
 				hold = true;
 				holdType = type;
-				stage.addEventListener(MouseEvent.MOUSE_MOVE, move);
+				stage.addEventListener(MouseEvent.MOUSE_MOVE, OnHoldMove);
 				Data.holdData = data;
 				Data.setCursorVisible(false);
 				Data.storeCursorPos();
@@ -1845,10 +2297,10 @@
 			}
 		}
 		
-		public function disableHold(type:int) {
+		public function DisableHold(type:int) {
 			if (hold && holdType == type) {
 				hold = false;
-				stage.removeEventListener(MouseEvent.MOUSE_MOVE, move);
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, OnHoldMove);
 				Data.holdData = null;
 				Data.setCursorVisible(true);
 				Data.endCursorDrag();
@@ -1856,18 +2308,18 @@
 			}
 		}
 		
-		public function onHoldMove(event:MouseEvent) {
-			var delta:int = Data.updateCursorDrag();
-			var result:GFxResult = callDataFunction(Data.holdData, delta * mod);
-			CheckError(result);
+		public function OnHoldMove(event:MouseEvent) {
+			var dif:int = Data.updateCursorDrag();
+			var result:GFxResult = CallDataFunction(Data.holdData.func, [dif * Data.holdData.mod]);
+			//CheckError(result);
 		}
 		
-		public function onHoldStep(inc:Boolean) {
-			var result:GFxResult = callDataFunction(Data.holdData, (inc ? Data.holdData.step : -Data.holdData.step));
-			CheckError(result);
+		public function OnHoldStep(inc:Boolean) {
+			var result:GFxResult = CallDataFunction(Data.holdData.func, [(inc ? Data.holdData.step : -Data.holdData.step)]);
+			//CheckError(result);
 		}
 		
-		public function allowTextInput(allow:Boolean)
+		public function AllowTextInput(allow:Boolean)
 		{
 			try
 			{
@@ -1878,9 +2330,10 @@
 				trace(allow ? "Allow text input failed" : "Disable text input failed");
 			}
 		}
-
-		internal function updateButtonHints():void
+		
+		internal function UpdateButtonHints():void
 		{
+			trace("Update button hints");
 			switch (this.state) {
 				case STATE_MAIN:
 					buttonHintBack.ButtonText = this.stateStack.length == 1 ? "$SAM_Exit" : "$SAM_Back";
@@ -1888,20 +2341,20 @@
 					buttonHintHide.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					
-					updateHotkey(buttonHintSave, Data.BUTTON_SAVE);
-					updateHotkey(buttonHintLoad, Data.BUTTON_LOAD);
-					updateHotkey(buttonHintReset, Data.BUTTON_RESET);
-					updateHotkey(buttonHintExtra, Data.BUTTON_EXTRA);
+					UpdateHotkey(buttonHintSave, Data.BUTTON_SAVE);
+					UpdateHotkey(buttonHintLoad, Data.BUTTON_LOAD);
+					UpdateHotkey(buttonHintReset, Data.BUTTON_RESET);
+					UpdateHotkey(buttonHintExtra, Data.BUTTON_EXTRA);
 					break;
 				case STATE_FOLDER:
 					buttonHintBack.ButtonVisible = true;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
 					
-					updateFolderHotkey(buttonHintSave, Data.BUTTON_SAVE);
-					updateFolderHotkey(buttonHintLoad, Data.BUTTON_LOAD);
-					updateFolderHotkey(buttonHintReset, Data.BUTTON_RESET);
-					updateFolderHotkey(buttonHintExtra, Data.BUTTON_EXTRA);
+					UpdateFolderHotkey(buttonHintSave, Data.BUTTON_SAVE);
+					UpdateFolderHotkey(buttonHintLoad, Data.BUTTON_LOAD);
+					UpdateFolderHotkey(buttonHintReset, Data.BUTTON_RESET);
+					UpdateFolderHotkey(buttonHintExtra, Data.BUTTON_EXTRA);
 					break;
 				case STATE_ENTRY:
 					buttonHintBack.ButtonVisible = true;
@@ -1915,7 +2368,7 @@
 			}
 		};
 		
-		internal function updateHotkey(button:BSButtonHintData, type:int)
+		internal function UpdateHotkey(button:BSButtonHintData, type:int)
 		{
 			var data:Object = Data.getHotkey(type);
 			if (!data) {
@@ -1928,7 +2381,7 @@
 			button.ButtonClickDisabled = (data.type == Data.HOTKEY_HOLD);
 		}
 		
-		internal function updateFolderHotkey(button:BSButtonHintData, type:int)
+		internal function UpdateFolderHotkey(button:BSButtonHintData, type:int)
 		{
 			var data:Object = Data.getFolderHotkey(type);
 			if (!data) {
@@ -1941,81 +2394,157 @@
 			button.ButtonClickDisabled = (data.type == Data.HOTKEY_HOLD);
 		}
 		
-		internal function updateNotification()
+		internal function UpdateNotification()
 		{
-			var notifData:Object = Data.menuData.notification;
-			if (notifData) {
-				var result:GFxResult = callDataFunction(notifData);
-				if (result && result.type == Data.RESULT_STRING) //ignore errors
-					showNotification(result.result);
-			}
-			else {
-				hideNotification();
+			if (Data.latentNotification.success) {
+				ShowNotification(Data.latentNotification.result.result);
+				Data.latentNotification.Clear();
+			} else {
+				HideNotification();
 			}
 		}
 		
-		public function updateTitle(name:String = null)
+		public function UpdateTitle()
 		{
-			if (name)
-				titleName = name;
-			
-			var titleData:Object = Data.menuData.title;
-			if (titleData) {
-				var result:GFxResult = callDataFunction(titleData);
-				if (result && result.type == Data.RESULT_STRING)
-					sliderList.title.text = titleName;
+			if (Data.latentTitle.success) {
+				sliderList.title.text = Data.latentTitle.result.result;
+				Data.latentTitle.Clear();
+			} else {
+				sliderList.title.text = titleName;
 			}
 		}
 
-		internal function hideButton():void
+		internal function HideButton():void
 		{
 			if (!filenameInput.visible) {
 				hidden = Data.toggleMenu();
 				sliderList.isEnabled = !hidden;
 			}
 		}
-		
-		public function InitOrder():void
+
+		public function EnterOrder():GFxResult
 		{
 			Data.locals.order = false;
+			
+			return Data.resultSuccess;
 		}
 		
-		public function ToggleOrder():void
+		public function ToggleOrder():GFxResult
 		{
 			Data.locals.order = !Data.locals.order
 			sliderList.updateValues();
+			
+			return Data.resultSuccess;
 		}
 		
-		public function InitOffset():void
+		public function InitOffset():GFxResult
 		{
-			Data.locals.offset = false;
+			Data.locals.offset = sam.GetNodeIsOffset(Data.locals.boneName);
+			buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
+			sliderList.title.text = Data.locals.boneName;
+			
+			return Data.resultSuccess;
 		}
 		
-		public function ToggleOffset():void
+		public function ToggleOffset():GFxResult
 		{
-			Data.locals.offset = !Data.locals.offset
-//			if (Data.locals.offset) {
-//				
-//			} else {
-//				
-//			}
+			var newName = sam.ToggleNodeName(Data.locals.boneName);
+			if (newName != Data.locals.boneName) {
+				Data.locals.offset = !Data.locals.offset;
+				Data.locals.boneName = newName;
+				sliderList.title.text = newName;
+				buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
+				RefreshValues();
+			} else {
+				ShowNotification("This bone is offset only");
+			}
+
+			return Data.resultSuccess;
 		}
 		
-//		internal function updateAdjustment():void
+		public function EnterFolderCheckbox():GFxResult
+		{
+			//trace("enter folder checkbox");
+			Data.locals.folderCheckbox = false;
+			
+			return Data.resultSuccess;
+		}
+		
+//		public function InitFolderCheckbox():GFxResult
 //		{
-//			sliderList.storeSelected();
-//			if (order) {
-//				sliderList.updateAdjustmentOrder(selectAdjustment, downAdjustment, upAdjustment);
-//			} else {
-//				sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
-//			}
-//			sliderList.restoreSelected();
+//			buttonHintLoad.ButtonText = "$SAM_Multi";
+//			
+//			return Data.resultSuccess;
 //		}
+		
+		public function ToggleFolderCheckbox():GFxResult
+		{
+			//trace("toggle folder checkbox");
+			Data.locals.folderCheckbox = !Data.locals.folderCheckbox;
+			trace(Data.locals.folderCheckbox);
+			sliderList.update();
+			buttonHintLoad.ButtonText = (Data.locals.folderCheckbox ? "$SAM_Multi" : "$SAM_Single");
+						
+			return Data.resultSuccess;
+		}
+		
+		public function InitLightVisible(selectedLight:int):GFxResult
+		{
+			var isVisible:Boolean = Data.getLightVisible(selectedLight);
+			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
+			
+			return Data.resultSuccess;
+		}
+		
+		public function InitAllLightsVisible():GFxResult
+		{
+			var isVisible:Boolean = Data.getAllLightsVisible();
+			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
+			
+			return Data.resultSuccess;
+		}
+		
+		public function ToggleLightVisible(selectedLight:int):GFxResult
+		{
+			var isVisible:Boolean = Data.toggleLightVisible(selectedLight);
+			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
+
+			return Data.resultSuccess;
+		}
+		
+		public function ToggleAllLightsVisible():GFxResult
+		{
+			var isVisible:Boolean = Data.toggleAllLightsVisible();
+			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
+			
+			return Data.resultSuccess;
+		}
+		
+		public function LoadSkeletonAdjustment():GFxResult
+		{
+			return Data.resultSuccess();
+		}
+		
+		public function InitEquipItem():GFxResult
+		{
+			Data.locals.addItemEquip = false;
+			
+			return Data.resultSuccess;
+		}
+		
+		public function ToggleEquipItem():GFxResult
+		{
+			Data.locals.addItemEquip = !Data.locals.addItemEquip;
+			buttonHintLoad.ButtonText = (Data.locals.addItemEquip ? "$SAM_Equip" : "$SAM_Add");
+			
+			return Data.resultSuccess;
+		}
 		
 		public function SetAlignment(i:int, checked:Boolean)
 		{
 			swapped = checked;
-			updateAlignment();
+			Data.menuValues[i] = checked;
+			UpdateAlignment();
 			try {
 				this.sam.SetOption(i, checked);
 			} catch (e:Error) {
@@ -2026,7 +2555,8 @@
 		public function SetWidescreen(i:int, checked:Boolean)
 		{
 			widescreen = checked;
-			updateAlignment();
+			Data.menuValues[i] = checked;
+			UpdateAlignment();
 			try {
 				this.sam.SetOption(i, checked);
 			} catch (e:Error) {
@@ -2034,7 +2564,7 @@
 			}
 		}
 		
-		internal function updateAlignment():void
+		internal function UpdateAlignment():void
 		{
 			if (widescreen) {
 				notification.x = swapped ? 480 : -834;
@@ -2046,40 +2576,41 @@
 			}
 		}
 		
-		public function canClose():Boolean
+		public function CanClose():Boolean
 		{
 			if (filenameInput.visible)
 				return false;
-			
-			if (isWaiting())
-				return false;
+				
+//			Need to work out some kind of cancellation method on latent functions
+//			if (isWaiting())
+//				return false;
 				
 			return true;
 		}
 
-		public function tryClose():Boolean
+		public function TryClose():Boolean
 		{
-			if (canClose())
+			//trace("Try close");
+			if (CanClose())
 			{
-				Util.unselectText();
-				
-				sliderList.getState(currentState);
-				currentState.menu = Data.menuName;
-
-				var data:Object = {
-					rootMenu: this.rootMenu,
-					menuName: Data.menuName,
-					state: this.state,
-					current: currentState,
-					stack: stateStack,
-					focused: sliderList.focused
-				}
-				
-				Data.saveState(data);
+				SaveState();
+				CleanUp();
 				saved = true;
+				isOpen = false;
 				return true;
 			}
 			return false;
+		}
+		
+		//To work around a crash on close bug, sam is no longer destroyed so we have to clean up manually
+		public function CleanUp()
+		{
+			//trace("Clean up");
+			InitState();
+			Util.unselectText();
+			stage.removeEventListener(MouseEvent.MOUSE_MOVE, OnHoldMove);
+			hold = false;
+			Data.clearLatents();
 		}
 	}
 }

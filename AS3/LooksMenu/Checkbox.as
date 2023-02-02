@@ -17,6 +17,7 @@
 		public var type:int;
 		public var dragState:int = 0;
 		public var selectable:Boolean = false;
+		
 		public var increment:Number = 0.0;
 		public var mod:Number = 1.0;
 		
@@ -99,7 +100,6 @@
 				case Data.CHECKBOX_RECYCLE:
 				case Data.CHECKBOX_UP:
 					functions.checkbox2(id);
-					func(id);
 					Util.playOk();
 					break;
 				case Data.CHECKBOX_CHECK:
@@ -158,8 +158,8 @@
 		}
 		
 		public function onMove(event:MouseEvent) {
-			var delta:int = Data.updateCursorDrag();
-			functions.valueFloat(id, delta * mod);
+			var dif:int = Data.updateCursorDrag();
+			functions.valueFloat(id, dif * mod);
 		}
 		
 		public function onUp(event:MouseEvent) {

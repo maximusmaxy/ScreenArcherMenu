@@ -44,19 +44,21 @@ void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 
 	if (inputEvent->isDown == 1.0f) {
 		if (timer == 0.0f) {
-			samManager.Invoke(samMenu, "root1.Menu_mc.processKeyDown", nullptr, &GFxValue(keyCode), 1);
-			samManager.Invoke(samMenu, "root1.Menu_mc.processKeyRepeat", nullptr, &GFxValue(keyCode), 1);
+			//GFxValue isOpen;
+			samManager.Invoke(samMenu, "root1.Menu_mc.ProcessKeyDown", nullptr, &GFxValue(keyCode), 1);
 			inputRepeat[keyCode] = 0;
+			//if (!isOpen.GetBool())
+			//	inputEvent->handled = 2;
 		}
 		else {
 			UInt32 repeats = ++inputRepeat[keyCode];
 			if (repeats > 10) { //if (repeats > 20 && repeats % 3 == 0) {
-				samManager.Invoke(samMenu, "root1.Menu_mc.processKeyRepeat", nullptr, &GFxValue(keyCode), 1);
+				samManager.Invoke(samMenu, "root1.Menu_mc.ProcessKeyRepeat", nullptr, &GFxValue(keyCode), 1);
 			}
 		}
 	}
 	else if (inputEvent->isDown == 0.0f && timer != 0.0f) {
-		samManager.Invoke(samMenu, "root1.Menu_mc.processKeyUp", nullptr, &GFxValue(keyCode), 1);
+		samManager.Invoke(samMenu, "root1.Menu_mc.ProcessKeyUp", nullptr, &GFxValue(keyCode), 1);
 	}
 }
 

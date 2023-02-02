@@ -5,6 +5,8 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 
+#include "gfx.h"
+
 union TranslationParam
 {
 	UInt64 axis;
@@ -30,7 +32,8 @@ struct NonActorRefr {
 extern NonActorRefr selectedNonActor;
 
 enum {
-	kAdjustPositionX = 1,
+	kAdjustPositionStep = 0,
+	kAdjustPositionX,
 	kAdjustPositionY,
 	kAdjustPositionZ,
 	kAdjustRotationX,
@@ -49,7 +52,7 @@ enum {
 void UpdateNonActorRefr();
 void SaveObjectTranslation();
 
-void AdjustObjectPosition(int type, float delta, int step);
+void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool hasStep);
 void ResetObjectPosition();
 void ResetObjectRotation();
 void ResetObjectScale();
@@ -63,4 +66,4 @@ void ToggleWorldCollision();
 
 void SelectPositioningMenuOption(UInt32 option);
 
-void GetPositioningGFx(GFxMovieRoot* root, GFxValue* result);
+void GetPositioning(GFxResult& result);

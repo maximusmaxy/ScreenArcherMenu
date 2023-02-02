@@ -18,7 +18,7 @@
         "$SAM_ExtensionsMenu"
     ],
     "values": [
-        "AdjustmentList",
+        "AdjustmentSelect",
         "SkeletonAdjustment",
         "RaceAdjustment",
         "SamPoses",

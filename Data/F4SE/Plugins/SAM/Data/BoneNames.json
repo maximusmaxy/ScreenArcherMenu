@@ -2,12 +2,8 @@
     "type": "list",
     "get": {
         "type": "sam",
-        "name": "GetBoneList",
+        "name": "GetBoneNames",
         "args": [
-            {
-                "type": "var",
-                "name": "adjustmentHandle"
-            },
             {
                 "type": "var",
                 "name": "boneCategory"
@@ -16,7 +12,7 @@
     },
     "set": {
         "type": "menu",
-        "name": "BoneList",
+        "name": "BoneEdit",
         "var": "boneName"
     }
 }

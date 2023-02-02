@@ -27,23 +27,42 @@
 #include "inventory.h"
 #include "eyes.h"
 #include "io.h"
+#include "constants.h"
 
 #include "SAF/hacks.h"
 #include "SAF/util.h"
 #include "SAF/conversions.h"
 
+//Standard function
 #define GFxFunction(T, Func) class T ## Scaleform : public GFxFunctionHandler \
 { \
 public: \
-void T ## Scaleform::Invoke(Args* args) \
+void T ## Scaleform::Invoke(Args* arguments) \
+{ \
+GFxValue* result = arguments->result; \
+GFxValue* args = arguments->args; \
 Func \
+} \
 }
 
-GFxFunction(GetMenu, {
-	GetMenuGFx(GFxResult(args), args->args[0].GetString());
+//Creates a GFxResult which will handle the response state ie success, error, waiting. Will default to success
+//TODO a lot of requests still need proper error responses
+#define GFxRequest(T, Func) class T ## Scaleform : public GFxFunctionHandler \
+{ \
+public: \
+void T ## Scaleform::Invoke(Args* arguments) \
+{ \
+GFxResult result(arguments); \
+GFxValue* args = arguments->args; \
+Func \
+} \
+}
+
+GFxRequest(GetMenu, {
+	GetMenuData(result, args[0].GetString());
 });
 
-//LoadMenu is is a cpp function
+//LoadMenu is taken by WinUser.h :)
 class LoadMenuScaleform : public GFxFunctionHandler
 {
 public:
@@ -54,464 +73,472 @@ public:
 };
 
 GFxFunction(LoadMenuValue, {
-	samManager.PushMenu(args->args[1].GetString());
+	samManager.PushMenu(args[1].GetString());
 });
 
-GFxFunction(GetExtensions, {
-	GetExtensionMenusGFx(GFxResult(args));
+GFxRequest(GetExtensions, {
+	GetExtensionMenus(result);
 });
 
-GFxFunction(CallPapyrusForm, {
-	CallPapyrusForm(GFxResult(args), args->args[0].GetString(), args->args[1].GetString(), args->args[2]);
+GFxRequest(LoadExtension, {
+	samManager.PushMenu(args[1].GetString());
 });
 
-GFxFunction(GetPathStem, {
-	GetPathStem(GFxResult(args), args->args[0].GetString());
+GFxRequest(CallPapyrusForm, {
+	CallPapyrusForm(result, args[0].GetString(), args[1].GetString(), args[2]);
 });
 
-GFxFunction(GetPathRelative, {
-	GetPathRelative(GFxResult(args), args->args[0].GetString(), args->args[1].GetString(), args->args[2].GetString());
+GFxRequest(GetPathStem, {
+	GetPathStem(result, args[0].GetString());
+});
+
+GFxRequest(GetPathRelative, {
+	GetPathRelative(result, args[0].GetString(), args[1].GetString(), args[2].GetString());
 });
 
 GFxFunction(SaveState, {
-	samManager.SaveData(&args->args[0]);
+	samManager.SaveData(&args[0]);
 });
 
 GFxFunction(ClearState, {
 	samManager.ClearData();
 });
 
-GFxFunction(GetOptions, {
-	GetMenuOptionsGFx(GFxResult(args));
+GFxRequest(GetOptions, {
+	GetMenuOptions(result);
 });
 
-GFxFunction(SetOption, {
-	GFxResult result(args);
-	SetMenuOption(args->args[0].GetInt(), args->args[1].GetBool());
+GFxRequest(SetOption, {
+	SetMenuOption(args[0].GetInt(), args[1].GetBool());
 });
 
-GFxFunction(ModifyFacegenMorph, {
-	if (GetForceMorphUpdate() != kHackEnabled)
-		SetForceMorphUpdate(true);
-
-	SetFaceMorph(args->args[0].GetInt(), args->args[1].GetInt(), args->args[2].GetInt());
+GFxRequest(GetFaceMorphs, {
+	GetMorphs(result, args[0].GetInt());
 });
 
-GFxFunction(GetMorphCategories, {
-	GetMorphCategoriesGFx(GFxResult(args));
+GFxRequest(SetFaceMorph, {
+	SetFaceMorph(args[0].GetInt(), args[1].GetInt(), args[2].GetInt());
 });
 
-GFxFunction(GetMorphs, {
-	GetMorphsGFx(GFxResult(args), args->args[0].GetInt());
+GFxRequest(GetFaceMorphCategories, {
+	GetMorphCategories(result);
 });
 
-GFxFunction(SaveMorphsPreset, {
-	SaveMfg(args->args[0].GetString());
+GFxRequest(SetFaceMorphCategory, {
+	SetFaceMorphCategory(result, args[0].GetInt(), args[1].GetUInt());
 });
 
-GFxFunction(LoadMorphsPreset, {
-	LoadMfgPath(args->args[0].GetString());
+GFxRequest(SaveFaceMorphs, {
+	SaveMfg(args[0].GetString());
 });
 
-GFxFunction(ResetFaceMorphs, {
+GFxRequest(LoadFaceMorphs, {
+	LoadMfgPath(args[0].GetString());
+});
+
+GFxRequest(ResetFaceMorphs, {
 	ResetMfg();
 });
 
-GFxFunction(GetMorphsTongue, {
-	GetMorphsTongueGFx(args->movie->movieRoot, args->result, args->args[0].GetInt(), args->args[1].GetInt());
-});
-
-GFxFunction(GetMorphsTongueNodes, {
-	GetMorphsTongueNodesGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
+GFxRequest(GetTongueBones, {
+	GetMorphsTongueNodes(result);
 });
 
 GFxFunction(SamPlaySound, {
-	PlayUISound(args->args[0].GetString());
+	PlayUISound(args[0].GetString());
 });
 
 GFxFunction(SamOpenMenu, {
-	samManager.OpenMenu(args->args[0].GetString());
+	samManager.OpenMenu(args[0].GetString());
 });
 
 GFxFunction(SamCloseMenu, {
-	samManager.CloseMenu(args->args[0].GetString());
+	samManager.CloseMenu(args[0].GetString());
 });
 
 GFxFunction(SamIsMenuOpen, {
-	args->result->SetBool((*g_ui)->IsMenuOpen(args->args[0].GetString()));
+	result->SetBool((*g_ui)->IsMenuOpen(args[0].GetString()));
 });
 
-GFxFunction(GetHacks, {
-	GetHacksGFx(args->movie->movieRoot, args->result);
+GFxRequest(GetHacks, {
+	GetHacks(result);
 });
 
-GFxFunction(GetBlinkHack, {
-	args->result->SetBool(GetBlinkState() == kHackEnabled);
+GFxRequest(SetHack, {
+	SetHack(args[0].GetInt(), args[1].GetBool());
 });
 
-GFxFunction(SetBlinkHack, {
-	SetBlinkState(args->args[0].GetBool());
+GFxRequest(GetEyes, {
+	GetEyes(result);
 });
 
-GFxFunction(GetMorphHack, {
-	args->result->SetBool(GetForceMorphUpdate() == kHackEnabled);
+GFxRequest(SetEyes, {
+	SetEyes(result, args[2].GetNumber(), args[3].GetNumber());
 });
 
-GFxFunction(SetMorphHack, {
-	SetForceMorphUpdate(args->args[0].GetBool());
+GFxRequest(GetAdjustmentScale, {
+	GetAdjustmentScale(result, args[0].GetUInt());
 });
 
-GFxFunction(GetEyeTrackingHack, {
-	args->result->SetBool(GetDisableEyecoordUpdate() == kHackEnabled);
+GFxRequest(SetAdjustmentScale, {
+	SetAdjustmentScale(result, args[2].GetUInt(), args[1].GetUInt());
 });
 
-GFxFunction(SetEyeTrackingHack, {
-	SetDisableEyecoordUpdate(args->args[0].GetBool());
+GFxRequest(GetAdjustments, {
+	GetAdjustments(result);
 });
 
-GFxFunction(GetEyes, {
-	GetEyes(GFxResult(args));
+GFxRequest(GetBoneCategories, {
+	GetBoneCategories(result);
 });
 
-GFxFunction(SetEyes, {
-	SetEyes(GFxResult(args), args->args[2].GetNumber(), args->args[3].GetNumber());
+GFxRequest(GetBoneNames, {
+	GetBoneNames(result, args[0].GetInt());
 });
 
-GFxFunction(GetAdjustmentScale, {
-	GetAdjustmentScale(GFxResult(args), args->args[0].GetUInt());
+GFxRequest(GetBoneTransform, {
+	GetBoneTransform(result, args[1].GetString(), args[0].GetUInt());
 });
 
-GFxFunction(SetAdjustmentScale, {
-	SetAdjustmentScale(GFxResult(args), args->args[2].GetUInt(), args->args[1].GetUInt());
-});
-
-GFxFunction(GetAdjustmentList, {
-	GetAdjustmentsGFx(GFxResult(args));
-});
-
-GFxFunction(GetCategoryList, {
-	GetCategoriesGFx(GFxResult(args));
-});
-
-GFxFunction(GetNodeList, {
-	GetNodesGFx(GFxResult(args), args->args[0].GetInt());
-});
-
-GFxFunction(GetNodeTransform, {
-	GetTransformGFx(GFxResult(args), args->args[0].GetString(), args->args[1].GetInt());
+GFxRequest(SetBoneTransform, {
+	//index, value, handle, key, yaw, pitch, roll
+	SetBoneTransform(result, args[0].GetInt(), args[1].GetNumber(), args[2].GetUInt(), args[3].GetString(),
+		args[4].GetNumber(), args[5].GetNumber(), args[6].GetNumber());
 });
 
 GFxFunction(GetNodeIsOffset, {
-	args->result->SetBool(GetNodeIsOffset(args->args[0].GetString()));
+	result->SetBool(GetNodeIsOffset(args[0].GetString()));
 });
 
 GFxFunction(ToggleNodeName, {
-	ToggleNodeName(args->result, args->args[0].GetString());
+	ToggleNodeName(result, args[0].GetString());
 });
 
 GFxFunction(GetNodeNameFromIndexes, {
-	GetNodeNameFromIndexes(args->result, args->args[0].GetInt(), args->args[1].GetInt());
+	GetNodeNameFromIndexes(result, args[0].GetInt(), args[1].GetInt());
 });
 
-GFxFunction(SetNodePosition, {
-	SetAdjustmentPos(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber(), args->args[3].GetNumber(), args->args[4].GetNumber());
+GFxRequest(RotateBoneTransform, {
+	RotateAdjustmentXYZ(args[3].GetString(), args[2].GetUInt(), args[0].GetInt() - 6, args[1].GetNumber());
 });
 
-GFxFunction(SetNodeRotation, {
-	SetAdjustmentRot(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber(), args->args[3].GetNumber(), args->args[4].GetNumber());
-});
-
-GFxFunction(SetNodeScale, {
-	SetAdjustmentSca(args->args[0].GetString(), args->args[1].GetInt(), args->args[2].GetNumber());
-});
-
-std::unordered_map<UInt32, UInt32> rotationTypeMap = {
-	{7, kAxisX},
-	{8, kAxisY},
-	{9, kAxisZ}
-};
-
-GFxFunction(AdjustNodeRotation, {
-	UInt32 type = rotationTypeMap[args->args[2].GetInt()];
-	RotateAdjustmentXYZ(args->args[0].GetString(), args->args[1].GetInt(), type, args->args[3].GetNumber());
-});
-
-GFxFunction(ResetTransform, {
-	ResetAdjustmentTransform(args->args[0].GetString(), args->args[1].GetInt());
+GFxRequest(ResetBoneTransform, {
+	ResetAdjustmentTransform(args[1].GetString(), args[0].GetUInt());
 )};
 
-GFxFunction(SaveAdjustment, {
-	GFxResult result(args);
-	SaveAdjustmentFile(args->args[0].GetString(), args->args[1].GetInt());
+GFxRequest(SaveAdjustment, {
+	SaveAdjustmentFile(args[0].GetString(), args[1].GetUInt());
 });
 
-GFxFunction(LoadAdjustment, {
-	LoadAdjustmentPath(args->args[0].GetString());
+GFxRequest(LoadAdjustment, {
+	LoadAdjustmentPathGFx(result, args[0].GetString());
 });
 
-GFxFunction(NewAdjustment, {
+GFxRequest(NewAdjustment, {
 	PushNewAdjustment("New Adjustment");
-	GetAdjustmentsGFx(GFxResult(args));
 });
 
-GFxFunction(RemoveAdjustment, {
-	EraseAdjustment(args->args[0].GetInt());
+GFxRequest(RemoveAdjustment, {
+	EraseAdjustment(args[1].GetUInt());
 });
 
-GFxFunction(ResetAdjustment, {
-	GFxResult result(args);
-	ClearAdjustment(args->args[2].GetInt());
+GFxRequest(ResetAdjustment, {
+	ClearAdjustment(args[2].GetInt());
 });
 
-GFxFunction(NegateAdjustment, {
-	NegateTransform(args->args[0].GetString(), args->args[1].GetInt());
+GFxRequest(NegateBoneTransform, {
+	NegateTransform(args[1].GetString(), args[0].GetUInt());
 });
 
-GFxFunction(GetAdjustmentNegate, {
-	GetAdjustmentNegate(GFxResult(args));
+GFxRequest(GetAdjustmentNegate, {
+	GetAdjustmentNegate(result);
 });
 
-GFxFunction(SetAdjustmentNegate, {
-	SetAdjustmentNegate(GFxResult(args), args->args[1].GetString(), args->args[2].GetUInt());
+GFxRequest(SetAdjustmentNegate, {
+	SetAdjustmentNegate(result, args[1].GetString(), args[2].GetUInt());
 });
 
 GFxFunction(MoveAdjustment, {
-	args->result->SetBool(ShiftAdjustment(args->args[0].GetInt(), args->args[1].GetBool()));
+	result->SetBool(ShiftAdjustment(args[0].GetInt(), args[1].GetBool()));
 });
 
-GFxFunction(RenameAdjustment, {
-	SetAdjustmentName(GFxResult(args), args->args[1].GetInt(), args->args[0].GetString());
+GFxRequest(RenameAdjustment, {
+	SetAdjustmentName(result, args[1].GetInt(), args[0].GetString());
 });
 
-GFxFunction(GetIdleCategories, {
-	GetIdleMenuCategoriesGFx(args->movie->movieRoot, args->result);
+GFxRequest(GetIdleMods, {
+	GetIdleMenuCategories(result);
 });
 
-GFxFunction(GetIdles, {
-	GetIdleMenuGFx(args->movie->movieRoot, args->result, args->args[0].GetInt());
+GFxRequest(GetIdles, {
+	GetIdleMenu(result, args[0].GetInt());
 });
 
-GFxFunction(PlayIdle, {
-	PlayIdleAnimation(args->args[0].GetUInt());
+GFxRequest(PlayIdle, {
+	PlayIdleAnimation(args[1].GetUInt());
 });
 
-GFxFunction(ResetIdle, {
+GFxRequest(ResetIdle, {
 	ResetIdleAnimation();
 	ResetJsonPose();
 });
 
-GFxFunction(GetIdleName, {
-	args->result->SetString(GetCurrentIdleName());
+GFxRequest(GetIdleName, {
+	result.SetManagedString(arguments->movie->movieRoot, GetCurrentIdleName());
 });
 
-GFxFunction(GetPoseName, {
-	args->result->SetString(GetCurrentPoseName());
+GFxRequest(GetPoseName, {
+	result.SetManagedString(arguments->movie->movieRoot, GetCurrentPoseName());
 });
 
-GFxFunction(GetPoseList, {
-	GetPoseListGFx(GFxResult(args));
+GFxRequest(GetPoseAdjustments, {
+	GetPoseAdjustments(result);
 });
 
-GFxFunction(SavePose, {
-	SaveJsonPose(args->args[0].GetString(), args->args[1], args->args[2].GetUInt());
+GFxRequest(SavePose, {
+	SaveJsonPose(args[0].GetString(), args[1], args[2].GetUInt());
 });
 
-GFxFunction(LoadPose, {
-	LoadPosePath(args->args[0].GetString());
+GFxRequest(LoadPose, {
+	LoadPosePath(args[0].GetString());
 });
 
-class ResetPoseScaleform : public GFxFunctionHandler
-{
-public:
-	void ResetPoseScaleform::Invoke(Args* args)
-	{
-		switch (args->args[0].GetInt()) {
-		case kPoseReset:
-			ResetJsonPose();
-			break;
-		case kPoseAPose:
-			PlayAPose();
-			break;
-		}
-	}
-};
-
-GFxFunction(GetSkeletonAdjustments, {
-	GetSkeletonAdjustmentsGFx(GFxResult(args), args->args[0].GetString(), args->args[1].GetBool());
+GFxRequest(ResetPose, {
+	ResetJsonPose();
 });
 
-GFxFunction(LoadSkeletonAdjustment, {
-	LoadSkeletonAdjustment(args->args[0].GetString(), args->args[1].GetBool(), args->args[2].GetBool(), args->args[3].GetBool());
+GFxRequest(PlayAPose, {
+	PlayAPose();
 });
 
-GFxFunction(ResetSkeletonAdjustment, {
-	LoadSkeletonAdjustment(nullptr, args->args[0].GetBool(), true, false);
+GFxRequest(GetSkeletonAdjustments, {
+	GetSkeletonAdjustments(result, args[0].GetString(), args[1].GetString(), args[2].GetBool());
 });
 
-GFxFunction(GetPositioning, {
+GFxRequest(LoadSkeletonAdjustment, {
+	LoadSkeletonAdjustment(result, args[0].GetString(), args[1].GetBool(), args[2].GetBool(), args[3].GetBool());
+});
+
+GFxRequest(ResetSkeletonAdjustment, {
+	LoadSkeletonAdjustment(result, nullptr, false, false, args[0].GetBool());
+});
+
+GFxRequest(SaveObjectPosition, {
 	SaveObjectTranslation();
-	GetPositioningGFx(args->movie->movieRoot, args->result);
 });
 
-GFxFunction(RotateIdle, {
-	AdjustObjectPosition(kAdjustRotationZ, args->args[1].GetNumber(), 100);
+GFxRequest(GetPositioning, {
+	GetPositioning(result);
 });
 
-GFxFunction(AdjustPositioning, {
-	AdjustObjectPosition(args->args[0].GetInt(), args->args[1].GetNumber(), args->args[2].GetInt());
+GFxRequest(SetPositioning, {
+	AdjustObjectPosition(result, args[0].GetInt(), args[1], true);
 });
 
-GFxFunction(SelectPositioning, {
-	SelectPositioningMenuOption(args->args[0].GetInt());
+GFxRequest(RotateIdle, {
+	AdjustObjectPosition(result, kAdjustRotationZ, args[0], false);
 });
 
-GFxFunction(ResetPositioning, {
+GFxRequest(SelectPositioning, {
+	SelectPositioningMenuOption(args[0].GetInt());
+});
+
+GFxRequest(ResetPositioning, {
 	SetDefaultObjectTranslation();
 });
 
-GFxFunction(GetFolder, {
-	GetFolderGFx(GFxResult(args), args->args[0].GetString(), args->args[1].GetString());
+GFxRequest(GetFolder, {
+	GetFolder(result, args[0].GetString(), args[1].GetString());
 });
 
 GFxFunction(SetCursorVisible, {
 	static BSFixedString cursorMenu("CursorMenu");
-	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", args->args[0].GetBool());
+	SetMenuVisible(cursorMenu, "root1.Cursor_mc.visible", args[0].GetBool());
 });
 
-GFxFunction(GetCursorPosition, {
-	GetCursorPositionGFx(args->movie->movieRoot, args->result);
+GFxRequest(GetCursorPosition, {
+	GetCursorPosition(result);
 });
 
 GFxFunction(SetCursorPosition, {
-	SetCursor(args->args[0].GetInt(), args->args[1].GetInt());
+	SetCursor(args[0].GetInt(), args[1].GetInt());
 });
 
 GFxFunction(GetLock, {
-	args->result->SetBool(GetFfcLock((FfcType)args->args[0].GetInt()));
+	result->SetBool(GetFfcLock((FfcType)args[0].GetInt()));
 });
 
 GFxFunction(ToggleMenus, {
-	args->result->SetBool(ToggleMenusHidden());
+	result->SetBool(ToggleMenusHidden());
 });
 
-GFxFunction(GetCamera, {
-	GetCameraGFx(GFxResult(args));
+GFxRequest(GetCamera, {
+	GetCamera(result);
 });
 
-GFxFunction(SetCamera, {
-	SetCamera(GFxResult(args), args->args[0].GetInt(), args->args[1].GetNumber());
+GFxRequest(SetCamera, {
+	SetCamera(result, args[0].GetInt(), args[1].GetNumber());
 });
 
-GFxFunction(SaveCameraState, {
-	SaveCamera(args->args[1].GetInt());
+GFxRequest(SaveCameraFile, {
+	if (!SaveCameraFile(args[0].GetString()))
+		return result.SetError(CAMERA_ERROR); //TODO need better error messaging
 });
 
-GFxFunction(LoadCameraState, {
-	LoadCamera(args->args[1].GetInt());
+GFxRequest(LoadCameraPath, {
+	LoadCameraGFx(result, args[0].GetString());
 });
 
-GFxFunction(GetLightSelect, {
-	GetLightSelectGFx(args->movie->movieRoot, args->result);
+GFxRequest(SaveCameraState, {
+	SaveCameraState(args[1].GetInt());
 });
 
-GFxFunction(GetLightEdit, {
-	GetLightEditGFx(args->movie->movieRoot, args->result, args->args[0].GetUInt());
+GFxRequest(LoadCameraState, {
+	LoadCameraState(args[1].GetInt());
 });
 
-GFxFunction(GetLightCategories, {
-	GetLightCategoriesGFx(args->movie->movieRoot, args->result);
+GFxRequest(GetLightSelect, {
+	GetLightSelect(result);
 });
 
-GFxFunction(GetLightObjects, {
-	GetLightObjectsGFx(args->movie->movieRoot, args->result, args->args[0].GetUInt());
+GFxRequest(SetLightSelect, {
+	SetLightSelect(result, args[1].GetInt());
 });
 
-GFxFunction(GetLightSettings, {
-	GetLightSettingsGFx(args->movie->movieRoot, args->result);
+GFxRequest(GetLightEdit, {
+	GetLightEdit(result, args[0].GetInt());
 });
 
-GFxFunction(CreateLight, {
-	CreateLight(args->args[0].GetUInt(), args->args[1].GetUInt());
+GFxRequest(GetLightCategories, {
+	GetLightCategories(result);
 });
 
-GFxFunction(AddLight, {
-	AddLight();
+GFxRequest(GetLightForms, {
+	GetLightForms(result, args[0].GetInt());
 });
 
-GFxFunction(EditLight, {
-	EditLight(args->args[0].GetUInt(), args->args[1].GetUInt(), args->args[2].GetNumber());
+GFxRequest(CreateLight, {
+	CreateLight(result, args[1].GetUInt());
 });
 
-GFxFunction(SwapLight, {
-	SwapLight(args->args[0].GetUInt(), args->args[1].GetUInt(), args->args[2].GetUInt());
+GFxRequest(AddLight, {
+	AddLight(result);
 });
 
-GFxFunction(DeleteLight, {
-	DeleteLight(args->args[0].GetUInt());
+GFxRequest(EditLight, {
+	EditLight(result, args[0].GetUInt(), args[1].GetNumber(), args[2].GetInt());
 });
 
-GFxFunction(ResetLight, {
-	ResetLight(args->args[0].GetUInt());
+GFxRequest(SwapLight, {
+	SwapLight(result, args[1].GetUInt(), args[2].GetInt());
 });
 
-GFxFunction(RenameLight, {
-	RenameLight(args->args[0].GetUInt(), args->args[1].GetString());
+GFxRequest(DeleteLight, {
+	DeleteLight(result, args[2].GetInt());
+});
+
+GFxRequest(ResetLight, {
+	ResetLight(result, args[0].GetInt());
+});
+
+GFxRequest(RenameLight, {
+	RenameLight(result, args[0].GetString(), args[1].GetInt());
 });
 
 GFxFunction(GetLightVisible, {
-	args->result->SetBool(GetLightVisible(args->args[0].GetUInt()));
+	result->SetBool(GetLightVisible(args[0].GetInt()));
 });
 
 GFxFunction(ToggleLightVisible, {
-	args->result->SetBool(ToggleLightVisible(args->args[0].GetUInt()));
+	result->SetBool(ToggleLightVisible(args[0].GetInt()));
 });
 
 GFxFunction(GetAllLightsVisible, {
-	args->result->SetBool(GetAllLightsVisible());
+	result->SetBool(GetAllLightsVisible());
 });
 
 GFxFunction(ToggleAllLightsVisible, {
-	args->result->SetBool(ToggleAllLightsVisible());
+	result->SetBool(ToggleAllLightsVisible());
 }); 
 
-GFxFunction(EditLightSettings, {
-	EditLightSettings(args->args[0].GetUInt(), args->args[1].GetNumber());
+GFxRequest(GetLightsGlobal, {
+	GetLightSettings(result);
 });
 
-GFxFunction(ResetLightSettings, {
+GFxRequest(SetLightsGlobal, {
+	EditLightSettings(result, args[0].GetUInt(), args[1].GetNumber());
+});
+
+GFxRequest(ResetLightSettings, {
 	ResetLightSettings();
 });
 
-GFxFunction(UpdateAllLights, {
+GFxRequest(UpdateAllLights, {
 	UpdateAllLights();
 });
 
-GFxFunction(DeleteAllLights, {
+GFxRequest(DeleteAllLights, {
 	DeleteAllLights();
 });
 
-GFxFunction(SaveLights, {
-	SaveLightsJson(args->args[0].GetString());
+GFxRequest(SaveLights, {
+	SaveLightsJson(args[0].GetString());
 });
 
-GFxFunction(LoadLights, {
-	LoadLightsPath(args->args[0].GetString());
+GFxRequest(LoadLights, {
+	LoadLightsPath(args[0].GetString());
 });
 
-GFxFunction(GetPoseExportTypes, {
-	GetPoseExportTypesGFx(GFxResult(args));
+GFxRequest(GetExportTypes, {
+	GetPoseExportTypes(result);
 });
 
-GFxFunction(MergeAdjustmentDown, {
-	MergeAdjustment(GFxResult(args), args->args[2].GetUInt());
+GFxRequest(MergeAdjustmentDown, {
+	MergeAdjustment(result, args[2].GetUInt());
 });
 
-GFxFunction(MirrorAdjustment, {
-	MirrorAdjustment(GFxResult(args), args->args[2].GetUInt());
+GFxRequest(MirrorAdjustment, {
+	MirrorAdjustment(result, args[2].GetUInt());
 });
 
-GFxFunction(OpenActorContainer, {
-	OpenActorContainer(GFxResult(args));
+GFxRequest(OpenActorContainer, {
+	OpenActorContainer(result);
+});
+
+GFxRequest(GetItemMods, {
+	GetItemMods(result);
+});
+
+GFxRequest(GetItemGroups, {
+	GetItemGroups(result, args[0].GetString());
+});
+
+GFxRequest(GetItemList, {
+	GetItemList(result, args[0].GetString(), args[1].GetInt());
+});
+
+GFxRequest(AddItem, {
+	AddItem(result, args[1].GetUInt(), args[2].GetBool());
+});
+
+GFxRequest(GetLastSearchResult, {
+	GetLastSearchResult(result);
+});
+
+GFxRequest(SearchItems, {
+	SearchItems(result, args[0].GetString());
+});
+
+GFxRequest(GetMatSwapEquipment, {
+	GetMatSwapEquipment(result);
+});
+
+GFxRequest(GetMatSwaps, {
+	GetMatSwaps(result, args[0].GetUInt());
+});
+
+GFxRequest(ApplyMatSwap, {
+	ApplyMatSwap(result, args[1].GetUInt(), args[2].GetUInt());
 });
 
 void testFunc() {
@@ -538,6 +565,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	RegisterFunction<LoadMenuScaleform>(value, view->movieRoot, "LoadMenu");
 	GFxRegister(LoadMenuValue);
 	GFxRegister(GetExtensions);
+	GFxRegister(LoadExtension);
 	GFxRegister(CallPapyrusForm);
 	GFxRegister(GetPathStem);
 	GFxRegister(GetPathRelative);
@@ -545,56 +573,50 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(ClearState);
 	GFxRegister(GetOptions);
 	GFxRegister(SetOption);
-	GFxRegister(ModifyFacegenMorph);
-	GFxRegister(GetMorphCategories);
-	GFxRegister(GetMorphs);
-	GFxRegister(SaveMorphsPreset);
-	GFxRegister(LoadMorphsPreset);
+	GFxRegister(GetFaceMorphs);
+	GFxRegister(SetFaceMorph);
+	GFxRegister(GetFaceMorphCategories);
+	GFxRegister(SetFaceMorphCategory);
+	GFxRegister(SaveFaceMorphs);
+	GFxRegister(LoadFaceMorphs);
 	GFxRegister(ResetFaceMorphs);
-	GFxRegister(GetMorphsTongue);
-	GFxRegister(GetMorphsTongueNodes);
+	GFxRegister(GetTongueBones);
 	GFxRegister(SamPlaySound);
 	GFxRegister(SamOpenMenu);
 	GFxRegister(SamCloseMenu);
 	GFxRegister(SamIsMenuOpen);
 	GFxRegister(GetHacks);
-	GFxRegister(GetBlinkHack);
-	GFxRegister(SetBlinkHack);
-	GFxRegister(GetMorphHack);
-	GFxRegister(SetMorphHack);
-	GFxRegister(GetEyeTrackingHack);
-	GFxRegister(SetEyeTrackingHack);
+	GFxRegister(SetHack);
 	GFxRegister(GetEyes);
 	GFxRegister(SetEyes);
 	GFxRegister(GetAdjustmentScale);
 	GFxRegister(SetAdjustmentScale);
-	GFxRegister(GetAdjustmentList);
+	GFxRegister(GetAdjustments);
 	GFxRegister(SaveAdjustment);
 	GFxRegister(LoadAdjustment);
 	GFxRegister(NewAdjustment);
 	GFxRegister(RemoveAdjustment);
 	GFxRegister(ResetAdjustment);
-	GFxRegister(NegateAdjustment);
+	GFxRegister(NegateBoneTransform);
 	GFxRegister(GetAdjustmentNegate);
 	GFxRegister(SetAdjustmentNegate);
 	GFxRegister(MoveAdjustment);
 	GFxRegister(RenameAdjustment);
-	GFxRegister(GetCategoryList);
-	GFxRegister(GetNodeList);
+	GFxRegister(GetBoneCategories);
+	GFxRegister(GetBoneNames);
 	GFxRegister(GetNodeIsOffset);
 	GFxRegister(ToggleNodeName);
 	GFxRegister(GetNodeNameFromIndexes);
-	GFxRegister(GetNodeTransform);
-	GFxRegister(SetNodePosition);
-	GFxRegister(SetNodeRotation);
-	GFxRegister(SetNodeScale);
-	GFxRegister(AdjustNodeRotation);
-	GFxRegister(ResetTransform);
-	GFxRegister(GetIdleCategories);
+	GFxRegister(GetBoneTransform);
+	GFxRegister(SetBoneTransform);
+	GFxRegister(RotateBoneTransform);
+	GFxRegister(ResetBoneTransform);
+	GFxRegister(GetIdleMods);
 	GFxRegister(GetIdles);
 	GFxRegister(PlayIdle);
+	GFxRegister(PlayAPose);
 	GFxRegister(ResetIdle);
-	GFxRegister(GetPoseList);
+	GFxRegister(GetPoseAdjustments);
 	GFxRegister(GetIdleName);
 	GFxRegister(GetPoseName);
 	GFxRegister(SavePose);
@@ -603,8 +625,10 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(GetSkeletonAdjustments);
 	GFxRegister(LoadSkeletonAdjustment);
 	GFxRegister(ResetSkeletonAdjustment);
-	GFxRegister(AdjustPositioning);
 	GFxRegister(GetPositioning);
+	GFxRegister(SetPositioning);
+	GFxRegister(RotateIdle);
+	GFxRegister(SaveObjectPosition);
 	GFxRegister(SelectPositioning);
 	GFxRegister(ResetPositioning);
 	GFxRegister(GetFolder);
@@ -615,13 +639,16 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(ToggleMenus);
 	GFxRegister(GetCamera);
 	GFxRegister(SetCamera);
+	GFxRegister(SaveCameraFile);
+	GFxRegister(LoadCameraPath);
 	GFxRegister(SaveCameraState);
 	GFxRegister(LoadCameraState);
 	GFxRegister(GetLightSelect);
+	GFxRegister(SetLightSelect);
 	GFxRegister(GetLightEdit);
 	GFxRegister(GetLightCategories);
-	GFxRegister(GetLightObjects);
-	GFxRegister(GetLightSettings);
+	GFxRegister(GetLightForms);
+	GFxRegister(GetLightsGlobal);
 	GFxRegister(CreateLight);
 	GFxRegister(AddLight);
 	GFxRegister(EditLight);
@@ -633,13 +660,25 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(ToggleLightVisible);
 	GFxRegister(GetAllLightsVisible);
 	GFxRegister(ToggleAllLightsVisible);
-	GFxRegister(EditLightSettings);
+	GFxRegister(SetLightsGlobal);
 	GFxRegister(UpdateAllLights);
 	GFxRegister(ResetLightSettings);
 	GFxRegister(DeleteAllLights);
 	GFxRegister(SaveLights);
 	GFxRegister(LoadLights);
-	GFxRegister(GetPoseExportTypes);
+	GFxRegister(GetExportTypes);
+	GFxRegister(MergeAdjustmentDown);
+	GFxRegister(MirrorAdjustment);
+	GFxRegister(OpenActorContainer);
+	GFxRegister(GetItemMods);
+	GFxRegister(GetItemGroups);
+	GFxRegister(GetItemList);
+	GFxRegister(AddItem);
+	GFxRegister(GetLastSearchResult);
+	GFxRegister(SearchItems);
+	GFxRegister(GetMatSwapEquipment);
+	GFxRegister(GetMatSwaps);
+	GFxRegister(ApplyMatSwap);
 	GFxRegister(Test);
 	GFxRegister(Test2);
 

@@ -5,6 +5,8 @@
 #include "f4se/ScaleformValue.h"
 #include "f4se/PluginAPI.h"
 
+#include "gfx.h"
+
 #include <vector>
 #include <unordered_map>
 
@@ -53,6 +55,7 @@ public:
 
 	MenuLight* GetLight(UInt32 id);
 	void ForEach(const std::function<void(MenuLight*)>& functor);
+	void ForEachWithIndex(const std::function<void(MenuLight*,SInt32)>& functor);
 
 	LightList* GetLightList();
 	void UpdateLightList();
@@ -71,23 +74,24 @@ public:
 extern LightManager lightManager;
 extern std::unordered_map<UInt32, const char*> lightModMap;
 
-void GetLightSelectGFx(GFxMovieRoot* root, GFxValue* result);
-void GetLightEditGFx(GFxMovieRoot* root, GFxValue* result, UInt32 id);
-void GetLightCategoriesGFx(GFxMovieRoot* root, GFxValue* result);
-void GetLightObjectsGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryId);
-void GetLightSettingsGFx(GFxMovieRoot* root, GFxValue* result);
+void GetLightSelect(GFxResult& result);
+void SetLightSelect(GFxResult& result, SInt32 index);
+void GetLightEdit(GFxResult& result, UInt32 selectedLight);
+void GetLightCategories(GFxResult& result);
+void GetLightForms(GFxResult& result, SInt32 categoryId);
+void GetLightSettings(GFxResult& result);
 
-bool CreateLight(UInt32 categoryId, UInt32 lightId);
-void AddLight();
-void EditLight(UInt32 id, UInt32 type, float value);
-void RenameLight(UInt32 id, const char* name);
-bool SwapLight(UInt32 id, UInt32 categoryId, UInt32 lightId);
-bool GetLightVisible(UInt32 id);
-bool ToggleLightVisible(UInt32 id);
-void DeleteLight(UInt32 id);
-void ResetLight(UInt32 id);
+void CreateLight(GFxResult& result, UInt32 formId);
+void AddLight(GFxResult& result);
+void EditLight(GFxResult& result, UInt32 type, float value, SInt32 selectedLight);
+void RenameLight(GFxResult& result, const char* name, SInt32 selectedLight);
+void SwapLight(GFxResult& result, UInt32 formId, SInt32 selectedLight);
+bool GetLightVisible(SInt32 selectedLight);
+bool ToggleLightVisible(SInt32 selectedLight);
+void DeleteLight(GFxResult& result, SInt32 selectedLight);
+void ResetLight(GFxResult& result, SInt32 selectedLight);
 
-void EditLightSettings(UInt32 type, float value);
+void EditLightSettings(GFxResult& result, UInt32 type, float value);
 void UpdateAllLights();
 bool GetAllLightsVisible();
 bool ToggleAllLightsVisible();
@@ -95,7 +99,6 @@ void DeleteAllLights();
 void ResetLightSettings();
 
 bool SaveLightsJson(const char* filename);
-
 bool LoadLightsFile(const char* filename);
 bool LoadLightsPath(const char* path);
 

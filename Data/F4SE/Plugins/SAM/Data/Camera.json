@@ -7,7 +7,38 @@
     },
     "set": {
         "type": "sam",
-        "name": "SetCamera"
+        "name": "SetCamera",
+        "refresh": true
+    },
+    "save": {
+        "name": "$SAM_Save",
+        "type": "func",
+        "func": {
+            "type": "entry",
+            "entry": {
+                "func": {
+                    "type": "sam",
+                    "name": "SaveCameraFile"
+                }
+            }
+        }
+    },
+    "load": {
+        "name": "$SAM_Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "format": "full",
+                "path": "Data\\F4SE\\Plugins\\SAM\\Camera",
+                "ext": ".json",
+                "func": {
+                    "type": "sam",
+                    "name": "LoadCameraPath"
+                },
+                "pop": false
+            }
+        }
     },
     "items": [
         {
@@ -15,7 +46,7 @@
             "type": "touch",
             "touch": {
                 "type": "float",
-                "step": 10.0,
+                "step": 2.0,
                 "fixed": 2,
                 "mod": 0.5
             }
@@ -25,7 +56,7 @@
             "type": "touch",
             "touch": {
                 "type": "float",
-                "step": 10.0,
+                "step": 2.0,
                 "fixed": 2,
                 "mod": 0.5
             }
@@ -35,7 +66,7 @@
             "type": "touch",
             "touch": {
                 "type": "float",
-                "step": 10.0,
+                "step": 2.0,
                 "fixed": 2,
                 "mod": 0.5
             }

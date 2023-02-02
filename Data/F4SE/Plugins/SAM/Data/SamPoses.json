@@ -2,13 +2,42 @@
     "type": "folder",
     "update": true,
     "folder": {
-        "type": "full",
+        "format": "full",
         "path": "Data\\F4SE\\Plugins\\SAF\\Poses",
         "ext": ".json",
         "pop": false,
         "func": {
             "type": "sam",
             "name": "LoadPose"
+        },
+        "reset": {
+            "name": "$SAM_Reset",
+            "type": "func",
+            "func": {
+                "type": "sam",
+                "name": "ResetPose"
+            }
+        },
+        "extra": {
+            "name": "$SAM_Rotate",
+            "type": "hold",
+            "hold": {
+                "type": "float",
+                "step": 2.0,
+                "mod": 0.01,
+                "func": {
+                    "type": "sam",
+                    "name": "RotateIdle"
+                }
+            }
+        },
+        "load": {
+            "name": "$SAM_Apose",
+            "type": "func",
+            "func": {
+                "type": "sam",
+                "name": "PlayAPose"
+            }
         }
     }
 }

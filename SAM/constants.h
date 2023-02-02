@@ -34,8 +34,16 @@
 #define MENU_ITEM_LENGTH_ERROR "$SAM_PapyrusArrayLengthError"	//papyrus names,values have different length
 #define ADJUSTMENT_MISSING_ERROR "$SAM_AdjustmentMissing"		//No adjustment for character found
 #define PAPYRUS_FUNCTION_ERROR "$SAM_PapyrusFunctionError"		//Papyrus function not found
+#define LIGHT_INDEX_ERROR "Light index out of range"			//Gave up on translation :)
+#define LIGHT_FORM_ERROR "Light form ID not found"
+#define BONE_MISSING_ERROR "Bone could not be found"
+#define TONGUE_BONES_ERROR "Tongue menu not found"
 
 #define TONGUE_BONES_MENU "$SAM_TongueBones"
+
+#define LIGHTS_ADD_NEW "$SAM_AddNew"
+#define LIGHTS_ADD_CONSOLE "$SAM_AddConsole"
+#define LIGHTS_GLOBAL_SETTINGS "$SAM_LightGlobal"
 
 #define LIGHTS_SERIALIZE_VERSION 2
 #define CAM_SERIALIZE_VERSION 1

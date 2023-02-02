@@ -1,5 +1,6 @@
 {
     "type": "list",
+    "update": true,
     "get": {
         "type": "sam",
         "name": "GetMatSwapEquipment"

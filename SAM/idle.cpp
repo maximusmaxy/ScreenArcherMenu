@@ -208,7 +208,8 @@ void PlayIdleAnimation(UInt32 formId) {
 	if (!idleForm)
 		return;
 
-	bool result = PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
+	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
+	samManager.ShowNotification(idleForm->editorID);
 }
 
 void ResetIdleAnimation() {
@@ -234,6 +235,7 @@ void ResetIdleAnimation() {
 		return;
 
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
+	samManager.ShowNotification("");
 }
 
 void PlayAPose() {
@@ -260,45 +262,33 @@ void PlayAPose() {
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
 }
 
-void GetIdleMenuCategoriesGFx(GFxMovieRoot* root, GFxValue* result)
+void GetIdleMenuCategories(GFxResult& result)
 {
-	root->CreateArray(result);
-
-	if (!selected.refr) 
-		return;
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
 
 	IdleMenu* menu = GetIdleMenu(selected.race);
 	if (!menu) 
 		return;
 
-	for (auto& category : *menu) {
-		GFxValue name(category.first.c_str());
-		result->PushBack(&name);
+	result.CreateMenuItems();
+
+	for (SInt32 i = 0; i < menu->size(); ++i) {
+		result.PushItem((*menu)[i].first.c_str(), i);
 	}
 }
 
-void GetIdleMenuGFx(GFxMovieRoot* root, GFxValue* result, UInt32 selectedCategory)
+void GetIdleMenu(GFxResult& result, SInt32 selectedCategory)
 {
-	root->CreateObject(result);
-
-	GFxValue names, values;
-	root->CreateArray(&names);
-	root->CreateArray(&values);
-
 	IdleMenu* menu = GetIdleMenu(selected.race);
-	if (!menu || selectedCategory >= menu->size()) 
-		return;
+	if (!menu || selectedCategory < 0 || selectedCategory >= menu->size())
+		return result.SetError("Play idle menu not found");
+
+	result.CreateMenuItems();
 
 	for (auto& category : (*menu)[selectedCategory].second) {
-		GFxValue name(category.first.c_str());
-		names.PushBack(&name);
-
-		GFxValue value(category.second);
-		values.PushBack(&value);
+		result.PushItem(category.first.c_str(), category.second);
 	}
-
-	result->SetMember("names", &names);
-	result->SetMember("values", &values);
 }
 
 class BSTAnimationGraphDataChannel

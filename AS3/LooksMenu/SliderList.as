@@ -24,7 +24,7 @@
 		
 		public static const SLIDER_MAX:int = 10;
 		public static const LIST_MAX:int = 15;
-		public static const LIST_LENGTH:int = 565;
+		public static const LIST_LENGTH:int = 540;
 		
 		public static const LEFT = 1;
 		public static const UP = 2;
@@ -92,6 +92,7 @@
 
 		public function onValueChange(event:flash.events.Event)
 		{
+			//trace("value change", listSize, entrySize, listPosition);
 			if (focused) {
 				unselect();
 				selectedY = -1;
@@ -103,6 +104,7 @@
 		
 		public function scrollList(delta:int)
 		{
+			//trace("scroll list", listSize, entrySize, listPosition);
 			if (listScroll.visible) {
 				var newPosition:int = listPosition - delta;
 				newPosition = Math.max(0,Math.min(entrySize - listSize, newPosition));
@@ -118,6 +120,7 @@
 
 		public function onMouseWheel(event:MouseEvent)
 		{
+			//trace("mouse wheel", listSize, entrySize, listPosition);
 //			var value:int = int(event.delta);
 //			if (scrollList(value) && selectedY != -1) {
 //				selectedY -= value;
@@ -253,10 +256,10 @@
 			switch (entry.type) {
 				case Data.ITEM_LIST:
 					if (inc) {
-						processUp(1);
+						processDown(listSize);
 					}
 					else {
-						processDown(1);
+						processUp(listSize);
 					}
 					break;
 				case Data.ITEM_SLIDER:
@@ -329,6 +332,7 @@
 		
 		public function updateState(pos:int)
 		{
+			//trace("updateState", listSize, entrySize, listPosition);
 			if (focused) {
 				if (selectedY != -1) {
 					unselect();
@@ -341,6 +345,7 @@
 		
 		public function updateSelected(x:int, y:int)
 		{
+			//trace("update selected", listSize, entrySize, listPosition);
 			if (focused) {
 				selectedX = x;
 				selectedY = y;
@@ -350,6 +355,7 @@
 		
 		public function storeSelected()
 		{
+			//trace("store selected", listSize, entrySize, listPosition);
 			isEnabled = false;
 			storeX = selectedX;
 			storeY = selectedY;
@@ -361,6 +367,7 @@
 		
 		public function restoreSelected()
 		{
+			//trace("restore selected", listSize, entrySize, listPosition);
 			isEnabled = true;
 			if (selectedY != -1) {
 				storeY += (listPosition - storePos);
@@ -386,13 +393,15 @@
 		
 		public function updatePosition(newPosition:int):Boolean
 		{
+			//trace("update position", listSize, entrySize, listPosition);
 			if (listPosition != newPosition) {
 				var dif:int = newPosition - listPosition;
 				listPosition = newPosition;
 				for (var i:int = 0; i < listSize; i++) 
 				{
-					entries[i].id = listPosition + i;
-					updateType(entries[i]);
+					var entry:SliderListEntry = entries[i];
+					var id:int = listPosition + i;
+					entry.update(id, Data.getType(id), entry.x, entry.y);
 				}
 				Util.unselectText();
 				//Util.playFocus();
@@ -411,22 +420,17 @@
 			}
 		}
 		
-		public function updateScroll(entrySize:int, listSize:int):void
+		public function updateScroll():void
 		{
-			this.entrySize = entrySize;
-			this.listSize = listSize;
-			this.length = Math.min(entrySize, listSize);
-			
-			listPosition = Math.max(0,Math.min(entrySize - listSize, listPosition));
-			
+			//trace("update scroll", listSize, entrySize, listPosition);
 			if (this.entrySize > this.listSize)
 			{
 				stepSize = 100.0 / (this.entrySize - this.listSize);
-				var thumbHeight:Number = listScroll.Track_mc.height *  this.listSize / this.entrySize;
+				var thumbHeight:Number = listScroll.Track_mc.height * this.listSize / this.entrySize;
 				listScroll.Thumb_mc.height = Math.max(thumbHeight, 40);
+				listScroll.updateHeight();
 				listScroll.visible = true;
 				listScroll.position = stepSize * listPosition;
-				listScroll.updateHeight();
 			}
 			else
 			{
@@ -447,7 +451,6 @@
 //			}
 		}
 		
-		//load items until we run out of space
 		public function update():void
 		{
 			var xOffset:int;
@@ -456,28 +459,63 @@
 			this.entrySize = Data.menuSize;
 			this.listSize = 0;
 			
-			for(var i:int = 0; i < LIST_MAX; i++) 
-			{
-				var pos:int = i + listPosition;
+			//clamp between 0 and entry size - 1
+			this.listPosition = Math.max(0,Math.min(this.listPosition, entrySize - 1));
+			
+			var i:int;
+			var id:int;
+			var type:int;
+			var properties:Object;
+			
+			//Need to first fill the screen to get current list position
+			while (i < LIST_MAX && yOffset < LIST_LENGTH) {
+				if (i + this.listPosition < this.entrySize) {
+					//get from below
+					id = i + this.listPosition;
+					this.listSize++;
+				}
+				else if (this.listPosition > 0) {
+					//get from top
+					this.listPosition--;
+					id = this.listPosition;
+					this.listSize++;
+				} else {
+					break;
+				}
 				
-				if (pos < this.entrySize) {
-					var type:int = Data.getType(pos);
-					var properties = getEntryProperties(type);
+				i++;
+				
+				type = Data.getType(id);
+				properties = getEntryProperties(type);
+				yOffset += properties.y;
+			}
+			
+			yOffset = 10;
+			
+			//update actual position
+			for(i = 0; i < LIST_MAX; i++)
+			{
+				id = i + this.listPosition;
+				
+				//update data until we run out of entries or screen space
+				if (i < this.listSize) {
+					type = Data.getType(id);
+					properties = getEntryProperties(type);
 					
 					xOffset = properties.x;
 					
-					entries[i].update(pos, type, xOffset, yOffset);
+					entries[i].update(id, type, xOffset, yOffset);
 					
 					yOffset += properties.y;
-					
-					this.listSize++;
 				} else {
-					entries[i].id = pos;
+					entries[i].id = id;
 					entries[i].disable();
 				}
 			}
 			
-			updateScroll(entrySize, listSize);
+			this.length = Math.min(this.entrySize, this.listSize);
+			
+			updateScroll();
 		}
 	}
 }

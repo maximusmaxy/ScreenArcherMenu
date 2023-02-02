@@ -26,14 +26,8 @@ UInt32 GetFormId(const char* modName, UInt32 formId) {
 }
 
 UInt32 GetFormId(const char* modName, const char* idString) {
-	try {
-		UInt32 formId = std::stoul(idString, nullptr, 16) & 0xFFFFFF;
-		return GetFormId(modName, formId);
-	}
-	catch (...) 
-	{
-		return 0;
-	}
+	UInt32 formId = HexStringToUInt32(idString) & 0xFFFFFF;
+	return GetFormId(modName, formId);
 }
 
 UInt32 GetModId(UInt32 formId)
@@ -70,11 +64,31 @@ float Modulo(float a, float b) {
 	return fmodf((fmodf(a, b) + b), b);
 }
 
-std::string HexToString(UInt32 hex)
+std::string UInt32ToHexString(UInt32 hex)
 {
 	std::stringstream stream;
 	stream << std::hex << hex;
 	return stream.str();
+}
+
+UInt32 HexStringToUInt32(const char* str) {
+	try {
+		return std::stoul(str, nullptr, 16);
+	}
+	catch (...)
+	{
+		return 0;
+	}
+}
+
+UInt32 StringToUInt32(const char* str) {
+	try {
+		return std::stoul(str);
+	}
+	catch (...)
+	{
+		return 0;
+	}
 }
 
 //returns the size of the prefix if match or 0 if no match
@@ -107,3 +121,36 @@ std::string GetRelativePath(int rootLen, int extLen, const char* path)
 
 	return std::string(path + rootLen + 1, pathLen - rootLen - extLen - 1);
 }
+
+void GetLoweredCString(char* buffer, const char* str)
+{
+	while (*str != 0) {
+		*buffer = tolower(*str);
+		buffer++;
+		str++;
+	}
+	*buffer = 0;
+}
+
+//case insensitive strstr, substr has been premptively tolowered
+bool HasInsensitiveSubstring(const char* str, const char* substr)
+{
+	if (!str)
+		return false;
+
+	const char* c = substr;
+
+	while (*str != 0) {
+		if (tolower(*str) == *c) {
+			c++;
+			if (*c == 0)
+				return true;
+		}
+		else
+			c = substr;
+		str++;
+	}
+
+	return false;
+}
+

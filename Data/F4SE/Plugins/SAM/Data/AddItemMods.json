@@ -1,12 +1,13 @@
 {
     "type": "list",
+    "update": true,
     "get": {
         "type": "sam",
         "name": "GetItemMods"
     },
     "set": {
         "type": "menu",
-        "name": "AddItemTypes",
+        "name": "AddItemGroups",
         "var": "addItemMod"
     }
 }

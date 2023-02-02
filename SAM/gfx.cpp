@@ -1,5 +1,7 @@
 #include "gfx.h"
 
+#include "data.h"
+
 //if root is managed, automatically finalize result value on destruction
 GFxResult::~GFxResult() {
 	if (root)
@@ -30,6 +32,13 @@ void GFxResult::Invoke(GFxMovieRoot* _root, const char* functionPath)
 	root->Invoke(functionPath, nullptr, result, 1);
 }
 
+//Finalize and call the latent callback function
+void GFxResult::InvokeCallback(GFxMovieRoot* _root)
+{
+	Finalize(_root);
+	root->Invoke("root1.Menu_mc.LatentCallback", nullptr, result, 1);
+}
+
 void GFxResult::CreateNames() {
 	type = kGFxResultNames;
 	root->CreateArray(&params[1]);
@@ -38,11 +47,6 @@ void GFxResult::CreateNames() {
 void GFxResult::CreateValues() {
 	type = kGFxResultValues;
 	root->CreateArray(&params[1]);
-}
-
-void GFxResult::CreateObject() {
-	type = kGFxResultObject;
-	root->CreateObject(&params[1]);
 }
 
 void GFxResult::CreateMenuItems() {
@@ -76,29 +80,19 @@ void GFxResult::SetMenu(Json::Value* json) {
 	JsonToGFx(root, &params[1], *json);
 }
 
-void GFxResult::SetString(const char* name) {
-	type = kGFxResultString;
-	params[1].SetString(name);
+void GFxResult::SetNotification(GFxMovieRoot* _root, const char* name) {
+	type = kGFxResultNotification;
+	_root->CreateString(&params[1], name);
+}
+
+void GFxResult::SetTitle(GFxMovieRoot* _root, const char* name) {
+	type = kGFxResultTitle;
+	_root->CreateString(&params[1], name);
 }
 
 void GFxResult::SetManagedString(GFxMovieRoot* _root, const char* name) {
 	type = kGFxResultString;
 	_root->CreateString(&params[1], name);
-}
-
-void GFxResult::SetBool(bool checked) {
-	type = kGFxResultBool;
-	params[1].SetBool(checked);
-}
-
-void GFxResult::SetInt(SInt32 num) {
-	type = kGFxResultInt;
-	params[1].SetInt(num);
-}
-
-void GFxResult::SetFloat(double num) {
-	type = kGFxResultFloat;
-	params[1].SetNumber(num);
 }
 
 void GFxResult::PushName(const char* name) {
@@ -145,91 +139,4 @@ void GFxResult::PushFileCheckbox(const char* name, const char* path, bool checke
 	file.SetMember("checked", &GFxValue(checked));
 
 	params[1].PushBack(&file);
-}
-
-void JsonToGFx(GFxMovieRoot* root, GFxValue* result, const Json::Value& value) {
-	switch (value.type()) {
-	case Json::ValueType::booleanValue:
-		result->SetBool(value.asBool());
-		break;
-	case Json::ValueType::intValue:
-		result->SetInt((SInt32)value.asInt());
-		break;
-	case Json::ValueType::uintValue:
-		result->SetUInt((UInt32)value.asUInt());
-		break;
-	case Json::ValueType::realValue:
-		result->SetNumber(value.asDouble());
-		break;
-	case Json::ValueType::stringValue:
-		result->SetString(value.asCString());
-		break;
-	case Json::ValueType::arrayValue:
-	{
-		root->CreateArray(result);
-
-		for (auto& member : value) {
-			GFxValue arrValue;
-			JsonToGFx(root, &arrValue, member);
-			result->PushBack(&arrValue);
-		}
-
-		break;
-	}
-	case Json::ValueType::objectValue:
-	{
-		root->CreateObject(result);
-
-		for (auto it = value.begin(); it != value.end(); ++it) {
-			GFxValue objValue;
-			JsonToGFx(root, &objValue, *it);
-			result->SetMember(it.key().asCString(), &objValue);
-		}
-
-		break;
-	}
-	}
-}
-
-Json::Value GFxToJson(GFxValue* value)
-{
-	switch (value->GetType()) {
-	case GFxValue::kType_Bool:
-		return Json::Value(value->GetBool());
-	case GFxValue::kType_Int:
-		return Json::Value(value->GetInt());
-	case GFxValue::kType_UInt:
-	{
-		UInt64 uint = value->GetUInt();
-		return Json::Value(uint);
-	}
-	case GFxValue::kType_Number:
-		return Json::Value(value->GetNumber());
-	case GFxValue::kType_String:
-		return Json::Value(value->GetString());
-	case GFxValue::kType_Array:
-	{
-		Json::Value arr(Json::ValueType::arrayValue);
-		GFxToJsonArrVisitor arrVisitor(arr);
-		value->VisitElements(&arrVisitor, 0, value->GetArraySize());
-		return arr;
-	}
-	case GFxValue::kType_Object:
-	{
-		Json::Value obj(Json::ValueType::objectValue);
-		GFxToJsonObjVisitor visitor(obj);
-		value->VisitMembers(&visitor);
-		return obj;
-	}
-	default:
-		return Json::Value(Json::ValueType::nullValue);
-	}
-}
-
-void GFxToJsonObjVisitor::Visit(const char* member, GFxValue* value) {
-	json[member] = GFxToJson(value);
-}
-
-void GFxToJsonArrVisitor::Visit(UInt32 idx, GFxValue* value) {
-	json[(int)idx] = GFxToJson(value);
 }

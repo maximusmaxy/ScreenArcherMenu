@@ -21,6 +21,18 @@
             }
         ]
     },
+    "notification": {
+        "type": "sam",
+        "name": "GetIdleName"
+    },
+    "reset": {
+        "name": "$SAM_Reset",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "ResetIdle"
+        }
+    },
     "extra": {
         "name": "$SAM_Rotate",
         "type": "hold",
