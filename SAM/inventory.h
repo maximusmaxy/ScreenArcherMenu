@@ -30,3 +30,7 @@ void SearchItems(GFxResult& result, const char* search);
 void GetMatSwapEquipment(GFxResult& result);
 void GetMatSwaps(GFxResult& result, UInt32 formId);
 void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 formId);
+
+void GetEquipment(GFxResult& result);
+void RemoveEquipment(GFxResult& result, UInt32 formId);
+void RemoveAllEquipment(GFxResult& result);

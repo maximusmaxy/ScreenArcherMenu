@@ -21,9 +21,9 @@
             }
         ]
     },
-    "init": {
+    "enter": {
         "type": "local",
-        "name": "InitLightVisible",
+        "name": "GetLightVisible",
         "args": [
             {
                 "type": "var",
@@ -31,13 +31,14 @@
             }
         ]
     },
-    "reset": {
-        "name": "$SAM_Reset",
-        "type": "func",
+    "extra": {
+        "type": "toggle",
+        "off": "$SAM_Invisible",
+        "on": "$SAM_Visible",
+        "var": "lightVisible",
         "func": {
-            "type": "sam",
-            "name": "ResetLight",
-            "refresh": true,
+            "type": "local",
+            "name": "ToggleLightVisible",
             "args": [
                 {
                     "type": "var",
@@ -46,12 +47,13 @@
             ]
         }
     },
-    "extra": {
-        "name": "$SAM_Visible",
+    "reset": {
+        "name": "$SAM_Reset",
         "type": "func",
         "func": {
-            "type": "local",
-            "name": "ToggleLightVisible",
+            "type": "sam",
+            "name": "ResetLight",
+            "refresh": true,
             "args": [
                 {
                     "type": "var",

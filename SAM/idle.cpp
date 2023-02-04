@@ -209,7 +209,7 @@ void PlayIdleAnimation(UInt32 formId) {
 		return;
 
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
-	samManager.ShowNotification(idleForm->editorID);
+	samManager.ShowNotification(idleForm->editorID, true);
 }
 
 void ResetIdleAnimation() {
@@ -235,7 +235,7 @@ void ResetIdleAnimation() {
 		return;
 
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
-	samManager.ShowNotification("");
+	samManager.ShowNotification("", true);
 }
 
 void PlayAPose() {
@@ -273,8 +273,21 @@ void GetIdleMenuCategories(GFxResult& result)
 
 	result.CreateMenuItems();
 
+	//favorites
+	result.PushItem("$SAM_IdleFavorites", (SInt32)-1);
+
 	for (SInt32 i = 0; i < menu->size(); ++i) {
 		result.PushItem((*menu)[i].first.c_str(), i);
+	}
+}
+
+void SetIdleMod(GFxResult& result, SInt32 selectedCategory)
+{
+	if (selectedCategory == -1) {
+		samManager.PushMenu("PlayIdleFavorites");
+	}
+	else {
+		samManager.PushMenu("PlayIdleList");
 	}
 }
 
@@ -450,14 +463,31 @@ void AppendIdleFavorite(GFxResult& result)
 	if (!form)
 		return result.SetError("Could not find form for idle");
 
-	std::ofstream stream;
-	if (!SAF::OpenOutFileStream(IDLE_FAVORITES, &stream))
-		return;
-
-	stream << idleName << std::endl;
-	stream.close();
+	auto it = std::find(idleFavorites.begin(), idleFavorites.end(), idleName);
+	if (it != idleFavorites.end())
+		return result.SetError("Idle has already been favorited!");
 
 	idleFavorites.push_back(idleName);
+
+	//std::ofstream stream;
+	//if (!SAF::OpenAppendFileStream(IDLE_FAVORITES, &stream))
+	//	return result.SetError("Failed to open IdleFavorites.txt");
+
+	//stream << idleName << std::endl;
+	//stream.close();
+
+	//TODO Append wasn't working so we're just writing the whole thing for now
+	std::ofstream stream;
+	if (!SAF::OpenOutFileStream(IDLE_FAVORITES, &stream))
+		return result.SetError("Failed to open IdleFavorites.txt");
+
+	for (auto& favorite : idleFavorites) {
+		stream << favorite << std::endl;
+	}
+	stream.close();
+
+	std::string notif = std::string(idleName) + " has been favorited!";
+	samManager.ShowNotification(notif.c_str(), false);
 }
 
 void PlayIdleFavorite(GFxResult& result, const char* idleName)
@@ -476,6 +506,8 @@ void PlayIdleFavorite(GFxResult& result, const char* idleName)
 	Actor* actor = (Actor*)selected.refr;
 	if (!PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0))
 		return result.SetError("Play idle request failed");
+
+	samManager.ShowNotification(idleForm->editorID, true);
 }
 
 bool LoadIdleFavorites()

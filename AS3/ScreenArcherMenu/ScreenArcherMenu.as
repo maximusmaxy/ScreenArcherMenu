@@ -18,6 +18,8 @@
 	import utils.Translator;
 	import Mobile.ScrollList.EventWithParams;
 	import flash.media.ID3Info;
+	import flash.net.LocalConnection;
+	import flash.display3D.IndexBuffer3D;
 
 	public class ScreenArcherMenu extends Shared.IMenu
 	{
@@ -32,6 +34,7 @@
 		public var border:MovieClip;
 		public var notification:MovieClip;
 		
+		public var notificationMessage = "";
 		public var titleName:String = "";
 		public var rootMenu:String;
 		
@@ -70,7 +73,7 @@
 			super();
 			//trace("SAM Constructed");
 			
-			Util.debug = true;
+			Util.debug = false;
 			widescreen = false;
 			isOpen = true;
 			
@@ -146,7 +149,7 @@
 		
 		public function MenuOpened(data:Object)
 		{
-			trace("Menu Opened");
+			//trace("Menu Opened");
 			
 			this.sam = root.f4se.plugins.ScreenArcherMenu;
 			
@@ -190,7 +193,7 @@
 		}
 		
 		public function SaveState() {
-			trace("Save state");
+			//trace("Save state");
 			sliderList.getState(currentState);
 			currentState.menu = Data.menuName;
 
@@ -208,7 +211,7 @@
 		
 		public function ConsoleRefUpdated(data:Object)
 		{
-			trace("Console ref updated");
+			//trace("Console ref updated");
 			if (data.title)
 				titleName = data.title;
 				
@@ -264,10 +267,13 @@
 		{
 			//trace("Process Key Down", keyCode);
 			//https://www.creationkit.com/fallout4/index.php?title=DirectX_Scan_Codes
-			if (this.IsWaiting() || hold)
-				return true;
+			if (this.IsWaiting())
+				return;
 				
 			ProcessKeyRepeat(keyCode);
+			
+			if (hold)
+				return;
 
 			switch (keyCode)
 			{
@@ -357,10 +363,6 @@
 		
 		public function ProcessKeyRepeat(keyCode:uint)
 		{
-			//block while waiting for latent functions
-			if (IsWaiting())
-				return;
-			
 			if (hold) {
 				ProcessKeyHold(keyCode);
 				return;
@@ -378,6 +380,7 @@
 				case 268://Pad Left
 					if (sliderList.visible) {
 						sliderList.processInput(SliderList.LEFT);
+						RefreshNotification();
 					}
 					break;
 				case 38://Up
@@ -385,6 +388,7 @@
 				case 266://Pad Up
 					if (sliderList.visible) {
 						sliderList.processInput(SliderList.UP);
+						RefreshNotification();
 					}
 					break;
 				case 39://Right
@@ -392,6 +396,7 @@
 				case 269://Pad Right
 					if (sliderList.visible) {
 						sliderList.processInput(SliderList.RIGHT);
+						RefreshNotification();
 					}
 					break;
 				case 40://Down
@@ -400,6 +405,7 @@
 					if (sliderList.visible)
 					{
 						sliderList.processInput(SliderList.DOWN);
+						RefreshNotification();
 					}
 					break;
 			}
@@ -438,9 +444,11 @@
 			}
 		}
 		
-		public function ShowNotification(msg:String)
+		public function ShowNotification(msg:String, store:Boolean = false)
 		{
 			if (msg && msg.length > 0) {
+				if (store)
+					notificationMessage = msg;
 				notification.visible = true;
 				notification.message.text = msg;
 			} else {
@@ -455,7 +463,7 @@
 		
 		public function SetFolder(data:Object)
 		{
-			trace("Set folder");
+			//trace("Set folder");
 			var folderResult:GFxResult = Data.getFolder(data.path, data.ext);
 			if (!CheckError(folderResult))
 				return;
@@ -465,7 +473,7 @@
 		
 		public function LoadMenuFolder(data:Object, result:GFxResult, name:String):void
 		{
-			trace("Load menu folder");
+			//trace("Load menu folder");
 //			Data.menuName = name;
 		
 			//update enter and leave functions
@@ -480,11 +488,11 @@
 		
 		public function LoadFolder(data:Object, result:GFxResult):void
 		{
-			trace("Load folder");
+			//trace("Load folder");
 			Data.setFolder(data, result);
 			
 			state = STATE_FOLDER;
-			trace("pushing state, length", stateStack.length);
+			//trace("pushing state, length", stateStack.length);
 			stateStack.push(GetState());
 			sliderList.updateState(0);
 			sliderList.update();
@@ -497,7 +505,7 @@
 		{
 			var type:int = Data.getType(i);
 			if (type == Data.ITEM_LIST) {
-				trace("Select folder list");
+				//trace("Select folder list");
 				var path:String = Data.getFolderPath(i);
 				var selectResult:GFxResult = CallDataFunction(Data.folderData.func, [path]);
 				
@@ -507,7 +515,7 @@
 				if (Data.folderData.pop)
 					ClearFolder();
 			} else if (type == Data.ITEM_FOLDER) {
-				trace("Select folder, folder");
+				//trace("Select folder, folder");
 				var folderResult:GFxResult = Data.getFolder(Data.menuFolder[i].path, Data.folderData.ext);
 				
 				if (!CheckError(folderResult))
@@ -528,24 +536,20 @@
 				PushFolder(Data.menuFolder[i].path, folderResult);
 			} else {
 				var checkbox:Boolean;
-				
 				if (type == Data.ITEM_CHECKBOX) {
 					checkbox = true;
 					Data.menuFolder[i].checked = checked;
 					
 				} else {
 					checkbox = false;
-					for (var i:int = 0; i < Data.menuFolder.length; i++) {
-						Data.menuFolder[i].checked = false;
+					for (var j:int = 0; j < Data.menuFolder.length; j++) {
+						Data.menuFolder[j].checked = false;
 					}
 					Data.menuFolder[i].checked = true;
 				}
-				
 				var path:String = Data.getFolderPath(i);
 				var race:Boolean = Data.menuData.race;
-				
 				var selectResult:GFxResult = sam.LoadSkeletonAdjustment(path, checked, checkbox, race);
-
 				if (!CheckError(selectResult))
 					return;
 
@@ -556,22 +560,20 @@
 		
 		public function PushFolder(path:String, result:GFxResult) 
 		{
-			trace("data push folder");
+			//trace("data push folder");
 			Data.pushFolder(path, result.result);
 			
-			trace("pushing folder", stateStack.length)
+			//trace("pushing folder", stateStack.length)
 			stateStack.push(GetState());
 			sliderList.updateState(0);
 			sliderList.update();
 			sliderList.updateSelected(0, 0);
-			
-			UpdateMenus();
 		}
 		
 		public function PopFolder() 
 		{
 			var folderPath:String = Data.popFolder();
-			trace("Pop folder", folderPath);
+			//trace("Pop folder", folderPath);
 
 			var folderResult:GFxResult = Data.getFolder(folderPath, Data.folderData.ext);
 			
@@ -581,45 +583,19 @@
 
 			Data.updateFolder(folderResult.result);
 
-			trace("popping state, length", stateStack.length);
+			//trace("popping state, length", stateStack.length);
 			currentState = stateStack.pop();
 			sliderList.updateState(currentState.pos);
 			sliderList.update();
 			sliderList.updateSelected(currentState.x, currentState.y);
-
-			UpdateMenus();
 		}
-		
-//		public function pushFolderCheckbox(id:int, func:Function)
-//		{
-//			stateStack.push(getState());
-//			sliderList.updateState(0);
-//			if (multi) {
-//				sliderList.updateFolderCheckbox(func);
-//			} else {
-//				sliderList.updateFolder(func);
-//			}
-//			sliderList.updateSelected(0, 0);
-//		}
-//		
-//		public function popFolderCheckbox(func:Function)
-//		{
-//			currentState = stateStack.pop();
-//			sliderList.updateState(currentState.pos);
-//			if (multi) {
-//				sliderList.updateFolderCheckbox(func);
-//			} else {
-//				sliderList.updateFolder(func);
-//			}
-//			sliderList.updateSelected(currentState.x, currentState.y);
-//		}
 		
 		public function ClearFolder()
 		{
 			//go to first folder then pop to get current state
-			trace("clearing folder, length:", stateStack.length);
+			//trace("clearing folder, length:", stateStack.length);
 			stateStack.length = stateStack.length - Data.folderStack.length;
-			trace("post length:", stateStack.length);
+			//trace("post length:", stateStack.length);
 			Data.folderStack.length = 0;
 			Data.menuFolder = null;
 			PopMenu();
@@ -627,7 +603,7 @@
 		
 		public function PushState()
 		{
-			trace("Pushing state, length:", stateStack.length);
+			//trace("Pushing state, length:", stateStack.length);
 			stateStack.push(GetState());
 			currentState.x = 0;
 			currentState.y = 0;
@@ -659,29 +635,9 @@
 			return true;
 		}
 		
-//		public function CheckWait(menuResult:GFxResult, getResult:GFxResult, type:int):Boolean
-//		{
-//			if (getResult.type != Data.RESULT_WAITING)
-//				return true;
-//				
-//			Data.setPapyrusWaiting(menuResult.result, type);
-//			
-//			Data.papyrusTimer.Timer = new Timer(menuResult.result.get.timeout, 1);
-//			Data.papyrusTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) 
-//			{
-//				ShowNotification("$SAM_PapyrusTimeout");
-//				Util.playCancel();
-//				Data.clearPapyrusWaiting();
-//			});
-//			
-//			Data.papyrusTimer.start();
-//
-//			return false;
-//		}
-		
 		public function GetState():Object
 		{
-			trace("get state");
+			//trace("get state");
 			return {
 				"menu": Data.menuName,
 				"x": sliderList.selectedX,
@@ -692,7 +648,7 @@
 		
 		public function GetMenuData(name:String):GFxResult
 		{
-			trace("Get menu data");
+			//trace("Get menu data");
 			var menuResult:GFxResult = Data.getMenu(name);
 			
 			if (!CheckError(menuResult))
@@ -703,7 +659,7 @@
 		
 		public function GetMenuGetLatent(data:Object, name:String, type:int):int
 		{
-			trace("Get Menu Get Latent");
+			//trace("Get Menu Get Latent");
 			//get menu result
 			var getResult:GFxResult = GetResult(data);
 			
@@ -743,12 +699,13 @@
 		}
 		
 		public function LatentTimeout() {
-			trace("Latent timeout");
+			//trace("Latent timeout");
 			//pop cannot fail
 			if (Data.latentAction == Data.LATENT_POP) {
 				LoadMenu(currentState.menu, Data.popFailMenu.result, Data.popFailGet);
 			} else {
 				ShowNotification("$SAM_PapyrusTimeout");
+				Util.playCancel();
 			}
 
 			Data.clearLatents();
@@ -767,7 +724,7 @@
 		
 		public function PushMenu(name:String)
 		{
-			trace("Push menu", name);
+			//trace("Push menu", name);
 			//get menu data
 			var menuData:GFxResult = GetMenuData(name);
 			if (!menuData)
@@ -783,7 +740,7 @@
 		
 		public function UpdatePush(data:Object, result:GFxResult, name:String)
 		{
-			trace("Update Push", name);
+			//trace("Update Push", name);
 			//check if menu is a folder and push that instead
 			if (!CheckPushFolder(data, result, name))
 				return;
@@ -803,7 +760,9 @@
 		
 		public function LatentCallback(result:GFxResult):void
 		{
-			trace("Latent callback");
+			//trace("Latent callback");
+			//result.traceResult();
+			
 			switch (result.type) {
 				case Data.RESULT_ERROR:
 					ShowNotification(result.result);
@@ -832,7 +791,8 @@
 		
 		public function UpdateLatentGet():void
 		{
-			trace("Update Latent Get");
+			//trace("Update Latent Get", Data.latentAction);
+			
 			if (Data.latentGet.success) {
 				if (Data.latentNotification.waiting || Data.latentTitle.waiting)
 					return;
@@ -858,7 +818,7 @@
 		
 		public function PopMenu():void
 		{
-			trace("Pop Menu");
+			//trace("Pop Menu");
 			if (this.filenameInput.visible)
 			{
 				ClearEntry();
@@ -876,7 +836,7 @@
 				return;
 			}
 			
-			trace("popping menu state", stateStack.length);
+			//trace("popping menu state", stateStack.length);
 			currentState = stateStack.pop();
 			var menuData:GFxResult = GetMenuData(currentState.menu);
 			
@@ -903,7 +863,7 @@
 		
 		public function UpdatePop(data:Object, result:GFxResult, name:String)
 		{
-			trace("Update pop");
+			//trace("Update pop");
 			UpdateEnterLeave(Data.menuData, data.enter);
 			
 			LoadMenu(name, data, result);
@@ -913,21 +873,21 @@
 		
 		public function PopMenuTo(name:String):void
 		{
-			trace("Pop menu to");
+			//trace("Pop menu to");
 			//do not pop from main
 			if (stateStack.length < 2)
 				return;
 				
 			//find stack index
 			var index:int = stateStack.length;
-			trace("start index", index);
+
 			while (index > 0) {
 				index--;
 				var menuName:Object = stateStack[index].menu.toLowerCase();
 				if (menuName == name.toLowerCase())
 					break;
 			}
-			trace("found index", index);
+
 			//menu not found
 			if (index <= 0)
 				return;
@@ -936,26 +896,23 @@
 			Data.folderStack.length = 0;
 			Data.menuFolder = null;
 			
-			trace("state stack length", stateStack.length);
 			stateStack.length = index + 1;
-			trace("new state stack length", stateStack.length);
 			if (filenameInput.visible) {
 				SetTextInput(false);
 			}
-			
-			trace("pop menu to complete");
+
 			PopMenu();
 		}
 		
 		public function ResetState():void
 		{
-			trace("Reset state");
+			//trace("Reset state");
 			state = STATE_MAIN;
 			currentState.menu = rootMenu;
 			currentState.pos = 0;
 			currentState.x = 0;
 			currentState.y = 0;
-			trace("resetting state", stateStack.length);
+
 			stateStack.length = 0;
 			Data.folderStack.length = 0;
 
@@ -983,22 +940,22 @@
 		
 		public function LoadMenu(name:String, data:Object, get:GFxResult):void
 		{
-			trace("Load Menu", data, get);
+			//trace("Load Menu", data, get);
 			Data.updateMenu(name, data, get);
 			state = STATE_MAIN;
 			Util.unselectText();
-			trace("slider list update");
-			sliderList.updateState(0);
+
+			sliderList.updateState(currentState.pos);
 			sliderList.update();
 			sliderList.updateSelected(currentState.x, currentState.y);
-			trace("update menus");
+
 			UpdateMenus();
 			Data.latentGet.Clear();
 		}
 		
 		public function UpdateMenus()
 		{
-			trace("Update Menus");
+			//trace("Update Menus");
 			UpdateButtonHints();
 			UpdateNotification();
 			UpdateTitle();
@@ -1006,7 +963,7 @@
 		
 		public function GetResult(menu:Object):GFxResult
 		{
-			trace("Get Result");
+			//trace("Get Result");
 			switch (menu.type) {
 				case Data.MENU_MIXED:
 				case Data.MENU_CHECKBOX:
@@ -1033,7 +990,7 @@
 		
 		public function CallSet(... args)
 		{
-			trace("Call Set");
+			//trace("Call Set");
 			var data:Object = GetSetData(args);
 
 			if (!data)
@@ -1064,7 +1021,7 @@
 		
 		public function UpdateDataFunction(data:Object)
 		{
-			trace("Update Data Function");
+			//trace("Update Data Function");
 			if (data.pop) {
 				PopMenu();
 			} else if (data.popto) {
@@ -1077,7 +1034,7 @@
 		}
 		
 		public function RefreshValues() {
-			trace("Refresh Values");
+			//trace("Refresh Values");
 			var getResult:int = GetMenuGetLatent(Data.menuData, Data.menuName, Data.LATENT_REFRESH);
 			if (getResult != Data.RESULT_SUCCESS)
 				return;
@@ -1087,7 +1044,7 @@
 		
 		public function UpdateValues()
 		{
-			trace("UpdateValues");
+			//trace("UpdateValues");
 			Data.updateValues(Data.latentGet.result);
 			sliderList.updateValues();
 			Data.latentGet.Clear();
@@ -1099,7 +1056,7 @@
 				return;
 			}
 			
-			trace("Reload Menu");
+			//trace("Reload Menu");
 			var getResult:int = GetMenuGetLatent(Data.menuData, Data.menuName, Data.LATENT_RELOAD);
 			if (getResult != Data.RESULT_SUCCESS)
 				return;
@@ -1109,7 +1066,7 @@
 		
 		public function UpdateReload()
 		{
-			trace("Update reload");
+			//trace("Update reload");
 			Data.updateMenu(Data.menuName, Data.menuData, Data.latentGet.result);
 			Data.latentGet.Clear();
 			sliderList.storeSelected();
@@ -1120,7 +1077,7 @@
 		
 		public function ReloadFolder()
 		{
-			trace("reload folder");
+			//trace("reload folder");
 			var result:GFxResult;
 			if (Data.menuType == Data.MENU_FOLDERCHECKBOX) {
 				result = Data.getFolderCheckbox(Data.folderData.path, Data.folderData.ext, Data.menuData.race);
@@ -1136,7 +1093,7 @@
 		
 		public function GetSetData(args:Array):Object
 		{
-			trace("Get Set Data");
+			//trace("Get Set Data");
 			switch (Data.menuType) {
 				case Data.MENU_MIXED:
 					if (Data.menuData.items[args[0]].func)
@@ -1157,13 +1114,13 @@
 		
 		public function SetLocalVariable(name:String, value:Object)
 		{
-			trace("Set local variable", name, value);
+			//trace("Set local variable", name, value);
 			Data.locals[name] = value;
 		}
 		
 		public function SelectList(i:int) 
 		{
-			trace("Select List", i);
+			//trace("Select List", i);
 			switch (Data.menuType) {
 				case Data.MENU_LIST:
 				case Data.MENU_MIXED:
@@ -1184,14 +1141,14 @@
 		
 		public function SelectInt(i:int, value:int)
 		{
-			trace("Select Int", i, value);
+			//trace("Select Int", i, value);
 			Data.menuValues[i] = value;
 			CallSet(i, value);
 		}
 		
 		public function SelectFloat(i:int, value:Number)
 		{
-			trace("Select Float", i, value);
+			//trace("Select Float", i, value);
 			var type:int = Data.getType(i);
 			if (type != Data.ITEM_TOUCH) {
 				Data.menuValues[i] = value;
@@ -1201,7 +1158,7 @@
 		
 		public function SelectCheckbox(i:int, checked:Boolean = false)
 		{
-			trace("Select Checkbox", i, checked);
+			//trace("Select Checkbox", i, checked);
 			switch (Data.menuType) 
 			{
 				case Data.MENU_CHECKBOX:
@@ -1220,7 +1177,7 @@
 					}
 					break;
 				case Data.MENU_ADJUSTMENT:
-					if (Data.locals.order) {
+					if (Data.locals.adjustmentOrder) {
 						CallDataFunction(Data.menuData.adjustment.down, [i]);
 					} else {
 						CallDataFunction(Data.menuData.adjustment.edit, [i, Data.menuValues[i]]);
@@ -1231,8 +1188,8 @@
 		
 		public function SelectCheckbox2(i:int, checked:Boolean = false)
 		{
-			trace("Select Checkbox2", i, checked);
-			if (Data.locals.order) {
+			//trace("Select Checkbox2", i, checked);
+			if (Data.locals.adjustmentOrder) {
 				CallDataFunction(Data.menuData.adjustment.up, [i]);
 			} else {
 				CallDataFunction(Data.menuData.adjustment.remove, [i, Data.menuValues[i]]);
@@ -1245,40 +1202,9 @@
 			return Data.latentWaiting || !isOpen;
 		}
 
-//		public function PapyrusResult(result:GFxResult):void
-//		{
-//			if (Data.papyrusWaiting)
-//			{
-//				if (!CheckError(result)) {
-//					Util.playCancel();
-//					Data.clearPapyrusWaiting();
-//					return;
-//				}
-//				
-//				switch (Data.papyrusType) {
-//					case PAPYRUS_GET:
-//						stateStack.push(GetState());
-//						currentState.x = 0;
-//						currentState.y = 0;
-//						sliderList.updateState(0);
-//				
-//						LoadMenu(name, Data.papyrusMenuData, result);
-//						break;
-//						
-//					case PAPYRUS_REFRESH:
-//						sliderList.updateValues();
-//						break;
-//						
-//					//case PAPYRUS_SET: //ignore
-//				}
-//				
-//				Data.clearPapyrusWaiting();
-//			}
-//		}
-		
 		public function CallDataFunction(data:Object, args:Array = null):GFxResult
 		{
-			trace("Call Data Function");
+			//trace("Call Data Function");
 			if (data["var"]) {
 				if (data.all) {
 					Data.locals[data["var"]] = Util.shallowCopyArray(Data.menuValues);
@@ -1298,7 +1224,7 @@
 						return null;
 					}
 					
-					if (!data.func) { 
+					if (!data.name) { 
 						Data.error = "Papyrus function missing function name";
 						return null;
 					}
@@ -1307,19 +1233,30 @@
 						args = [];
 					}
 					
-					args.push(data.script);
-					args.push(data.func);
+					args.unshift(data.name); //2nd param
+					args.unshift(data.script); //1st param
+					break;
+				case Data.FUNC_FORM:
+					if (!data.name) {
+						Data.error = "Papyrus function missing function name";
+						return null;
+					}
+
+					if (!data.id) {
+						Data.error = "Papyrus function missing id";
+						return null;
+					}
 					break;
 				case Data.FUNC_MENU:
-					trace("calling menu func");
+					//trace("calling menu func");
 					PushMenu(data.name);
 					return Data.resultSuccess;
 				case Data.FUNC_ENTRY: 
-					trace("calling entry func");
+					//trace("calling entry func");
 					SetEntry(data.entry);
 					return Data.resultSuccess;
 				case Data.FUNC_FOLDER:
-					trace("calling folder func");
+					//trace("calling folder func");
 					SetFolder(data.folder);
 					return Data.resultSuccess;
 			}
@@ -1351,10 +1288,10 @@
 				}
 			}
 			
-			trace("calling data function");
-			Util.traceObj(data);
-			trace("args");
-			Util.traceObj(args);
+			//trace("calling data function");
+			//Util.traceObj(data);
+			//trace("args");
+			//Util.traceObj(args);
 			
 			switch (data.type)
 			{
@@ -1406,9 +1343,12 @@
 		//Calls a papyrus global function
 		public function CallPapyrusForm(data:Object, args:Array):GFxResult
 		{
+			if (!args)
+				args = [];
+				
 			var result:GFxResult;
 			try {
-				result = this.sam.CallPapyrusForm(data.id, data.func, args);
+				result = this.sam.CallPapyrusForm(data.id, data.name, args);
 				if (result)
 					return result;
 			}
@@ -1420,11 +1360,13 @@
 		
 		public function CallPapyrusGlobal(args:Array):GFxResult
 		{
+			//trace("call papyrus global");
+			//Util.traceObj(args);
 			
-			var result:GFxResult = Util.callFuncArgs(this.f4seObj.CallGlobalFunctionNoWait, args); 			
+			var result:Boolean = Util.callFuncArgs(this.f4seObj.CallGlobalFunctionNoWait, args); 			
 			if (result)
-				return result;
-			
+				return Data.resultWaiting;
+				
 			Data.error = "$SAM_PapyrusTimeout";
 			return null;
 		}
@@ -1468,205 +1410,6 @@
 			error = "$SAM_LocalFunctionMissing";
 			return null;
 		}
-
-//		internal function updateState()
-//		{
-//			
-//			switch(this.state)
-//			{
-//				case MAIN_STATE:
-//					Data.menuOptions = Data.MAIN_MENU;
-//					sliderList.updateList(selectMenu);
-//					break;
-//				case ADJUSTMENT_STATE:
-//					Data.loadAdjustmentList();
-//					sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
-//					break;
-//				case EDITADJUSTMENT_STATE:
-//					Data.editAdjustment();
-//					sliderList.updateAdjustmentEdit(selectEditAdjustment);
-//					break;
-//				case POSECATEGORY_STATE:
-//					Data.loadCategories();
-//					sliderList.updateList(selectCategory);
-//					break;
-//				case POSENODE_STATE:
-//					Data.loadBones();
-//					sliderList.updateList(selectBone);
-//					break;
-//				case TRANSFORM_STATE:
-//					Data.loadTransforms();
-//					sliderList.updateTransform(selectTransform);
-//					break;
-//				case MORPHCATEGORY_STATE:
-//					Data.loadMorphCategories();
-//					sliderList.updateList(selectMorphCategory);
-//					break;
-//				case MORPH_STATE:
-//					Data.loadMorphs();
-//					sliderList.updateMorphs(selectMorph);
-//					break;
-//				case LOADADJUSTMENT_STATE:
-//					Data.loadSubFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
-//					sliderList.updateFolder(selectAdjustmentFile);
-//					break;
-//				case LOADMFG_STATE:
-//					Data.loadSubFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
-//					sliderList.updateFolder(selectMfgFile);
-//					break;
-//				case SAVEMFG_STATE:
-//				case SAVEADJUSTMENT_STATE:
-//				case SAVEPOSE_STATE:
-//				case RENAMEADJUSTMENT_STATE:
-//				case SAVELIGHT_STATE:
-//				case RENAMELIGHT_STATE:
-//					SetTextInput(true);
-//					break;
-//				case EYE_STATE:
-//					Data.loadEyes();
-//					sliderList.updateEyes(selectEye);
-//					break;
-//				case HACK_STATE:
-//					Data.loadHacks();
-//					Data.menuOptions = Data.HACK_NAMES;
-//					sliderList.updateCheckboxes(selectHack);
-//					break;
-//				case IDLECATEGORY_STATE:
-//					Data.loadIdleCategories();
-//					sliderList.updateList(selectIdleCategory);
-//					break;
-//				case IDLE_STATE:
-//					Data.loadIdles();
-//					sliderList.updateList(selectIdle);
-//					break;
-//				case POSEEXPORT_STATE:
-//					Data.getPoseList();
-//					sliderList.updateCheckboxes(selectPose);
-//					break;
-//				case POSEEXPORTTYPE_STATE:
-//					Data.loadPoseExport();
-//					sliderList.updateList(selectExportType);
-//					break;
-//				case POSEPLAY_STATE:
-//				case LOADPOSE_STATE:
-//					Data.loadSubFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
-//					sliderList.updateFolder(selectPoseFile);
-//					break;
-//				case SKELETONADJUSTMENT_STATE:
-//					Data.getAdjustmentFolder(false);
-//					updateMulti(false);
-//					break;
-//				case RACEADJUSTMENT_STATE:
-//					Data.getAdjustmentFolder(true);
-//					updateMulti(true);
-//					break;
-//				case POSITIONING_STATE:
-//					Data.loadPositioning();
-//					sliderList.updatePositioning(selectPositioning);
-//					break;
-//				case OPTIONS_STATE:
-//					Data.loadOptions();
-//					sliderList.updateCheckboxes(selectOptions);
-//					break;
-//				case CAMERA_STATE:
-//					Data.loadCamera();
-//					sliderList.updateCamera(selectCamera);
-//					break;
-//				case LIGHTSELECT_STATE:
-//					Data.loadLightSelect();
-//					sliderList.updateList(selectLightSelect);
-//					break;
-//				case LIGHTEDIT_STATE:
-//					Data.loadLightEdit();
-//					sliderList.updateLight(selectLightEdit);
-//					break;
-//				case LIGHTCATEGORY_STATE:
-//				case LIGHTSWAPCATEGORY_STATE:
-//					Data.loadLightCategory();
-//					sliderList.updateList(selectLightCategory);
-//					break;
-//				case LIGHTOBJECT_STATE:
-//				case LIGHTSWAPOBJECT_STATE:
-//					Data.loadLightObject();
-//					sliderList.updateList(selectLightObject);
-//					break;
-//				case LOADLIGHT_STATE:
-//					Data.loadSubFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
-//					sliderList.updateFolder(selectLightFile);
-//					break;
-//				case LIGHTSETTINGS_STATE:
-//					Data.loadLightSettings();
-//					sliderList.updateLightSettings(selectLightSettings);
-//					break;
-//				case MORPHTONGUE_STATE:
-//					Data.getMorphsTongueNodes();
-//					sliderList.updateList(selectMorphTongue);
-//					break;
-//			}
-//
-//		}
-		
-//		public function updateMulti(race:Boolean):void
-//		{
-//			var func:Function = (race ? selectRaceAdjustment : selectSkeletonAdjustment);
-//			if (multi) {
-//				sliderList.updateFolderCheckbox(func);
-//			} else {
-//				sliderList.updateFolder(func);
-//			}
-//		}
-		
-//		public function selectAdjustment(id:int):void
-//		{
-//			Data.selectedAdjustment = Data.menuValues[id];
-//			pushState(POSECATEGORY_STATE);
-//		}
-//		
-//		public function editAdjustment(id:int):void
-//		{
-//			Data.selectedAdjustment = Data.menuValues[id];
-//			pushState(EDITADJUSTMENT_STATE);
-//		}
-//		
-//		public function selectEditAdjustment(id:int, value:Object = null):void
-//		{
-//			switch (id)
-//			{
-//				case 0:
-//					Data.menuValues[id] = value;
-//					Data.setAdjustmentScale(value);
-//					break;
-//				case 1:
-//					pushState(SAVEADJUSTMENT_STATE);
-//					break;
-//				case 2:
-//					pushState(RENAMEADJUSTMENT_STATE);
-//					break;
-//				case 3:
-//					Data.resetAdjustment();
-//					break;
-//				default:
-//					Data.negateAdjustmentGroup(id);
-//			}
-//		}
-		
-//		public function removeAdjustment(id:int):void
-//		{
-//			Data.removeAdjustment(Data.menuValues[id]);
-//			Data.loadAdjustmentList();
-//			sliderList.storeSelected();
-//			sliderList.updateAdjustment(selectAdjustment, editAdjustment, removeAdjustment);
-//			sliderList.restoreSelected();
-//		}
-//
-//		public function NewAdjustment():void
-//		{
-//			try {
-//				sam.NewAdjustment();
-//			}
-//			catch (e:Error) {}
-//			ReloadMenu();
-//		}
 		
 		public function MoveAdjustmentDown(id:int):GFxResult
 		{
@@ -1704,64 +1447,6 @@
 			return Data.resultSuccess;
 		}
 		
-//		public function selectCategory(id:int):void
-//		{
-//			Data.selectedCategory = Data.menuValues[id];
-//			pushState(POSENODE_STATE);
-//		}
-//		
-//		public function selectBone(id:int):void
-//		{
-//			Data.selectedBone = Data.menuValues[id];
-//			Data.getNodeName();
-//			offset = false;
-//			pushState(TRANSFORM_STATE);
-//		}
-//		
-//		public function selectTransform(id:int, value:Number):void
-//		{
-//			Data.setTransform(id, value);
-//			if (id >= 7) {
-//				sliderList.updateValues();
-//			}
-//		}
-//		
-//		public function selectMorphCategory(id:int):void
-//		{
-//			Data.selectedCategory = id;
-//
-//			//If index less than 0 then it's not a tongue
-//			if (Data.menuValues[id] < 0) {
-//				pushState(MORPH_STATE);
-//			} else {
-//				Data.selectedCategory = Data.menuValues[id];
-//				pushState(MORPHTONGUE_STATE);
-//			}
-//		}
-//		
-//		public function selectMorph(id:int, value:Number):void
-//		{
-//			Data.setMorph(id, int(value));
-//		}
-//		
-//		public function selectEye(id:int, value:Object):void
-//		{
-//			Data.setEye(id, value);
-//		}
-//		
-//		public function selectHack(id:int, enabled:Boolean):void
-//		{
-//			Data.setHack(id, enabled);
-//		}
-//		
-//		public function selectPositioning(id:int, value:Number = 0):void
-//		{
-//			Data.selectPositioning(id, value);
-//			if (id > 0) {
-//				sliderList.updateValues();
-//			}
-//		}
-		
 		internal function ConfirmButton():void
 		{
 			if (this.filenameInput.visible) 
@@ -1798,21 +1483,6 @@
 			UpdateMenus();
 		}
 
-//		internal function ConfirmButton():void
-//		{
-//			switch (this.state) {
-//				case SAVEMFG_STATE: Data.saveMfg(filenameInput.Input_tf.text); break;
-//				case SAVEADJUSTMENT_STATE: Data.saveAdjustment(filenameInput.Input_tf.text); break;
-//				case SAVEPOSE_STATE: Data.savePose(filenameInput.Input_tf.text); break;
-//				case RENAMEADJUSTMENT_STATE: Data.renameAdjustment(filenameInput.Input_tf.text); break;
-//				case SAVELIGHT_STATE: Data.saveLights(filenameInput.Input_tf.text); break;
-//				case RENAMELIGHT_STATE: Data.renameLight(filenameInput.Input_tf.text); break;
-//			}
-//			SetTextInput(false);
-//			PopMenu();
-//			Util.playOk();
-//		}
-//		
 		internal function SetTextInput(enabled:Boolean)
 		{
 			if (enabled)
@@ -1842,227 +1512,17 @@
 			}
 		}
 
-//		internal function SaveButton():void
-//		{
-//			switch (this.state) {
-//				case MORPH_STATE:
-//				case MORPHCATEGORY_STATE:
-//					pushState(SAVEMFG_STATE); break;
-//				case ADJUSTMENT_STATE: pushState(SAVEADJUSTMENT_STATE); break;
-//				case POSEEXPORT_STATE: pushState(SAVEPOSE_STATE); break;
-//				case LIGHTSELECT_STATE: pushState(SAVELIGHT_STATE); break;
-//			}
-//		}
-//
-//		internal function LoadButton():void
-//		{
-//			switch (this.state) {
-//				case MORPH_STATE: 
-//				case MORPHCATEGORY_STATE:
-//					pushState(LOADMFG_STATE); break;
-//				case ADJUSTMENT_STATE: pushState(LOADADJUSTMENT_STATE); break;
-//				case POSEEXPORT_STATE: pushState(LOADPOSE_STATE); break;
-//				case LIGHTSELECT_STATE: pushState(LOADLIGHT_STATE); break;
-//				case POSEPLAY_STATE: //a-pose
-//					Data.resetPose(2);
-//					break;
-//				case TRANSFORM_STATE: //offset toggle
-//					//only toggle if node isn't offset only
-//					if (!Data.getNodeIsOffset()) {
-//						if (Data.toggleNodeName()) {
-//							offset = !offset;
-//							buttonHintLoad.ButtonText = offset ? "$SAM_Pose" : "$SAM_Offset";
-//							Data.loadTransforms();
-//							sliderList.updateValues();
-//							updateTitle();
-//							Util.playOk();
-//						}
-//					}
-//					break;
-//			}
-//		}
-		
-//		internal function selectIdleCategory(id:int)
-//		{
-//			Data.selectedCategory = id;
-//			pushState(IDLE_STATE);
-//		}
-//		
-//		internal function selectIdle(id:int)
-//		{
-//			Data.playIdle(id);
-//			ShowNotification(Data.menuOptions[id]);
-//		}
-//		
-//		internal function selectPose(id:int, enabled:Boolean)
-//		{
-//			Data.menuValues[id] = enabled;
-//		}
-//		
-//		internal function selectPoseExport(id:int)
-//		{
-//			Data.selectedCategory = id;
-//			pushState(POSEEXPORT_STATE);
-//		}
-//		
-//		internal function selectSkeletonAdjustment(id:int, enabled:Boolean = true)
-//		{
-//			if (Data.selectSkeletonFile(id, false, !multi, enabled)) {
-//				pushFolderCheckbox(id, selectSkeletonAdjustment);
-//			} else {
-//				Data.getAdjustmentFolder(false);
-//				updateMulti(false);
-//			}
-//		}
-//		
-//		internal function selectRaceAdjustment(id:int, enabled:Boolean = true)
-//		{
-//			if (Data.selectSkeletonFile(id, true, !multi, enabled)) {
-//				pushFolderCheckbox(id, selectRaceAdjustment);
-//			} else {
-//				Data.getAdjustmentFolder(true);
-//				updateMulti(true);
-//			}
-//		}
-//		
-//		internal function selectPoseFile(id:int)
-//		{
-//			if (Data.selectSamPose(id)) {
-//				pushFolder(id, selectPoseFile);
-//			}
-//		}
-//		
-//		internal function selectMfgFile(id:int)
-//		{
-//			if (Data.selectMfgFile(id)) {
-//				pushFolder(id, selectMfgFile);
-//			}
-//		}
-//		
-//		internal function selectLightFile(id:int)
-//		{
-//			if (Data.selectLightFile(id)) {
-//				pushFolder(id, selectLightFile);
-//			} else {
-//				clearFolder();
-//			}
-//		}
-//		
-//		internal function selectAdjustmentFile(id:int)
-//		{
-//			if (Data.selectAdjustmentFile(id)) {
-//				pushFolder(id, selectAdjustmentFile);
-//			} else {
-//				clearFolder();
-//			}
-//		}
-//		
-//		internal function selectOptions(id:int, enabled:Boolean)
-//		{
-//			switch (id) {
-//				case 0://hotswap
-//					break;
-//				case 1://alignment
-//					swapped = enabled;
-//					UpdateAlignment();
-//					break;
-//				case 2://widescreen
-//					widescreen = enabled;
-//					UpdateAlignment();
-//					break;
-//				case 3://autoplay
-//					Data.autoPlay = enabled;
-//					break;
-//			}
-//			Data.setOption(id, enabled);
-//		}
-//		
-//		internal function selectCamera(id:int, value:Number = 0)
-//		{
-//			Data.setCamera(id, value);
-//			Data.loadCamera();
-//			sliderList.updateValues();
-//		}
-//		
-//		internal function selectLightSelect(id:int)
-//		{
-//			if (id < Data.menuOptions.length - 3) { //light
-//				Data.selectedAdjustment = id;
-//				pushState(LIGHTEDIT_STATE);
-//			} else if (id < Data.menuOptions.length - 2) { //add new
-//				pushState(LIGHTCATEGORY_STATE);
-//			} else if (id < Data.menuOptions.length - 1) { //add console
-//				Data.addLight();
-//				Data.loadLightSelect();
-//				sliderList.updateList(selectLightSelect);
-//			} else {
-//				pushState(LIGHTSETTINGS_STATE);
-//			}
-//		}
-//		
-//		internal function selectLightEdit(id:int, value:Number = 0)
-//		{
-//			if (id < 5) { //properties
-//				Data.editLight(id, value);
-//				sliderList.updateValues();
-//			} else if (id < 6) { //rename
-//				pushState(RENAMELIGHT_STATE);
-//			} else if (id < 7) { //swap
-//				pushState(LIGHTSWAPCATEGORY_STATE);
-//			} else { //delete
-//				Data.deleteLight();
-//				PopMenu();
-//			}
-//		}
-//		
-//		internal function selectLightCategory(id:int)
-//		{
-//			Data.selectedCategory = id;
-//			switch (this.state) {
-//				case LIGHTCATEGORY_STATE: pushState(LIGHTOBJECT_STATE); break;
-//				case LIGHTSWAPCATEGORY_STATE: pushState(LIGHTSWAPOBJECT_STATE); break;
-//			}
-//		}
-//		
-//		internal function selectLightObject(id:int)
-//		{
-//			switch (this.state) {
-//				case LIGHTOBJECT_STATE:
-//					Data.createLight(id);
-//					break;
-//				case LIGHTSWAPOBJECT_STATE:
-//					Data.swapLight(id);
-//					break;
-//			}
-//			//need to double pop so fake pop first
-//			stateStack.pop();
-//			PopMenu();
-//		}
-//		
-//		internal function selectLightSettings(id:int, value:Number = 0)
-//		{
-//			if (id < 4) { // pos/rot
-//				Data.editLightSettings(id, value);
-//				sliderList.updateValues();
-//			} else if (id < 5) { //update all
-//				Data.updateAllLights();
-//			} else { //delete all
-//				Data.deleteAllLights();
-//			}
-//		}
-//		
-//		internal function selectExportType(id:int)
-//		{
-//			Data.selectedCategory = id;
-//			pushState(POSEEXPORT_STATE);
-//		}
-//		
-//		internal function selectMorphTongue(id:int)
-//		{
-//			Data.getMorphsTongue(id);
-//			offset = false;
-//			pushState(TRANSFORM_STATE);
-//		}
+		public function GetButton(type:int):BSButtonHintData
+		{
+			switch(type) {
+				case Data.BUTTON_RESET: return this.buttonHintReset;
+				case Data.BUTTON_EXTRA: return this.buttonHintExtra;
+				case Data.BUTTON_SAVE: return this.buttonHintSave;
+				case Data.BUTTON_LOAD: return this.buttonHintLoad;
+			}
+			
+			return null;
+		}
 		
 		public function ResetButton()
 		{
@@ -2086,16 +1546,45 @@
 		
 		public function CallHotkeyFunction(type:int)
 		{
-			trace("Call hotkey function", this.state, type);
-			Util.traceObj(Data.folderData);
-			var data:Object = (this.state == STATE_FOLDER ? Data.getFolderHotkey(type) : Data.getHotkey(type));
-			Util.traceObj(data);
-			if (!data)
+			if (IsWaiting())
 				return;
 			
+			//trace("Call hotkey function", this.state, type);
+			var data:Object = (this.state == STATE_FOLDER ? Data.getFolderHotkey(type) : Data.getHotkey(type));
+			if (!data)
+				return;
+				
+			var result:GFxResult;
+
 			switch (data.type) {
+				case Data.HOTKEY_TOGGLE:
+					var local:String = data["var"];
+				
+					//If no toggle property, initialize one
+					if (!Data.locals.hasOwnProperty(local))
+						Data.locals[local] = false;
+					
+					var toggled:Boolean = !Data.locals[local];
+					Data.locals[local] = toggled;
+					
+					var button:BSButtonHintData = GetButton(type);
+					button.ButtonText = (toggled ? data.on : data.off);
+					
+					if (data.func) {
+						result = CallDataFunction(data.func, [toggled]);
+						if (CheckError(result)) {
+							UpdateDataFunction(data.func);
+							Util.playOk();
+						} else  {
+							Util.playCancel();
+						}
+					} else {
+						Util.playOk();
+					}
+
+					break;
 				case Data.HOTKEY_FUNC:
-					var result:GFxResult = CallDataFunction(data.func);
+					result = CallDataFunction(data.func);
 					if (CheckError(result)) {
 						UpdateDataFunction(data.func);
 						Util.playOk();
@@ -2109,91 +1598,11 @@
 			}
 		}
 
-//		public function ResetButton():void
-//		{
-//			switch (this.state) {
-//				case ADJUSTMENT_STATE:
-//					order = !order;
-//					updateAdjustment();
-//					break;
-//				case TRANSFORM_STATE:
-//					Data.resetTransform(); 
-//					break;
-//				case MORPH_STATE:
-//				case MORPHCATEGORY_STATE:
-//					var update:Boolean = (this.state == MORPH_STATE);
-//					Data.resetMorphs(update);
-//					break;
-//				case IDLECATEGORY_STATE:
-//				case IDLE_STATE:
-//					Data.resetIdle();
-//					HideNotification();
-//					break;
-//				case POSEEXPORT_STATE:
-//				case POSEPLAY_STATE:
-//					Data.resetIdle();
-//					Data.resetPose(1);
-//					break;
-//				case SKELETONADJUSTMENT_STATE:
-//					Data.resetSkeletonAdjustment(false);
-//					Data.getAdjustmentFolder(false);
-//					updateMulti(false);
-//					break;
-//				case RACEADJUSTMENT_STATE:
-//					Data.resetSkeletonAdjustment(true);
-//					Data.getAdjustmentFolder(true);
-//					updateMulti(true);
-//					break;
-//				case POSITIONING_STATE:
-//					Data.resetPositioning();
-//					break;
-//				case LIGHTEDIT_STATE:
-//					Data.resetLight();
-//					break;
-//				case LIGHTSETTINGS_STATE:
-//					Data.resetLightSettings();
-//					break;
-//			}
-//			sliderList.updateValues();
-//			Util.playOk();
-//		}
-
 		internal function BackButton():void
 		{
 			PopMenu();
 			Util.playCancel();
 		}
-//		
-//		public function updateFolder()
-//		{
-//			switch(this.state) {
-//				case SKELETONADJUSTMENT_STATE:
-//					Data.popSkeletonAdjustment(false);
-//					popFolderCheckbox(selectSkeletonAdjustment);
-//					break;
-//				case RACEADJUSTMENT_STATE:
-//					Data.popSkeletonAdjustment(true);
-//					popFolderCheckbox(selectRaceAdjustment);
-//					break;
-//				case POSEPLAY_STATE: 
-//				case LOADPOSE_STATE:
-//					Data.popFolder(Data.POSE_DIRECTORY, Data.JSON_EXT);
-//					popFolder(selectPoseFile); 
-//					break;
-//				case LOADLIGHT_STATE: 
-//					Data.popFolder(Data.LIGHT_DIRECTORY, Data.JSON_EXT);
-//					popFolder(selectLightFile); 
-//					break;
-//				case LOADADJUSTMENT_STATE:
-//					Data.popFolder(Data.ADJUSTMENT_DIRECTORY, Data.JSON_EXT);
-//					popFolder(selectAdjustmentFile); 
-//					break;
-//				case LOADMFG_STATE:
-//					Data.popFolder(Data.MORPH_DIRECTORY, Data.TXT_EXT);
-//					popFolder(selectMfgFile); 
-//					break;
-//			}
-//		}
 		
 		public function Exit():void
 		{
@@ -2227,62 +1636,6 @@
 				trace("No escape");
 			}
 		}
-
-//		public function ExtraButton():void
-//		{
-//			switch(this.state)
-//			{
-//				case SKELETONADJUSTMENT_STATE: //multi
-//					sliderList.storeSelected();
-//					multi = !multi;
-//					if (multi) {
-//						buttonHintExtra.ButtonText = "$SAM_Multi";
-//						sliderList.updateFolderCheckbox(selectSkeletonAdjustment);
-//					} 
-//					else
-//					{
-//						buttonHintExtra.ButtonText = "$SAM_Single";
-//						sliderList.updateFolder(selectSkeletonAdjustment);
-//					}
-//					sliderList.restoreSelected();
-//					break;
-//				case RACEADJUSTMENT_STATE: //multi
-//					sliderList.storeSelected();
-//					multi = !multi;
-//					if (multi) {
-//						buttonHintExtra.ButtonText = "$SAM_Multi";
-//						sliderList.updateFolderCheckbox(selectRaceAdjustment);
-//					} 
-//					else
-//					{
-//						buttonHintExtra.ButtonText = "$SAM_Single";
-//						sliderList.updateFolder(selectRaceAdjustment);
-//					}
-//					sliderList.restoreSelected();
-//					break;
-//				case ADJUSTMENT_STATE: //new
-//					Data.newAdjustment();
-//					updateAdjustment();
-//					break;
-//				case TRANSFORM_STATE: //negate
-//					Data.negateAdjustment();
-//					Data.loadTransforms();
-//					sliderList.updateValues();
-//					break;
-//				case IDLECATEGORY_STATE: //z-rotate
-//				case IDLE_STATE:
-//				case POSEPLAY_STATE:
-//					EnableHold(HELD_X, onZMove, onZLeft, onZRight);
-//					break;
-//				case LIGHTSELECT_STATE: //visible
-//				case LIGHTSETTINGS_STATE:
-//					buttonHintExtra.ButtonText = (Data.toggleLightsVisibility() ? "$SAM_Invisible" : "$SAM_Visible");
-//					break;
-//				case LIGHTEDIT_STATE: //visible
-//					buttonHintExtra.ButtonText = (Data.toggleLightVisible() ? "$SAM_Invisible" : "$SAM_Visible");
-//					break;
-//			}
-//		}
 
 		public function EnableHold(data:Object, type:int)
 		{
@@ -2333,7 +1686,7 @@
 		
 		internal function UpdateButtonHints():void
 		{
-			trace("Update button hints");
+			//trace("Update button hints");
 			switch (this.state) {
 				case STATE_MAIN:
 					buttonHintBack.ButtonText = this.stateStack.length == 1 ? "$SAM_Exit" : "$SAM_Back";
@@ -2376,9 +1729,7 @@
 				return;
 			}
 			
-			button.ButtonVisible = true;
-			button.ButtonText = data.name;
-			button.ButtonClickDisabled = (data.type == Data.HOTKEY_HOLD);
+			UpdateButton(button, data);
 		}
 		
 		internal function UpdateFolderHotkey(button:BSButtonHintData, type:int)
@@ -2389,17 +1740,45 @@
 				return;
 			}
 			
+			UpdateButton(button, data);
+		}
+		
+		internal function UpdateButton(button:BSButtonHintData, data:Object)
+		{
 			button.ButtonVisible = true;
-			button.ButtonText = data.name;
-			button.ButtonClickDisabled = (data.type == Data.HOTKEY_HOLD);
+			switch (data.type) {
+				case Data.HOTKEY_FUNC:
+					button.ButtonText = data.name;
+					button.ButtonClickDisabled = false;
+					break;
+				case Data.HOTKEY_HOLD:
+					button.ButtonText = data.name;
+					button.ButtonClickDisabled = true;
+					break;
+				case Data.HOTKEY_TOGGLE:
+					var property:String = data["var"];
+					if (!Data.locals.hasOwnProperty(property))
+						Data.locals[property] = false;
+					button.ButtonText = (Data.locals[property] ? data.on : data.off);
+					button.ButtonClickDisabled = false;
+					break;
+			}
+		}
+		
+		internal function RefreshNotification()
+		{
+			if (notification.message.text != notificationMessage)
+				ShowNotification(notificationMessage);
 		}
 		
 		internal function UpdateNotification()
 		{
 			if (Data.latentNotification.success) {
-				ShowNotification(Data.latentNotification.result.result);
+				notificationMessage = Data.latentNotification.result.result
+				ShowNotification(notificationMessage);
 				Data.latentNotification.Clear();
 			} else {
+				notificationMessage = null;
 				HideNotification();
 			}
 		}
@@ -2421,73 +1800,44 @@
 				sliderList.isEnabled = !hidden;
 			}
 		}
-
-		public function EnterOrder():GFxResult
-		{
-			Data.locals.order = false;
-			
-			return Data.resultSuccess;
-		}
 		
-		public function ToggleOrder():GFxResult
+		public function ToggleOrder(checked:Boolean):GFxResult
 		{
-			Data.locals.order = !Data.locals.order
-			sliderList.updateValues();
+			sliderList.update();
 			
 			return Data.resultSuccess;
 		}
 		
 		public function InitOffset():GFxResult
 		{
-			Data.locals.offset = sam.GetNodeIsOffset(Data.locals.boneName);
-			buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
+			Data.locals.adjustmentOrder = sam.GetNodeIsOffsetOnly(Data.locals.boneName);
+			buttonHintLoad.ButtonText = (Data.locals.adjustmentOrder ? "$SAM_Offset" : "$SAM_Pose");
 			sliderList.title.text = Data.locals.boneName;
 			
 			return Data.resultSuccess;
 		}
 		
-		public function ToggleOffset():GFxResult
+		public function ToggleOffset(checked:Boolean):GFxResult
 		{
-			var newName = sam.ToggleNodeName(Data.locals.boneName);
-			if (newName != Data.locals.boneName) {
-				Data.locals.offset = !Data.locals.offset;
-				Data.locals.boneName = newName;
-				sliderList.title.text = newName;
-				buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
+			var previousName:String = Data.locals.boneName;
+			Data.locals.boneName = sam.ToggleNodeName(Data.locals.boneName);
+			Data.locals.adjustmentOrder = sam.GetNodeIsOffset(Data.locals.boneName);
+			buttonHintLoad.ButtonText = (Data.locals.adjustmentOrder ? "$SAM_Offset" : "$SAM_Pose");
+			sliderList.title.text = Data.locals.boneName;
+			if (previousName != Data.locals.boneName) {
 				RefreshValues();
-			} else {
-				ShowNotification("This bone is offset only");
 			}
 
 			return Data.resultSuccess;
 		}
 		
-		public function EnterFolderCheckbox():GFxResult
+		public function ToggleFolderCheckbox(checked:Boolean):GFxResult
 		{
-			//trace("enter folder checkbox");
-			Data.locals.folderCheckbox = false;
-			
-			return Data.resultSuccess;
-		}
-		
-//		public function InitFolderCheckbox():GFxResult
-//		{
-//			buttonHintLoad.ButtonText = "$SAM_Multi";
-//			
-//			return Data.resultSuccess;
-//		}
-		
-		public function ToggleFolderCheckbox():GFxResult
-		{
-			//trace("toggle folder checkbox");
-			Data.locals.folderCheckbox = !Data.locals.folderCheckbox;
-			trace(Data.locals.folderCheckbox);
 			sliderList.update();
-			buttonHintLoad.ButtonText = (Data.locals.folderCheckbox ? "$SAM_Multi" : "$SAM_Single");
 						
 			return Data.resultSuccess;
 		}
-		
+
 		public function InitLightVisible(selectedLight:int):GFxResult
 		{
 			var isVisible:Boolean = Data.getLightVisible(selectedLight);
@@ -2504,39 +1854,118 @@
 			return Data.resultSuccess;
 		}
 		
-		public function ToggleLightVisible(selectedLight:int):GFxResult
+		public function ToggleLightVisible(checked:Boolean, selectedLight:int):GFxResult
 		{
 			var isVisible:Boolean = Data.toggleLightVisible(selectedLight);
+			Data.locals.lightVisible = isVisible;
 			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
 
 			return Data.resultSuccess;
 		}
 		
-		public function ToggleAllLightsVisible():GFxResult
+		public function ToggleAllLightsVisible(checked:Boolean):GFxResult
 		{
 			var isVisible:Boolean = Data.toggleAllLightsVisible();
+			Data.locals.allLightsVisible = isVisible;
 			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
 			
 			return Data.resultSuccess;
 		}
 		
-		public function LoadSkeletonAdjustment():GFxResult
+		public function GetAllLightsVisible():GFxResult
 		{
-			return Data.resultSuccess();
-		}
-		
-		public function InitEquipItem():GFxResult
-		{
-			Data.locals.addItemEquip = false;
+			Data.locals.allLightsVisible = Data.getAllLightsVisible();
 			
 			return Data.resultSuccess;
 		}
 		
-		public function ToggleEquipItem():GFxResult
+		public function GetLightVisible(selectedLight:int):GFxResult
 		{
-			Data.locals.addItemEquip = !Data.locals.addItemEquip;
-			buttonHintLoad.ButtonText = (Data.locals.addItemEquip ? "$SAM_Equip" : "$SAM_Add");
+			Data.locals.lightVisible = Data.getLightVisible(selectedLight);
 			
+			return Data.resultSuccess;
+		}
+		
+		public function InitAddItem():GFxResult
+		{
+			if (!Data.locals.hasOwnProperty("addItemEquip"))
+				Data.locals.addItemEquip = false;
+				
+			return Data.resultSuccess;
+		}
+		
+		public function OpenEntryIfEmpty():GFxResult
+		{
+			//trace("open entry if empty", Data.menuOptions.length);
+			if (Data.menuOptions.length == 0) {
+				var hotkey:Object = FindEntryHotkey();
+				if (hotkey)
+					SetEntry(hotkey.func.entry);
+			}
+			
+			return Data.resultSuccess;
+		}
+		
+		public function FindEntryHotkey():Object
+		{
+			//TODO this will break if the number of hotkeys increases
+			for (var i:int = 1; i < 5; ++i) {
+				var hotkey:Object = Data.getHotkey(i);
+				if (hotkey && hotkey.func && hotkey.func.type == Data.FUNC_ENTRY) {
+					return hotkey;
+				}
+			}
+			
+			return null;
+		}
+		
+		public function LoadSkeletonAdjustment():GFxResult
+		{
+			return Data.resultSuccess;
+		}
+		
+		public function RemoveEquipment(index:int, formId:uint):GFxResult
+		{
+			var result:GFxResult = sam.RemoveEquipment(index, formId);
+			
+			if (result.type != Data.RESULT_ERROR) {
+				Data.removeMenuIndex(index);
+			} else {
+				showNotification(result.result);
+			}
+			
+			sliderList.update();
+			
+			return Data.resultSuccess;
+		}
+		
+		public function RemoveAllEquipment():GFxResult
+		{
+			var result:GFxResult = sam.RemoveAllEquipment();
+			
+			if (result.type != Data.RESULT_ERROR) {
+				Data.setMenuSize(0);
+			} else {
+				showNotification(result.result);
+			}
+			
+			sliderList.update();
+			
+			return Data.resultSuccess;
+		}
+		
+		public function ResetSkeletonAdjustment(race:Boolean):GFxResult
+		{
+			var result:GFxResult = sam.ResetSkeletonAdjustment(race);
+			
+			if (result && result.type != Data.RESULT_ERROR) {
+				var folderResult:GFxResult = Data.getFolderCheckbox(Data.folderData.path, Data.folderData.ext, race);
+				if (folderResult && folderResult.type != Data.RESULT_ERROR) {
+					Data.menuFolder = folderResult.result;
+					sliderList.updateValues();
+				}
+			}
+
 			return Data.resultSuccess;
 		}
 		

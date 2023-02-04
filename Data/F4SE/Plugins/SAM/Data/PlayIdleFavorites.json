@@ -1,22 +1,16 @@
 {
     "type": "list",
-    "update": true,
     "get": {
         "type": "sam",
-        "name": "GetIdleMods"
+        "name": "GetIdleFavorites"
     },
     "set": {
         "type": "sam",
-        "name": "SetIdleMod",
-        "var": "idleMod"
-    },
-    "notification": {
-        "type": "sam",
-        "name": "GetIdleName"
+        "name": "PlayIdleFavorite"
     },
     "reset": {
-        "type": "func",
         "name": "$SAM_Reset",
+        "type": "func",
         "func": {
             "type": "sam",
             "name": "ResetIdle"
@@ -33,14 +27,6 @@
                 "type": "sam",
                 "name": "RotateIdle"
             }
-        }
-    },
-    "save": {
-        "name": "$SAM_Favorite",
-        "type": "func",
-        "func": {
-            "type": "sam",
-            "name": "AddIdleFavorite"
         }
     }
 }

@@ -30,6 +30,7 @@
 			if (waiting) {
 				this.timer = new Timer(this.timeout, 1);
 				this.timer.addEventListener(TimerEvent.TIMER_COMPLETE, TimeOut);
+				this.timer.start();
 			}
 		}
 	

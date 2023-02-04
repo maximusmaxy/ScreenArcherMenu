@@ -45,8 +45,10 @@
         "name": "InitOffset"
     },
     "load": {
-        "name": "$SAM_Offset",
-        "type": "func",
+        "type": "toggle",
+        "off": "$SAM_Pose",
+        "on": "$SAM_Offset",
+        "var": "offset",
         "func": {
             "type": "local",
             "name": "ToggleOffset"

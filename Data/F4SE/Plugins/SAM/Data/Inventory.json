@@ -29,6 +29,13 @@
                 "type": "menu",
                 "name": "MatSwapEquipment"
             }
+        },
+        {
+            "name": "$SAM_RemoveEquipment",
+            "func": {
+                "type": "menu",
+                "name": "InventoryRemove"
+            }
         }
     ]
 }

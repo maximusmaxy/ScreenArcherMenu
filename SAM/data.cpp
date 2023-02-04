@@ -2,6 +2,10 @@
 
 #include "SAF/util.h"
 
+#include "f4se/GameTypes.h"
+#include "f4se/PapyrusScaleformAdapter.h"
+#include "f4se/PapyrusArgs.h"
+
 //Json enums need to be identical to AS3 constants so make sure they are updated accordingly
 enum {
 	kJsonMenuMain = 1,
@@ -82,12 +86,14 @@ SAF::InsensitiveUInt32Map jsonFuncTypeMap = {
 
 enum {
 	kJsonHotkeyFunc = 1,
-	kJsonHotkeyHold
+	kJsonHotkeyHold,
+	kJsonHotkeyToggle
 };
 
 SAF::InsensitiveUInt32Map jsonHotkeyTypeMap = {
 	{"func", kJsonHotkeyFunc},
-	{"hold", kJsonHotkeyHold}
+	{"hold", kJsonHotkeyHold},
+	{"toggle", kJsonHotkeyToggle}
 };
 
 enum {
@@ -199,12 +205,21 @@ int JsonMenuValidator::GetType(SAF::InsensitiveUInt32Map& map, const char* name)
 
 int JsonMenuValidator::GetType(SAF::InsensitiveUInt32Map& map, Json::Value& value) {
 	Json::Value typeValue = value.get("type", "");
+	if (typeValue.isInt())
+		return typeValue.asInt();
+
 	auto it = map.find(typeValue.asCString());
 	return (it != map.end() ? it->second : 0);
 }
 
 bool JsonMenuValidator::GetType(SAF::InsensitiveUInt32Map& map, Json::Value& value, const char* error, int* result) {
 	Json::Value typeValue = value.get("type", "");
+
+	if (typeValue.isInt()) {
+		*result = typeValue.asInt();
+		return true;
+	}
+
 	auto it = map.find(typeValue.asCString());
 
 	if (it != map.end()) {
@@ -380,7 +395,7 @@ void JsonMenuValidator::ValidateFunc(Json::Value& value)
 	case kJsonFuncForm:
 	{
 		if (RequireProperty(value, "name", "Papyrus form function requires a name for the function") &&
-			RequireProperty(value, "mod", "Papyrus form function requires a mod name") &&
+			//RequireProperty(value, "mod", "Papyrus form function requires a mod name") &&
 			RequireProperty(value, "id", "Papyrus form function requires an id"))
 		{
 			//It is likely an int is used instead of string, so make certain that doesn't happen
@@ -394,11 +409,8 @@ void JsonMenuValidator::ValidateFunc(Json::Value& value)
 			else {
 
 				//resolve form id while we're here i guess
-				Json::Value modValue = value.get("mod", "");
-				if (!modValue.isString()) {
-					LogError("Papyrus form function mod is not a string type");
-				}
-				else {
+				Json::Value modValue = value.get("mod", Json::Value());
+				if (modValue.isString()) {
 					int formId = GetFormId(modValue.asCString(), id.asCString());
 					value["id"] = UInt32ToHexString(formId);
 					value.removeMember("mod");
@@ -477,6 +489,13 @@ void JsonMenuValidator::ValidateHotkey(Json::Value& value)
 		Json::Value* hold = GetValue(value, "hold", "Failed to get hotkey hold data");
 		if (hold)
 			ValidateHold(*hold);
+		break;
+	}
+	case kJsonHotkeyToggle:
+	{
+		Json::Value* func = GetValue(value, "func", nullptr);
+		if (func)
+			ValidateFunc(*func);
 		break;
 	}
 	}
@@ -831,11 +850,11 @@ void OverrideJson(Json::Value& overrides, Json::Value* dst) {
 					Json::Value replace = overrider.get(JSON_OVERRIDE_REPLACE, Json::Value());
 					if (replace.isArray()) {
 						for (auto& item : replace) {
-							Json::Value index = replace.get(JSON_OVERRIDE_INDEX, Json::Value());
+							Json::Value index = item.get(JSON_OVERRIDE_INDEX, Json::Value());
 							if (index.isInt()) {
 								int i = index.asInt();
 								if (i < overidee->size()) {
-									Json::Value replacer = replace.get(JSON_OVERRIDE_REPLACE, Json::Value());
+									Json::Value replacer = item.get(JSON_OVERRIDE_REPLACE, Json::Value());
 									(*overidee)[i] = replacer;
 								}
 							}
@@ -846,11 +865,11 @@ void OverrideJson(Json::Value& overrides, Json::Value* dst) {
 					Json::Value merge = overrider.get(JSON_OVERRIDE_MERGE, Json::Value());
 					if (merge.isArray()) {
 						for (auto& item : merge) {
-							Json::Value index = merge.get(JSON_OVERRIDE_INDEX, Json::Value());
+							Json::Value index = item.get(JSON_OVERRIDE_INDEX, Json::Value());
 							if (index.isInt()) {
 								int i = index.asInt();
 								if (i < overidee->size()) {
-									Json::Value merger = merge.get(JSON_OVERRIDE_MERGE, Json::Value());
+									Json::Value merger = item.get(JSON_OVERRIDE_MERGE, Json::Value());
 									MergeJsons(merger, &(*overidee)[i]);
 								}
 							}
@@ -904,6 +923,57 @@ void MergeJsons(Json::Value& src, Json::Value* dst) {
 	}
 
 	default: *dst = src; 
+		break;
+	}
+}
+
+void VMVariableToGFx(GFxMovieRoot* root, GFxValue* value, VMVariable* var)
+{
+	if (var->GetValue().GetTypeEnum() == VMValue::kType_String) {
+		value->SetString(var->As<BSFixedString>());
+	}
+	else {
+		PlatformAdapter::ConvertPapyrusValue(value, &var->GetValue(), root);
+	}
+}
+
+//TODO this will fail for arrays
+void GFxToVMVariable(GFxValue* value, VMVariable* var)
+{
+	switch (value->type)
+	{
+	case GFxValue::kType_Int:
+	{
+		SInt32 i = value->GetInt();
+		var->Set<SInt32>(&i, false);
+		break;
+	}
+	case GFxValue::kType_UInt:
+	{
+		UInt32 u = value->GetUInt();
+		var->Set<UInt32>(&u, false);
+		break;
+	}
+	case GFxValue::kType_Bool:
+	{
+		bool b = value->GetBool();
+		var->Set<bool>(&b, false);
+		break;
+	}
+	case GFxValue::kType_Number:
+	{
+		float f = value->GetNumber();
+		var->Set<float>(&f, false);
+		break;
+	}
+	case (GFxValue::kType_String | GFxValue::kTypeFlag_Managed):
+	case GFxValue::kType_String:
+	{
+		BSFixedString str(value->GetString());
+		var->Set<BSFixedString>(&str, false);
+		break;
+	}
+	default:
 		break;
 	}
 }

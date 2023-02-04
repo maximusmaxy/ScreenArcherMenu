@@ -4,15 +4,21 @@
     "pluginRequirements": ["ScreenArcherMenu.esp"],
     "content": [
         {
-        "text": "<p align='center'><font size='30'>$SAM_DP</font></p>",
-        "html": true,
-        "type": "text"
+            "text": "<p align='center'><font size='30'>$SAM_DP</font></p>",
+            "html": true,
+            "type": "text"
         },
         {
-        "id": "samOpenMenu",
-        "text": "$SAM_OpenMenu",
-        "type": "hotkey",
-        "help": "$SAM_OpenMenuHelp"
+            "id": "samOpenMenu",
+            "text": "$SAM_OpenMenu",
+            "type": "hotkey",
+            "help": "$SAM_OpenMenuHelp"
+        },
+        {
+            "id": "samOpenSearch",
+            "text": "$SAM_OpenSearch",
+            "type": "hotkey",
+            "help": "$SAM_OpenSearchHelp"
         }
     ]
 }

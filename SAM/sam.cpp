@@ -296,7 +296,7 @@ void SamManager::UpdateMenu() {
 	root->Invoke("root1.Menu_mc.ReloadMenu", nullptr, nullptr, 0);
 }
 
-void SamManager::ShowNotification(const char* msg)
+void SamManager::ShowNotification(const char* msg, bool store)
 {
 	//std::lock_guard<std::mutex> lock(mutex);
 
@@ -304,9 +304,11 @@ void SamManager::ShowNotification(const char* msg)
 	if (!root)
 		return;
 
-	GFxValue args(msg);
-	GFxValue ret;
-	root->Invoke("root1.Menu_mc.ShowNotification", &ret, &args, 1);
+	GFxValue args[2];
+	args[0] = GFxValue(msg);
+	args[1] = GFxValue(true);
+
+	root->Invoke("root1.Menu_mc.ShowNotification", nullptr, args, 2);
 }
 
 void SamManager::SetNotification(const char* msg)
@@ -318,9 +320,9 @@ void SamManager::SetNotification(const char* msg)
 		return;
 
 	GFxValue args;
-	GFxResult result(&args);
+	GFxResult result(root, &args);
 	result.SetNotification(root, msg);
-	result.InvokeCallback(root);
+	result.InvokeCallback();
 }
 
 void SamManager::SetTitle(const char* title)
@@ -332,9 +334,9 @@ void SamManager::SetTitle(const char* title)
 		return;
 
 	GFxValue args;
-	GFxResult result(&args);
+	GFxResult result(root, &args);
 	result.SetTitle(root, title);
-	result.InvokeCallback(root);
+	result.InvokeCallback();
 }
 
 void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
@@ -346,7 +348,7 @@ void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 		return;
 
 	GFxValue args;
-	GFxResult result(&args);
+	GFxResult result(root, &args);
 	result.CreateNames();
 
 	for (int i = 0; i < vmNames.Length(); i++) {
@@ -355,7 +357,7 @@ void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 		result.PushName(name.c_str());
 	}
 
-	result.InvokeCallback(root);
+	result.InvokeCallback();
 }
 
 void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
@@ -367,7 +369,7 @@ void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 		return;
 
 	GFxValue args;
-	GFxResult result(&args);
+	GFxResult result(root, &args);
 	result.CreateValues();
 
 	for (int i = 0; i < vmValues.Length(); i++) {
@@ -375,12 +377,12 @@ void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 		vmValues.Get(&var, i);
 
 		GFxValue value;
-		PlatformAdapter::ConvertPapyrusValue(&value, &var.GetValue(), root);
+		VMVariableToGFx(root, &value, &var);
 
 		result.PushValue(&value);
 	}
 
-	result.InvokeCallback(root);
+	result.InvokeCallback();
 }
 
 void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariable>& vmValues)
@@ -392,7 +394,7 @@ void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariabl
 		return;
 
 	GFxValue args;
-	GFxResult result(&args);
+	GFxResult result(root, &args);
 
 	//make sure both arrays are the same length
 	//if (vmNames.Length() != vmValues.Length()) {
@@ -409,16 +411,18 @@ void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariabl
 	}
 
 	for (int i = 0; i < vmValues.Length(); i++) {
+
+
 		VMVariable var;
 		vmValues.Get(&var, i);
-		
+
 		GFxValue value;
-		PlatformAdapter::ConvertPapyrusValue(&value, &var.GetValue(), root);
+		VMVariableToGFx(root, &value, &var);
 
 		result.PushValue(&value);
 	}
 
-	result.InvokeCallback(root);
+	result.InvokeCallback();
 }
 
 void SamManager::SetSuccess()
@@ -430,8 +434,8 @@ void SamManager::SetSuccess()
 		return;
 
 	GFxValue value;
-	GFxResult result(&value); 
-	result.InvokeCallback(root);
+	GFxResult result(root, &value); 
+	result.InvokeCallback();
 }
 
 void SamManager::SetError(const char* error)
@@ -443,9 +447,9 @@ void SamManager::SetError(const char* error)
 		return;
 
 	GFxValue value;
-	GFxResult result(&value);
+	GFxResult result(root, &value);
 	result.SetError(error);
-	result.InvokeCallback(root);
+	result.InvokeCallback();
 }
 
 void SamManager::SetLocal(const char* key, GFxValue* value)

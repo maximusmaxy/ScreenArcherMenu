@@ -1,0 +1,19 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetEquipment"
+    },
+    "set": {
+        "type": "local",
+        "name": "RemoveEquipment"
+    },
+    "reset": {
+        "name": "$SAM_RemoveAll",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "RemoveAllEquipment"
+        }
+    }
+}

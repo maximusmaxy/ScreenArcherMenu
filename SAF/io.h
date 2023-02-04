@@ -79,6 +79,8 @@ namespace SAF {
 	void ReadAll(IFileStream& file, std::stringstream& ss);
 	//Must close manualy!
 	bool OpenOutFileStream(const char* path, std::ofstream* stream);
+	//Must close manualy!
+	bool OpenAppendFileStream(const char* path, std::ofstream* stream);
 	float ReadJsonFloat(Json::Value& value, const char* key, float defaultValue);
 	void WriteJsonFloat(Json::Value& json, const char* key, float value, char* buffer, const char* format);
 	bool ReadJsonFile(const char* path, Json::Value& value);

@@ -45,5 +45,13 @@
                 "name": "RotateIdle"
             }
         }
+    },
+    "save": {
+        "name": "$SAM_Favorite",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "AddIdleFavorite"
+        }
     }
 }

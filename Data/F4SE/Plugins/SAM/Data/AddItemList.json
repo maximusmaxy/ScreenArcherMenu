@@ -1,9 +1,9 @@
 {
     "type": "list",
     "update": true,
-    "init": {
+    "entry": {
         "type": "local",
-        "name": "InitEquipItem"
+        "name": "InitAddItem"
     },
     "get": {
         "type": "sam",
@@ -30,11 +30,9 @@
         ]
     },
     "load": {
-        "name": "$SAM_Add",
-        "type": "func",
-        "func": {
-            "type": "local",
-            "name": "ToggleEquipItem"
-        }
+        "type": "toggle",
+        "off": "$SAM_Add",
+        "on": "$SAM_Equip",
+        "var": "addItemEquip"
     }
 }

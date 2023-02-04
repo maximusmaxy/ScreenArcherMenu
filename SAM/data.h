@@ -2,6 +2,8 @@
 
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
+#include "f4se/PapyrusValue.h"
+#include "f4se/PapyrusArgs.h"
 
 #include "SAF/types.h"
 #include "json.h"
@@ -51,6 +53,8 @@ public:
 
 void JsonToGFx(GFxMovieRoot* root, GFxValue* result, const Json::Value& value);
 Json::Value GFxToJson(GFxValue* value);
+void VMVariableToGFx(GFxMovieRoot* root, GFxValue* value, VMVariable* var);
+void GFxToVMVariable(GFxValue* value, VMVariable* var);
 
 class GFxToJsonObjVisitor : public GFxValue::ObjectInterface::ObjVisitor
 {

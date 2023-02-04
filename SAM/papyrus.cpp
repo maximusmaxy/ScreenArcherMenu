@@ -3,6 +3,7 @@
 #include "f4se/PapyrusNativeFunctions.h"
 #include "f4se/PapyrusUtilities.h"
 #include "f4se/PapyrusScaleformAdapter.h"
+#include "f4se/PapyrusArgs.h"
 
 #include "SAF/util.h"
 
@@ -10,6 +11,7 @@
 #include "positioning.h"
 #include "constants.h"
 #include "io.h"
+#include "data.h"
 
 #include "json/json.h"
 
@@ -47,12 +49,10 @@ void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GF
 				VMArray<VMVariable> arguments;
 
 				for (int i = 0; i < args.GetArraySize(); ++i) {
-					VMValue vmvalue;
+					VMVariable var;
 					GFxValue value;
 					args.GetElement(i, &value);
-					PlatformAdapter::ConvertScaleformValue(&vmvalue, &value, vm);
-					VMVariable var;
-					var.PackVariable(&vmvalue);
+					GFxToVMVariable(&value, &var);
 					arguments.Push(&var);
 				}
 
@@ -146,7 +146,7 @@ void PapyrusPopMenuTo(StaticFunctionTag*, BSFixedString name)
 
 void PapyrusShowNotification(StaticFunctionTag*, BSFixedString msg)
 {
-	samManager.ShowNotification(msg.c_str());
+	samManager.ShowNotification(msg.c_str(), false);
 }
 
 void PapyrusSetTitle(StaticFunctionTag*, BSFixedString title)

@@ -21,7 +21,8 @@
 #define OPTIONS_PATH "Data\\F4SE\\Plugins\\SAM\\options.json"
 
 #define IDLE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\IdleFavorites.txt"
-#define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"
+//#define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"
+#define POSE_FAVORITES "Favorites"
 
 //Errors 
 #define CONSOLE_ERROR "$SAM_ConsoleError"						//selected.refr is null

@@ -224,7 +224,7 @@
 					}
 					break;
 				case Data.ITEM_CHECKBOX:
-					checkbox.setCheck(Data.getBool(id));
+					checkbox.setCheck(Data.getCheckbox(id));
 					break;
 			}
 		}
@@ -336,7 +336,7 @@
 			Util.setRect(background, -2, -3.25, 218, 32);
 			this.valueType = Data.NONE;
 			
-			if (Data.locals.order) {
+			if (Data.locals.adjustmentOrder) {
 				checkbox.init(222, this.id, Data.CHECKBOX_DOWN, true);
 				checkbox2.init(256, this.id, Data.CHECKBOX_UP, true);
 			} else {

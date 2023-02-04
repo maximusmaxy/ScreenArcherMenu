@@ -248,33 +248,59 @@ bool OverrideJsonMenu(const char* path)
 {
 	std::string stem = std::filesystem::path(path).stem().string();
 
-	//regular load if it doesn't exist
-	auto cachedMenu = GetCachedMenu(stem.c_str());
-	if (!cachedMenu)
-		LoadJsonMenu(path);
-
-	Json::Value value;
-	if (!SAF::ReadJsonFile(path, value))
+	Json::Value overrider;
+	if (!SAF::ReadJsonFile(path, overrider))
 		return false;
 
-	std::string overrider = stem + " Override";
+	Json::Value overrided = overrider.get("name", Json::Value());
+	if (overrided.isNull() || !overrided.isString()) {
+		_Log(stem.c_str(), " did not specify a menu name to override");
+		return false;
+	}
 
-	JsonMenuValidator validator(overrider.c_str(), &value);
+	auto overridedMenu = GetCachedMenu(overrided.asCString());
+	if (!overridedMenu) {
+		_Log("Could not find menu to override: ", overrided.asCString());
+		return false;
+	}
+
+	//Override process is destructive so need to store the menu in case it fails
+	Json::Value storedMenu(*overridedMenu);
+
+	try {
+		MergeJsons(overrider, overridedMenu);
+	}
+	catch (...) {
+		_Log("Error while trying to merge override menu: ", stem.c_str());
+
+		//return to stored menu
+		*overridedMenu = storedMenu;
+
+		return false;
+	}
+
+	std::string overriderName = stem + " Override";
+
+	JsonMenuValidator validator(overriderName.c_str(), overridedMenu);
 	try {
 		validator.ValidateMenu();
 	}
 	catch (...) {
 		_Log("Error while trying to validate override menu: ", stem.c_str());
+
+		//return to stored menu
+		*overridedMenu = storedMenu;
+
+		return false;
 	}
 	
 	if (validator.hasError) {
 		_DMESSAGE(validator.errorStream.str().c_str());
-		return false;
-	}
 
-	//only override new keys
-	for (auto it = value.begin(); it != value.end(); ++it) {
-		(*cachedMenu)[it.key().asCString()] = *it;
+		//return to stored menu
+		*overridedMenu = storedMenu;
+
+		return false;
 	}
 
 	return true;
@@ -345,7 +371,6 @@ void LoadMenuFiles() {
 
 	LoadJsonMenus();
 	LoadIdleFavorites();
-	LoadPoseFavorites();
 }
 
 Json::Value* GetCachedMenu(const char* name)

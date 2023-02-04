@@ -20,10 +20,6 @@ event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
         ;Movement, fighting, camswitch, looking, sneaking, menu, activate, journal, vats, favorites, running
         inputLayer.DisablePlayerControls(true, true, true, true, true, true, true, true, true, true, true)
-
-        Var[] args = new Var[1];
-        args[0] = self;
-        UI.Invoke("ScreenArcherMenu", "root1.Menu_mc.setScriptHandle", args)
     else
         if (inputLayer != None)
             inputLayer.Reset()
@@ -42,7 +38,16 @@ endfunction
 function RegisterMenu()
     if (!UI.IsMenuRegistered("ScreenArcherMenu"))
         UI:MenuData mData = new UI:MenuData
-        mData.menuFlags = 0x8018494
+        ;2          Always Open
+        ;4          Use Cursor
+        ;10         Modal
+        ;80         Disables pause menu
+        ;400        Update uses cursor
+        ;8000       Custom Rendering
+        ;10000      AssignCursorToRenderer
+        ;8000000    UsesMovementToDirection
+
+        mData.menuFlags = 0x8018496
         mData.extendedFlags = 0x3
         UI.RegisterCustomMenu("ScreenArcherMenu", "ScreenArcherMenu", "root1.Menu_mc", mData)
     endif
@@ -51,11 +56,7 @@ function RegisterMenu()
 endfunction
 
 function ToggleMenu() global
-    if (UI.IsMenuOpen("ScreenArcherMenu"))
-        UI.Invoke("ScreenArcherMenu", "root1.Menu_mc.tryClose")
-    else
-        UI.OpenMenu("ScreenArcherMenu")
-    endif
+    SAM.ToggleMenu()
 endfunction
 
 function ForceRegister() global

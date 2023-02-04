@@ -620,7 +620,7 @@ void AddItem(GFxResult& result, UInt32 formId, bool equip) {
 		//PapyrusAddItem(selected.refr, form, 1, true);
 		AddItemFromForm(selected.refr, form);
 		std::string notif = std::string(form->GetFullName()) + " added to inventory";
-		samManager.ShowNotification(notif.c_str());
+		samManager.ShowNotification(notif.c_str(), false);
 	}
 
 	//Equip item
@@ -915,4 +915,68 @@ void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 equipId) {
 		return result.SetError("Could not find mod id");
 
 	PapyrusAttachModToInventoryItem(selected.refr, equipForm, modForm);
+}
+
+std::unordered_set<UInt32> equipSlotIgnore {
+	31 //pipboy
+};
+
+void GetEquipment(GFxResult& result) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	Actor* actor = (Actor*)selected.refr;
+	if (!actor->equipData)
+		return result.SetError("Console target is not an actor");
+
+	NaturalSortedUInt32Map map;
+
+	for (int i = 0; i < ActorEquipData::kMaxSlots; ++i) {
+		if (actor->equipData->slots[i].item && !equipSlotIgnore.count(i)) { 
+			const char* name = actor->equipData->slots[i].item->GetFullName();
+			if (name && *name) {
+				map.emplace(name, actor->equipData->slots[i].item->formID);
+			}
+		}
+	}
+
+	result.CreateMenuItems();
+
+	for (auto& kvp : map) {
+		result.PushItem(kvp.first, kvp.second);
+	}
+}
+
+void RemoveEquipment(GFxResult& result, UInt32 formId) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	TESForm* form = LookupFormByID(formId);
+	if (!form)
+		return result.SetError("Could not find form id for item");
+
+	UnequipItemFromForm(selected.refr, form);
+}
+
+void RemoveAllEquipment(GFxResult& result) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	Actor* actor = (Actor*)selected.refr;
+	if (!actor->equipData)
+		return result.SetError("Console target is not an actor");
+
+	//collect a set to prevent duplicate removes
+	std::unordered_set<UInt32> equipSet;
+	for (auto it = actor->equipData->slots; it != actor->equipData->slots + ActorEquipData::kMaxSlots; ++it) {
+		if (it->item) {
+			equipSet.insert(it->item->formID);
+		}
+	}
+
+	for (auto& formId : equipSet) {
+		TESForm* form = LookupFormByID(formId);
+		if (form)
+			UnequipItemFromForm(selected.refr, form);
+	}
 }

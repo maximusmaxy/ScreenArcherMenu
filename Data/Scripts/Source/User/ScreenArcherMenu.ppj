@@ -4,8 +4,8 @@
   Flags="Institute_Papyrus_Flags.flg"
   Output="..\..\"
   Asm="Discard"
-  Optimize="false"
-  Release="false"
+  Optimize="true"
+  Release="true"
   Final="false"
 >
   <Imports>
@@ -17,5 +17,6 @@
     <Script>ScreenArcherMenu</Script>
     <Script>SAM</Script>
     <Script>SAF</Script>
+    <Script>SafTests</Script>
   </Scripts>
 </PapyrusProject>

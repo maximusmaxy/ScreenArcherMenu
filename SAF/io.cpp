@@ -15,6 +15,7 @@ using namespace rapidxml;
 
 #include <filesystem>
 #include <io.h>
+#include <fcntl.h>
 
 namespace SAF {
 	std::regex tabSeperatedRegex("([^\\t]+)\\t+([^\\t]+)");		//matches (1)\t(2)
@@ -84,7 +85,6 @@ namespace SAF {
 			return false;
 		}
 			
-
 		Json::Reader reader;
 		if (!reader.parse(stream, value)) {
 			_DMESSAGE(reader.getFormattedErrorMessages().c_str());
@@ -120,12 +120,37 @@ namespace SAF {
 		return true;
 	}
 
+	bool OpenAppendFileStream(const char* path, std::ofstream* stream)
+	{
+		IFileStream::MakeAllDirs(path);
+
+		auto fileHandle = CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (fileHandle == INVALID_HANDLE_VALUE)
+			return false;
+
+		auto file_descriptor = _open_osfhandle((intptr_t)fileHandle, _O_APPEND);
+		if (file_descriptor == -1)
+			return false;
+
+		FILE* file = _fdopen(file_descriptor, "a");
+
+		*stream = std::ofstream(file);
+
+		if (stream->fail())
+		{
+			_Log("Failed to open output file for write: ", path);
+			stream->close();
+			return false;
+		}
+
+		return true;
+	}
+
 	bool WriteJsonFile(const char* path, Json::Value& value)
 	{
 		std::ofstream stream;
 		if (!OpenOutFileStream(path, &stream))
 			return false;
-			
 		
 		Json::StyledStreamWriter writer;
 		writer.write(stream, value);
@@ -704,35 +729,41 @@ namespace SAF {
 		Json::Value value;
 
 		g_adjustmentManager.settings.ToJson(value);
-		return WriteJsonFile(path, value);
+
+		bool result = WriteJsonFile(path, value);
+
+		if (!result)
+			_Log("Failed to save settings file: ", path);
+
+		return result;
 	}
 
-	void LoadSettingsFile(const char* path)
+	bool LoadSettingsFile(const char* path)
 	{
-		IFileStream file;
-
 		//if settings doesn't exist generate it
-		if (!file.Open(path)) {
+		if (!std::filesystem::exists(path)) {
 			g_adjustmentManager.settings.Initialize();
 			SaveSettingsFile(path);
-
-			return;
+			return false;
 		}
 
 		Json::Value value;
 		if (!ReadJsonFile(path, value)) {
 			g_adjustmentManager.settings.Initialize();
-			return;
+			return false;
 		}
 
 		g_adjustmentManager.settings.FromJson(value);
 
 		//new settings might have been added so resave the json
 		SaveSettingsFile(path);
+
+		return true;
 	}
 
 	void LoadAllFiles() {
-		LoadSettingsFile(SETTINGS_PATH);
+		if (!LoadSettingsFile(SETTINGS_PATH))
+			_Log("Failed to load settings file: ", SETTINGS_PATH);
 
 		//node set jsons for legacy support
 		for (IDirectoryIterator iter(NODEMAPS_PATH, "*.json"); !iter.Done(); iter.Next())

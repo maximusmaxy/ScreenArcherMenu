@@ -18,6 +18,12 @@ void GFxResult::Finalize(GFxMovieRoot* _root)
 	_root->CreateObject(result, "GFxResult", params, 2);
 }
 
+//Prevent the finalize by setting root to null
+void GFxResult::Finalized()
+{
+	root = nullptr;
+}
+
 //Finalize and return ptr to value
 GFxValue* GFxResult::GetResult(GFxMovieRoot* _root)
 {
@@ -29,14 +35,15 @@ GFxValue* GFxResult::GetResult(GFxMovieRoot* _root)
 void GFxResult::Invoke(GFxMovieRoot* _root, const char* functionPath)
 {
 	Finalize(_root);
-	root->Invoke(functionPath, nullptr, result, 1);
+	_root->Invoke(functionPath, nullptr, result, 1);
 }
 
 //Finalize and call the latent callback function
-void GFxResult::InvokeCallback(GFxMovieRoot* _root)
+void GFxResult::InvokeCallback()
 {
-	Finalize(_root);
+	Finalize(root);
 	root->Invoke("root1.Menu_mc.LatentCallback", nullptr, result, 1);
+	root = nullptr; //prevents finalize
 }
 
 void GFxResult::CreateNames() {

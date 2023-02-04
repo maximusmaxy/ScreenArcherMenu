@@ -124,35 +124,51 @@
 			return null;
 		}
 		
-		public static function traceObj(obj:Object):void
+		public static function traceObj(obj:Object, key:Object = null):void
 		{
 			if (obj == null) {
-				trace("Obj is null");
+				if (key == null) {
+					trace("Object is null");
+				} else {
+					trace(key, ":", "null");
+				}
 				return;
 			}
 			
-			for (var id:String in obj)
-			{
-				var value:Object = obj[id];
-				var type:String = getQualifiedClassName(value);
-
-				if (type == "Object")
-				{
-					trace(id, "--->");
-					traceObj(value);
-					trace("<---")
-				}
-				else if (type == "Array")
-				{
-					trace(id, "Array length: ", value.length);
-					for (var i:int = 0; i < value.length; i++) {
-						traceObj(value[i]);
+			var type:String = getQualifiedClassName(obj);
+			switch (type) {
+				case "Object":
+					if (key == null) {
+						trace("Object --->");
+					} else {
+						trace(key, "Object --->");
 					}
-				}
-				else
-				{
-					trace(id + " = " + value);
-				}
+					
+					for (var id:String in obj)
+					{
+						traceObj(obj[id], id);
+					}
+					trace("<---");
+					break;
+				case "Array":
+					var arr:Array = obj;
+					if (key == null) {
+						trace("Array length: ", arr.length);
+					} else {
+						trace(key, "Array length: ", arr.length);
+					}
+					
+					for (var i:int = 0; i < arr.length; i++) {
+						traceObj(arr[i], i);
+					}
+					break;
+				default:
+					if (key == null) {
+						trace(obj);
+					} else {
+						trace(key, ":", obj);
+					}
+					break;
 			}
 		}
 

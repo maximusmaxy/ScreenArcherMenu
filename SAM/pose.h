@@ -49,6 +49,7 @@ void GetPoseAdjustments(GFxResult& result);
 void SaveJsonPose(const char* filename, GFxValue& selectedHandles, int exportType);
 bool LoadPoseFile(const char* filename);
 bool LoadPosePath(const char* path);
+void LoadPoseGFx(GFxResult& result, const char* path);
 void ResetJsonPose();
 const char* GetCurrentPoseName();
 
@@ -61,13 +62,11 @@ void GetPoseExportTypes(GFxResult& result);
 
 void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex);
 bool GetNodeIsOffset(const char* nodeName);
+bool GetNodeIsOffsetOnly(const char* nodeName);
 void ToggleNodeName(GFxValue* result, const char* nodeName);
 void FindNodeIndexes(SAF::NodeKey& key, SInt32* categoryIndex, SInt32* nodeIndex);
 
 void MergeAdjustment(GFxResult& result, UInt32 handle);
 void MirrorAdjustment(GFxResult& result, UInt32 handle);
 
-void GetPoseFavorites(GFxResult& result);
 void AppendPoseFavorite(GFxResult& result);
-void PlayPoseFavorite(GFxResult& result, const char* idleName);
-bool LoadPoseFavorites();

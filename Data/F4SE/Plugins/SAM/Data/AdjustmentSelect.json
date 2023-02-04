@@ -9,10 +9,6 @@
         "name": "BoneCategory",
         "var": "adjustmentHandle"
     },
-    "enter": {
-        "type": "local",
-        "name": "EnterOrder"
-    },
     "load": {
         "name": "$SAM_Load",
         "type": "func",
@@ -39,12 +35,13 @@
         }
     },
     "reset": {
-        "name": "$SAM_Order",
-        "type": "func",
+        "type": "toggle",
+        "off": "$SAM_Order",
+        "on": "$SAM_Order",
+        "var": "adjustmentOrder",
         "func": {
             "type": "local",
-            "name": "ToggleOrder",
-            "update": true
+            "name": "ToggleOrder"
         }
     },
     "adjustment": {

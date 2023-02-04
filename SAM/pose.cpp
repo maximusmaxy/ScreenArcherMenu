@@ -22,7 +22,6 @@ using namespace SAF;
 
 std::string selectedNode;
 std::unordered_map<UInt32, std::string> lastSelectedPose;
-std::vector<std::string> poseFavorties;
 
 bool GetActorAdjustments(std::shared_ptr<ActorAdjustments>* adjustments)
 {
@@ -594,6 +593,24 @@ bool LoadPosePath(const char* path)
 	return false;
 }
 
+void LoadPoseGFx(GFxResult& result, const char* path) {
+	std::shared_ptr<ActorAdjustments> adjustments;
+	if (!GetActorAdjustments(&adjustments))
+		return result.SetError(SKELETON_ERROR);
+
+	safDispatcher.LoadPose(selected.refr->formID, path);
+
+	if (!safDispatcher.GetResult())
+		return result.SetError("Failed to load pose");
+
+	adjustments->UpdateAllAdjustments();
+
+	lastSelectedPose[selected.refr->formID] = GetRelativePath(constStrLen(POSES_PATH), constStrLen(".json"), path);
+
+	std::string stem = std::filesystem::path(path).stem().string();
+	samManager.ShowNotification(stem.c_str(), true);
+}
+
 void ResetJsonPose()
 {
 	std::shared_ptr<ActorAdjustments> adjustments;
@@ -728,6 +745,12 @@ void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeI
 bool GetNodeIsOffset(const char* nodeName)
 {
 	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(nodeName);
+	return nodeKey.offset;
+}
+
+bool GetNodeIsOffsetOnly(const char* nodeName)
+{
+	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(nodeName);
 
 	//If it fails assume offset to prevent toggle
 	if (!nodeKey.key)
@@ -789,21 +812,6 @@ void FindNodeIndexes(NodeKey& nodeKey, SInt32* categoryIndex, SInt32* nodeIndex)
 	}
 }
 
-void GetPoseFavorites(GFxResult& result)
-{
-	result.CreateMenuItems();
-
-	//natural sort by stem
-	NaturalSortedMap map;
-	for (auto& item : poseFavorties) {
-		map.emplace(std::filesystem::path(item).stem().string(), item);
-	}
-
-	for (auto& item : map) {
-		result.PushItem(item.first.c_str(), item.second.c_str());
-	}
-}
-
 void AppendPoseFavorite(GFxResult& result)
 {
 	if (!selected.refr)
@@ -813,58 +821,24 @@ void AppendPoseFavorite(GFxResult& result)
 	if (it == lastSelectedPose.end())
 		return result.SetError("Current SAM pose could not be found");
 
-	std::ofstream stream;
-	if (!SAF::OpenOutFileStream(POSE_FAVORITES, &stream))
-		return;
+	std::string inPath = GetPathWithExtension(POSES_PATH, it->second.c_str(), ".json");
+	if (!std::filesystem::exists(inPath))
+		return result.SetError("Current SAM pose could not be found");
 
-	stream << it->second << std::endl;
-	stream.close();
+	std::string stem = std::filesystem::path(it->second).stem().string();
 
-	poseFavorties.push_back(it->second);
-}
+	std::filesystem::path outPath(POSES_PATH);
+	outPath.append(POSE_FAVORITES);
+	outPath.append(stem);
+	outPath.concat(".json");
 
-void PlayPoseFavorite(GFxResult& result, const char* poseName)
-{
-	if (!selected.refr)
-		return result.SetError(CONSOLE_ERROR);
+	if (std::filesystem::exists(outPath))
+		return result.SetError("SAM pose has already been favorited");
 
-	std::string path = GetPathWithExtension(POSES_PATH, poseName, ".json");
-	if (!std::filesystem::exists(path))
-		return result.SetError("SAM Pose file could not be found");
+	IFileStream::MakeAllDirs(outPath.string().c_str());
 
-	if (!LoadPosePath(path.c_str()))
-		return result.SetError("Failed to load SAM Pose");
-}
+	std::filesystem::copy_file(inPath, outPath, std::filesystem::copy_options::overwrite_existing);
 
-bool LoadPoseFavorites()
-{
-	if (!std::filesystem::exists(POSE_FAVORITES)) {
-		IFileStream::MakeAllDirs(POSE_FAVORITES);
-		IFileStream file;
-		if (!file.Create(POSE_FAVORITES)) {
-			_Log("Failed to create pose favorites: ", POSE_FAVORITES);
-			return false;
-		}
-		file.Close();
-	}
-
-	std::ifstream stream;
-	stream.open(POSE_FAVORITES);
-
-	if (stream.fail()) {
-		_Log("Failed to read pose favorites: ", POSE_FAVORITES);
-		return false;
-	}
-
-	poseFavorties.clear();
-
-	std::string line;
-	while (std::getline(stream, line, '\n'))
-	{
-		if (line.back() == '\r')
-			line = line.substr(0, line.size() - 1);
-		poseFavorties.push_back(line);
-	}
-
-	return true;
+	std::string notif = stem + " has been favorited!";
+	samManager.ShowNotification(notif.c_str(), false);
 }

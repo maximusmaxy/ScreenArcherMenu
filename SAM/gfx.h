@@ -31,14 +31,17 @@ public:
 	GFxValue params[2]; //0 = Type, 1 = Result object
 	GFxValue itemParams[2]; //0 = names, 1 = values
 
+
 	GFxResult(GFxValue* value) : root(nullptr), result(value), type(kGFxResultSuccess) {}
+	GFxResult(GFxMovieRoot* root, GFxValue* value) : root(root), result(value), type(kGFxResultSuccess) {}
 	GFxResult(GFxFunctionHandler::Args* args) : root(args->movie->movieRoot), result(args->result), type(kGFxResultSuccess) {}
 	~GFxResult();
 
 	GFxValue* GetResult(GFxMovieRoot* root);
 	void Finalize(GFxMovieRoot* root);
+	void Finalized();
 	void Invoke(GFxMovieRoot* root, const char* functionPath);
-	void InvokeCallback(GFxMovieRoot* root);
+	void InvokeCallback();
 
 	void SetError(const char* message);
 	void SetWaiting();

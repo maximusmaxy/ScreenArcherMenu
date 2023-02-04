@@ -6,9 +6,21 @@
       "desc": "Opens the screen archer menu",
       "action": {
         "type": "CallGlobalFunction",
-        "script": "ScreenArcherMenu",
+        "script": "SAM",
         "function": "ToggleMenu",
         "params": []
+      }
+    },
+    {
+      "id": "samOpenSearch",
+      "desc": "Opens the item search menu",
+      "action": {
+        "type": "CallGlobalFunction",
+        "script": "SAM",
+        "function": "OpenMenu",
+        "params": [
+          "SearchItem"
+        ]
       }
     }
   ]

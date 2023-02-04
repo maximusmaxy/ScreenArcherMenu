@@ -1,4 +1,6 @@
-Menu Data Documentation
+#------------------------------------------------------------
+# Menu Data Documentation
+#------------------------------------------------------------
 
 This is the menu data spec for SAM Menu Data Jsons
 
@@ -7,9 +9,7 @@ MAKE SURE YOU USE THE { "extension": true } PROPERTY! This will notify sam to ad
 Any additional sub menus DO NOT need this property
 Try to use descriptive menu names to prevent conflicts with other mods
 
-Json files in the Data and Extensions folder will be overwritten by the file with the same name in the Override folder. This is intended for end users only so that their edits do not get overwritten when updating
-
-Menus are cached on game startup for performance reasons. If you want to reload the menus at runtime use the SAM.ReloadMenus() papyrus function or call it from the console using the command `cgf "SAM.ReloadMenus"`
+Menus are cached on game startup for performance reasons. If you want to reload the menus at runtime use the `sm reloadmenus` console command
 
 If the menu fails to parse, the debug info is sent to the sam.log file in `documents\my games\fallout 4\f4se` and you will get a "Menu data could not be found" error when you try to access it
 
@@ -515,8 +515,22 @@ When the hotkey is held down, you can either move the mouse left/right or press 
         "mod": 0.01,    //Modifies the pixels moved by this amount
         "func": {
             "type": "sam",
-            "func": "RotateIdle"
+            "name": "RotateIdle"
         }
+    }
+}
+
+# Toggle
+When the hotkey is pressed it will enable the toggle, change the button name and send a boolean to the specified function. It will default to false and manage the state in the local variable specified
+
+{
+    "type": "toggle",
+    "on": "Open",           //The on name is used when the toggle is true
+    "off": "Closed",        //The off name is used when the toggle is false
+    "var": "openState",     //Name of the local variable that stores the toggle state
+    "func: {                //Function is optional
+        "type": "sam",
+        "name": "ToggleOpen"
     }
 }
 
@@ -602,6 +616,8 @@ Used for title callbacks
 #------------------------------------------------------------
 
 Overrides overwrite the data in the "SAM\Data" folder and "SAM\Extensions" folder. This allows you to replace and append your own data without having to directly replace the entire thing. You are required to specify the name of the menu, this allows for multiple overrides with different file names. It is recommended to use a descriptive name for your override file to prevent conflicts.
+
+They go in the "Data\F4SE\Plugins\SAM\Override" folder
 
 For everything aside from arrays you can override the values directly. Say you wanted to override the path of the following folder.
 

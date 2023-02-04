@@ -15,9 +15,13 @@
             }
         ]
     },
+    "entry": {
+        "type": "local",
+        "name": "InitAddItem"
+    },
     "init": {
         "type": "local",
-        "name": "InitEquipItem"
+        "name": "OpenEntryIfEmpty"
     },
     "extra": {
         "name": "$SAM_Search",
@@ -34,11 +38,9 @@
         }
     },
     "load": {
-        "name": "$SAM_Add",
-        "type": "func",
-        "func": {
-            "type": "local",
-            "name": "ToggleEquipItem"
-        }
+        "type": "toggle",
+        "on": "$SAM_Equip",
+        "off": "$SAM_Add",
+        "var": "addItemEquip"
     }
 }

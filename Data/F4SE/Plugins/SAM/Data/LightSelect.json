@@ -10,13 +10,15 @@
         "name": "SetLightSelect",
         "var": "selectedLight"
     },
-    "init": {
+    "enter": {
         "type": "local",
-        "name": "InitAllLightsVisible"
+        "name": "GetAllLightsVisible"
     },
     "extra": {
-        "name": "$SAM_Visible",
-        "type": "func",
+        "type": "toggle",
+        "on": "$SAM_Visible",
+        "off": "$SAM_Invisible",
+        "var": "allLightsVisible",
         "func": {
             "type": "local",
             "name": "ToggleAllLightsVisible"

@@ -29,8 +29,10 @@
             }
         },
         "load": {
-            "name": "$SAM_Single",
-            "type": "func",
+            "type": "toggle",
+            "off": "$SAM_Single",
+            "on": "$SAM_Multi",
+            "var": "folderCheckbox",
             "func": {
                 "type": "local",
                 "name": "ToggleFolderCheckbox"

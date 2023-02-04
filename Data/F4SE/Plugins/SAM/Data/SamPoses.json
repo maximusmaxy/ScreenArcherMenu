@@ -38,6 +38,18 @@
                 "type": "sam",
                 "name": "PlayAPose"
             }
+        },
+        "save": {
+            "name": "$SAM_Favorite",
+            "type": "func",
+            "func": {
+                "type": "sam",
+                "name": "AddPoseFavorite"
+            }
         }
+    },
+    "notification": {
+        "type": "sam",
+        "name": "GetPoseName"
     }
 }

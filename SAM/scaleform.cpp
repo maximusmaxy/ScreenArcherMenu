@@ -210,6 +210,10 @@ GFxFunction(GetNodeIsOffset, {
 	result->SetBool(GetNodeIsOffset(args[0].GetString()));
 });
 
+GFxFunction(GetNodeIsOffsetOnly, {
+	result->SetBool(GetNodeIsOffsetOnly(args[0].GetString()));
+});
+
 GFxFunction(ToggleNodeName, {
 	ToggleNodeName(result, args[0].GetString());
 });
@@ -270,6 +274,10 @@ GFxRequest(GetIdleMods, {
 	GetIdleMenuCategories(result);
 });
 
+GFxRequest(SetIdleMod, {
+	SetIdleMod(result, args[1].GetInt());
+});
+
 GFxRequest(GetIdles, {
 	GetIdleMenu(result, args[0].GetInt());
 });
@@ -300,7 +308,7 @@ GFxRequest(SavePose, {
 });
 
 GFxRequest(LoadPose, {
-	LoadPosePath(args[0].GetString());
+	LoadPoseGFx(result, args[0].GetString());
 });
 
 GFxRequest(ResetPose, {
@@ -541,20 +549,32 @@ GFxRequest(ApplyMatSwap, {
 	ApplyMatSwap(result, args[1].GetUInt(), args[2].GetUInt());
 });
 
-void testFunc() {
-
-}
-
-void testFunc2() {
-
-}
-
-GFxFunction(Test, {
-	testFunc();
+GFxRequest(GetEquipment, {
+	GetEquipment(result);
 });
 
-GFxFunction(Test2, {
-	testFunc2();
+GFxRequest(RemoveEquipment, {
+	RemoveEquipment(result, args[1].GetUInt());
+});
+
+GFxRequest(RemoveAllEquipment, {
+	RemoveAllEquipment(result);
+});
+
+GFxRequest(GetIdleFavorites, {
+	GetIdleFavorites(result);
+});
+
+GFxRequest(AddIdleFavorite, {
+	AppendIdleFavorite(result);
+});
+
+GFxRequest(PlayIdleFavorite, {
+	PlayIdleFavorite(result, args[1].GetString());
+});
+
+GFxRequest(AddPoseFavorite, {
+	AppendPoseFavorite(result);
 });
 
 #define GFxRegister(T) RegisterFunction<T ## Scaleform>(value, view->movieRoot, #T)
@@ -605,6 +625,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(GetBoneCategories);
 	GFxRegister(GetBoneNames);
 	GFxRegister(GetNodeIsOffset);
+	GFxRegister(GetNodeIsOffsetOnly);
 	GFxRegister(ToggleNodeName);
 	GFxRegister(GetNodeNameFromIndexes);
 	GFxRegister(GetBoneTransform);
@@ -612,6 +633,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(RotateBoneTransform);
 	GFxRegister(ResetBoneTransform);
 	GFxRegister(GetIdleMods);
+	GFxRegister(SetIdleMod);
 	GFxRegister(GetIdles);
 	GFxRegister(PlayIdle);
 	GFxRegister(PlayAPose);
@@ -679,8 +701,13 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(GetMatSwapEquipment);
 	GFxRegister(GetMatSwaps);
 	GFxRegister(ApplyMatSwap);
-	GFxRegister(Test);
-	GFxRegister(Test2);
+	GFxRegister(GetEquipment);
+	GFxRegister(RemoveEquipment);
+	GFxRegister(RemoveAllEquipment);
+	GFxRegister(GetIdleFavorites);
+	GFxRegister(AddIdleFavorite);
+	GFxRegister(PlayIdleFavorite);
+	GFxRegister(AddPoseFavorite);
 
 	return true;
 }

@@ -68,7 +68,7 @@ public:
 	void PopMenuTo(const char* name);
 	void RefreshMenu();
 	void UpdateMenu();
-	void ShowNotification(const char* name);
+	void ShowNotification(const char* name, bool store);
 	void SetTitle(const char* name);
 	void SetNotification(const char* name);
 	void SetMenuNames(VMArray<BSFixedString>& names);
