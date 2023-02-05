@@ -468,6 +468,8 @@
 			if (!CheckError(folderResult))
 				return;
 				
+			PushState();	
+				
 			LoadFolder(data, folderResult);
 		}
 		
@@ -493,10 +495,9 @@
 			
 			state = STATE_FOLDER;
 			//trace("pushing state, length", stateStack.length);
-			stateStack.push(GetState());
-			sliderList.updateState(0);
+			sliderList.updateState(currentState.pos);
 			sliderList.update();
-			sliderList.updateSelected(0, 0);
+			sliderList.updateSelected(currentState.x, currentState.y);
 			
 			UpdateMenus();
 		}
@@ -575,16 +576,22 @@
 			var folderPath:String = Data.popFolder();
 			//trace("Pop folder", folderPath);
 
-			var folderResult:GFxResult = Data.getFolder(folderPath, Data.folderData.ext);
-			
+			var folderResult:GFxResult;
+			if (Data.menuType == Data.MENU_FOLDERCHECKBOX) {
+				folderResult = Data.getFolderCheckbox(folderPath, Data.folderData.ext, Data.menuData.race);
+			} else {
+				folderResult = Data.getFolder(folderPath, Data.folderData.ext);
+			}
+
 			//need to force a result on pop fail to prevent locks
-			if (!folderResult || folderResult.type != Data.RESULT_FOLDER)
+			if (!folderResult || !(folderResult.type == Data.RESULT_FOLDER || folderResult.type == Data.RESULT_FOLDERCHECKBOX))
 				folderResult = Data.popFailFolder;
 
 			Data.updateFolder(folderResult.result);
 
 			//trace("popping state, length", stateStack.length);
 			currentState = stateStack.pop();
+			
 			sliderList.updateState(currentState.pos);
 			sliderList.update();
 			sliderList.updateSelected(currentState.x, currentState.y);
@@ -607,7 +614,7 @@
 			stateStack.push(GetState());
 			currentState.x = 0;
 			currentState.y = 0;
-			sliderList.updateState(0);
+			currentState.pos = 0;
 		}
 		
 //		public function PopState()
@@ -715,6 +722,9 @@
 		{
 			if (result.type == Data.RESULT_FOLDER ||
 				result.type == Data.RESULT_FOLDERCHECKBOX) {
+					
+				PushState();
+				
 				LoadMenuFolder(data, result, name);
 				return false;
 			}
@@ -818,7 +828,7 @@
 		
 		public function PopMenu():void
 		{
-			//trace("Pop Menu");
+//			trace("Pop Menu");
 			if (this.filenameInput.visible)
 			{
 				ClearEntry();
@@ -906,7 +916,6 @@
 		
 		public function ResetState():void
 		{
-			//trace("Reset state");
 			state = STATE_MAIN;
 			currentState.menu = rootMenu;
 			currentState.pos = 0;
@@ -1078,14 +1087,16 @@
 		public function ReloadFolder()
 		{
 			//trace("reload folder");
+			var folder:String = Data.getCurrentFolder();
+			
 			var result:GFxResult;
 			if (Data.menuType == Data.MENU_FOLDERCHECKBOX) {
-				result = Data.getFolderCheckbox(Data.folderData.path, Data.folderData.ext, Data.menuData.race);
+				result = Data.getFolderCheckbox(folder, Data.folderData.ext, Data.menuData.race);
 			} else {
-				result = Data.getFolder(Data.folderData.path, Data.folderData.ext);
+				result = Data.getFolder(folder, Data.folderData.ext);
 			}
 			
-			if (!CheckResult(result))
+			if (!CheckError(result))
 				return;
 			
 			LoadMenuFolder(Data.menuData, result, Data.menuName);
@@ -2026,6 +2037,7 @@
 				CleanUp();
 				saved = true;
 				isOpen = false;
+				Util.playCancel();
 				return true;
 			}
 			return false;

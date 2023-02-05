@@ -40,6 +40,8 @@
 #define BONE_MISSING_ERROR "Bone could not be found"
 #define TONGUE_BONES_ERROR "Tongue menu not found"
 
+#define F4SE_NOT_INSTALLED "Menu not registered. Make sure F4SE is installed correctly"
+
 #define TONGUE_BONES_MENU "$SAM_TongueBones"
 
 #define LIGHTS_ADD_NEW "$SAM_AddNew"

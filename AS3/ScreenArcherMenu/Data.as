@@ -1246,7 +1246,7 @@
 			menuType = (result.type == RESULT_FOLDERCHECKBOX ? MENU_FOLDERCHECKBOX : MENU_FOLDER);
 			folderData = data;
 			//Util.traceObj(folderData);
-			folderStack.length = 0;
+			//folderStack.length = 0;
 			menuFolder = result.result;
 			//Util.traceObj(menuFolder);
 			updateFolderNames();
@@ -1258,10 +1258,15 @@
 			updateFolder(result);
 		}
 		
+		public static function getCurrentFolder():String
+		{
+			return (folderStack.length == 0 ? Data.folderData.path : folderStack[folderStack.length - 1]);
+		}
+		
 		public static function popFolder():String
 		{
 			folderStack.pop();
-			return (folderStack.length == 0 ? Data.folderData.path : folderStack[folderStack.length - 1]);
+			return getCurrentFolder();
 		}
 		
 		public static function updateFolder(result:Object)

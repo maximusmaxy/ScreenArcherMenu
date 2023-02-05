@@ -254,7 +254,7 @@ bool samObScriptExecute(void* paramInfo, void* scriptData, TESObjectREFR* thisOb
 		//no param1, open/close menu
 		else 
 		{
-			ToggleMenu();
+			samManager.ToggleMenu();
 		}
 
 		return true;

@@ -9,6 +9,7 @@ bool RegisterPapyrus(VirtualMachine* vm);
 void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GFxValue& args);
 void CallPapyrusGlobal(BSFixedString script, BSFixedString function);
 void CallSamGlobal(BSFixedString function);
+void ShowHudMessage(const char* msg);
 
 void PapyrusDelete(TESObjectREFR* refr);
 void PapyrusPlayGamebryoAnimation(TESObjectREFR* refr, BSFixedString* animation);

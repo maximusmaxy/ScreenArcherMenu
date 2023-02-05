@@ -40,8 +40,6 @@ SelectedRefr selected;
 
 SamManager samManager;
 
-RelocPtr <BSReadWriteLock> uiMessageLock(0x65774B0);
-
 void StartSamQuest()
 {
 	//If sam still isn't registered, force register it
@@ -62,103 +60,131 @@ GFxMovieRoot* GetRoot(BSFixedString name)
 	return view->movieRoot;
 }
 
-GFxMovieRoot* SamManager::GetSamRoot()
+void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
 {
-	static BSFixedString samMenuName(SAM_MENU_NAME);
-
-	if (!menuOpened)
-		return nullptr;
-	
-	return GetRoot(samMenuName);
-}
-
-void SamManager::SetOpen(bool isOpen)
-{
-	std::lock_guard<std::mutex> lock(mutex);
-
-	menuOpened = isOpen;
-}
-
-void SamManager::OpenMenu(BSFixedString name)
-{
-	std::lock_guard<std::mutex> lock(mutex);
-
-	if ((*g_ui)->IsMenuRegistered(name) && !(*g_ui)->IsMenuOpen(name)) {
-		menuName = MAIN_MENU_NAME;
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(name, kMessage_Open);
+	GFxMovieRoot* root = GetRoot(menuName);
+	if (root) {
+		root->SetVariable(visiblePath, &GFxValue(visible));
 	}
 }
 
-void SamManager::CloseMenu(BSFixedString name)
+RelocPtr <BSReadWriteLock> g_menuStackLock(0x65774B0);
+
+void RemoveDuplicateIMenusFromStack(IMenu* menu)
 {
-	std::lock_guard<std::mutex> lock(mutex);
+	BSWriteLocker locker(g_menuStackLock);
 
-	if ((*g_ui)->IsMenuRegistered(name)) {
-		menuOpened = false;
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(name, kMessage_Close);
-	}
-}
+	auto& stack = (*g_ui)->menuStack;
 
-void SamManager::TryClose(BSFixedString name)
-{
-	std::lock_guard<std::mutex> lock(mutex);
+	int removeIndex;
+	int foundIndex;
 
-	SaveAndClose(name);
-}
+	//loop until every duplicate is removed
+	do {
+		removeIndex = -1;
+		foundIndex = -1;
 
-void SamManager::SaveAndClose(BSFixedString name)
-{
-	bool result = false;
-	if (menuOpened) {
-		IMenu* menu = (*g_ui)->GetMenu(name);
-		if (menu) {
-
-			GFxMovieView* view = menu->movie;
-			if (view) {
-
-				GFxMovieRoot* root = view->movieRoot;
-				if (root) {
-
-					GFxValue gfxResult;
-					root->Invoke("root1.Menu_mc.TryClose", &gfxResult, nullptr, 0);
-					result = gfxResult.GetBool();
+		//find index of duplicate
+		for (int i = 0; i < stack.count; ++i) {
+			if (stack.entries[i] == menu) {
+				if (foundIndex != -1) {
+					removeIndex = i;
+					break;
 				}
+				foundIndex = i;
 			}
 		}
 
-		if (result) {
-			menuOpened = false;
-			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(name, kMessage_Close);
+		//remove duplicate if found
+		if (removeIndex != -1) {
+			_DMESSAGE("Duplicate menu on stack found");
+			stack.Remove(removeIndex);
 		}
+
+	} while (removeIndex != -1);
+}
+
+BSFixedString SamManager::GetSamName()
+{
+	static BSFixedString samMenuName(SAM_MENU_NAME);
+
+	return samMenuName;
+}
+
+GFxMovieRoot* SamManager::GetSamRoot()
+{	
+	return GetRoot(GetSamName());
+}
+
+bool SamManager::IsRegistered()
+{
+	return (*g_ui)->IsMenuRegistered(GetSamName());
+}
+
+bool SamManager::IsOpen()
+{
+	return (*g_ui)->IsMenuOpen(GetSamName());
+}
+
+void SamManager::OpenMenu()
+{
+	storedName = MAIN_MENU_NAME;
+	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(GetSamName(), kMessage_Open);
+}
+
+void SamManager::CloseMenu()
+{
+	GFxMovieRoot* root = GetSamRoot();
+	if (root) {
+		CleanMenuStack();
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(GetSamName(), kMessage_Close);
 	}
 }
 
-void SamManager::Invoke(BSFixedString name, const char* func, GFxValue* result, GFxValue* args, UInt32 numArgs)
+void SamManager::TryClose()
 {
-	//std::lock_guard<std::mutex> lock(mutex);
+	SaveAndClose();
+}
 
-	if (menuOpened) {
-		GFxMovieRoot* root = GetRoot(name);
-		if (root)
-			root->Invoke(func, result, args, numArgs);
+void SamManager::SaveAndClose()
+{
+	bool result = false;
+
+	auto root = GetSamRoot();
+	if (root) {
+		GFxValue gfxResult;
+		root->Invoke("root1.Menu_mc.TryClose", &gfxResult, nullptr, 0);
+		result = gfxResult.GetBool();
+	}
+
+	if (result) {
+		CleanMenuStack();
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(GetSamName(), kMessage_Close);
 	}
 }
 
-void SamManager::SetVariable(BSFixedString name, const char* pVarPath, const GFxValue* value, UInt32 setType)
+void SamManager::CleanMenuStack()
 {
-	//std::lock_guard<std::mutex> lock(mutex);
+	auto menu = (*g_ui)->GetMenu(GetSamName());
+	RemoveDuplicateIMenusFromStack(menu);
+}
 
-	if (menuOpened) {
-		GFxMovieRoot* root = GetRoot(name);
-		if (root)
-			root->SetVariable(pVarPath, value, setType);
-	}
+void SamManager::Invoke(const char* func, GFxValue* result, GFxValue* args, UInt32 numArgs)
+{
+	GFxMovieRoot* root = GetSamRoot();
+	if (root)
+		root->Invoke(func, result, args, numArgs);
+}
+
+void SamManager::SetVariable(const char* pVarPath, const GFxValue* value, UInt32 setType)
+{
+	GFxMovieRoot* root = GetSamRoot();
+	if (root)
+		root->SetVariable(pVarPath, value, setType);
 }
 
 void SamManager::SaveData(GFxValue* saveData)
 {
-	//std::lock_guard<std::mutex> lock(mutex); is called during try close
-
 	if (!selected.refr)
 		return;
 
@@ -172,11 +198,6 @@ void SamManager::SaveData(GFxValue* saveData)
 
 bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
-	if (!menuOpened)
-		return false;
-
 	//if ref updated save data is invalidated so ignore
 	if (!refr || selected.refr != refr) {
 		ClearData();
@@ -184,7 +205,7 @@ bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 	}
 
 	//Check the saved menu name matches the menu being opened
-	if (_stricmp(data.get("rootMenu", "").asCString(), menuName.c_str())) {
+	if (_stricmp(data.get("rootMenu", "").asCString(), storedName.c_str())) {
 		ClearData();
 		return false;
 	}
@@ -202,10 +223,6 @@ void SamManager::ClearData()
 
 void SamManager::ForceQuit()
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
-	static BSFixedString samMenuName(SAM_MENU_NAME);
-
 	ClearData();
 
 	auto root = GetSamRoot();
@@ -213,34 +230,31 @@ void SamManager::ForceQuit()
 		return;
 
 	root->Invoke("root1.Menu_mc.CleanUp", nullptr, nullptr, 0);
-	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
+	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(GetSamName(), kMessage_Close);
 }
 
-void SamManager::OpenExtensionMenu(const char* name)
+void SamManager::OpenExtensionMenu(const char* extensionName)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
-	static BSFixedString samMenuName(SAM_MENU_NAME);
-
-	if (menuOpened) {
-		//close it
-		if (!_stricmp(menuName.c_str(), name)) {
-			SaveAndClose(samMenuName);
-		}
-
+	if (!IsRegistered())
+	{
+		ShowHudMessage(F4SE_NOT_INSTALLED);
 		return;
 	}
 
-	if ((*g_ui)->IsMenuRegistered(samMenuName) && !(*g_ui)->IsMenuOpen(samMenuName)) {
-		menuName = name;
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Open);
+	if (IsOpen()) {
+		//close it
+		if (!_stricmp(storedName.c_str(), extensionName)) {
+			SaveAndClose();
+		}
+	}
+	else {
+		storedName = extensionName;
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(GetSamName(), kMessage_Open);
 	}
 }
 
 void SamManager::PushMenu(const char* name)
 {
-//	std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -252,8 +266,6 @@ void SamManager::PushMenu(const char* name)
 
 void SamManager::PopMenu()
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -264,8 +276,6 @@ void SamManager::PopMenu()
 
 void SamManager::PopMenuTo(const char* name)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -274,9 +284,8 @@ void SamManager::PopMenuTo(const char* name)
 	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &GFxValue(name), 1);
 }
 
-void SamManager::RefreshMenu() {
-	//std::lock_guard<std::mutex> lock(mutex);
-
+void SamManager::RefreshMenu() 
+{
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -285,9 +294,8 @@ void SamManager::RefreshMenu() {
 	root->Invoke("root1.Menu_mc.RefreshValues", nullptr, nullptr, 0);
 }
 
-void SamManager::UpdateMenu() {
-	//std::lock_guard<std::mutex> lock(mutex);
-
+void SamManager::UpdateMenu() 
+{
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -298,8 +306,6 @@ void SamManager::UpdateMenu() {
 
 void SamManager::ShowNotification(const char* msg, bool store)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -313,8 +319,6 @@ void SamManager::ShowNotification(const char* msg, bool store)
 
 void SamManager::SetNotification(const char* msg)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -327,8 +331,6 @@ void SamManager::SetNotification(const char* msg)
 
 void SamManager::SetTitle(const char* title)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -341,8 +343,6 @@ void SamManager::SetTitle(const char* title)
 
 void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -362,8 +362,6 @@ void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 
 void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -387,8 +385,6 @@ void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 
 void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariable>& vmValues)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -427,8 +423,6 @@ void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariabl
 
 void SamManager::SetSuccess()
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -440,8 +434,6 @@ void SamManager::SetSuccess()
 
 void SamManager::SetError(const char* error)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -454,8 +446,6 @@ void SamManager::SetError(const char* error)
 
 void SamManager::SetLocal(const char* key, GFxValue* value)
 {
-	//std::lock_guard<std::mutex> lock(mutex);
-
 	auto root = GetSamRoot();
 	if (!root)
 		return;
@@ -466,9 +456,8 @@ void SamManager::SetLocal(const char* key, GFxValue* value)
 	root->Invoke("root1.Menu_mc.SetLocalVariable", nullptr, args, 2);
 }
 
-void SamManager::CursorAlwaysOn(bool enabled) {
-	//std::lock_guard<std::mutex> lock(mutex);
 
+void SamManager::CursorAlwaysOn(bool enabled) {
 	static BSFixedString cursorMenuName(CURSOR_MENU_NAME);
 
 	IMenu* menu = (*g_ui)->GetMenu(cursorMenuName);
@@ -480,22 +469,9 @@ void SamManager::CursorAlwaysOn(bool enabled) {
 	}
 }
 
-void SamManager::SetVisible(bool visible) {
-	//std::lock_guard<std::mutex> lock(mutex);
-
-	static BSFixedString samMenuName(SAM_MENU_NAME);
-	SetMenuVisible(samMenuName, "root1.Menu_mc.visible", visible);
-}
-
-void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
+void SamManager::SetVisible(bool visible) 
 {
-	BSReadLocker locker(g_menuTableLock);
-	if ((*g_ui)->IsMenuRegistered(menuName) && (*g_ui)->IsMenuOpen(menuName)) {
-		GFxMovieRoot* root = GetRoot(menuName);
-		if (root) {
-			root->SetVariable(visiblePath, &GFxValue(visible));
-		}
-	}
+	SetMenuVisible(GetSamName(), "root1.Menu_mc.visible", visible);
 }
 
 bool GetCursor(SInt32* pos) 
@@ -538,14 +514,6 @@ TESObjectREFR * GetRefr() {
 	return refr;
 }
 
-//TESObjectREFR* SelectedRefr::Refr() {
-//	TESForm* form = LookupFormByID(formId);
-//	if (!form) return nullptr;
-//
-//	TESObjectREFR* ref = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-//	return ref;
-//}
-
 void SelectedRefr::Update(TESObjectREFR* newRefr) {
 	if (!newRefr) {
 		Clear();
@@ -572,32 +540,32 @@ void SelectedRefr::Clear() {
 }
 
 void GetMenuTarget(GFxValue& data) {
-	if (selectedNonActor.refr && selectedNonActor.refr->baseForm) {
-		const char* name = "";
-		switch (selectedNonActor.refr->baseForm->formType) {
-		case kFormType_NPC_:
-			TESNPC* actor = DYNAMIC_CAST(selectedNonActor.refr->baseForm, TESForm, TESNPC);
-			name = actor->fullName.name.c_str();
-			break;
+
+	if (selectedNonActor.refr) 
+	{
+		const char* name;
+		if (selectedNonActor.refr->baseForm) {
+			name = selectedNonActor.refr->baseForm->GetFullName();
 		}
-		data.SetMember("title", &GFxValue(name));
+		else {
+			name = selectedNonActor.refr->GetFullName();
+		}
+		if (name && *name) {
+			data.SetMember("title", &GFxValue(name));
+		}
+		else {
+			data.SetMember("title", &GFxValue(""));
+		}
 	}
 	else {
 		data.SetMember("title", &GFxValue("No Target"));
 	}
 }
 
-void OnMenuOpen() {
-	static BSFixedString samMenu(SAM_MENU_NAME);
-	static BSFixedString photoMenu(PHOTO_MENU_NAME);
-
-	samManager.SetOpen(true);
-
-	GFxMovieRoot* root = GetRoot(samMenu);
-	if (!root) {
-		_DMESSAGE("Could not find screen archer menu");
-		return;
-	}
+bool SamManager::OnMenuOpen() {
+	GFxMovieRoot* root = GetSamRoot();
+	if (!root)
+		return false;
 
 	//Store ffc lock state and lock screen
 	LockFfc(true);
@@ -609,17 +577,15 @@ void OnMenuOpen() {
 	selected.Update(refr);
 	UpdateNonActorRefr();
 
-	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", false);
-
 	GFxValue data;
 	root->CreateObject(&data);
 
-	data.SetMember("menuName", &GFxValue(samManager.menuName.c_str()));
+	data.SetMember("menuName", &GFxValue(storedName.c_str()));
 
 	GetMenuTarget(data);
 
 	GFxValue saved;
-	if (samManager.LoadData(root, &saved))
+	if (LoadData(root, &saved))
 		data.SetMember("saved", &saved);
 
 	GFxValue widescreen(GetMenuOption(kOptionWidescreen));
@@ -628,12 +594,14 @@ void OnMenuOpen() {
 	GFxValue alignment(GetMenuOption(kOptionAlignment));
 	data.SetMember("swap", &alignment);
 
-	samManager.Invoke(samMenu, "root1.Menu_mc.MenuOpened", nullptr, &data, 1);
+	Invoke("root1.Menu_mc.MenuOpened", nullptr, &data, 1);
+
+	SetVisible(true);
+
+	return true;
 }
 
-void OnMenuClose() {
-	static BSFixedString photoMenu("PhotoMenu");
-
+bool SamManager::OnMenuClose() {
 	//Restore ffc lock
 	LockFfc(false);
 
@@ -644,17 +612,13 @@ void OnMenuClose() {
 
 	//SetMenusHidden(false); Doesn't work
 
-	SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
+	return true;
 }
 
-void OnConsoleUpdate() {
-	static BSFixedString samMenu(SAM_MENU_NAME);
-
-	GFxMovieRoot* root = GetRoot(samMenu);
-	if (!root) {
-		_DMESSAGE("Could not find screen archer menu");
-		return;
-	}
+bool SamManager::OnConsoleUpdate() {
+	GFxMovieRoot* root = GetSamRoot();
+	if (!root)
+		return false;
 
 	GFxValue data;
 	root->CreateObject(&data);
@@ -674,19 +638,23 @@ void OnConsoleUpdate() {
 
 	GetMenuTarget(data);
 
-	samManager.Invoke(samMenu, "root1.Menu_mc.ConsoleRefUpdated", nullptr, &data, 1);
+	samManager.Invoke("root1.Menu_mc.ConsoleRefUpdated", nullptr, &data, 1);
+
+	return true;
 }
 
-void ToggleMenu() {
-	static BSFixedString menuName(SAM_MENU_NAME);
 
-	if ((*g_ui)->IsMenuRegistered(menuName)) {
-		if ((*g_ui)->IsMenuOpen(menuName)) {
-			samManager.TryClose(menuName);
-		}
-		else {
-			samManager.OpenMenu(menuName);
-		}
+void SamManager::ToggleMenu() {
+	if (!IsRegistered()) {
+		ShowHudMessage(F4SE_NOT_INSTALLED);
+		return;
+	}
+
+	if (IsOpen()) {
+		TryClose();
+	}
+	else {
+		OpenMenu();
 	}
 }
 
@@ -714,12 +682,13 @@ public:
 					_DMESSAGE("ScreenArcherMenu Registered for input");
 					(*g_menuControls)->inputEvents.Push(handlerPtr);
 				}
-				OnMenuOpen();
-				samManager.SetVisible(true);
+				samManager.OnMenuOpen();
+				SetMenuVisible(photoMenu, "root1.Menu_mc.visible", false);
 			}
 			else {
-				OnMenuClose();
+				samManager.OnMenuClose();
 				inputHandler.enabled = false;
+				SetMenuVisible(photoMenu, "root1.Menu_mc.visible", true);
 			}
 		}
 		else {
@@ -731,7 +700,7 @@ public:
 					}
 					//console closed while same is open
 					else {
-						OnConsoleUpdate();
+						samManager.OnConsoleUpdate();
 						inputHandler.enabled = true;
 					}
 				}

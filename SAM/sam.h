@@ -33,31 +33,36 @@ public:
 extern SelectedRefr selected;
 
 class SamManager {
-private:
-	std::mutex mutex;
-	bool menuOpened;
-	
-
 public:
 	TESObjectREFR* refr;
 	Json::Value data;
-	std::string menuName;
+	std::string storedName;
 
-	SamManager() : menuOpened(false) {}
+	//SamManager() : menuOpened(false) {}
+	SamManager() {}
 
+	BSFixedString GetSamName();
 	GFxMovieRoot* GetSamRoot();
-	void SetOpen(bool isOpen);
-	void OpenMenu(BSFixedString menuName);
-	void CloseMenu(BSFixedString menuName);
-	void TryClose(BSFixedString menuName);
-	void SaveAndClose(BSFixedString menuName);
-	void Invoke(BSFixedString menuName, const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
-	void SetVariable(BSFixedString menuName, const char* pVarPath, const GFxValue* value, UInt32 setType = 0);
+	bool IsRegistered();
+	bool IsOpen();
+
+	void OpenMenu();
+	void CloseMenu();
+	void TryClose();
+	void SaveAndClose();
+	void ToggleMenu();
+	void Invoke(const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
+	void SetVariable(const char* pVarPath, const GFxValue* value, UInt32 setType = 0);
+	void CleanMenuStack();
 
 	void SaveData(GFxValue* data);
 	bool LoadData(GFxMovieRoot* root, GFxValue* res);
 	void ClearData();
 	void ForceQuit();
+
+	bool OnMenuOpen();
+	bool OnConsoleUpdate();
+	bool OnMenuClose();
 
 	void CursorAlwaysOn(bool enabled);
 	void SetVisible(bool visible);
@@ -92,12 +97,6 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 bool GetCursor(SInt32* pos);
 bool SetCursor(SInt32 x, SInt32 y);
 void GetCursorPosition(GFxResult& result);
-
-void OnMenuOpen();
-void OnMenuClose();
-void OnConsoleUpdate();
-
-void ToggleMenu();
 
 extern SAF::SAFDispatcher safDispatcher;
 

@@ -148,12 +148,13 @@ GFxFunction(SamPlaySound, {
 	PlayUISound(args[0].GetString());
 });
 
+//TODO remove this
 GFxFunction(SamOpenMenu, {
-	samManager.OpenMenu(args[0].GetString());
+	//samManager.OpenMenu();
 });
 
 GFxFunction(SamCloseMenu, {
-	samManager.CloseMenu(args[0].GetString());
+	samManager.CloseMenu();
 });
 
 GFxFunction(SamIsMenuOpen, {
@@ -529,6 +530,10 @@ GFxRequest(AddItem, {
 	AddItem(result, args[1].GetUInt(), args[2].GetBool());
 });
 
+GFxRequest(EquipSearchedItem, {
+	AddItem(result, args[1].GetUInt(), !args[2].GetBool());
+});
+
 GFxRequest(GetLastSearchResult, {
 	GetLastSearchResult(result);
 });
@@ -696,6 +701,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(GetItemGroups);
 	GFxRegister(GetItemList);
 	GFxRegister(AddItem);
+	GFxRegister(EquipSearchedItem);
 	GFxRegister(GetLastSearchResult);
 	GFxRegister(SearchItems);
 	GFxRegister(GetMatSwapEquipment);

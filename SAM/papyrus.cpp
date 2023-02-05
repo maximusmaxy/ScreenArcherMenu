@@ -85,6 +85,13 @@ void CallSamGlobal(BSFixedString function)
 	CallPapyrusGlobal(samMenu, function);
 }
 
+typedef void (*_ShowHudMessageInternal)(const char* msg, const char* unk1, bool unk2, bool unk3);
+RelocAddr<_ShowHudMessageInternal> ShowHudMessageInternal(0xAE1E90);
+
+void ShowHudMessage(const char* msg) {
+	ShowHudMessageInternal(msg, nullptr, true, true);
+}
+
 void PapyrusDelete(TESObjectREFR* refr)
 {
 	VirtualMachine* vm = (*g_gameVM)->m_virtualMachine;
@@ -190,7 +197,7 @@ BSFixedString PapyrusGetRelativePath(BSFixedString root, BSFixedString extension
 }
 
 void PapyrusToggleMenu(StaticFunctionTag*) {
-	ToggleMenu();
+	samManager.ToggleMenu();
 }
 
 void PapyrusLogMenu(StaticFunctionTag*, BSFixedString menuName) 

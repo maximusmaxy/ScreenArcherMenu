@@ -366,22 +366,15 @@ void GetMorphCategories(GFxResult& result)
 		result.PushItem(menu->at(i).first.c_str(), i);
 	}
 
-	//Need to check actors skeleton to see if the menu has 
-	if (!selected.refr)
-		return;
-
 	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) 
+	if (!adjustments)
 		return;
 
 	//TODO: We're just taking the first available for now
 	MenuList* tongueMenu = FindFirstTongueMenu(adjustments);
 
-	if (tongueMenu) {
-		UInt32 tongueHandle = GetOrCreateTongueHandle(adjustments);
-		if (tongueHandle)
-			result.PushItem(TONGUE_BONES_MENU, tongueHandle);
-	}
+	if (tongueMenu)
+		result.PushItem(TONGUE_BONES_MENU, (SInt32)0);
 }
 
 void SetFaceMorphCategory(GFxResult& result, SInt32 index, UInt32 value)
@@ -393,7 +386,15 @@ void SetFaceMorphCategory(GFxResult& result, SInt32 index, UInt32 value)
 	if (index < menu->size())
 		samManager.PushMenu("FaceMorphSliders");
 	else {
-		samManager.SetLocal("adjustmentHandle", &GFxValue(value));
+		std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+		if (!adjustments)
+			return;
+
+		auto tongueHandle = GetOrCreateTongueHandle(adjustments);
+		if (!tongueHandle)
+			return result.SetError("Failed to create tongue adjustment");
+
+		samManager.SetLocal("adjustmentHandle", &GFxValue(tongueHandle));
 		samManager.PushMenu("TongueBones");
 	}
 }

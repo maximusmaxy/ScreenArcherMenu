@@ -7,17 +7,13 @@
     },
     "set": {
         "type": "sam",
-        "name": "AddItem",
+        "name": "EquipSearchedItem",
         "args": [
             {
                 "type": "var",
-                "name": "addItemEquip"
+                "name": "searchItemEquip"
             }
         ]
-    },
-    "entry": {
-        "type": "local",
-        "name": "InitAddItem"
     },
     "init": {
         "type": "local",
@@ -39,8 +35,8 @@
     },
     "load": {
         "type": "toggle",
-        "on": "$SAM_Equip",
-        "off": "$SAM_Add",
-        "var": "addItemEquip"
+        "on": "$SAM_Add",
+        "off": "$SAM_Equip",
+        "var": "searchItemEquip"
     }
 }
