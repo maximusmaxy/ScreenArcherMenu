@@ -536,7 +536,7 @@ bool LoadIdleFavorites()
 	while (std::getline(stream, line, '\n'))
 	{
 		if (line.back() == '\r')
-			line = line.substr(0, line.size() - 1);
+			line.pop_back();
 		idleFavorites.push_back(line);
 	}
 

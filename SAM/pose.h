@@ -8,8 +8,6 @@
 
 #include "gfx.h"
 
-#include <mutex>
-
 enum {
 	kPoseReset = 1,
 	kPoseAPose = 2

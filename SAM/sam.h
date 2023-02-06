@@ -30,30 +30,44 @@ public:
 	void Clear();
 };
 
+class IMenuWrapper
+{
+public:
+	IMenu* menu;
+
+	IMenuWrapper() : menu(nullptr) {}
+	IMenuWrapper(IMenu* menu);
+	~IMenuWrapper();
+
+	GFxMovieRoot* GetRoot();
+	bool IsOpen();
+	bool IsRegistered();
+};
+
 extern SelectedRefr selected;
 
 class SamManager {
+private:
+	std::mutex mutex;
+
 public:
 	TESObjectREFR* refr;
 	Json::Value data;
 	std::string storedName;
+	IMenu* storedMenu;
 
-	//SamManager() : menuOpened(false) {}
-	SamManager() {}
+	SamManager() : storedMenu(nullptr), refr(nullptr) {};
 
 	BSFixedString GetSamName();
-	GFxMovieRoot* GetSamRoot();
-	bool IsRegistered();
-	bool IsOpen();
+	
+	bool StoreMenu();
+	bool ReleaseMenu();
+	IMenuWrapper GetWrapped();
 
-	void OpenMenu();
-	void CloseMenu();
-	void TryClose();
-	void SaveAndClose();
 	void ToggleMenu();
-	void Invoke(const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
+	void CloseMenu();
+	bool Invoke(const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
 	void SetVariable(const char* pVarPath, const GFxValue* value, UInt32 setType = 0);
-	void CleanMenuStack();
 
 	void SaveData(GFxValue* data);
 	bool LoadData(GFxMovieRoot* root, GFxValue* res);
@@ -64,7 +78,6 @@ public:
 	bool OnConsoleUpdate();
 	bool OnMenuClose();
 
-	void CursorAlwaysOn(bool enabled);
 	void SetVisible(bool visible);
 
 	void OpenExtensionMenu(const char* name);
@@ -87,12 +100,12 @@ public:
 extern SamManager samManager;
 
 TESObjectREFR* GetRefr();
-GFxMovieRoot* GetRoot(BSFixedString name);
 
 //void RegisterSam();
 void StartSamQuest();
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
+void MenuAlwaysOn(BSFixedString menuStr, bool enabled);
 
 bool GetCursor(SInt32* pos);
 bool SetCursor(SInt32 x, SInt32 y);

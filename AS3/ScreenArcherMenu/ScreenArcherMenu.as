@@ -152,13 +152,11 @@
 			//trace("Menu Opened");
 			
 			this.sam = root.f4se.plugins.ScreenArcherMenu;
-			
 			Data.load(data, this.sam, this.f4seObj, stage);
 
 			if (data.title) {
 				titleName = data.title;
 			}
-			
 			var alignment:Boolean = false;
 			if (data.swap) {
 				swapped = data.swap;
@@ -173,7 +171,6 @@
 			}
 			this.rootMenu = data.menuName;
 			Data.menuName = data.menuName;
-			
 			if (data.saved) {
 				this.state = data.saved.state;
 				currentState = data.saved.current;
@@ -188,7 +185,6 @@
 			}
 			
 			isOpen = true;
-			
 			Util.playOk();
 		}
 		
@@ -196,7 +192,6 @@
 			//trace("Save state");
 			sliderList.getState(currentState);
 			currentState.menu = Data.menuName;
-
 			var data:Object = {
 				rootMenu: this.rootMenu,
 				menuName: Data.menuName,
@@ -205,7 +200,6 @@
 				stack: stateStack,
 				focused: sliderList.focused
 			}
-			
 			Data.saveState(data);
 		}
 		
@@ -1625,13 +1619,7 @@
 			
 			closeTimer = new Timer(100,1);
 			closeTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) {
-				try {
-					this.BGSCodeObj.CloseMenu("ScreenArcherMenu");
-				} 
-				catch (e:Error) 
-				{
-					Close();
-				}
+				Close();
 			});
 			
 			closeTimer.start();
@@ -2031,16 +2019,24 @@
 		public function TryClose():Boolean
 		{
 			//trace("Try close");
-			if (CanClose())
-			{
-				SaveState();
-				CleanUp();
-				saved = true;
-				isOpen = false;
-				Util.playCancel();
-				return true;
+			try {
+				if (CanClose())
+				{
+					SaveState();
+					CleanUp();
+					saved = true;
+					isOpen = false;
+					Util.playCancel();
+					return true;
+				}
+				return false;
 			}
-			return false;
+			catch (e:Error) {
+				trace("Error occured while trying to close the menu");
+				trace(e.message);
+			}
+			
+			return true;
 		}
 		
 		//To work around a crash on close bug, sam is no longer destroyed so we have to clean up manually

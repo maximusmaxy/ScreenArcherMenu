@@ -867,6 +867,9 @@ namespace SAF {
 		while (it != list.end() && (*it)->handle != handle)
 			++it;
 
+		if (it == list.end())
+			return 0;
+
 		auto& selected = *it;
 
 		//find next visible below
