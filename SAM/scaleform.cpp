@@ -109,7 +109,7 @@ GFxRequest(GetOptions, {
 });
 
 GFxRequest(SetOption, {
-	SetMenuOption(args[0].GetInt(), args[1].GetBool());
+	SetMenuOption(result, args[0].GetInt(), args[1].GetBool());
 });
 
 GFxRequest(GetFaceMorphs, {

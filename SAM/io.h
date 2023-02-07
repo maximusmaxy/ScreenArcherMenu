@@ -39,6 +39,8 @@ void GetFolder(GFxResult& result, const char* path, const char* ext);
 void GetPathStem(GFxResult& result, const char* path);
 void GetPathRelative(GFxResult& result, const char* root, const char* ext, const char* path);
 
+bool SaveOptionsFile(const char* path);
+
 template <class Type>
 Type readstream(std::ifstream& stream)
 {

@@ -58,9 +58,7 @@ public:
 
 	SamManager() : storedMenu(nullptr), refr(nullptr) {};
 
-	BSFixedString GetSamName();
-	
-	bool StoreMenu();
+	IMenuWrapper StoreMenu();
 	bool ReleaseMenu();
 	IMenuWrapper GetWrapped();
 

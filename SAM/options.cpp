@@ -1,101 +1,55 @@
 #include "options.h"
 
+#include "io.h"
 #include "constants.h"
-#include "sam.h"
 
-#include "SAF/io.h"
+Options menuOptions;
 
-#include "common/IFileStream.h"
+void Options::Initialize() {
+	hotswap = true;
+	alignment = false;
+	widescreen = false;
+}
 
-Json::Value menuOptions;
-bool menuOptionsUpdated = false;
-__time64_t optionsTimestamp = 0;
+void Options::ToJson(Json::Value& value) {
+	value["hotswap"] = hotswap;
+	value["alignment"] = alignment;
+	value["widescreen"] = widescreen;
+}
 
-const char* menuOptionNames[] = {
-	"hotswap",
-	"alignment",
-	"widescreen"
-};
-
-bool menuOptionDefaults[] = {
-	true,
-	false,
-	false
-};
+void Options::FromJson(Json::Value& value) {
+	hotswap = value.get("hotswap", true).asBool();
+	alignment = value.get("alignment", false).asBool();
+	widescreen = value.get("widescreen", false).asBool();
+}
 
 void GetMenuOptions(GFxResult& result)
 {
 	result.CreateValues();
 
-	for (int i = 0; i < kOptionMax; ++i) {
-		result.PushValue(GetMenuOption(i));
-	}
+	result.PushValue(menuOptions.hotswap);
+	result.PushValue(menuOptions.alignment);
+	result.PushValue(menuOptions.widescreen);
 }
 
-bool GetMenuOption(int index) {
-	if (index >= 0 && index < kOptionMax) {
-		const char* key = menuOptionNames[index];
-		if (menuOptions[key].isNull()) {
-			menuOptions[key] = Json::Value(menuOptionDefaults[index]);
-		}
-		return (menuOptions[key].asBool());
+bool GetMenuOption(SInt32 index) {
+	switch (index) {
+	case kOptionHotswap: return menuOptions.hotswap;
+	case kOptionAlignment: return menuOptions.alignment;
+	case kOptionWidescreen: return menuOptions.widescreen;
 	}
+
 	return false;
 }
 
-void SetMenuOption(int index, bool value) {
-	if (index >= 0 && index < kOptionMax) {
-		const char* key = menuOptionNames[index];
-		if (menuOptions[key] != value) {
-			menuOptions[key] = Json::Value(value);
-			menuOptionsUpdated = true;
-		}
-	}
-}
-
-void LoadOptionsFile() {
-	menuOptionsUpdated = false;
-
-	//check if file was updated
-	struct _stat fileInfo;
-	_stat(OPTIONS_PATH, &fileInfo);
-	if (optionsTimestamp == fileInfo.st_mtime)
-		return;
-
-	IFileStream file;
-
-	if (file.Open(OPTIONS_PATH)) {
-		std::stringstream ss;
-		SAF::ReadAll(file, ss);
-		file.Close();
-
-		Json::Reader reader;
-
-		if (!reader.parse(ss.str(), menuOptions)) {
-			menuOptions.clear();
-		}
-	}
-	else {
-		menuOptions.clear();
+void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
+	switch (index) {
+	case kOptionHotswap: menuOptions.hotswap = value; break;
+	case kOptionAlignment: menuOptions.alignment = value; break;
+	case kOptionWidescreen: menuOptions.widescreen = value; break;
+	default: return;
 	}
 
-	//validate and set defaults
-	for (int i = 0; i < kOptionMax; ++i) {
-		const char* key = menuOptionNames[i];
-		if (menuOptions[key].isNull())
-			menuOptions[key] = Json::Value(menuOptionDefaults[i]);
-	}
-}
-
-void SaveOptionsFile() {
-	if (!menuOptionsUpdated)
-		return;
-
-	if (!SAF::WriteJsonFile(OPTIONS_PATH, menuOptions))
-		return;
-
-	//update timestamp
-	struct _stat fileInfo;
-	_stat(OPTIONS_PATH, &fileInfo);
-	optionsTimestamp = fileInfo.st_mtime;
+	if (!SaveOptionsFile(OPTIONS_PATH))
+		_Log("Failed to save options: ", OPTIONS_PATH);
 }

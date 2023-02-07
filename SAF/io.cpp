@@ -42,15 +42,6 @@ namespace SAF {
 		{"girl", kGenderFemale }
 	};
 
-	void ReadAll(IFileStream& file, std::stringstream& ss)
-	{
-		char ret = file.Read8();
-		while (ret > 0) {
-			ss << ret;
-			ret = file.Read8();
-		}
-	}
-
 	float ReadJsonFloat(Json::Value& value, const char* key, float defaultValue) {
 		Json::Value result = value.get(key, defaultValue);
 		
@@ -120,31 +111,31 @@ namespace SAF {
 		return true;
 	}
 
-	bool OpenAppendFileStream(const char* path, std::ofstream* stream)
-	{
-		IFileStream::MakeAllDirs(path);
+	//bool OpenAppendFileStream(const char* path, std::ofstream* stream)
+	//{
+	//	IFileStream::MakeAllDirs(path);
 
-		auto fileHandle = CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (fileHandle == INVALID_HANDLE_VALUE)
-			return false;
+	//	auto fileHandle = CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	//	if (fileHandle == INVALID_HANDLE_VALUE)
+	//		return false;
 
-		auto file_descriptor = _open_osfhandle((intptr_t)fileHandle, _O_APPEND);
-		if (file_descriptor == -1)
-			return false;
+	//	auto file_descriptor = _open_osfhandle((intptr_t)fileHandle, _O_APPEND);
+	//	if (file_descriptor == -1)
+	//		return false;
 
-		FILE* file = _fdopen(file_descriptor, "a");
+	//	FILE* file = _fdopen(file_descriptor, "a");
 
-		*stream = std::ofstream(file);
+	//	*stream = std::ofstream(file);
 
-		if (stream->fail())
-		{
-			_Log("Failed to open output file for write: ", path);
-			stream->close();
-			return false;
-		}
+	//	if (stream->fail())
+	//	{
+	//		_Log("Failed to open output file for write: ", path);
+	//		stream->close();
+	//		return false;
+	//	}
 
-		return true;
-	}
+	//	return true;
+	//}
 
 	bool WriteJsonFile(const char* path, Json::Value& value)
 	{

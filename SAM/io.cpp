@@ -10,6 +10,7 @@
 #include "constants.h"
 #include "data.h"
 #include "pose.h"
+#include "options.h"
 
 #include <filesystem>
 
@@ -99,7 +100,7 @@ public:
 	{
 		if (!header.type)
 		{
-			_Log("Failed to read header type", path.c_str());
+			_Log("Failed to read header type: ", path.c_str());
 			return false;
 		}
 
@@ -111,7 +112,7 @@ public:
 			mod = (*g_dataHandler)->LookupModByName(header.mod.c_str());
 			if (!mod || mod->modIndex == 0xFF)
 			{
-				_Log("Failed to read header mod", path.c_str());
+				_Log("Failed to light mod: ", path.c_str());
 				return false;
 			}
 
@@ -128,7 +129,7 @@ public:
 			key = GetFormId(header.mod.c_str(), header.form.c_str());
 			if (!key)
 			{
-				_Log("Failed to read header race or mod", path.c_str());
+				_Log("Failed to read header for race or mod: ", path.c_str());
 				return false;
 			}
 			if (header.isFemale)
@@ -336,6 +337,41 @@ void ReloadJsonMenus()
 	LoadJsonMenus();
 }
 
+bool SaveOptionsFile(const char* path)
+{
+	Json::Value value;
+
+	menuOptions.ToJson(value);
+
+	bool result = SAF::WriteJsonFile(path, value);
+
+	if (!result)
+		_Log("Failed to save options file: ", path);
+
+	return result;
+}
+
+bool LoadOptionsFile(const char* path)
+{
+	//if options doesn't exist generate it
+	if (!std::filesystem::exists(path)) {
+		menuOptions.Initialize();
+		SaveOptionsFile(path);
+		return false;
+	}
+
+	Json::Value value;
+	if (!SAF::ReadJsonFile(path, value)) {
+		menuOptions.Initialize();
+		return false;
+	}
+
+	menuOptions.FromJson(value);
+	SaveOptionsFile(path);
+
+	return true;
+}
+
 void LoadMenuFiles() {
 	//Add menu categories preemptively for ordering purposes
 	std::unordered_set<std::string> loadedMenus;
@@ -371,6 +407,7 @@ void LoadMenuFiles() {
 
 	LoadJsonMenus();
 	LoadIdleFavorites();
+	LoadOptionsFile(OPTIONS_PATH);
 }
 
 Json::Value* GetCachedMenu(const char* name)

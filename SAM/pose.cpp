@@ -57,7 +57,7 @@ bool GetActorAndAdjustment(UInt32 handle, std::shared_ptr<ActorAdjustments>* adj
 		return false;
 
 	*adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments)
+	if (!*adjustments)
 		return false;
 
 	*adjustment = (*adjustments)->GetAdjustment(handle);

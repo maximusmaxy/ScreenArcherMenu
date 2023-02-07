@@ -7,7 +7,18 @@
 
 #include "gfx.h"
 
-extern Json::Value menuOptions;
+class Options {
+public:
+	bool hotswap;
+	bool alignment;
+	bool widescreen;
+
+	void Initialize();
+	void ToJson(Json::Value& value);
+	void FromJson(Json::Value& value);
+};
+
+extern Options menuOptions;
 
 enum {
 	kOptionHotswap = 0,
@@ -18,8 +29,5 @@ enum {
 };
 
 void GetMenuOptions(GFxResult& result);
-bool GetMenuOption(int index);
-void SetMenuOption(int index, bool value);
-
-void LoadOptionsFile();
-void SaveOptionsFile();
+bool GetMenuOption(SInt32 index);
+void SetMenuOption(GFxResult& result, SInt32 index, bool value);
