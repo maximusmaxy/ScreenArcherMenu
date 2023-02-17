@@ -477,14 +477,13 @@ void AppendIdleFavorite(GFxResult& result)
 	//stream.close();
 
 	//TODO Append wasn't working so we're just writing the whole thing for now
-	std::ofstream stream;
-	if (!SAF::OpenOutFileStream(IDLE_FAVORITES, &stream))
+	SAF::OutStreamWrapper wrapper(IDLE_FAVORITES);
+	if (wrapper.fail)
 		return result.SetError("Failed to open IdleFavorites.txt");
 
 	for (auto& favorite : idleFavorites) {
-		stream << favorite << std::endl;
+		wrapper.stream << favorite << std::endl;
 	}
-	stream.close();
 
 	std::string notif = std::string(idleName) + " has been favorited!";
 	samManager.ShowNotification(notif.c_str(), false);

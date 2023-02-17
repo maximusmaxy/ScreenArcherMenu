@@ -1809,8 +1809,8 @@
 		
 		public function InitOffset():GFxResult
 		{
-			Data.locals.adjustmentOrder = sam.GetNodeIsOffsetOnly(Data.locals.boneName);
-			buttonHintLoad.ButtonText = (Data.locals.adjustmentOrder ? "$SAM_Offset" : "$SAM_Pose");
+			Data.locals.offset = sam.GetNodeIsOffsetOnly(Data.locals.boneName);
+			buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
 			sliderList.title.text = Data.locals.boneName;
 			
 			return Data.resultSuccess;
@@ -1820,8 +1820,8 @@
 		{
 			var previousName:String = Data.locals.boneName;
 			Data.locals.boneName = sam.ToggleNodeName(Data.locals.boneName);
-			Data.locals.adjustmentOrder = sam.GetNodeIsOffset(Data.locals.boneName);
-			buttonHintLoad.ButtonText = (Data.locals.adjustmentOrder ? "$SAM_Offset" : "$SAM_Pose");
+			Data.locals.offset = sam.GetNodeIsOffset(Data.locals.boneName);
+			buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
 			sliderList.title.text = Data.locals.boneName;
 			if (previousName != Data.locals.boneName) {
 				RefreshValues();
@@ -1926,14 +1926,12 @@
 		public function RemoveEquipment(index:int, formId:uint):GFxResult
 		{
 			var result:GFxResult = sam.RemoveEquipment(index, formId);
-			
 			if (result.type != Data.RESULT_ERROR) {
 				Data.removeMenuIndex(index);
+				this.sliderList.update();
 			} else {
-				showNotification(result.result);
+				this.ShowNotification(result.result);
 			}
-			
-			sliderList.update();
 			
 			return Data.resultSuccess;
 		}
@@ -1944,12 +1942,11 @@
 			
 			if (result.type != Data.RESULT_ERROR) {
 				Data.setMenuSize(0);
+				this.sliderList.update();
 			} else {
-				showNotification(result.result);
+				this.ShowNotification(result.result);
 			}
-			
-			sliderList.update();
-			
+
 			return Data.resultSuccess;
 		}
 		
@@ -1961,7 +1958,7 @@
 				var folderResult:GFxResult = Data.getFolderCheckbox(Data.folderData.path, Data.folderData.ext, race);
 				if (folderResult && folderResult.type != Data.RESULT_ERROR) {
 					Data.menuFolder = folderResult.result;
-					sliderList.updateValues();
+					this.sliderList.updateValues();
 				}
 			}
 

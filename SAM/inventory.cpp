@@ -6,6 +6,7 @@
 #include "f4se/GameObjects.h"
 #include "f4se/GameExtraData.h"
 #include "f4se/GameRTTI.h"
+#include "f4se/PapyrusVM.h"
 
 #include "SAF/util.h"
 
@@ -13,9 +14,11 @@
 #include "constants.h"
 #include "idle.h"
 #include "types.h"
-#include "io.h"
 #include "papyrus.h"
 #include "types.h"
+#include "camera.h"
+#include "positioning.h"
+#include "strnatcmp.h"
 
 #include "BS_thread_pool.hpp"
 
@@ -389,11 +392,11 @@ void AddItemFromForm(TESObjectREFR* refr, TESForm* form)
 }
 
 bool RefrHasItem(TESObjectREFR* refr, TESForm* form) {
-	BSReadLocker locker(&refr->inventoryList->inventoryLock);
-
 	auto inventoryList = selected.refr->inventoryList;
 	if (!inventoryList)
 		return false;
+
+	BSReadLocker locker(&refr->inventoryList->inventoryLock);
 
 	auto items = &inventoryList->items;
 	auto end = items->entries + items->count;
@@ -403,6 +406,20 @@ bool RefrHasItem(TESObjectREFR* refr, TESForm* form) {
 	}
 
 	return false;
+}
+
+typedef void (*_QueueActorUpdateModel)(UInt64 taskQueueInterface, Actor* actor, UInt16 flags, float unk);
+RelocAddr<_QueueActorUpdateModel> QueueActorUpdateModel(0xD59AA0);
+
+RelocPtr<UInt64> taskQueueInterface(0x5AC64F0);
+
+void UpdateActorModel(Actor* actor, bool force)
+{
+	auto freeState = GetFreeCameraState();
+
+	//If in TFC mode and the player is the target, or game is paused, force update the 3D model
+	if (force || (actor == *g_player && freeState) || GetGamePaused())
+		QueueActorUpdateModel(*taskQueueInterface, actor, 0x11, 0.0f);
 }
 
 class BGSObjectInstance {
@@ -459,10 +476,12 @@ void AddItem(GFxResult& result, UInt32 formId, bool equip) {
 	if (!form)
 		return result.SetError("Could not find form id for item");
 
+	Actor* actor = (Actor*)selected.refr;
+
 	//Add item
 	if (!equip) {
 		//PapyrusAddItem(selected.refr, form, 1, true);
-		AddItemFromForm(selected.refr, form);
+		AddItemFromForm(actor, form);
 		std::string notif = std::string(form->GetFullName()) + " added to inventory";
 		samManager.ShowNotification(notif.c_str(), false);
 	}
@@ -470,15 +489,21 @@ void AddItem(GFxResult& result, UInt32 formId, bool equip) {
 	//Equip item
 	else {
 		
+		//Return error on game paused
+		//if (GetGamePaused())
+		//	return result.SetError("Cannot equip/unequip while the game is paused");
+
 		//If equipped, unequip instead
-		if (IsFormEquipped(selected.refr, form)) {
-			UnequipItemFromForm(selected.refr, form);
+		if (IsFormEquipped(actor, form)) {
+			UnequipItemFromForm(actor, form);
+			UpdateActorModel(actor, false);
 		}
 		else {
-			if (!RefrHasItem(selected.refr, form))
-				AddItemFromForm(selected.refr, form);
+			if (!RefrHasItem(actor, form))
+				AddItemFromForm(actor, form);
 
-			EquipItemFromForm(selected.refr, form);
+			EquipItemFromForm(actor, form);
+			UpdateActorModel(actor, false);
 		}
 	}
 }
@@ -644,6 +669,40 @@ void GetMatSwaps(GFxResult& result, UInt32 formId) {
 	}
 }
 
+struct CheckStackIdFunctor {
+	UInt64 vfTable;
+	UInt64 unk08;
+};
+
+struct ModifyModDataFunctor {
+	UInt64 vfTable;
+	UInt64 unk08;
+	TESForm* modForm;
+	UInt64 unk18;
+	UInt64* unk20;
+	bool unk28;
+	bool unk29;
+	bool unk2A;
+	UInt8 pad2B;
+	UInt32 pad2C;
+};
+
+typedef void (*_FindAndWriteStackDataForInventoryItem)(TESObjectREFR* refr, TESForm* form, CheckStackIdFunctor* comparer, ModifyModDataFunctor* writer, UInt64 callback, bool unk);
+RelocAddr<_FindAndWriteStackDataForInventoryItem> FindAndWriteStackDataForInventoryItem(0x3FB430);
+
+RelocAddr<UInt64> checkStackIdFunctorVftable(0x2C5C928);
+RelocAddr<UInt64> modifyModDataFunctorVftable(0x2D11060);
+RelocAddr<UInt64> standardObjectCompareCallback(0x42F280);
+
+typedef void(*_PostModifyInventoryItem)(TESObjectREFR* refr, TESForm* form, bool unk1);
+RelocAddr<_PostModifyInventoryItem> PostModifyInventoryItem(0x1403730);
+
+typedef UInt32 (*_GetInventoryObjectCount)(TESObjectREFR* refr, TESForm* form);
+RelocAddr<_GetInventoryObjectCount> GetInventoryObjectCount(0x3FB480);
+
+typedef void (*_RemoveNonRefrItem)(TESObjectREFR* refr, TESForm* form, UInt64 count, bool silent, UInt64 unk1, UInt64 unk2, UInt32 handle, VirtualMachine* vm);
+RelocAddr<_RemoveNonRefrItem> RemoveNonRefrItem(0x13FCB30);
+
 void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 equipId) {
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
@@ -656,12 +715,43 @@ void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 equipId) {
 	if (!modForm)
 		return result.SetError("Could not find mod id");
 
-	PapyrusAttachModToInventoryItem(selected.refr, equipForm, modForm);
-}
+	UInt32 count = GetInventoryObjectCount(selected.refr, equipForm);
+	if (count == 0)
+		return result.SetError("Could not find equipment");
 
-std::unordered_set<UInt32> equipSlotIgnore {
-	31 //pipboy
-};
+	//TODO the internal mat swap functions i'm using only work when you have no duplicates so we're removing extras for now
+	if (count > 1) {
+		VirtualMachine* vm = (*g_gameVM)->m_virtualMachine;
+		RemoveNonRefrItem(selected.refr, equipForm, count - 1, true, 0, 0, 0, vm);
+
+		//Item might get unequipped during removal so reequip if necessary
+		EquipItemFromForm(selected.refr, equipForm);
+	}
+
+	CheckStackIdFunctor comparer{ 
+		checkStackIdFunctorVftable, 
+		0 
+	};
+
+	UInt64 out = 1;
+
+	ModifyModDataFunctor writer{
+		modifyModDataFunctorVftable,
+		1,
+		modForm,
+		0,
+		&out,
+		false,
+		true,
+		false,
+		0,
+		0
+	};
+
+	FindAndWriteStackDataForInventoryItem(selected.refr, equipForm, &comparer, &writer, standardObjectCompareCallback, false);
+	PostModifyInventoryItem(selected.refr, equipForm, false);
+	UpdateActorModel((Actor*)selected.refr, true);
+}
 
 void GetEquipment(GFxResult& result) {
 	if (!selected.refr)
@@ -674,7 +764,8 @@ void GetEquipment(GFxResult& result) {
 	NaturalSortedUInt32Map map;
 
 	for (int i = 0; i < ActorEquipData::kMaxSlots; ++i) {
-		if (actor->equipData->slots[i].item && !equipSlotIgnore.count(i)) { 
+		//ignore pipboy
+		if (actor->equipData->slots[i].item && i != 31) { 
 			const char* name = actor->equipData->slots[i].item->GetFullName();
 			if (name && *name) {
 				map.emplace(name, actor->equipData->slots[i].item->formID);
@@ -697,7 +788,13 @@ void RemoveEquipment(GFxResult& result, UInt32 formId) {
 	if (!form)
 		return result.SetError("Could not find form id for item");
 
+	auto actor = (Actor*)selected.refr;
+
+	//if (GetGamePaused())
+	//	return result.SetError("Cannot remove while game is paused");
+
 	UnequipItemFromForm(selected.refr, form);
+	UpdateActorModel(actor, false);
 }
 
 void RemoveAllEquipment(GFxResult& result) {
@@ -708,17 +805,31 @@ void RemoveAllEquipment(GFxResult& result) {
 	if (!actor->equipData)
 		return result.SetError("Console target is not an actor");
 
+	//if (GetGamePaused())
+	//	return result.SetError("Cannot remove while game is paused");
+
 	//collect a set to prevent duplicate removes
 	std::unordered_set<UInt32> equipSet;
-	for (auto it = actor->equipData->slots; it != actor->equipData->slots + ActorEquipData::kMaxSlots; ++it) {
-		if (it->item) {
-			equipSet.insert(it->item->formID);
+	for (int i = 0; i < ActorEquipData::kMaxSlots; ++i) {
+		//ignore pipboy
+		if (i != 31) {
+			auto& slot = actor->equipData->slots[i];
+			if (slot.item)
+				equipSet.insert(slot.item->formID);
 		}
 	}
 
+	bool updated = false;
+
 	for (auto& formId : equipSet) {
 		TESForm* form = LookupFormByID(formId);
-		if (form)
+		if (form) {
 			UnequipItemFromForm(selected.refr, form);
+			updated = true;
+		}
+	}
+
+	if (updated) {
+		UpdateActorModel(actor, false);
 	}
 }

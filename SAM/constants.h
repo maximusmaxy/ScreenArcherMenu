@@ -19,6 +19,8 @@
 #define CAMERA_PATH "Data\\F4SE\\Plugins\\SAM\\Camera"
 #define LIGHTS_PATH "Data\\F4SE\\Plugins\\SAM\\Lights"
 #define OPTIONS_PATH "Data\\F4SE\\Plugins\\SAM\\options.json"
+#define COMPANION_PATH "Data\\F4SE\\Plugins\\SAM\\Companions"
+#define RESOURCES_PATH "Data\\F4SE\\Plugins\\SAM\\Resources"
 
 #define IDLE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\IdleFavorites.txt"
 //#define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"

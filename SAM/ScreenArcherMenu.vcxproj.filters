@@ -24,6 +24,8 @@
     <ClCompile Include="eyes.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="types.cpp" />
+    <ClCompile Include="companion.cpp" />
+    <ClCompile Include="material.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -49,6 +51,8 @@
     <ClInclude Include="eyes.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="types.h" />
+    <ClInclude Include="companion.h" />
+    <ClInclude Include="material.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

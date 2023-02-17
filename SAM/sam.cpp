@@ -1,5 +1,6 @@
 #include "sam.h"
 
+#include "f4se/GameEvents.h"
 #include "f4se/GameMenus.h"
 #include "f4se/GameData.h"
 #include "f4se/GameTypes.h"
@@ -82,10 +83,7 @@ IMenuWrapper GetWrappedMenu(BSFixedString name) {
 	BSReadLocker lock(g_menuTableLock);
 
 	auto tableItem = (*g_ui)->menuTable.Find(&name);
-	if (!tableItem)
-		return IMenuWrapper();
-
-	if (!tableItem->menuInstance)
+	if (!tableItem || !tableItem->menuInstance)
 		return IMenuWrapper();
 
 	return IMenuWrapper(tableItem->menuInstance);
@@ -140,7 +138,7 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 
 IMenuWrapper SamManager::StoreMenu() {
 	std::lock_guard lock(mutex);
-	
+
 	BSReadLocker tableLock(g_menuTableLock);
 
 	auto tableItem = (*g_ui)->menuTable.Find(&BSFixedString(SAM_MENU_NAME));
@@ -194,7 +192,7 @@ void SamManager::ToggleMenu() {
 				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuStr, kMessage_Close);
 			}
 		}
-		
+
 	}
 	else {
 		if ((*g_ui)->IsMenuRegistered(menuStr)) {
@@ -366,7 +364,7 @@ void SamManager::PopMenuTo(const char* name)
 	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &GFxValue(name), 1);
 }
 
-void SamManager::RefreshMenu() 
+void SamManager::RefreshMenu()
 {
 	auto wrapped = GetWrapped();
 	auto root = wrapped.GetRoot();
@@ -377,7 +375,7 @@ void SamManager::RefreshMenu()
 	root->Invoke("root1.Menu_mc.RefreshValues", nullptr, nullptr, 0);
 }
 
-void SamManager::UpdateMenu() 
+void SamManager::UpdateMenu()
 {
 	auto wrapped = GetWrapped();
 	auto root = wrapped.GetRoot();
@@ -519,7 +517,7 @@ void SamManager::SetSuccess()
 		return;
 
 	GFxValue value;
-	GFxResult result(root, &value); 
+	GFxResult result(root, &value);
 	result.InvokeCallback();
 }
 
@@ -555,7 +553,7 @@ void SamManager::SetVisible(bool isVisible)
 	auto root = wrapped.GetRoot();
 	if (!root)
 		return;
-	
+
 	root->SetVariable("root1.Menu_mc.visible", &GFxValue(isVisible));
 }
 
@@ -569,7 +567,7 @@ void MenuAlwaysOn(BSFixedString menuStr, bool enabled) {
 	}
 }
 
-bool GetCursor(SInt32* pos) 
+bool GetCursor(SInt32* pos)
 {
 	POINT point;
 	bool result = GetCursorPos(&point);
@@ -596,12 +594,13 @@ void GetCursorPosition(GFxResult& result) {
 	result.PushValue(pos[1]);
 }
 
-TESObjectREFR * GetRefr() {
+TESObjectREFR* GetRefr() {
 	UInt32 handle = (*g_consoleHandle);
 	NiPointer<TESObjectREFR> refr;
 	if (handle == 0 || handle == *g_invalidRefHandle) {
 		refr = *g_player;
-	} else {
+	}
+	else {
 		LookupREFRByHandle(handle, refr);
 		if (!refr || refr->formType != kFormType_ACHR || (refr->flags & TESObjectREFR::kFlag_IsDeleted))
 			return nullptr;
@@ -636,7 +635,7 @@ void SelectedRefr::Clear() {
 
 void GetMenuTarget(GFxValue& data) {
 
-	if (selectedNonActor.refr) 
+	if (selectedNonActor.refr)
 	{
 		const char* name;
 		if (selectedNonActor.refr->baseForm) {
@@ -712,7 +711,7 @@ bool SamManager::OnConsoleUpdate() {
 	root->CreateObject(&data);
 
 	UpdateNonActorRefr();
-	TESObjectREFR * refr = GetRefr();
+	TESObjectREFR* refr = GetRefr();
 	bool refUpdated = false;
 
 	if (selected.refr != refr && GetMenuOption(kOptionHotswap))
@@ -894,3 +893,10 @@ void SamSerializeRevert(const F4SESerializationInterface* ifc)
 	RevertLights();
 	lastSelectedPose.clear();
 }
+
+//struct TESEquipEvent {
+//	TESObjectREFR* source;
+//	UInt32 formId;
+//};
+//
+//DECLARE_EVENT_DISPATCHER(TESEquipEvent, 0x00442870)

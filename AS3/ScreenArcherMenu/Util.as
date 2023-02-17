@@ -117,6 +117,8 @@
 				{
 					Data.error = "Function name could not be found";
 					return null;
+				} else {
+					trace(e.message);
 				}
 			}
 	

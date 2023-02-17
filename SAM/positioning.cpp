@@ -31,7 +31,6 @@ RelocAddr<_ToggleWorldCollisionInternal> ToggleWorldCollisionInternal(0xFBF80);
 typedef void (*_ToggleGamePauseInternal)();
 RelocAddr<_ToggleGamePauseInternal> ToggleGamePauseInternal(0x520530);
 
-RelocPtr<UInt8> gamePaused(0x5AA4278);
 RelocPtr<UInt8> collisionsEnabled(0x58E0AE0);
 
 TESObjectREFR* GetNonActorRefr() {
@@ -67,9 +66,24 @@ void UpdateNonActorRefr() {
 	}
 }
 
+struct AppMain {
+	UInt64 unk00;
+	UInt64 unk08;
+	UInt64 unk10;
+	UInt64 unk18;
+	UInt64 unk20;
+	UInt16 unk28;
+	bool gamePaused;
+};
+
+RelocPtr<AppMain*> appMain(0x5AA4278);
+
 bool GetGamePaused() {
-	UInt8* paused = gamePaused;
-	return paused[0x2A];
+	AppMain* main = *appMain;
+	if (!main)
+		return false;
+
+	return main->gamePaused;
 }
 
 void ToggleGamePaused() {

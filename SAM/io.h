@@ -10,6 +10,8 @@
 
 #include "json/json.h"
 
+#include <ostream>
+
 typedef std::map<std::string, Json::Value, SAF::CaseInsensitiveCompareStr> JsonCache;
 
 extern JsonCache menuDataCache;
@@ -42,9 +44,15 @@ void GetPathRelative(GFxResult& result, const char* root, const char* ext, const
 bool SaveOptionsFile(const char* path);
 
 template <class Type>
-Type readstream(std::ifstream& stream)
+Type Read(std::ifstream& stream)
 {
 	Type n;
 	stream.read(reinterpret_cast<char*>(&n), sizeof(Type));
 	return n;
+}
+
+template <class Type>
+void Write(std::ostream& stream, Type n)
+{
+	stream.write(reinterpret_cast<char*>(&n), sizeof(Type));
 }

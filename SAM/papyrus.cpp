@@ -4,6 +4,8 @@
 #include "f4se/PapyrusUtilities.h"
 #include "f4se/PapyrusScaleformAdapter.h"
 #include "f4se/PapyrusArgs.h"
+#include "f4se/GameMenus.h"
+#include "f4se/CustomMenu.h"
 
 #include "SAF/util.h"
 
@@ -200,6 +202,12 @@ void PapyrusToggleMenu(StaticFunctionTag*) {
 	samManager.ToggleMenu();
 }
 
+void PapyrusReregisterMenu(StaticFunctionTag*) {
+	BSFixedString menuName(SAM_MENU_NAME);
+	(*g_ui)->UnregisterMenu(menuName, true);
+	(*g_ui)->Register(menuName.c_str(), CreateCustomMenu);
+}
+
 void PapyrusLogMenu(StaticFunctionTag*, BSFixedString menuName) 
 {
 	auto menu = GetCachedMenu(menuName.c_str());
@@ -243,6 +251,7 @@ bool RegisterPapyrus(VirtualMachine* vm) {
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ForceQuit", "SAM", PapyrusForceQuit, vm));
 
 	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ToggleMenu", "SAM", PapyrusToggleMenu, vm));
+	vm->RegisterFunction(new NativeFunction0<StaticFunctionTag, void>("ReregisterMenu", "SAM", PapyrusReregisterMenu, vm));
 
 	return true;
 }

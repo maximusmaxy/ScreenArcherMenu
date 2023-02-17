@@ -85,31 +85,64 @@ namespace SAF {
 		return true;
 	}
 
-	bool OpenOutFileStream(const char* path, std::ofstream* stream)
+	//ofstreams weren't opening correctly the regular way so i'm using CreateFile
+	//When opened this way you need to close the stream manually to release the handles
+	OutStreamWrapper::OutStreamWrapper(const char* path) 
 	{
+		fail = true;
+
 		IFileStream::MakeAllDirs(path);
 
 		auto fileHandle = CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (fileHandle == INVALID_HANDLE_VALUE)
-			return false;
+			return;
 
 		auto file_descriptor = _open_osfhandle((intptr_t)fileHandle, 0);
 		if (file_descriptor == -1)
-			return false;
+			return;
 
 		FILE* file = _fdopen(file_descriptor, "w");
 
-		*stream = std::ofstream(file);
+		stream = std::ofstream(file);
 
-		if (stream->fail())
-		{
+		if (stream.fail()) {
 			_Log("Failed to open output file for write: ", path);
-			stream->close();
-			return false;
+			return;
 		}
-		
-		return true;
+
+		fail = false;
 	}
+
+	OutStreamWrapper::~OutStreamWrapper()
+	{
+		stream.close();
+	}
+
+	//bool OpenOutFileStream(const char* path, std::ofstream* stream)
+	//{
+	//	IFileStream::MakeAllDirs(path);
+
+	//	auto fileHandle = CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	//	if (fileHandle == INVALID_HANDLE_VALUE)
+	//		return false;
+
+	//	auto file_descriptor = _open_osfhandle((intptr_t)fileHandle, 0);
+	//	if (file_descriptor == -1)
+	//		return false;
+
+	//	FILE* file = _fdopen(file_descriptor, "w");
+
+	//	*stream = std::ofstream(file);
+
+	//	if (stream->fail())
+	//	{
+	//		_Log("Failed to open output file for write: ", path);
+	//		stream->close();
+	//		return false;
+	//	}
+	//	
+	//	return true;
+	//}
 
 	//bool OpenAppendFileStream(const char* path, std::ofstream* stream)
 	//{
@@ -139,14 +172,13 @@ namespace SAF {
 
 	bool WriteJsonFile(const char* path, Json::Value& value)
 	{
-		std::ofstream stream;
-		if (!OpenOutFileStream(path, &stream))
+		OutStreamWrapper wrapper(path);
+		if (wrapper.fail)
 			return false;
 		
 		Json::StyledStreamWriter writer;
-		writer.write(stream, value);
+		writer.write(wrapper.stream, value);
 
-		stream.close();
 		return true;
 	}
 

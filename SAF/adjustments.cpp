@@ -234,14 +234,14 @@ namespace SAF {
 		updated = true;
 	}
 
-	void Adjustment::SetTransformSca(const NodeKey& key, float scale)
+	void Adjustment::SetTransformSca(const NodeKey& key, float value)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		auto found = map.find(key);
 		NiTransform transform = found != map.end() ? found->second : TransformIdentity();
 
-		transform.scale = scale;
+		transform.scale = value;
 		map[key] = transform;
 		scaled[key] = SlerpNiTransform(transform, scale);
 

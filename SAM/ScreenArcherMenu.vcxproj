@@ -28,6 +28,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -113,6 +114,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp" />
+    <ClCompile Include="companion.cpp" />
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="data.cpp" />
@@ -125,6 +127,7 @@
     <ClCompile Include="io.cpp" />
     <ClCompile Include="lights.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="material.cpp" />
     <ClCompile Include="mfg.cpp" />
     <ClCompile Include="options.cpp" />
     <ClCompile Include="papyrus.cpp" />
@@ -138,6 +141,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
+    <ClInclude Include="companion.h" />
     <ClInclude Include="compatibility.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="constants.h" />
@@ -149,6 +153,7 @@
     <ClInclude Include="inventory.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="lights.h" />
+    <ClInclude Include="material.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="options.h" />
     <ClInclude Include="papyrus.h" />
