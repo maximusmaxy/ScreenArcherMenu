@@ -3,6 +3,7 @@
 #define SAM_ESP "ScreenArcherMenu.esp"
 
 #define SAM_MENU_NAME "ScreenArcherMenu"
+#define SAM_MENU_ROOT "root1.Menu_mc"
 #define CURSOR_MENU_NAME "CursorMenu"
 #define CONSOLE_MENU_NAME "Console"
 #define PHOTO_MENU_NAME "PhotoMenu"
@@ -55,3 +56,8 @@
 
 #define MORPH_MAX 54
 #define CAM_SAVE_STATE_SLOTS 3
+
+#define SAM_X -646.85f
+#define SAM_Y -360.9f
+#define SAM_WIDTH 1279.6f
+#define SAM_HEIGHT 719.6f

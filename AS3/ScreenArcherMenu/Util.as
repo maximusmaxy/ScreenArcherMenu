@@ -126,6 +126,16 @@
 			return null;
 		}
 		
+		private static const floatEpsilon = 0.0001;
+		
+		public static function floatEqual(a:Number, b:Number):Boolean
+		{
+			var magnitude:Number = a - b;
+			if (magnitude < 0)
+				magnitude = -magnitude;
+			return magnitude < floatEpsilon;
+		}
+		
 		public static function traceObj(obj:Object, key:Object = null):void
 		{
 			if (obj == null) {

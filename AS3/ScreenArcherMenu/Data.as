@@ -1372,5 +1372,20 @@
 				return true;
 			}
 		}
+		
+		public static function selectNodeMarker(name:String)
+		{
+			sam.SelectNodeMarker(name);
+		}
+		
+		public static function overNodeMarker(name:String)
+		{
+			sam.OverNodeMarker(name);
+		}
+		
+		public static function outNodeMarker(name:String)
+		{
+			sam.OutNodeMarker(name);
+		}
 	}
 }

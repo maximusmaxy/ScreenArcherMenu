@@ -33,10 +33,17 @@
 		public var filenameInput:MovieClip;
 		public var border:MovieClip;
 		public var notification:MovieClip;
+		//public var boneDisplay:Sprite = null;
+		
+		public var debug1:MovieClip;
+		public var testMarker1:MovieClip;
+		public var testMarker2:MovieClip;
+		public var boneMarker1:MovieClip;
 		
 		public var notificationMessage = "";
 		public var titleName:String = "";
 		public var rootMenu:String;
+		public var nextMenu:String = "";
 		
 		internal var buttonHintData:Vector.<BSButtonHintData > ;
 		internal var buttonHintSave:BSButtonHintData;
@@ -101,6 +108,8 @@
 //			}
 			
 			UpdateAlignment();
+			
+			this.boneMarker1.setPosAndAngle(this.testMarker1, this.testMarker2);
 		}
 		
 		internal function InitState():void
@@ -729,6 +738,9 @@
 		public function PushMenu(name:String)
 		{
 			//trace("Push menu", name);
+			
+			this.nextMenu = name;
+			
 			//get menu data
 			var menuData:GFxResult = GetMenuData(name);
 			if (!menuData)
@@ -842,6 +854,8 @@
 			
 			//trace("popping menu state", stateStack.length);
 			currentState = stateStack.pop();
+			this.nextMenu = currentState.menu;
+			
 			var menuData:GFxResult = GetMenuData(currentState.menu);
 			
 			//if menu data get fails, need to use a dummy menu and dummy get result to prevent locks
@@ -1964,6 +1978,22 @@
 
 			return Data.resultSuccess;
 		}
+		
+//		public function EnableBoneDisplay()
+//		{
+//			this.boneDisplay = new Sprite();
+//			this.boneDisplay.x = -646.85;
+//			this.boneDisplay.y = -360.9;
+//			this.boneDisplay.width = 1279.6;
+//			this.boneDisplay.height = 719.6;
+//			this.addChild(this.boneDisplay);
+//		}
+//		
+//		public function DisableBoneDisplay()
+//		{
+//			this.removeChild(this.boneDisplay);
+//			this.boneDisplay = null;
+//		}
 		
 		public function SetAlignment(i:int, checked:Boolean)
 		{

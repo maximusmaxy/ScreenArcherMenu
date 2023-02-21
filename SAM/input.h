@@ -11,3 +11,5 @@ public:
 };
 
 extern SamInputHandler inputHandler;
+
+void SetInputEnableLayer(bool enable);

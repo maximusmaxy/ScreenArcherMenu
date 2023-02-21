@@ -582,6 +582,22 @@ GFxRequest(AddPoseFavorite, {
 	AppendPoseFavorite(result);
 });
 
+GFxRequest(SetBoneDisplay, {
+	SetBoneDisplay(result, args[0].GetBool());
+});
+
+GFxRequest(SelectNodeMarker, {
+	SelectNodeMarker(result, args[0].GetString());
+});
+
+GFxRequest(OverNodeMarker, {
+	OverNodeMarker(result, args[0].GetString());
+});
+
+GFxRequest(OutNodeMarker, {
+	OutNodeMarker(result, args[0].GetString());
+});
+
 #define GFxRegister(T) RegisterFunction<T ## Scaleform>(value, view->movieRoot, #T)
 
 bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
@@ -714,6 +730,10 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(AddIdleFavorite);
 	GFxRegister(PlayIdleFavorite);
 	GFxRegister(AddPoseFavorite);
+	GFxRegister(SetBoneDisplay);
+	GFxRegister(SelectNodeMarker);
+	GFxRegister(OverNodeMarker);
+	GFxRegister(OutNodeMarker);
 
 	return true;
 }

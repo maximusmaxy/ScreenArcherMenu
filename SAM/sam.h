@@ -18,6 +18,74 @@
 #include <unordered_map>
 #include <mutex>
 
+class ScreenArcherMenu : public GameMenuBase
+{
+public:
+	ScreenArcherMenu();
+	virtual ~ScreenArcherMenu();
+
+	virtual void AdvanceMovie(float unk0, void* unk1) override final;
+	virtual void RegisterFunctions() override final;
+	virtual void Invoke(Args* args) override final;
+
+	DEFINE_STATIC_HEAP(ScaleformHeap_Allocate, ScaleformHeap_Free);
+
+	class BoneDisplay {
+	public:
+		bool enabled;
+		std::mutex mutex;
+		std::list<const char*> hovers;
+		
+		struct NodeMarker {
+			GFxValue marker;
+			NiAVObject* node;
+			BSGFxShaderFXTarget* target;
+
+			~NodeMarker() { if (target) delete target; };
+		};
+
+		std::vector<NodeMarker> nodes;
+		
+		struct BoneMarker {
+			GFxValue marker;
+			GFxValue* start;
+			GFxValue* end;
+			BSGFxShaderFXTarget* target;
+
+			~BoneMarker() { if (target) delete target; };
+		};
+
+		std::vector<BoneMarker> bones;
+
+		void Reserve(UInt32 size) {
+			nodes.reserve(size);
+			bones.reserve(size);
+		}
+
+		void Clear() {
+			hovers.clear();
+			nodes.clear();
+			bones.clear();
+		}
+	};
+
+	BoneDisplay boneDisplay{ false };
+
+	GFxValue* PushNodeMarker(NiAVObject* node);
+	void PushBoneMarker(GFxValue* start, GFxValue* end);
+	void VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent, GFxValue* start);
+
+	void EnableBoneDisplay(std::shared_ptr<SAF::ActorAdjustments> adjustments);
+	void DisableBoneDisplay();
+	void UpdateBoneDisplay();
+};
+
+IMenu* CreateScreenArcherMenu();
+void SetBoneDisplay(GFxResult& result, bool enabled);
+void SelectNodeMarker(GFxResult& result, const char* name);
+void OverNodeMarker(GFxResult& result, const char* name);
+void OutNodeMarker(GFxResult& result, const char* name);
+
 class SelectedRefr {
 public:
 	TESObjectREFR* refr;
@@ -100,7 +168,7 @@ extern SamManager samManager;
 TESObjectREFR* GetRefr();
 
 //void RegisterSam();
-void StartSamQuest();
+//void StartSamQuest();
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 void MenuAlwaysOn(BSFixedString menuStr, bool enabled);

@@ -58,3 +58,83 @@ void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 }
 
 SamInputHandler inputHandler;
+
+RelocPtr<UInt64*> inputEnableManager(0x58D0780);
+RelocPtr<UInt64> debugNameFunctor(0x1B23EB0);
+
+struct InputEnableNameFunctor {
+	UInt64** functor;
+	const char*** name;
+};
+
+struct BSInputEnableLayer {
+	UInt32 index;
+	UInt32 state;
+};
+
+BSInputEnableLayer* inputEnableLayer { nullptr };
+std::mutex inputEnableLayerMutex;
+
+typedef bool (*_AllocateNewLayer)(UInt64* manager, BSInputEnableLayer** layerOut, InputEnableNameFunctor* functor);
+RelocAddr<_AllocateNewLayer> AllocateNewLayer(0x1B22180);
+
+//Need to dec ref the inputenablelayer manually to make sure the resources are released
+typedef void (*_InputEnableLayerDecRef)(BSInputEnableLayer* InputEnableLayer);
+RelocAddr<_InputEnableLayerDecRef> InputEnableLayerDecRef(0x1B22460);
+
+typedef bool (*_EnableUserEvent)(BSInputEnableLayer* layer, UInt32 flags, bool unk1, UInt32 unk2);
+RelocAddr<_EnableUserEvent> EnableUserEvent(0x241DD0);
+
+typedef bool (*_EnableOtherEvent)(BSInputEnableLayer* layer, UInt32 flags, bool unk1, UInt32 unk2);
+RelocAddr<_EnableOtherEvent> EnableOtherEvent(0x516B30);
+
+void SetInputEnableLayer(bool enable) {
+	std::lock_guard lock(inputEnableLayerMutex);
+
+	//check if updated
+	if (enable == (!!inputEnableLayer))
+		return;
+
+	if (enable) {
+		const char* name = "SamInputEnableLayer";
+		const char** namename = &name;
+		UInt64* functor = debugNameFunctor;
+		InputEnableNameFunctor nameFunctor{ &functor, &namename };
+		if (!AllocateNewLayer(*inputEnableManager, &inputEnableLayer, &nameFunctor)) {
+			inputEnableLayer = nullptr;
+			return;
+		}
+		
+		static UInt32 userFlags =
+			1 << 0 |	//movement
+			1 << 1 |	//looking
+			1 << 6 |	//fighting
+			1 << 7 |	//sneaking
+			1 << 8 |	//menu
+			1 << 10;	//movement2
+
+		if (!EnableUserEvent(inputEnableLayer, userFlags, false, 0x3)) {
+			InputEnableLayerDecRef(inputEnableLayer);
+			inputEnableLayer = nullptr;
+			return;
+		}
+
+		static UInt32 otherFlags =
+			1 << 0 |	//journal
+			1 << 1 |	//activate
+			1 << 3 |	//camswitch
+			1 << 4 |	//vats
+			1 << 5 |	//favorites
+			1 << 8;		//running
+
+		if (!EnableOtherEvent(inputEnableLayer, otherFlags, false, 0x3)) {
+			InputEnableLayerDecRef(inputEnableLayer);
+			inputEnableLayer = nullptr;
+			return;
+		}
+	}
+	else {
+		InputEnableLayerDecRef(inputEnableLayer);
+		inputEnableLayer = nullptr;
+	}
+}

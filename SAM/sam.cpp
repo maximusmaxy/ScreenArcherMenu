@@ -41,6 +41,344 @@ SelectedRefr selected;
 
 SamManager samManager;
 
+ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
+{
+	flags =
+		IMenu::kFlag_AlwaysOpen |
+		IMenu::kFlag_UsesCursor |
+		IMenu::kFlag_Modal |
+		IMenu::kFlag_DisablePauseMenu |
+		IMenu::kFlag_UpdateUsesCursor |
+		IMenu::kFlag_CustomRendering |
+		IMenu::kFlag_AssignCursorToRenderer |
+		//IMenu::kFlag_HasButtonBar | 
+		//IMenu::kFlag_IsTopButtonBar |
+		IMenu::kFlag_UsesMovementToDirection;
+
+	if (!(*g_inputDeviceMgr)->IsGamepadEnabled())
+		flags |= IMenu::kFlag_UsesCursor;
+
+	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, SAM_MENU_NAME, SAM_MENU_ROOT, 3))
+	{
+		stage.SetMember("menuFlags", &GFxValue(flags));
+		stage.SetMember("movieFlags", &GFxValue(3));
+		stage.SetMember("extendedFlags", &GFxValue(3));
+
+		CreateBaseShaderTarget(filterHolder, stage);
+		filterHolder->SetFilterColor(false);
+		(*g_colorUpdateDispatcher)->eventDispatcher.AddEventSink(filterHolder);
+		shaderFXObjects.Push(filterHolder);
+	}
+}
+
+ScreenArcherMenu::~ScreenArcherMenu() 
+{
+
+}
+
+void ScreenArcherMenu::RegisterFunctions()
+{
+	RegisterNativeFunction("PlaySound", 0);
+	RegisterNativeFunction("OpenMenu", 1);
+	RegisterNativeFunction("CloseMenu", 2);
+}
+
+void ScreenArcherMenu::Invoke(Args* args)
+{
+	switch (args->optionID)
+	{
+	case 0:
+	{
+		if (args->numArgs >= 1)
+		{
+			if (args->args[0].IsString())
+				PlayUISound(args->args[0].GetString());
+		}
+		break;
+	}
+	case 1:
+	{
+		if (args->numArgs >= 1)
+		{
+			if (args->args[0].IsString())
+			{
+				BSFixedString menuName(args->args[0].GetString());
+				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
+			}
+		}
+	}
+	
+	case 2:
+	{
+		if (args->numArgs >= 1)
+		{
+			if (args->args[0].IsString())
+			{
+				BSFixedString menuName(args->args[0].GetString());
+				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
+			}
+		}
+	}
+	break;
+	default:
+		break;
+	}
+}
+
+//typedef void(*_BSGFxShaderFXTargetSetUseAlphaForDropShadow)(BSGFxShaderFXTarget* target, bool enabled);
+//RelocAddr<_BSGFxShaderFXTargetSetUseAlphaForDropShadow> BSGFxShaderFXTargetSetUseAlphaForDropShadow(0x20F1E70);
+//
+//typedef void(*_BSGFxShaderFXTargetSetBackgroundEnabled)(BSGFxShaderFXTarget* target, bool enabled);
+//RelocAddr<_BSGFxShaderFXTargetSetBackgroundEnabled> BSGFxShaderFXTargetSetBackgroundEnabled(0x20F1D10);
+
+GFxValue* ScreenArcherMenu::PushNodeMarker(NiAVObject* node) {
+	auto& emplaced = boneDisplay.nodes.emplace_back(BoneDisplay::NodeMarker{ GFxValue(), node, nullptr });
+	movie->movieRoot->CreateObject(&emplaced.marker, "NodeMarker", &GFxValue(node->m_name.c_str()), 1);
+
+	GFxValue::DisplayInfo displayInfo;
+	emplaced.marker.GetDisplayInfo(&displayInfo);
+	displayInfo.SetScale(25, 25);
+	emplaced.marker.SetDisplayInfo(&displayInfo);
+
+	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
+
+	emplaced.target = new BSGFxShaderFXTarget(&emplaced.marker);
+	shaderFXObjects.Push(emplaced.target); 
+
+	return &emplaced.marker;
+}
+
+void ScreenArcherMenu::PushBoneMarker(GFxValue* start, GFxValue* end) {
+	auto& emplaced = boneDisplay.bones.emplace_back(BoneDisplay::BoneMarker{ GFxValue(), start, end, nullptr });
+	movie->movieRoot->CreateObject(&emplaced.marker, "BoneMarker", nullptr, 0);
+	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
+
+	emplaced.target = new BSGFxShaderFXTarget(&emplaced.marker);
+	shaderFXObjects.Push(emplaced.target);
+}
+
+void ScreenArcherMenu::VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent, GFxValue* start)
+{
+	NiPointer<NiNode> node(parent->GetAsNiNode());
+
+	if (node) {
+		for (UInt32 i = 0; i < node->m_children.m_emptyRunStart; i++) {
+			NiPointer<NiAVObject> object(node->m_children.m_data[i]);
+			if (object) {
+
+				//if child is found, add markers and recursive call with new parent
+				if (set.count(object->m_name)) {
+					GFxValue* end = PushNodeMarker(object);
+					PushBoneMarker(start, end);
+					VisitNodes(set, object, end);
+				}
+
+				//Else keep searching for children
+				else {
+					VisitNodes(set, object, start);
+				}
+			}
+		}
+	}
+}
+
+void ScreenArcherMenu::EnableBoneDisplay(std::shared_ptr<SAF::ActorAdjustments> actorAdjustments)
+{
+	std::lock_guard lock(boneDisplay.mutex);
+
+	if (boneDisplay.enabled)
+		return;
+
+	boneDisplay.enabled = true;
+	boneDisplay.Reserve(actorAdjustments->nodeSets->baseStrings.size() + 1);
+
+	GFxValue* rootValue = PushNodeMarker(actorAdjustments->root);
+	//Clear root name to prevent selection
+	rootValue->SetMember("boneName", &GFxValue());
+
+	VisitNodes(actorAdjustments->nodeSets->baseStrings, actorAdjustments->root, rootValue);
+}
+
+void RemoveShaderTarget(BSTArray<BSGFxShaderFXTarget*>& targets, BSGFxShaderFXTarget* target)
+{
+	for (UInt64 i = targets.count - 1; i >= 0; --i) {
+		if (target == targets.entries[i]) {
+			targets.Remove(i);
+			return;
+		}
+	}
+}
+
+const char* boneDisplayMenus[] = {
+	"BoneCategory",
+	"BoneNames"
+};
+
+void ScreenArcherMenu::DisableBoneDisplay()
+{
+	std::lock_guard lock(boneDisplay.mutex);
+
+	if (!boneDisplay.enabled)
+		return;
+
+	//Check if next menu is bone categories or names and don't disable if necessary
+	GFxValue nextMenu;
+	movie->movieRoot->GetVariable(&nextMenu, "root1.Menu_mc.nextMenu");
+	if (nextMenu.IsString()) {
+		const char* nextMenuName = nextMenu.GetString();
+		for (auto& menu : boneDisplayMenus) {
+			if (!_stricmp(nextMenuName, menu))
+				return;
+		}
+	}
+
+	//we're shrinking the shader objects array so go backwards
+	for (auto it = boneDisplay.bones.rbegin(); it != boneDisplay.bones.rend(); ++it) {
+		RemoveShaderTarget(shaderFXObjects, it->target);
+		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
+	}
+
+	for (auto it = boneDisplay.nodes.rbegin(); it != boneDisplay.nodes.rend(); ++it) {
+		RemoveShaderTarget(shaderFXObjects, it->target);
+		it->marker.Invoke("destroy", nullptr, nullptr, 0);
+		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
+	}
+
+	boneDisplay.Clear();
+	boneDisplay.enabled = false;
+}
+
+double getBoneRotationAngle(GFxValue::DisplayInfo& start, GFxValue::DisplayInfo& end, double distance) 
+{
+	if (distance == 0.0)
+		return distance;
+
+	double asin1 = std::asin((end._x - start._x) / distance);
+	double asin2 = MATH_PI - asin1;
+	if (asin1 < 0.0)
+		asin1 += (MATH_PI * 2);
+
+	double acos1 = std::acos((end._y - start._y) / distance);
+	double acos2 = (MATH_PI * 2) - acos1;
+
+	if (FloatEqual(asin1, acos1) || FloatEqual(asin1, acos2))
+		return asin1;
+	else if (FloatEqual(asin2, acos1) || FloatEqual(asin2, acos2))
+		return asin2;
+
+	return 0.0f;
+}
+
+void ScreenArcherMenu::UpdateBoneDisplay()
+{
+	std::lock_guard lock(boneDisplay.mutex);
+
+	for (auto& it : boneDisplay.nodes)
+	{
+		NiPoint3 outPos;
+		WorldToScreen_Internal(&it.node->m_worldTransform.pos, &outPos);
+
+		GFxValue::DisplayInfo displayInfo;
+		it.marker.GetDisplayInfo(&displayInfo);
+		displayInfo.SetPosition(SAM_X + (SAM_WIDTH * outPos.x), SAM_Y + (SAM_HEIGHT * (1 - outPos.y)));
+		it.marker.SetDisplayInfo(&displayInfo);
+	}
+
+	for (auto& it : boneDisplay.bones)
+	{
+		GFxValue::DisplayInfo displayInfo, startInfo, endInfo;
+		it.marker.GetDisplayInfo(&displayInfo);
+		it.start->GetDisplayInfo(&startInfo);
+		it.end->GetDisplayInfo(&endInfo);
+		
+		double xDif = endInfo._x - startInfo._x;
+		double yDif = endInfo._y - startInfo._y;
+		double distance = std::sqrt((xDif * xDif) + (yDif * yDif));
+		
+		double angle = -getBoneRotationAngle(startInfo, endInfo, distance) * SAF::RADIAN_TO_DEGREE;
+
+		displayInfo.SetScale(100, distance); 
+		displayInfo.SetPosition(startInfo._x, startInfo._y);
+		displayInfo.SetRotation(angle);
+
+		it.marker.SetDisplayInfo(&displayInfo);
+	}
+
+	GFxValue count, displayed;
+	movie->movieRoot->GetVariable(&count, "root1.Menu_mc.numChildren");
+	movie->movieRoot->CreateString(&displayed, std::to_string(count.GetInt()).c_str());
+	movie->movieRoot->SetVariable("root1.Menu_mc.debug1.text1.text", &displayed);
+}
+
+void ScreenArcherMenu::AdvanceMovie(float unk0, void* unk1)
+{
+	if (boneDisplay.enabled)
+		UpdateBoneDisplay();
+
+	__super::AdvanceMovie(unk0, unk1);
+}
+
+IMenu* CreateScreenArcherMenu()
+{
+	return new ScreenArcherMenu();
+}
+
+void SetBoneDisplay(GFxResult& result, bool enabled) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	auto wrapped = samManager.GetWrapped();
+	if (!wrapped.menu)
+		return result.SetError(MENU_MISSING_ERROR);
+
+	auto actorAdjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	if (!actorAdjustments)
+		return result.SetError(SKELETON_ERROR);
+
+	auto menu = (ScreenArcherMenu*)wrapped.menu;
+
+	if (enabled)
+		menu->EnableBoneDisplay(actorAdjustments);
+	else
+		menu->DisableBoneDisplay();
+}
+
+void SelectNodeMarker(GFxResult& result, const char* name) {
+	//if (!selected.refr)
+	//	return result.SetError(CONSOLE_ERROR);
+
+	//auto actorAdjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	//if (!actorAdjustments)
+	//	return result.SetError(SKELETON_ERROR);
+
+	samManager.SetLocal("boneName", &GFxValue(name));
+	samManager.PushMenu("BoneEdit");
+}
+
+void OverNodeMarker(GFxResult& result, const char* name) 
+{
+	auto wrapped = samManager.GetWrapped();
+	if (!wrapped.menu)
+		return result.SetError(MENU_MISSING_ERROR);
+	auto menu = (ScreenArcherMenu*)wrapped.menu;
+
+	menu->boneDisplay.hovers.push_back(name);
+	wrapped.GetRoot()->Invoke("root1.Menu_mc.ShowNotification", nullptr, &GFxValue(name), 1);
+}
+
+void OutNodeMarker(GFxResult& result, const char* name) 
+{
+	auto wrapped = samManager.GetWrapped();
+	if (!wrapped.menu)
+		return result.SetError(MENU_MISSING_ERROR);
+	auto menu = (ScreenArcherMenu*)wrapped.menu;
+
+	menu->boneDisplay.hovers.remove(name);
+
+	const char* notif = (menu->boneDisplay.hovers.size() ? menu->boneDisplay.hovers.back() : "");
+	wrapped.GetRoot()->Invoke("root1.Menu_mc.ShowNotification", nullptr, &GFxValue(notif), 1);
+}
+
 typedef void(*_ScaleformRefCountImplAddRef)(IMenu* menu);
 RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
 
@@ -664,6 +1002,8 @@ bool SamManager::OnMenuOpen() {
 		return false;
 	}
 
+	SetInputEnableLayer(true);
+
 	LockFfc(true);
 
 	TESObjectREFR* refr = GetRefr();
@@ -694,6 +1034,7 @@ bool SamManager::OnMenuOpen() {
 }
 
 bool SamManager::OnMenuClose() {
+	SetInputEnableLayer(false);
 	LockFfc(false);
 	selected.Clear();
 	return ReleaseMenu();
@@ -730,12 +1071,12 @@ bool SamManager::OnConsoleUpdate() {
 	return true;
 }
 
-void StartSamQuest()
-{
-	//If sam still isn't registered, force register it
-	static BSFixedString forceRegister("ForceRegister");
-	CallSamGlobal(forceRegister);
-}
+//void StartSamQuest()
+//{
+//	//If sam still isn't registered, force register it
+//	static BSFixedString forceRegister("ForceRegister");
+//	CallSamGlobal(forceRegister);
+//}
 
 SAMMessaging samMessaging;
 SAF::SAFDispatcher safDispatcher;
@@ -816,19 +1157,19 @@ public:
 
 SamOpenCloseHandler openCloseHandler;
 
-class SAMEventReciever :
-	public BSTEventSink<TESLoadGameEvent>
-{
-public:
-	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
-	{
-		//RegisterSam();
-		StartSamQuest();
-		return kEvent_Continue;
-	}
-};
-
-SAMEventReciever samEventReciever;
+//class SAMEventReciever :
+//	public BSTEventSink<TESLoadGameEvent>
+//{
+//public:
+//	EventResult	ReceiveEvent(TESLoadGameEvent* evn, void* dispatcher)
+//	{
+//		//RegisterSam();
+//		StartSamQuest();
+//		return kEvent_Continue;
+//	}
+//};
+//
+//SAMEventReciever samEventReciever;
 
 void SAFDispatchReciever(F4SEMessagingInterface::Message* msg)
 {
@@ -854,14 +1195,23 @@ void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 	}
 	case F4SEMessagingInterface::kMessage_GameDataReady:
 	{
-		if (msg->data)
-			(*g_ui)->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
+		if (msg->data) {
+			auto ui = *g_ui;
+			if (ui) {
+				ui->menuOpenCloseEventSource.AddEventSink(&openCloseHandler);
+				BSFixedString menuName(SAM_MENU_NAME);
+				if (!ui->IsMenuRegistered(menuName))
+					ui->Register(SAM_MENU_NAME, CreateScreenArcherMenu);
+			}
+		}
+			
 		break;
 	}
-	case F4SEMessagingInterface::kMessage_GameLoaded:
-	{
-		GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&samEventReciever);
-	}
+	//case F4SEMessagingInterface::kMessage_GameLoaded:
+	//{
+	//	GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&samEventReciever);
+	//	break;
+	//}
 	}
 }
 
