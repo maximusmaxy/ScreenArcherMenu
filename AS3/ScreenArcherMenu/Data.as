@@ -1327,7 +1327,7 @@
 		
 		public static function getCurrentFolder():String
 		{
-			return (folderStack.length == 0 ? Data.folderData.path : folderStack[folderStack.length - 1]);
+			return (folderStack.length == 0 ? folderData.path : folderStack[folderStack.length - 1]);
 		}
 		
 		public static function popFolder():String

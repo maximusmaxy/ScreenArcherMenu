@@ -476,9 +476,6 @@
 			if (e.target == this.bounds && sam.IsFreeCamera()) {
 				var value:Number = e.delta * Data.globalFunctions.scrollZoom.hold.mod;
 				var result:GFxResult = sam.UpdateCameraZoom(value);
-				if (stage.parent) {
-					Util.traceObj(stage.parent.filters);
-				}
 			}
 		}
 		
@@ -563,7 +560,6 @@
 				//push new menu
 				PushMenu(Data.menuName);
 			}
-			
 			isOpen = true;
 			Util.playOk();
 		}
@@ -887,6 +883,7 @@
 		public function LoadMenuFolder(data:Object, result:GFxResult, name:String):void
 		{
 			//trace("Load menu folder");
+			//Util.traceObj(data);
 //			Data.menuName = name;
 		
 			//update enter and leave functions
@@ -901,7 +898,7 @@
 		
 		public function LoadFolder(data:Object, result:GFxResult):void
 		{
-			//trace("Load folder");
+			//trace("Load folder", data);
 			Data.setFolder(data, result);
 			
 			state = STATE_FOLDER;
@@ -1512,6 +1509,11 @@
 		public function ReloadFolder()
 		{
 			//trace("reload folder");
+			
+			//If no folder data, it is not a menu folder so don't reload
+			if (!Data.menuData.folder)
+				return;
+			
 			var folder:String = Data.getCurrentFolder();
 			
 			var result:GFxResult;
@@ -2190,7 +2192,6 @@
 					buttonHintBack.ButtonVisible = true;
 					buttonHintHide.ButtonVisible = true;
 					buttonHintConfirm.ButtonVisible = false;
-					
 					UpdateFolderHotkey(buttonHintSave, Data.BUTTON_SAVE);
 					UpdateFolderHotkey(buttonHintLoad, Data.BUTTON_LOAD);
 					UpdateFolderHotkey(buttonHintReset, Data.BUTTON_RESET);
