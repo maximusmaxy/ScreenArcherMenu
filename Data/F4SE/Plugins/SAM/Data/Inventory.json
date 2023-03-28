@@ -10,6 +10,13 @@
             }
         },
         {
+            "name": "$SAM_ShowLooksMenu",
+            "func": {
+                "type": "sam",
+                "name": "ShowLooksMenu"
+            }
+        },
+        {
             "name": "$SAM_AddItem",
             "func": {
                 "type": "menu",

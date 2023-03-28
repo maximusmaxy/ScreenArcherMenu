@@ -15,7 +15,7 @@ namespace SAF {
 		bool offset;
 		std::size_t key;
 
-		NodeKey() : name(BSFixedString()), offset(false), key(0) {}
+		NodeKey() : name(), offset(false), key(0) {}
 
 		NodeKey(BSFixedString name, bool offset) :
 			name(name),
@@ -23,6 +23,9 @@ namespace SAF {
 			//data is an aligned ptr so +1 should be safe?
 			key(reinterpret_cast<std::size_t>(name.data) + (offset ? 0 : 1))
 		{}
+
+		bool operator==(const NodeKey& rhs) { return key == rhs.key; }
+		bool operator!=(const NodeKey& rhs) { return key != rhs.key; }
 
 		void SetOffset(bool _offset) {
 			offset = _offset;

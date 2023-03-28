@@ -99,6 +99,8 @@ bool Material::ReadBase(std::ifstream& stream)
 	if (version >= 6) {
 		maskWrites = Read<UInt8>(stream);
 	}
+
+	return true;
 }
 
 bool Material::ReadBgsm(std::ifstream& stream)

@@ -8,5 +8,13 @@
         "type": "menu",
         "name": "BoneEdit",
         "var": "boneName"
+    },
+    "enter": {
+        "type": "sam",
+        "name": "ClearBoneEdit"
+    },
+    "init": {
+        "type": "local",
+        "name": "ResetListVisible"
     }
 }

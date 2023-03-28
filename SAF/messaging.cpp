@@ -5,233 +5,9 @@
 
 namespace SAF {
 
-	SAFMessaging safMessaging;
+	SafMessaging safMessaging;
 
-	const char* safName = "SAF";
-
-	std::string SAFDispatcher::GetNodeKeyName(const NodeKey& nodeKey) {
-		return manager->GetNodeKeyName(nodeKey);
-	}
-
-	const NodeKey SAFDispatcher::GetNodeKeyFromString(const char* str) {
-		return manager->GetNodeKeyFromString(str);
-	}
-
-	void SAFDispatcher::CreateAdjustment(UInt32 formId, const char* name) {
-		AdjustmentCreateMessage message{ formId, name, modName };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentCreate, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle)
-	{
-		AdjustmentSaveMessage message{ formId, filename, handle };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentSave, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::LoadAdjustment(UInt32 formId, const char* filename) {
-		AdjustmentCreateMessage message{ formId, filename, modName };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentLoad, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::RemoveAdjustment(UInt32 formId, UInt32 handle) {
-		AdjustmentMessage message{ formId, handle };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentErase, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::ResetAdjustment(UInt32 formId, UInt32 handle) {
-		AdjustmentMessage message{ formId, handle };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentReset, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::TransformAdjustment(UInt32 formId, UInt32 handle, const NodeKey nodeKey, UInt32 type, float a, float b, float c) {
-		AdjustmentTransformMessage message{ formId, handle, nodeKey, type, a, b, c };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentTransform, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::CreateActorAdjustments(UInt32 formId) {
-		AdjustmentActorMessage message{ formId };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentActor, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::NegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group) {
-		AdjustmentNegateMessage message{ formId, handle, group };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentNegate, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::SavePose(UInt32 formId, const char* filename, ExportSkeleton* exports) {
-		PoseExportMessage message{ formId, filename, exports };
-		messaging->Dispatch(pluginHandle, kSafPoseSave, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::SaveOSPose(UInt32 formId, const char* filename, ExportSkeleton* exports) {
-		PoseExportMessage message{ formId, filename, exports };
-		messaging->Dispatch(pluginHandle, kSafOSPoseSave, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::LoadPose(UInt32 formId, const char* filename) {
-		PoseMessage message{ formId, filename };
-		messaging->Dispatch(pluginHandle, kSafPoseLoad, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::ResetPose(UInt32 formId) {
-		PoseMessage message{ formId, nullptr };
-		messaging->Dispatch(pluginHandle, kSafPoseReset, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::LoadSkeletonAdjustment(UInt32 raceId, bool isFemale, const char* path, bool npc, bool clear, bool enable) {
-		SkeletonMessage message{ raceId, isFemale, path, npc, clear, enable };
-		messaging->Dispatch(pluginHandle, kSafSkeletonAdjustmentLoad, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) {
-		MoveMessage message{ formId, fromIndex, toIndex };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentMove, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::RenameAdjustment(UInt32 formId, UInt32 handle, const char* name) {
-		AdjustmentSaveMessage message{ formId, name, handle };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentRename, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::LoadTongueAdjustment(UInt32 formId, TransformMap* transforms) {
-		TransformMapMessage message{ formId, transforms };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentTongue, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::ScaleAdjustment(UInt32 formId, UInt32 handle, float scale) {
-		AdjustmentTransformMessage message{ formId, handle, NodeKey(), 0, scale };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentScale, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::MergeAdjustmentDown(UInt32 formId, UInt32 handle) {
-		AdjustmentMessage message{ formId, handle };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentMerge, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFDispatcher::MirrorAdjustment(UInt32 formId, UInt32 handle) {
-		AdjustmentMessage message{ formId, handle };
-		messaging->Dispatch(pluginHandle, kSafAdjustmentMirror, &message, sizeof(uintptr_t), safName);
-	}
-
-	void SAFMessageHandler(F4SEMessagingInterface::Message* msg)
-	{
-		switch (msg->type)
-		{
-		case kSafAdjustmentCreate:
-		{
-			auto data = static_cast<AdjustmentCreateMessage*>(msg->data);
-			UInt32 result = g_adjustmentManager.CreateNewAdjustment(data->formId, data->name, data->esp);
-			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafResult, &result, sizeof(uintptr_t), msg->sender);
-			break;
-		}
-		case kSafAdjustmentSave:
-		{
-			auto data = static_cast<AdjustmentSaveMessage*>(msg->data);
-			g_adjustmentManager.SaveAdjustment(data->formId, data->filename, data->handle);
-			break;
-		}
-		case kSafAdjustmentLoad:
-		{
-			auto data = static_cast<AdjustmentCreateMessage*>(msg->data);
-			UInt32 result = g_adjustmentManager.LoadAdjustment(data->formId, data->name, data->esp);
-			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafResult, &result, sizeof(uintptr_t), msg->sender);
-			break;
-		}
-		case kSafAdjustmentErase:
-		{
-			auto data = static_cast<AdjustmentMessage*>(msg->data);
-			g_adjustmentManager.RemoveAdjustment(data->formId, data->handle);
-			break;
-		}
-		case kSafAdjustmentReset:
-		{
-			auto data = static_cast<AdjustmentMessage*>(msg->data);
-			g_adjustmentManager.ResetAdjustment(data->formId, data->handle);
-			break;
-		}
-		case kSafAdjustmentTransform:
-		{
-			auto data = static_cast<AdjustmentTransformMessage*>(msg->data);
-			g_adjustmentManager.SetTransform(data);
-			break;
-		}
-		case kSafAdjustmentActor:
-		{
-			auto data = static_cast<AdjustmentActorMessage*>(msg->data);
-			std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.CreateActorAdjustment(data->formId);
-			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafAdjustmentActor, &adjustments, sizeof(uintptr_t), msg->sender);
-			break;
-		}
-		case kSafPoseSave:
-		{
-			auto data = static_cast<PoseExportMessage*>(msg->data);
-			g_adjustmentManager.SavePose(data->formId, data->filename, data->exports);
-			break;
-		}
-		case kSafOSPoseSave:
-		{
-			auto data = static_cast<PoseExportMessage*>(msg->data);
-			g_adjustmentManager.SaveOSPose(data->formId, data->filename, data->exports);
-			break;
-		}
-		case kSafPoseLoad:
-		{
-			auto data = static_cast<PoseMessage*>(msg->data);
-			UInt32 result = g_adjustmentManager.LoadPose(data->formId, data->filename);
-			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafResult, &result, sizeof(uintptr_t), msg->sender);
-			break;
-		}
-		case kSafPoseReset:
-		{
-			auto data = static_cast<PoseMessage*>(msg->data);
-			g_adjustmentManager.ResetPose(data->formId);
-			break;
-		}
-		case kSafSkeletonAdjustmentLoad:
-		{
-			auto data = static_cast<SkeletonMessage*>(msg->data);
-			g_adjustmentManager.LoadRaceAdjustment(data->raceId, data->isFemale, data->filename, data->npc, data->clear, data->enable);
-			break;
-		}
-		case kSafAdjustmentMove:
-		{
-			auto data = static_cast<MoveMessage*>(msg->data);
-			UInt32 result = g_adjustmentManager.MoveAdjustment(data->formId, data->from, data->to);
-			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafResult, &result, sizeof(uintptr_t), msg->sender);
-			break;
-		}
-		case kSafAdjustmentRename:
-		{
-			auto data = static_cast<AdjustmentSaveMessage*>(msg->data);
-			g_adjustmentManager.RenameAdjustment(data->formId, data->handle, data->filename);
-			break;
-		}
-		case kSafAdjustmentTongue:
-		{
-			auto data = static_cast<TransformMapMessage*>(msg->data);
-			g_adjustmentManager.LoadTongueAdjustment(data->formId, data->transforms);
-			break;
-		}
-		case kSafAdjustmentScale:
-		{
-			auto data = static_cast<AdjustmentTransformMessage*>(msg->data);
-			g_adjustmentManager.SetAdjustmentScale(data->formId, data->handle, data->a);
-			break;
-		}
-		case kSafAdjustmentMerge:
-		{
-			auto data = static_cast<AdjustmentMessage*>(msg->data);
-			g_adjustmentManager.MergeAdjustmentDown(data->formId, data->handle);
-			break;
-		}
-		case kSafAdjustmentMirror:
-			auto data = static_cast<AdjustmentMessage*>(msg->data);
-			g_adjustmentManager.MirrorAdjustment(data->formId, data->handle);
-			break;
-		}
-	}
-
-	class SAFEventReciever :
+	class SafEventReciever :
 		public BSTEventSink<TESObjectLoadedEvent>,
 		public BSTEventSink<TESLoadGameEvent>,
 		public BSTEventSink<TESInitScriptEvent>
@@ -270,16 +46,150 @@ namespace SAF {
 		}
 	};
 
-	SAFEventReciever safEventReciever;
+	SafEventReciever safEventReciever;
+
+	AdjustmentPtr GetAdjustment(UInt32 formId, UInt32 handle)
+	{
+		std::lock_guard<std::shared_mutex> lock(g_adjustmentManager.actorMutex);
+
+		return g_adjustmentManager.GetAdjustment(formId, handle);
+	}
+
+	ActorAdjustmentsPtr GetActorAdjustment(UInt32 formId)
+	{
+		return g_adjustmentManager.GetActorAdjustments(formId);
+	}
+
+	UInt32 CreateAdjustment(ActorAdjustmentsPtr adjustments, const char* name, const char* mod) {
+		return adjustments->CreateAdjustment(name, mod);
+	}
+
+	UInt32 SaveAdjustment(ActorAdjustmentsPtr adjustments, UInt32 handle, const char* filename) {
+		return adjustments->SaveAdjustment(filename, handle);
+	}
+
+	UInt32 LoadAdjustment(ActorAdjustmentsPtr adjustments, const char* filename) {
+		auto adjustment = adjustments->LoadAdjustmentPath(filename);
+		if (!adjustment)
+			return 0;
+
+		return adjustment->handle;
+	}
+
+	void RemoveAdjustment(ActorAdjustmentsPtr adjustments, UInt32 handle) {
+		adjustments->RemoveAdjustment(handle);
+	}
+
+	void SetTransform(AdjustmentPtr adjustment, const NodeKey& nodeKey, NiTransform& transform)
+	{
+		adjustment->SetTransform(nodeKey, transform);
+	}
+
+	void NegateTransform(ActorAdjustmentsPtr adjustments, AdjustmentPtr adjustment, NodeKey& nodeKey)
+	{
+		adjustments->NegateTransform(adjustment, nodeKey);
+	}
+
+	void RotateTransformXYZ(ActorAdjustmentsPtr adjustments, AdjustmentPtr adjustment, NodeKey& nodeKey, UInt32 type, float scalar)
+	{
+		adjustments->RotateTransformXYZ(adjustment, nodeKey, type, scalar);
+	}
+
+	void ResetAdjustment(AdjustmentPtr adjustment)
+	{
+		adjustment->Clear();
+	}
+
+	void SavePose(ActorAdjustmentsPtr adjustments, const char* filename, ExportSkeleton* exports)
+	{
+		adjustments->SavePose(filename, exports);
+	}
+
+	void SaveOSPose(ActorAdjustmentsPtr adjustments, const char* filename, ExportSkeleton* exports)
+	{
+		adjustments->SaveOutfitStudioPose(filename, exports);
+	}
+
+	UInt32 LoadPose(ActorAdjustmentsPtr adjustments, const char* filename)
+	{
+		return adjustments->LoadPose(filename);
+	}
+	
+	void ResetPose(ActorAdjustmentsPtr adjustments)
+	{
+		adjustments->ResetPose();
+	}
+
+	void LoadSkeletonAdjustment(UInt32 formId, bool isFemale, const char* filename, bool npc, bool clear, bool enable)
+	{
+		g_adjustmentManager.LoadRaceAdjustment(formId, isFemale, filename, npc, clear, enable);
+	}
+	
+	UInt32 MoveAdjustment(ActorAdjustmentsPtr adjustments, SInt32 from, SInt32 to)
+	{
+		return adjustments->MoveAdjustment(from, to);
+	}
+
+	void RenameAdjustment(AdjustmentPtr adjustment, const char* name)
+	{
+		adjustment->Rename(name);
+	}
+
+	void LoadTongueAdjustment(ActorAdjustmentsPtr adjustments, TransformMap* transforms)
+	{
+		g_adjustmentManager.LoadTongueAdjustment(adjustments, transforms);
+	}
+	
+	void ScaleAdjustment(AdjustmentPtr adjustment, float scale)
+	{
+		adjustment->SetScale(scale);
+	}
+
+	void MergeAdjustmentDown(ActorAdjustmentsPtr adjustments, UInt32 handle)
+	{
+		UInt32 remove = adjustments->MergeAdjustmentDown(handle);
+		if (!remove)
+			return;
+
+		adjustments->RemoveAdjustment(remove);
+		adjustments->UpdateAllAdjustments();
+	}
+
+	SafMessagingInterface safMessagingInterface{
+		&g_adjustmentManager,
+
+		GetAdjustment,
+		GetActorAdjustment,
+
+		SetTransform,
+		NegateTransform,
+		RotateTransformXYZ,
+
+		CreateAdjustment,
+		SaveAdjustment,
+		LoadAdjustment,
+		RemoveAdjustment,
+		ResetAdjustment,
+		SavePose,
+		SaveOSPose,
+		LoadPose,
+		ResetPose,
+		LoadSkeletonAdjustment,
+		MoveAdjustment,
+		RenameAdjustment,
+		LoadTongueAdjustment,
+		ScaleAdjustment,
+		MergeAdjustmentDown
+	};
 
 	void F4SEMessageHandler(F4SEMessagingInterface::Message* msg)
 	{
 		switch (msg->type)
 		{
-		case F4SEMessagingInterface::kMessage_PostLoad:
-			if (safMessaging.messaging)
-				safMessaging.messaging->RegisterListener(safMessaging.pluginHandle, nullptr, SAFMessageHandler);
-			break;
+		//case F4SEMessagingInterface::kMessage_PostLoad:
+			//if (safMessaging.messaging)
+			//	safMessaging.messaging->RegisterListener(safMessaging.pluginHandle, nullptr, SAFMessageHandler);
+			//break;
 		case F4SEMessagingInterface::kMessage_GameLoaded:
 			GetEventDispatcher<TESObjectLoadedEvent>()->AddEventSink(&safEventReciever);
 			GetEventDispatcher<TESLoadGameEvent>()->AddEventSink(&safEventReciever);
@@ -287,46 +197,9 @@ namespace SAF {
 			break;
 		case F4SEMessagingInterface::kMessage_GameDataReady:
 			g_adjustmentManager.LoadFiles();
-			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafAdjustmentManager, &g_adjustmentManager, sizeof(uintptr_t), nullptr);
+
+			safMessaging.messaging->Dispatch(safMessaging.pluginHandle, kSafAdjustmentManager, &safMessagingInterface, sizeof(uintptr_t), nullptr);
 			break;
 		}
-	}
-
-	void SAFDispatcher::Recieve(F4SEMessagingInterface::Message* msg) {
-		switch (msg->type)
-		{
-		case kSafAdjustmentManager:
-			manager = static_cast<AdjustmentManager*>(msg->data);
-			break;
-		case kSafAdjustmentActor:
-			actorAdjustments = *(std::shared_ptr<ActorAdjustments>*)msg->data;
-			break;
-		case kSafResult:
-			result = *(UInt32*)msg->data;
-			break;
-		}
-	}
-
-	std::shared_ptr<ActorAdjustments> SAFDispatcher::GetActorAdjustments(UInt32 formId) {
-		std::lock_guard<std::mutex> lock(mutex);
-
-		if (!manager)
-			return nullptr;
-
-		std::shared_ptr<ActorAdjustments> adjustments = manager->GetActorAdjustments(formId);
-
-		if (!adjustments) {
-			CreateActorAdjustments(formId);
-			adjustments = actorAdjustments;
-			actorAdjustments = nullptr;
-		}
-
-		return adjustments;
-	}
-
-	UInt32 SAFDispatcher::GetResult() {
-		UInt32 _result = result;
-		result = 0;
-		return _result;
 	}
 }

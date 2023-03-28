@@ -211,16 +211,12 @@ GFxFunction(GetNodeIsOffset, {
 	result->SetBool(GetNodeIsOffset(args[0].GetString()));
 });
 
-GFxFunction(GetNodeIsOffsetOnly, {
-	result->SetBool(GetNodeIsOffsetOnly(args[0].GetString()));
+GFxFunction(GetBoneInit, {
+	result->SetString(GetBoneInit(args[0].GetString()));
 });
 
 GFxFunction(ToggleNodeName, {
 	ToggleNodeName(result, args[0].GetString());
-});
-
-GFxFunction(GetNodeNameFromIndexes, {
-	GetNodeNameFromIndexes(result, args[0].GetInt(), args[1].GetInt());
 });
 
 GFxRequest(RotateBoneTransform, {
@@ -232,7 +228,7 @@ GFxRequest(ResetBoneTransform, {
 )};
 
 GFxRequest(SaveAdjustment, {
-	SaveAdjustmentFile(args[0].GetString(), args[1].GetUInt());
+	SaveAdjustmentFile(result, args[0].GetString(), args[1].GetUInt());
 });
 
 GFxRequest(LoadAdjustment, {
@@ -264,11 +260,15 @@ GFxRequest(SetAdjustmentNegate, {
 });
 
 GFxFunction(MoveAdjustment, {
-	result->SetBool(ShiftAdjustment(args[0].GetInt(), args[1].GetBool()));
+	result->SetBool(ShiftAdjustment(args[0].GetUInt(), args[1].GetBool()));
 });
 
 GFxRequest(RenameAdjustment, {
-	SetAdjustmentName(result, args[1].GetInt(), args[0].GetString());
+	SetAdjustmentName(result, args[1].GetUInt(), args[0].GetString());
+});
+
+GFxRequest(SetLocalAdjustmentName, {
+	SetLocalAdjustmentName(args[0].GetUInt());
 });
 
 GFxRequest(GetIdleMods, {
@@ -506,9 +506,9 @@ GFxRequest(MergeAdjustmentDown, {
 	MergeAdjustment(result, args[2].GetUInt());
 });
 
-GFxRequest(MirrorAdjustment, {
-	MirrorAdjustment(result, args[2].GetUInt());
-});
+//GFxRequest(MirrorAdjustment, {
+//	MirrorAdjustment(result, args[2].GetUInt());
+//});
 
 GFxRequest(OpenActorContainer, {
 	OpenActorContainer(result);
@@ -582,21 +582,107 @@ GFxRequest(AddPoseFavorite, {
 	AppendPoseFavorite(result);
 });
 
+GFxRequest(ShowLooksMenu, {
+	ShowLooksMenu(result);
+});
+
 GFxRequest(SetBoneDisplay, {
 	SetBoneDisplay(result, args[0].GetBool());
 });
 
 GFxRequest(SelectNodeMarker, {
-	SelectNodeMarker(result, args[0].GetString());
+	SelectNodeMarker(result, args[0].GetString(), args[1].GetBool());
 });
 
-GFxRequest(OverNodeMarker, {
-	OverNodeMarker(result, args[0].GetString());
+GFxRequest(UnselectNodeMarker, {
+	UnselectNodeMarker(result);
 });
 
-GFxRequest(OutNodeMarker, {
-	OutNodeMarker(result, args[0].GetString());
+GFxRequest(GetBoneFilter, {
+	GetBoneFilter(result);
 });
+
+GFxRequest(SetBoneFilter, {
+	SetBoneFilter(result, args[0].GetInt(), args[1].GetBool());
+});
+
+//GFxRequest(OverNodeMarker, {
+//	OverNodeMarker(result, args[0].GetString());
+//});
+//
+//GFxRequest(OutNodeMarker, {
+//	OutNodeMarker(result, args[0].GetString());
+//});
+
+GFxRequest(UpdateCameraRotation, {
+	UpdateCameraRotation(result, args[0].GetNumber(), args[1].GetNumber());
+});
+
+GFxRequest(UpdateCameraPan, {
+	UpdateCameraPan(result, args[0].GetNumber(), args[1].GetNumber());
+});
+
+GFxRequest(UpdateCameraZoom, {
+	UpdateCameraZoom(result, args[0].GetNumber());
+});
+
+GFxRequest(ClearBoneEdit, {
+	ClearBoneEdit(result);
+});
+
+GFxRequest(StartBoneEdit, {
+	StartBoneEdit(args[0].GetUInt(), args[1].GetString());
+});
+
+GFxRequest(EndBoneEdit, {
+	EndBoneEdit(args[0].GetUInt(), args[1].GetString());
+});
+
+GFxRequest(UndoBoneEdit, {
+	UndoBoneEdit(result);
+});
+
+GFxRequest(RedoBoneEdit, {
+	RedoBoneEdit(result);
+});
+
+GFxRequest(SetWidget, {
+	SetWidget(result, args[0].GetString(), args[1].GetBool());
+});
+
+GFxRequest(UpdateTransform, {
+	UpdateTransform(args[0].GetUInt(), args[1].GetString(), args[2].GetInt(), args[3].GetNumber());
+});
+
+GFxFunction(IsFreeCamera, {
+	result->SetBool(GetFreeCameraState());
+});
+
+//NiMatrix43 scaleMatrix(float val, int type) {
+//	switch (type) {
+//	case 1: return { val, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 };
+//	case 2: return { 1, 0, 0, 0, 0, val, 0, 0, 0, 0, 1, 0 };
+//	case 3: return { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, val, 0 };
+//	}
+//}
+//
+//void test(float val, int type) {
+//	NiTransform t {
+//		scaleMatrix(val, type),
+//		{0, 0, 0},
+//		1.0f
+//	};
+//	
+//	UInt32 formId = selected.refr->formID;
+//	auto node = SAF::NodeKey("HEAD", false);
+//	auto adjustment = saf->GetAdjustment(formId, 1);
+//	saf->SetTransform(adjustment, node, t);
+//	saf->GetActorAdjustments(formId)->UpdateNode(node.name);
+//}
+//
+//GFxFunction(Test, {
+//	test(args[0].GetNumber(), args[1].GetInt());
+//});
 
 #define GFxRegister(T) RegisterFunction<T ## Scaleform>(value, view->movieRoot, #T)
 
@@ -643,12 +729,12 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(SetAdjustmentNegate);
 	GFxRegister(MoveAdjustment);
 	GFxRegister(RenameAdjustment);
+	GFxRegister(SetLocalAdjustmentName);
 	GFxRegister(GetBoneCategories);
 	GFxRegister(GetBoneNames);
+	GFxRegister(GetBoneInit);
 	GFxRegister(GetNodeIsOffset);
-	GFxRegister(GetNodeIsOffsetOnly);
 	GFxRegister(ToggleNodeName);
-	GFxRegister(GetNodeNameFromIndexes);
 	GFxRegister(GetBoneTransform);
 	GFxRegister(SetBoneTransform);
 	GFxRegister(RotateBoneTransform);
@@ -711,7 +797,7 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(LoadLights);
 	GFxRegister(GetExportTypes);
 	GFxRegister(MergeAdjustmentDown);
-	GFxRegister(MirrorAdjustment);
+	//GFxRegister(MirrorAdjustment);
 	GFxRegister(OpenActorContainer);
 	GFxRegister(GetItemMods);
 	GFxRegister(GetItemGroups);
@@ -730,10 +816,27 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(AddIdleFavorite);
 	GFxRegister(PlayIdleFavorite);
 	GFxRegister(AddPoseFavorite);
+	GFxRegister(ShowLooksMenu);
 	GFxRegister(SetBoneDisplay);
 	GFxRegister(SelectNodeMarker);
-	GFxRegister(OverNodeMarker);
-	GFxRegister(OutNodeMarker);
+	GFxRegister(UnselectNodeMarker);
+	GFxRegister(GetBoneFilter);
+	GFxRegister(SetBoneFilter);
+	//GFxRegister(OverNodeMarker);
+	//GFxRegister(OutNodeMarker);
+	GFxRegister(UpdateCameraRotation);
+	GFxRegister(UpdateCameraPan);
+	GFxRegister(UpdateCameraZoom);
+	GFxRegister(ClearBoneEdit);
+	GFxRegister(UndoBoneEdit);
+	GFxRegister(RedoBoneEdit);
+	GFxRegister(StartBoneEdit);
+	GFxRegister(EndBoneEdit);
+	GFxRegister(SetWidget);
+	GFxRegister(UpdateTransform);
+	GFxRegister(IsFreeCamera);
+
+	//GFxRegister(Test);
 
 	return true;
 }

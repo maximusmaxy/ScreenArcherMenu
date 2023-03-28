@@ -1,25 +1,12 @@
 {
-    "type": "list",
+    "type": "checkbox",
     "get": {
         "type": "sam",
-        "name": "GetBoneCategories"
+        "name": "GetBoneFilter"
     },
     "set": {
-        "type": "menu",
-        "name": "BoneNames",
-        "var": "boneCategory"
-    },
-    "init": {
-        "type": "local",
-        "name": "UpdateListVisible"
-    },
-    "load": {
-        "name": "$SAM_Filter",
-        "type": "func",
-        "func": {
-            "type": "menu",
-            "name": "BoneFilter"
-        }
+        "type": "sam",
+        "name": "SetBoneFilter"
     },
     "reset": {
         "name": "$SAM_Next",

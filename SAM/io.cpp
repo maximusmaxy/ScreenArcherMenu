@@ -18,6 +18,7 @@ MenuCache poseMenuCache;
 MenuCache morphsMenuCache;
 MenuCache groupsMenuCache;
 MenuCache exportMenuCache;
+MenuCache filterMenuCache;
 
 MenuCategoryList lightsMenuCache;
 MenuCategoryList tongueMenuCache;
@@ -54,7 +55,8 @@ enum {
 	kMenuTypeGroups,
 	kMenuTypeLights,
 	kMenuTypeExport,
-	kMenuTypeTongue
+	kMenuTypeTongue,
+	kMenuTypeFilter
 };
 
 SAF::InsensitiveUInt32Map samTypeMap = {
@@ -64,6 +66,7 @@ SAF::InsensitiveUInt32Map samTypeMap = {
 	{"lights", kMenuTypeLights},
 	{"export", kMenuTypeExport},
 	{"tongue", kMenuTypeTongue},
+	{"filter", kMenuTypeFilter}
 };
 
 class SamTsvReader : public SAF::TsvReader {
@@ -146,6 +149,7 @@ public:
 		case kMenuTypeLights: menu = &lightsMenuCache; break;
 		case kMenuTypeExport: menu = &exportMenuCache[key]; break;
 		case kMenuTypeTongue: menu = &tongueMenuCache; break;
+		case kMenuTypeFilter: menu = &filterMenuCache[key]; break;
 		}
 
 		return true;

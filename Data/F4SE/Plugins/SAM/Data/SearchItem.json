@@ -25,6 +25,7 @@
         "func": {
             "type": "entry",
             "entry": {
+                "title": "Enter Search Term",
                 "func": {
                     "type": "sam",
                     "name": "SearchItems",

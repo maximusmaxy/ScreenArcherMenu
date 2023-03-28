@@ -14,7 +14,17 @@
        "type": "sam",
        "name": "SetAdjustmentScale",
        "args": [
-        {
+            {
+                "type": "var",
+                "name": "adjustmentHandle"
+            }
+        ]
+    },
+    "enter": {
+        "type": "sam",
+        "name": "SetLocalAdjustmentName",
+        "args": [
+            {
                 "type": "var",
                 "name": "adjustmentHandle"
             }
@@ -38,6 +48,11 @@
             "func": {
                 "type": "entry",
                 "entry": {
+                    "title": "$SAM_SaveAdjustment",
+                    "text": {
+                        "type": "var",
+                        "name": "adjustmentName"
+                    },
                     "func": {
                         "type": "sam",
                         "name": "SaveAdjustment",
@@ -57,6 +72,11 @@
             "func": {
                 "type": "entry",
                 "entry": {
+                    "title": "$SAM_RenameAdjustment",
+                    "text": {
+                        "type": "var",
+                        "name": "adjustmentName"
+                    },
                     "func": {
                         "type": "sam",
                         "name": "RenameAdjustment",

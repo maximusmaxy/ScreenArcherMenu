@@ -15,12 +15,12 @@ enum {
 
 extern std::unordered_map<UInt32, std::string> lastSelectedPose;
 
-bool GetActorAdjustments(std::shared_ptr<SAF::ActorAdjustments>* adjustments);
+bool GetActorAdjustments(SAF::ActorAdjustmentsPtr* adjustments);
 
 void ResetAdjustmentTransform(const char* key, UInt32 adjustmentHandle);
 void NegateTransform(const char* key, UInt32 adjustmentHandle);
 
-void SaveAdjustmentFile(const char* filename, int adjustmentHandle);
+void SaveAdjustmentFile(GFxResult& result, const char* filename, int adjustmentHandle);
 bool LoadAdjustmentFile(const char* filename);
 bool LoadAdjustmentPath(const char* path);
 void LoadAdjustmentPathGFx(GFxResult& result, const char* path);
@@ -31,8 +31,9 @@ void GetAdjustmentNegate(GFxResult& result);
 void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 adjustmentHandle);
 bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment);
 void SetAdjustmentName(GFxResult& result, UInt32 adjustmentHandle, const char* name);
+void SetLocalAdjustmentName(UInt32 handle);
 
-bool CheckMenuHasNode(std::shared_ptr<SAF::ActorAdjustments> adjustments, MenuList& list);
+bool CheckMenuHasNode(SAF::ActorAdjustmentsPtr adjustments, MenuList& list);
 
 MenuCategoryList* GetAdjustmentMenu();
 void SetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle, int scale);
@@ -58,13 +59,23 @@ void RotateAdjustmentXYZ(const char* key, int adjustmentHandle, int type, float 
 
 void GetPoseExportTypes(GFxResult& result);
 
-void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex);
 bool GetNodeIsOffset(const char* nodeName);
-bool GetNodeIsOffsetOnly(const char* nodeName);
+const char* GetBoneInit(const char* nodeName);
 void ToggleNodeName(GFxValue* result, const char* nodeName);
-void FindNodeIndexes(SAF::NodeKey& key, SInt32* categoryIndex, SInt32* nodeIndex);
 
 void MergeAdjustment(GFxResult& result, UInt32 handle);
-void MirrorAdjustment(GFxResult& result, UInt32 handle);
+//void MirrorAdjustment(GFxResult& result, UInt32 handle);
 
 void AppendPoseFavorite(GFxResult& result);
+
+void ClearBoneEdit(GFxResult& result);
+void StartBoneEdit(UInt32 handle, const char* key);
+void EndBoneEdit(UInt32 handle, const char* key);
+void UndoBoneEdit(GFxResult& result);
+void RedoBoneEdit(GFxResult& result);
+
+std::vector<bool>* GetCachedBoneFilter(MenuCategoryList* list);
+void GetBoneFilter(GFxResult& result);
+void SetBoneFilter(GFxResult& result, SInt32 index, bool enabled);
+
+void UpdateTransform(UInt32 adjustmentHandle, const char* key, SInt32 type, float scalar);

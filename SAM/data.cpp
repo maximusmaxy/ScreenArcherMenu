@@ -15,7 +15,8 @@ enum {
 	kJsonMenuSlider,
 	kJsonMenuFolder,
 	kJsonMenuFolderCheckbox,
-	kJsonMenuAdjustment
+	kJsonMenuAdjustment,
+	kJsonMenuGlobal
 };
 
 SAF::InsensitiveUInt32Map jsonMenuTypeMap = {
@@ -26,7 +27,8 @@ SAF::InsensitiveUInt32Map jsonMenuTypeMap = {
 	{"slider", kJsonMenuSlider},
 	{"folder", kJsonMenuFolder},
 	{"foldercheckbox", kJsonMenuFolderCheckbox},
-	{"adjustment", kJsonMenuAdjustment}
+	{"adjustment", kJsonMenuAdjustment},
+	{"global", kJsonMenuGlobal}
 };
 
 enum {
@@ -40,7 +42,10 @@ enum {
 	kJsonPropReset,
 	kJsonPropExtra,
 	kJsonPropNotification,
-	kJsonPropTitle
+	kJsonPropTitle,
+	kJsonPropKeys,
+	kJsonPropEdit,
+	kJsonPropWidgets
 };
 
 SAF::InsensitiveUInt32Map jsonMenuPropertyMap = {
@@ -54,7 +59,10 @@ SAF::InsensitiveUInt32Map jsonMenuPropertyMap = {
 	{"reset", kJsonPropReset},
 	{"extra", kJsonPropExtra},
 	{"notification", kJsonPropNotification},
-	{"title", kJsonPropTitle}
+	{"title", kJsonPropTitle},
+	{"keys", kJsonPropKeys},
+	{"edit", kJsonPropEdit},
+	{"widgets", kJsonPropWidgets},
 };
 
 SAF::InsensitiveUInt32Map jsonMenuHotkeyMap = {
@@ -353,6 +361,10 @@ void JsonMenuValidator::ValidateEntry(Json::Value& value)
 	Json::Value* func = GetValue(value, "func", "Failed to get function data for entry");
 	if (func)
 		ValidateFunc(*func);
+
+	Json::Value* text = GetValue(value, "text", nullptr);
+	if (text)
+		ValidateArgs(*text);
 }
 
 void JsonMenuValidator::ValidateArgs(Json::Value& value)
@@ -471,6 +483,16 @@ void JsonMenuValidator::ValidateHold(Json::Value& value)
 		ValidateFunc(*func);
 }
 
+//void JsonMenuValidator::ValidateMove(Json::Value& value)
+//{
+//	SetDefault(value, "step", 1.0);
+//	SetDefault(value, "mod", 0.1);
+//
+//	Json::Value* func = GetValue(value, "func", "Failed to get function for move hotkey");
+//	if (func)
+//		ValidateFunc(*func);
+//}
+
 void JsonMenuValidator::ValidateHotkey(Json::Value& value)
 {
 	int type;
@@ -491,6 +513,13 @@ void JsonMenuValidator::ValidateHotkey(Json::Value& value)
 			ValidateHold(*hold);
 		break;
 	}
+	//case kJsonHotkeyMove:
+	//{
+	//	Json::Value* move = GetValue(value, "move", "Failed to get hotkey move data");
+	//	if (move)
+	//		ValidateMove(*move);
+	//	break;
+	//}
 	case kJsonHotkeyToggle:
 	{
 		Json::Value* func = GetValue(value, "func", nullptr);
@@ -499,6 +528,44 @@ void JsonMenuValidator::ValidateHotkey(Json::Value& value)
 		break;
 	}
 	}
+}
+
+void JsonMenuValidator::ValidateKeys(Json::Value& value)
+{
+	for (auto it = value.begin(); it != value.end(); ++it) {
+		UInt32 key = StringToUInt32(it.key().asCString());
+		if (key != 0) {
+			ValidateHotkey(*it);
+		}
+		else {
+			LogError("Key code for \"keys\" was not a valid number or 0");
+		}
+	}
+}
+
+void JsonMenuValidator::ValidateEdit(Json::Value& value)
+{
+	Json::Value* undo = GetValue(value, "undo", "Failed to get edit undo function data");
+	if (undo)
+		ValidateFunc(*undo);
+
+	Json::Value* redo = GetValue(value, "redo", "Failed to get edit redo function data");
+	if (redo)
+		ValidateFunc(*redo);
+
+	Json::Value* start = GetValue(value, "start", "Failed to get edit start function data");
+	if (start)
+		ValidateFunc(*start);
+
+	Json::Value* end = GetValue(value, "end", "Failed to get edit end function data");
+	if (end)
+		ValidateFunc(*end);
+}
+
+void JsonMenuValidator::ValidateWidgets(Json::Value& value)
+{
+	if (!value.isArray())
+		LogError("Failed to validate widgets, must be an array type");
 }
 
 void JsonMenuValidator::ValidateList(Json::Value& value)
@@ -533,7 +600,6 @@ void JsonMenuValidator::ValidateTouch(Json::Value& value)
 {
 	Json::Value* touch = GetValue(value, "touch", "Failed to get touch data");
 	
-
 	//touch slider defaults
 	SetDefault(*touch, "type", "float");
 	SetDefault(*touch, "visible", true);
@@ -651,6 +717,14 @@ void JsonMenuValidator::ValidateMixedMenu(Json::Value& value)
 	}
 }
 
+void JsonMenuValidator::ValidateGlobalMenu(Json::Value& value)
+{
+	Json::Value* funcs = GetValue(value, "funcs", "Failed to get funcs for Global");
+	for (auto it = funcs->begin(); it != funcs->end(); ++it) {
+		ValidateHotkey(*it);
+	}
+}
+
 void JsonMenuValidator::ValidateMenuProperties(Json::Value& value)
 {
 	if (!value.isObject()) {
@@ -690,6 +764,15 @@ void JsonMenuValidator::ValidateMenuProperties(Json::Value& value)
 		case kJsonPropExtra:
 			ValidateHotkey(*it);
 			break;
+		case kJsonPropKeys:
+			ValidateKeys(*it);
+			break;
+		case kJsonPropEdit:
+			ValidateEdit(*it);
+			break;
+		case kJsonPropWidgets:
+			ValidateWidgets(*it);
+			break;
 		}
 	}
 }
@@ -710,6 +793,7 @@ void JsonMenuValidator::ValidateMenu()
 	case kJsonMenuFolder: ValidateFolderMenu(*menuValue); break;
 	case kJsonMenuFolderCheckbox: ValidateFolderMenu(*menuValue); break;
 	case kJsonMenuAdjustment: ValidateAdjustmentMenu(*menuValue); break;
+	case kJsonMenuGlobal: ValidateGlobalMenu(*menuValue); break;
 	}
 
 	//Defaults

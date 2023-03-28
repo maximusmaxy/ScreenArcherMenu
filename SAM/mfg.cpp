@@ -163,8 +163,8 @@ void SaveMfg(const char* filename) {
 	}
 
 	//Get tongue transforms
-	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (adjustments && adjustments->baseMap) {
+	SAF::ActorAdjustmentsPtr adjustments;
+	if (GetActorAdjustments(&adjustments) && adjustments->baseMap) {
 		UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (adjustment) {
@@ -296,8 +296,8 @@ bool LoadMfgPath(const char* path) {
 	//build the tongue transform map
 	SAF::TransformMap transformMap;
 
-	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (adjustments) {
+	SAF::ActorAdjustmentsPtr adjustments;
+	if (GetActorAdjustments(&adjustments)) {
 		auto tongueMenu = FindFirstTongueMenu(adjustments);
 		if (tongueMenu) {
 			for (int i = 0; i < tongueMenu->size(); ++i) {
@@ -314,7 +314,7 @@ bool LoadMfgPath(const char* path) {
 		}
 	}
 
-	safDispatcher.LoadTongueAdjustment(selected.refr->formID, &transformMap);
+	saf->LoadTongueAdjustment(adjustments, &transformMap);
 
 	if (blinkHack && GetBlinkState() != kHackEnabled)
 		SetBlinkState(true);
@@ -333,16 +333,19 @@ void ResetMfg() {
 	memset(ptr, 0, sizeof(float) * MORPH_MAX);
 
 	//send a nullptr to clear the tongue adjustment
-	safDispatcher.LoadTongueAdjustment(selected.refr->formID, nullptr);
+	SAF::ActorAdjustmentsPtr adjustments;
+	if (!GetActorAdjustments(&adjustments))
+		return;
+
+	saf->LoadTongueAdjustment(adjustments, nullptr);
 }
 
-UInt32 GetOrCreateTongueHandle(std::shared_ptr<SAF::ActorAdjustments> adjustments) {
+UInt32 GetOrCreateTongueHandle(SAF::ActorAdjustmentsPtr adjustments) {
 	//if no tongue handle, create
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 
 	if (!tongueHandle) {
-		safDispatcher.CreateAdjustment(selected.refr->formID, "Face Morphs Tongue");
-		tongueHandle = safDispatcher.GetResult();
+		UInt32 tongueHandle = saf->CreateAdjustment(adjustments, "Face Morphs Tongue", SAM_ESP);
 
 		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (!adjustment)
@@ -366,8 +369,8 @@ void GetMorphCategories(GFxResult& result)
 		result.PushItem(menu->at(i).first.c_str(), i);
 	}
 
-	std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments)
+	SAF::ActorAdjustmentsPtr adjustments;
+	if (!GetActorAdjustments(&adjustments))
 		return;
 
 	//TODO: We're just taking the first available for now
@@ -386,8 +389,8 @@ void SetFaceMorphCategory(GFxResult& result, SInt32 index, UInt32 value)
 	if (index < menu->size())
 		samManager.PushMenu("FaceMorphSliders");
 	else {
-		std::shared_ptr<SAF::ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-		if (!adjustments)
+		SAF::ActorAdjustmentsPtr adjustments;
+		if (!GetActorAdjustments(&adjustments))
 			return;
 
 		auto tongueHandle = GetOrCreateTongueHandle(adjustments);

@@ -565,7 +565,7 @@ namespace SAF {
 	* v1 header/version/name added
 	*/
 
-	bool SaveAdjustmentFile(const char* filename, std::shared_ptr<Adjustment> adjustment) 
+	bool SaveAdjustmentFile(const char* filename, AdjustmentPtr adjustment) 
 	{
 		Json::Value value;
 		value["version"] = 1;

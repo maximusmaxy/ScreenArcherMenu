@@ -34,3 +34,5 @@ void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 formId);
 void GetEquipment(GFxResult& result);
 void RemoveEquipment(GFxResult& result, UInt32 formId);
 void RemoveAllEquipment(GFxResult& result);
+
+void ShowLooksMenu(GFxResult& result);

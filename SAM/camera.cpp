@@ -13,6 +13,7 @@ using namespace SAF;
 
 #include "constants.h"
 #include "compatibility.h"
+#include "sam.h"
 
 RelocPtr<float> cameraFOV(0x05AC8D28);
 
@@ -46,12 +47,12 @@ void GetCamera(GFxResult& result)
 	result.PushValue(adjustedPitch * RADIAN_TO_DEGREE);
 	result.PushValue(GetCameraRoll() * RADIAN_TO_DEGREE);
 	result.PushValue(*cameraFOV);
-	result.PushValue(0);
-	result.PushValue(1);
-	result.PushValue(2);
-	result.PushValue(0);
-	result.PushValue(1);
-	result.PushValue(2);
+	result.PushValue((SInt32)0);
+	result.PushValue((SInt32)1);
+	result.PushValue((SInt32)2);
+	result.PushValue((SInt32)0);
+	result.PushValue((SInt32)1);
+	result.PushValue((SInt32)2);
 }
 
 enum {
@@ -88,7 +89,7 @@ void SetCamera(GFxResult& result, int index, float value)
 	}
 }
 
-bool SaveCameraState(int index)
+bool SaveCameraState(SInt32 index)
 {
 	FreeCameraState* state = GetFreeCameraState();
 	if (!state)
@@ -109,7 +110,7 @@ bool SaveCameraState(int index)
 	return true;
 }
 
-bool LoadCameraState(int index)
+bool LoadCameraState(SInt32 index)
 {
 	FreeCameraState* state = GetFreeCameraState();
 	if (!state)
@@ -332,4 +333,155 @@ void RevertCamera()
 	{
 		cameraSaveStates[i].enabled = false;
 	}
+}
+
+typedef void(*_NiMatrix3FromEulerAnglesZXY)(NiMatrix43* matrix, float x, float y, float z);
+RelocAddr<_NiMatrix3FromEulerAnglesZXY> NiMatrix3FromEulerAnglesZXY(0x1B92840);
+
+NiTransform GetCameraTransform(FreeCameraState* state) 
+{
+	NiTransform result;
+
+	NiMatrix3FromEulerAnglesZXY(&result.rot, state->pitch, state->yaw, GetCameraRoll());
+
+	result.pos.x = state->x;
+	result.pos.y = state->y;
+	result.pos.z = state->z;
+	result.scale = 1.0f;
+
+	return result;
+}
+
+typedef void(*_NiMatrix3ToEulerAnglesZXY)(NiMatrix43* matrix, float* x, float* y, float* z);
+RelocAddr<_NiMatrix3ToEulerAnglesZXY> NiMatrix3ToEulerAnglesZXY(0x1B926F0);
+
+typedef void(*_NiMatrix3ToEulerAnglesXZY)(NiMatrix43* matrix, float* x, float* y, float* z);
+RelocAddr<_NiMatrix3ToEulerAnglesXZY> NiMatrix3ToEulerAnglesXZY(0x1B907B0);
+
+void SetCameraTransform(FreeCameraState* state, NiTransform& transform) 
+{
+	float outRoll;
+	NiMatrix3ToEulerAnglesZXY(&transform.rot, &state->pitch, &state->yaw, &outRoll);
+	SetCameraRoll(outRoll);
+
+	state->x = transform.pos.x;
+	state->y = transform.pos.y;
+	state->z = transform.pos.z;
+}
+
+void UpdateCameraRotation(GFxResult& result, float x, float y)
+{
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	auto camera = GetFreeCameraState();
+	if (!camera)
+		return result.SetError(CAMERA_ERROR);
+
+	NiPoint3 pos = GetCameraPivot();
+
+	x *= DEGREE_TO_RADIAN;
+	y *= DEGREE_TO_RADIAN;
+
+	double xDif = camera->x - pos.x;
+	double yDif = camera->y - pos.y;
+	double zDif = camera->z - pos.z;
+	double distance = std::sqrt((xDif * xDif) + (yDif * yDif));
+
+	double xAngle;
+
+	if (distance != 0) {
+		if (yDif < 0.0) {
+			xAngle = std::asin(-xDif / distance) + MATH_PI;
+		}
+		else {
+			xAngle = std::asin(xDif / distance);
+		}
+
+		xAngle += x;
+
+		camera->x = std::sin(xAngle) * distance + pos.x;
+		camera->y = std::cos(xAngle) * distance + pos.y;
+	}
+	else {
+		xAngle = camera->yaw + MATH_PI;
+	}
+
+	if (xAngle < 0)
+		xAngle += (MATH_PI * 2);
+
+	camera->yaw += x;
+
+	double yAngle = camera->yaw;
+	double yAngleOffset = (xAngle + MATH_PI) - camera->yaw;
+	double yDistance = std::cos(yAngleOffset) * distance;
+
+	if (yDistance != 0) {
+		double hypotenuse = std::sqrt(yDistance * yDistance + zDif * zDif);
+		double pAngle = std::atan(zDif / yDistance);
+		double vAngle = pAngle + y;
+
+		//check y rotation in bounds
+		if (!(y > 0 && (vAngle > MATH_PI * 0.5)) &&
+			!(y < 0 && (vAngle < MATH_PI * -0.5))) {
+
+			camera->z = std::sin(vAngle) * hypotenuse + pos.z;
+
+			double pDistance = std::cos(pAngle) * hypotenuse;
+			double vDistance = std::cos(vAngle) * hypotenuse;
+			double vDif = pDistance - vDistance;
+
+			camera->x += std::sin(yAngle) * vDif;
+			camera->y += std::cos(yAngle) * vDif;
+
+			camera->pitch += y;
+		}
+	}
+	else {
+		double pitch = camera->pitch + y;
+		if (pitch > MATH_PI)
+			pitch -= (MATH_PI * 2);
+
+		if (!(y > 0 && pitch > MATH_PI * 0.5) &&
+			!(y < 0 && pitch < MATH_PI * - 0.5))
+			camera->pitch = pitch;
+	}
+}
+
+void UpdateCameraPan(GFxResult& result, float x, float y)
+{
+	auto camera = GetFreeCameraState();
+	if (!camera)
+		return result.SetError(CAMERA_ERROR);
+
+	NiTransform t = {
+		SAF::MatrixIdentity(),
+		NiPoint3 {-x, 0, y},
+		1
+	};
+
+	t = SAF::MultiplyNiTransform((*g_playerCamera)->cameraNode->m_worldTransform, t);
+
+	camera->x = t.pos.x;
+	camera->y = t.pos.y;
+	camera->z = t.pos.z;
+}
+
+void UpdateCameraZoom(GFxResult& result, float x)
+{
+	auto camera = GetFreeCameraState();
+	if (!camera)
+		return result.SetError(CAMERA_ERROR);
+
+	NiTransform t = {
+		SAF::MatrixIdentity(),
+		NiPoint3 {0, x, 0},
+		1
+	};
+
+	t = SAF::MultiplyNiTransform((*g_playerCamera)->cameraNode->m_worldTransform, t);
+
+	camera->x = t.pos.x;
+	camera->y = t.pos.y;
+	camera->z = t.pos.z;
 }

@@ -86,7 +86,7 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
     </Link>
     <PostBuildEvent>
-      <Command>$(SolutionDir)sam.bat</Command>
+      <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -interface</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,6 +128,7 @@
     <ClCompile Include="lights.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="material.cpp" />
+    <ClCompile Include="messaging.cpp" />
     <ClCompile Include="mfg.cpp" />
     <ClCompile Include="options.cpp" />
     <ClCompile Include="papyrus.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="io.h" />
     <ClInclude Include="lights.h" />
     <ClInclude Include="material.h" />
+    <ClInclude Include="messaging.h" />
     <ClInclude Include="mfg.h" />
     <ClInclude Include="options.h" />
     <ClInclude Include="papyrus.h" />

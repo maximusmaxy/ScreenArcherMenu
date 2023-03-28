@@ -1,10 +1,6 @@
 {
     "type": "list",
     "update": true,
-    "entry": {
-        "type": "local",
-        "name": "InitAddItem"
-    },
     "get": {
         "type": "sam",
         "name": "GetItemList",

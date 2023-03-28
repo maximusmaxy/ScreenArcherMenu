@@ -115,22 +115,30 @@
 
 		public function Decrement():*
 		{
+			Data.startEditFunction();
 			value = value - fStepSize;
+			Data.endEditFunction();
 		}
 
 		public function Increment():*
 		{
+			Data.startEditFunction();
 			value = value + fStepSize;
+			Data.endEditFunction();
 		}
 		
 		public function DecrementPad():*
 		{
+			Data.startEditFunction();
 			value = value - fStepSizePad;
+			Data.endEditFunction();
 		}
 		
 		public function IncrementPad():*
 		{
+			Data.startEditFunction();
 			value = value + fStepSizePad;
+			Data.endEditFunction();
 		}
 
 		public function HandleKeyboardInput(arg1:flash.events.KeyboardEvent):*
@@ -153,12 +161,14 @@
 				{
 					if (event.target == this.BarCatcher_mc) 
 					{
+						Data.startEditFunction();
 						var trackWidth:Number = (Track_mc.width - offsetLeft - offsetRight);
            				//var newValue:Number = (event.localX * scaleX - offsetLeft) / trackWidth * (fMaxValue - fMinValue) + fMinValue;
 						var newValue:Number = (event.localX - offsetLeft) / trackWidth * (fMaxValue - fMinValue) + fMinValue;
 						
 						this.value = Math.max(fMinValue, Math.min(fMaxValue, newValue));//arg1.currentTarget.mouseX / this.BarCatcher_mc.width * (this.fMaxValue - this.fMinValue);
 						dispatchEvent(new flash.events.Event(VALUE_CHANGE, true, true));
+						Data.endEditFunction();
 					}
 				}
 				else 
@@ -174,6 +184,7 @@
 
 		internal function onThumbMouseDown(arg1:flash.events.MouseEvent):*
 		{
+			Data.startEditFunction();
 			Thumb_mc.startDrag(false, new flash.geom.Rectangle(0, Thumb_mc.y, fMaxThumbX, 0));
 			stage.addEventListener(flash.events.MouseEvent.MOUSE_UP, onThumbMouseUp);
 			stage.addEventListener(flash.events.MouseEvent.MOUSE_MOVE, onThumbMouseMove);
@@ -187,6 +198,7 @@
 
 		internal function onThumbMouseUp(arg1:flash.events.MouseEvent):*
 		{
+			Data.endEditFunction();
 			value = value;
 			Thumb_mc.stopDrag();
 			stage.removeEventListener(flash.events.MouseEvent.MOUSE_UP, onThumbMouseUp);

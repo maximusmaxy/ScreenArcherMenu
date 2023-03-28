@@ -8,15 +8,20 @@
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformMovie.h"
 #include "f4se/GameMenus.h"
+#include "f4se/NiTypes.h"
 
 #include "json.h"
 #include "SAF/adjustments.h"
 #include "SAF/types.h"
+#include "SAF/messaging.h"
 
 #include "gfx.h"
 
 #include <unordered_map>
 #include <mutex>
+#include <list>
+
+extern SAF::SafMessagingInterface* saf;
 
 class ScreenArcherMenu : public GameMenuBase
 {
@@ -33,29 +38,85 @@ public:
 	class BoneDisplay {
 	public:
 		bool enabled;
+		//bool rotateEnabled;
 		std::mutex mutex;
-		std::list<const char*> hovers;
+		//std::list<const char*> hovers;
 		
 		struct NodeMarker {
 			GFxValue marker;
 			NiAVObject* node;
 			BSGFxShaderFXTarget* target;
+			bool visible;
+			bool enabled;
 
+			NodeMarker() : node(nullptr), target(nullptr), visible(true), enabled(true) {}
+			NodeMarker(NiAVObject* node) : node(node), target(nullptr), visible(true), enabled(true) {}
 			~NodeMarker() { if (target) delete target; };
 		};
 
 		std::vector<NodeMarker> nodes;
+		NodeMarker* selectedNode;
+		NodeMarker* rootMarker;
+		SAF::ActorAdjustmentsPtr actor;
 		
 		struct BoneMarker {
 			GFxValue marker;
-			GFxValue* start;
-			GFxValue* end;
+			NodeMarker* start;
+			NodeMarker* end;
 			BSGFxShaderFXTarget* target;
 
+			BoneMarker() : start(nullptr), end(nullptr), target(nullptr) {}
+			BoneMarker(NodeMarker* start, NodeMarker* end) : start(start), end(end), target(nullptr) {}
 			~BoneMarker() { if (target) delete target; };
 		};
 
 		std::vector<BoneMarker> bones;
+		//BoneMarker* selectedBone;
+
+		//struct AxisMarker {
+		//	GFxValue marker;
+		//	NiTransform transform;
+		//	BSGFxShaderFXTarget* target;
+
+		//	AxisMarker() : target(nullptr) {}
+		//	AxisMarker(NiTransform& transform) : transform(transform), target(nullptr) {}
+		//	~AxisMarker() { if (target) delete target; };
+		//};
+
+		//std::vector<AxisMarker> axes;
+
+		//struct RotateTool {
+		//	GFxValue tool;
+		//	GFxValue axis[3];
+		//	BSGFxShaderFXTarget* targets[3];
+
+		//	RotateTool() :targets() {}
+		//	~RotateTool() { for (auto& target : targets) { if (target) delete target; } }
+		//};
+
+		//std::unique_ptr<RotateTool> rotateTool;
+
+		//struct RotateMarker {
+		//	GFxValue marker;
+		//	NiTransform transform;
+		//	BSGFxShaderFXTarget* target;
+
+		//	RotateMarker() : target(nullptr) {}
+		//	RotateMarker(NiTransform& transform) : transform(transform), target(nullptr) {}
+		//	~RotateMarker() { if (target) delete target; };
+		//};
+
+		//std::vector<RotateMarker> rotates;
+
+		struct RotateMarker {
+			GFxValue marker;
+			BSGFxShaderFXTarget* target;
+
+			RotateMarker() : target(nullptr) {}
+			~RotateMarker() { if (target) delete target; }
+		};
+
+		std::unique_ptr<RotateMarker> rotateMarker;
 
 		void Reserve(UInt32 size) {
 			nodes.reserve(size);
@@ -63,28 +124,58 @@ public:
 		}
 
 		void Clear() {
-			hovers.clear();
 			nodes.clear();
 			bones.clear();
+			actor = nullptr;
 		}
+
+		BoneDisplay() : 
+			enabled(false),
+			//rotateEnabled(false),
+			selectedNode(nullptr),
+			//selectedBone(nullptr),
+			rootMarker(nullptr),
+			actor(nullptr) 
+		{}
+
+		void Update();
 	};
+	
+	BoneDisplay boneDisplay;
 
-	BoneDisplay boneDisplay{ false };
-
-	GFxValue* PushNodeMarker(NiAVObject* node);
-	void PushBoneMarker(GFxValue* start, GFxValue* end);
-	void VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent, GFxValue* start);
+	BoneDisplay::NodeMarker* PushNodeMarker(NiAVObject* node);
+	void PushBoneMarker(BoneDisplay::NodeMarker* start, BoneDisplay::NodeMarker* end);
+	//void PushAxisMarker(NiColor& color, NiTransform& transform);
+	//void PushRotateMarker(SInt32 axis, NiColor& color, NiTransform& transform);
+	void VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent, BoneDisplay::NodeMarker* start);
 
 	void EnableBoneDisplay(std::shared_ptr<SAF::ActorAdjustments> adjustments);
 	void DisableBoneDisplay();
-	void UpdateBoneDisplay();
+
+	//void EnableAxisDisplay();
+	//void DisableAxisDisplay();
+
+	void EnableRotateDisplay();
+	void DisableRotateDisplay();
+
+	void GetNodeSet(SAF::BSFixedStringSet* set);
+	void UpdateBoneFilter();
+
+	bool SelectNode(const char* nodeName);
+	void UnselectNode();
+
+	//void UpdateDebug();
+	//void DrawDebug(SInt32 i, const char* text);
 };
 
 IMenu* CreateScreenArcherMenu();
 void SetBoneDisplay(GFxResult& result, bool enabled);
-void SelectNodeMarker(GFxResult& result, const char* name);
-void OverNodeMarker(GFxResult& result, const char* name);
-void OutNodeMarker(GFxResult& result, const char* name);
+void SelectNodeMarker(GFxResult& result, const char* name, bool update);
+void UnselectNodeMarker(GFxResult& result);
+//void OverNodeMarker(GFxResult& result, const char* name);
+//void OutNodeMarker(GFxResult& result, const char* name);
+void UpdateBoneFilter();
+NiPoint3 GetCameraPivot();
 
 class SelectedRefr {
 public:
@@ -130,6 +221,7 @@ public:
 	bool ReleaseMenu();
 	IMenuWrapper GetWrapped();
 
+	void OpenOrCloseMenu(const char* menuName);
 	void ToggleMenu();
 	void CloseMenu();
 	bool Invoke(const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
@@ -177,31 +269,7 @@ bool GetCursor(SInt32* pos);
 bool SetCursor(SInt32 x, SInt32 y);
 void GetCursorPosition(GFxResult& result);
 
-extern SAF::SAFDispatcher safDispatcher;
-
-class SAMMessaging {
-public:
-	PluginHandle pluginHandle;
-
-	F4SEScaleformInterface* scaleform;
-	F4SEMessagingInterface* messaging;
-	F4SEPapyrusInterface* papyrus;
-	F4SESerializationInterface* serialization;
-	F4SEInterface* f4se;
-
-	SAMMessaging() :
-		pluginHandle(kPluginHandle_Invalid),
-		scaleform(nullptr),
-		messaging(nullptr),
-		papyrus(nullptr),
-		serialization(nullptr),
-		f4se(nullptr)
-	{};
-};
-
-void F4SEMessageHandler(F4SEMessagingInterface::Message* msg);
-
-extern SAMMessaging samMessaging;
+void SetWidget(GFxResult& result, const char* type, bool enabled);
 
 void SamSerializeSave(const F4SESerializationInterface* ifc);
 void SamSerializeLoad(const F4SESerializationInterface* ifc);

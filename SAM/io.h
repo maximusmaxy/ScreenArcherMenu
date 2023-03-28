@@ -21,6 +21,7 @@ extern MenuCache poseMenuCache;
 extern MenuCache morphsMenuCache;
 extern MenuCache groupsMenuCache;
 extern MenuCache exportMenuCache;
+extern MenuCache filterMenuCache;
 
 extern MenuCategoryList lightsMenuCache;
 extern MenuCategoryList tongueMenuCache;

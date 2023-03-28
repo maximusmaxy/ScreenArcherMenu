@@ -14,5 +14,34 @@
         "type": "menu",
         "name": "BoneEdit",
         "var": "boneName"
-    }
+    },
+    "load": {
+        "name": "$SAM_Filter",
+        "type": "func",
+        "func": {
+            "type": "menu",
+            "name": "BoneFilter"
+        }
+    },
+    "reset": {
+        "name": "$SAM_Next",
+        "type": "func",
+        "func": {
+            "type": "local",
+            "name": "NextBone"
+        }
+    },
+    "save": {
+        "type": "toggle",
+        "off": "$SAM_Visible",
+        "on": "$SAM_Invisible",
+        "var": "listVisible",
+        "func": {
+            "type": "local",
+            "name": "ToggleListVisible"
+        }
+    },
+    "widgets": [
+        "BoneDisplay"
+    ]
 }

@@ -4,6 +4,7 @@
 #include "serialization.h"
 #include "adjustments.h"
 #include "util.h"
+#include "messaging.h"
 
 #include <shlobj.h>
 #include <string>

@@ -5,6 +5,7 @@
 #include "console.h"
 #include "scaleform.h"
 #include "papyrus.h"
+#include "messaging.h"
 
 #include "f4se_common/f4se_version.h"
 
@@ -50,9 +51,6 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 		_FATALERROR("couldn't get messaging interface");
 		return false;
 	}
-	else {
-		safDispatcher.messaging = samMessaging.messaging;
-	}
 
 	samMessaging.papyrus = (F4SEPapyrusInterface *)f4se->QueryInterface(kInterface_Papyrus);
 	if(!samMessaging.papyrus)
@@ -88,14 +86,9 @@ bool F4SEPlugin_Load(const F4SEInterface* f4se)
 		samMessaging.serialization->SetLoadCallback(samMessaging.pluginHandle, SamSerializeLoad);
 		samMessaging.serialization->SetRevertCallback(samMessaging.pluginHandle, SamSerializeRevert);
 	}
-
-	safDispatcher.pluginHandle = samMessaging.pluginHandle;
-	safDispatcher.modName = SAM_ESP;
-
 	samObScriptCommit();
-		
-	_DMESSAGE("Screen Archer Menu Loaded");
 
+	_DMESSAGE("Screen Archer Menu Loaded");
 	return true;
 }
 

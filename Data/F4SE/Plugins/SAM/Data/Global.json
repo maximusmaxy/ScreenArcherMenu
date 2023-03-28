@@ -1,0 +1,38 @@
+{
+    "type": "global",
+    "funcs": {
+        "256": {
+            "type": "hold",
+            "hold": {
+                "step": 2.0, 
+                "mod": 0.08,
+                "func": {
+                    "type": "sam",
+                    "name": "UpdateCameraRotation"
+                }
+            }
+        },
+        "257": {
+            "type": "hold",
+            "hold": {
+                "step": 2.0, 
+                "mod": 0.1,
+                "func": {
+                    "type": "sam",
+                    "name": "UpdateCameraPan"
+                }
+            }
+        },
+        "scrollZoom": {
+            "type": "hold",
+            "hold": {
+                "step": 2.0,
+                "mod": 10,
+                "func": {
+                    "type": "sam",
+                    "name": "UpdateCameraZoom"
+                }
+            }
+        }
+    }
+}

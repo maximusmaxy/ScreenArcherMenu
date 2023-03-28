@@ -30,6 +30,7 @@
         "func": {
             "type": "entry",
             "entry": {
+                "title": "Lights Filename",
                 "func": {
                     "type": "sam",
                     "name": "SaveLights"

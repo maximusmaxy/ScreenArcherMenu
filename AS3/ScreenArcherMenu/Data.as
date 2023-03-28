@@ -1,7 +1,7 @@
 ﻿package {
 	import flash.display.DisplayObject;
-	import flashx.textLayout.formats.Float;
 	import flash.utils.Timer;
+	import flash.events.MouseEvent;
 
     public class Data {
 		public static var sam:Object;
@@ -42,18 +42,40 @@
 		public static var latentTitle:LatentCallback;
 		public static var latentSet:LatentCallback;
 		
-		public static const LATENT_GET = 0;
-		public static const LATENT_NOTIF = 1;
-		public static const LATENT_TITLE = 2;
-		public static const LATENT_SET = 3;
-		public static const LATENT_MAX = 4;
-		public static const LATENT_PUSH = 5;
-		public static const LATENT_POP = 6;
-		public static const LATENT_REFRESH = 7;
-		public static const LATENT_RELOAD = 8;
+		public static var globalFunctions:Object = {};
+		
+		public static var editData:Object = null;
+		public static var undoEditFunction:Function = getSuccess;
+		public static var redoEditFunction:Function = getSuccess;
+		public static var startEditFunction:Function = getSuccess;
+		public static var endEditFunction:Function = getSuccess;
+		
+		public static var menuWidgets = [];
+		
+		public static var selectNodeMarker:Function = function(e:MouseEvent, x:Number, y:Number) {}
+		public static var selectRotateMarker:Function = function(axis:int) {}
+		public static var overNodeMarker:Function = function(n:NodeMarker) {}
+		public static var outNodeMarker:Function = function(n:NodeMarker, x:Number, y:Number) {}
+		public static var scrollNodeMarker:Function = function(b:Boolean) {}
+
+		public static const LATENT_GET:int = 0;
+		public static const LATENT_NOTIF:int = 1;
+		public static const LATENT_TITLE:int = 2;
+		public static const LATENT_SET:int = 3;
+		public static const LATENT_MAX:int = 4;
+		public static const LATENT_PUSH:int = 5;
+		public static const LATENT_POP:int = 6;
+		public static const LATENT_REFRESH:int = 7;
+		public static const LATENT_RELOAD:int = 8;
 	
 		public static const EMPTY:String = "";
 		public static const ERROR:String = "Error";
+		public static const EMPTY_ARR:Array = [];
+		public static const EMPTY_OBJ:Object = {};
+		
+		public static const ADJUSTMENT_HANDLE:String = "adjustmentHandle";
+		public static const BONE_NAME:String = "boneName";
+		public static const BONE_EDIT:String = "BoneEdit";
 		
 		//The data constants need to be identical to the sam plugin enums
 		public static const NONE:int = 0;
@@ -79,6 +101,7 @@
 		public static const MENU_FOLDER:int = 6;
 		public static const MENU_FOLDERCHECKBOX:int = 7;
 		public static const MENU_ADJUSTMENT:int = 8;
+		public static const MENU_GLOBAL:int = 9;
 		
 		public static const FUNC_SAM:int = 1;
 		public static const FUNC_LOCAL:int = 2;
@@ -94,10 +117,12 @@
 		public static const HOTKEY_HOLD:int = 2;
 		public static const HOTKEY_TOGGLE:int = 3;
 		
-		public static const BUTTON_SAVE = 1;
-		public static const BUTTON_LOAD = 2;
-		public static const BUTTON_RESET = 3;
-		public static const BUTTON_EXTRA = 4;
+		public static const BUTTON_SAVE:int = 81;
+		public static const BUTTON_LOAD:int = 69;
+		public static const BUTTON_RESET:int = 82;
+		public static const BUTTON_EXTRA:int = 88;
+		public static const BUTTON_LMB:int = 256;
+		public static const BUTTON_RMB:int = 257;
 		
 		public static const ITEM_LIST:int = 1;
 		public static const ITEM_SLIDER:int = 2;
@@ -114,20 +139,28 @@
 		public static const ARGS_INDEX:int = 2;
 		public static const ARGS_VALUE:int = 3;
 		
-		public static const CHECKBOX_CHECK = 1;
-		public static const CHECKBOX_SETTINGS = 2;
-		public static const CHECKBOX_RECYCLE = 3;
-		public static const CHECKBOX_TOUCH = 4;
-		public static const CHECKBOX_FOLDER = 5;
-		public static const CHECKBOX_DOWN = 6;
-		public static const CHECKBOX_UP = 7;
+		public static const CHECKBOX_CHECK:int = 1;
+		public static const CHECKBOX_SETTINGS:int = 2;
+		public static const CHECKBOX_RECYCLE:int = 3;
+		public static const CHECKBOX_TOUCH:int = 4;
+		public static const CHECKBOX_FOLDER:int = 5;
+		public static const CHECKBOX_DOWN:int = 6;
+		public static const CHECKBOX_UP:int = 7;
 		
-		public static const PATH_FILE = 1;
-		public static const PATH_RELATIVE = 2;
-		public static const PATH_FULL = 3;
+		public static const PATH_FILE:int = 1;
+		public static const PATH_RELATIVE:int = 2;
+		public static const PATH_FULL:int = 3;
 		
-		public static const SORT_ALPHANUMERIC = 1;
-		public static const SORT_NATURAL = 2;
+		public static const SORT_ALPHANUMERIC:int = 1;
+		public static const SORT_NATURAL:int = 2;
+		
+		public static const TRANSFORM_ROTATEX:int = 1;
+		public static const TRANSFORM_ROTATEY:int = 2;
+		public static const TRANSFORM_ROTATEZ:int = 3;
+		public static const TRANSFORM_TRANSLATEX:int = 4;
+		public static const TRANSFORM_TRANSLATEY:int = 5;
+		public static const TRANSFORM_TRANSLATEZ:int = 6;
+		public static const TRANSFORM_SCALE:int = 7;
 		
 		public static var defaultSliderData:Object = {
 			type: 2,
@@ -155,6 +188,8 @@
 		public static var popFailGet:GFxResult = new GFxResult(RESULT_VALUES, []);
 		public static var popFailFolder:GFxResult = new GFxResult(RESULT_FOLDER, []);
 		
+		public static function getSuccess():GFxResult { return resultSuccess; }
+
 		public static function getMenu(name:String, pop:Boolean = false):GFxResult
 		{
 			try {
@@ -429,6 +464,14 @@
 				return data;
 			
 			return defaultSliderData;
+		}
+		
+		public static function getKey(keyCode:uint):Object
+		{
+			if (menuData.keys[keyCode])
+				return menuData.keys[keyCode];
+
+			return null;
 		}
 		
 		public static function initLatents(func:Function)
@@ -1071,6 +1114,30 @@
 			return 0;
 		}
 		
+		public static const EMPTY_POS = [0.0, 0.0];
+		
+		public static function updateCursorMove(dif:Number):Array
+		{
+			if (cursorStored) {
+				try 
+				{
+					var result:GFxResult = sam.GetCursorPosition();
+					if (result.type == RESULT_VALUES) {
+						sam.SetCursorPosition(cursorPosX, cursorPosY);
+						result.result[0] = (result.result[0] - cursorPosX) * dif;
+						result.result[1] = (result.result[1] - cursorPosY) * dif;
+						return result.result;
+					}
+				}
+				catch (e:Error)
+				{
+					trace("Failed to update cursor pos");
+				}
+			}
+			
+			return EMPTY_POS;
+		}
+		
 		public static function endCursorDrag()
 		{
 			cursorStored = false;
@@ -1371,21 +1438,6 @@
 				trace("Failed to toggle lights visibility");
 				return true;
 			}
-		}
-		
-		public static function selectNodeMarker(name:String)
-		{
-			sam.SelectNodeMarker(name);
-		}
-		
-		public static function overNodeMarker(name:String)
-		{
-			sam.OverNodeMarker(name);
-		}
-		
-		public static function outNodeMarker(name:String)
-		{
-			sam.OutNodeMarker(name);
 		}
 	}
 }

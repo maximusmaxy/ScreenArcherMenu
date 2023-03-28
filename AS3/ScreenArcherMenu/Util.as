@@ -37,14 +37,6 @@
 				Data.selectedText.value.type = TextFieldType.DYNAMIC;
 				Data.selectedText.value.setSelection(0,0);
 				Data.selectedText.value.selectable = false;
-				try
-				{
-					Data.f4se.AllowTextInput(false);
-				}
-				catch (e:Error)
-				{
-					trace("Disable text input failed");
-				}
 				Data.selectedText = null;
 			}
 		}
@@ -134,6 +126,33 @@
 			if (magnitude < 0)
 				magnitude = -magnitude;
 			return magnitude < floatEpsilon;
+		}
+		
+		public static function caseInsensitiveCompare(a:String, b:String):Boolean
+		{
+			if (a && b) {
+				return a.toLowerCase() == b.toLowerCase();
+			}
+			return false;
+		}
+		
+		public static const X_AXIS:int = 1;
+		public static const Y_AXIS:int = 2;
+		public static const Z_AXIS:int = 3;
+		
+		public static function getAxisRotation(type:int, value:Number):Matrix3D
+		{
+			var v:Vector.<Number>;
+			var sin:Number = Math.sin(value);
+			var cos:Number = Math.cos(value);
+			
+			switch (type) {
+				case X_AXIS: v = new <Number>[1, 0, 0, 0, 0, cos, sin, 0, 0, -sin, cos, 0, 0, 0, 0, 1]; break;
+				case Y_AXIS: v = new <Number>[cos, 0, -sin, 0, 0, 1, 0, 0, sin, 0, cos, 0, 0, 0, 0, 1]; break;
+				case Z_AXIS: v = new <Number>[cos, sin, 0, 0, -sin, cos, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; break;
+			}
+			
+			return new Matrix3D(v);
 		}
 		
 		public static function traceObj(obj:Object, key:Object = null):void

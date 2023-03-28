@@ -23,24 +23,24 @@ using namespace SAF;
 std::string selectedNode;
 std::unordered_map<UInt32, std::string> lastSelectedPose;
 
-bool GetActorAdjustments(std::shared_ptr<ActorAdjustments>* adjustments)
+bool GetActorAdjustments(ActorAdjustmentsPtr* adjustments)
 {
 	if (!selected.refr)
 		return false;
 
-	*adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	*adjustments = saf->GetActorAdjustments(selected.refr->formID);
 	if (!*adjustments)
 		return false;
 
 	return true;
 }
 
-bool GetAdjustment(UInt32 handle, std::shared_ptr<Adjustment>* adjustment)
+bool GetAdjustment(UInt32 handle, AdjustmentPtr* adjustment)
 {
 	if (!selected.refr)
 		return false;
 
-	auto actorAdjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	auto actorAdjustments = saf->GetActorAdjustments(selected.refr->formID);
 	if (!actorAdjustments)
 		return false;
 
@@ -51,12 +51,12 @@ bool GetAdjustment(UInt32 handle, std::shared_ptr<Adjustment>* adjustment)
 	return true;
 }
 
-bool GetActorAndAdjustment(UInt32 handle, std::shared_ptr<ActorAdjustments>* adjustments, std::shared_ptr<Adjustment>* adjustment)
+bool GetActorAndAdjustment(UInt32 handle, ActorAdjustmentsPtr* adjustments, AdjustmentPtr* adjustment)
 {
 	if (!selected.refr)
 		return false;
 
-	*adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	*adjustments = saf->GetActorAdjustments(selected.refr->formID);
 	if (!*adjustments)
 		return false;
 
@@ -67,15 +67,35 @@ bool GetActorAndAdjustment(UInt32 handle, std::shared_ptr<ActorAdjustments>* adj
 	return true;
 }
 
-NodeKey GetActorNodeKey(std::shared_ptr<ActorAdjustments> adjustments, const char* key)
+NodeKey GetActorNodeKey(ActorAdjustmentsPtr adjustments, const char* key)
 {
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(key);
+	NodeKey nodeKey = saf->manager->GetNodeKeyFromString(key);
 
 	//If offset only, force offset to true
 	if (adjustments->IsNodeOffset(nodeKey))
 		nodeKey.SetOffset(true);
 	
 	return nodeKey;
+}
+
+bool GetActorAdjustmentAndNodeKey(const char* key, UInt32 handle, ActorAdjustmentsPtr* adjustments, AdjustmentPtr* adjustment, NodeKey* nodeKey)
+{
+	if (!selected.refr)
+		return false;
+
+	*adjustments = saf->GetActorAdjustments(selected.refr->formID);
+	if (!*adjustments)
+		return false;
+
+	*adjustment = (*adjustments)->GetAdjustment(handle);
+	if (!*adjustment)
+		return false;
+
+	*nodeKey = GetActorNodeKey(*adjustments, key);
+	if (!nodeKey->key)
+		return false;
+
+	return true;
 }
 
 enum {
@@ -92,70 +112,66 @@ enum {
 };
 
 void SetBoneTransform(GFxResult& result, SInt32 index, float value, UInt32 adjustmentHandle, const char* key, float yaw, float pitch, float roll) {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
-	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, adjustmentHandle, &adjustments, &adjustment, &nodeKey))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(key);
-	if (!nodeKey.key)
-		return result.SetError(BONE_MISSING_ERROR);
+	auto transform = adjustment->GetTransformOrDefault(nodeKey);
 
-	if (index < 3) {
-		float x = yaw * DEGREE_TO_RADIAN;
-		float y = pitch * DEGREE_TO_RADIAN;
-		float z = roll * DEGREE_TO_RADIAN;
-		safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformRotation, x, y, z);
-	}
-	else if (index == kBoneTransformScale)
-	{
-		safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformScale, value, 0, 0);
-	}
-	else {
-		auto transform = adjustment->GetTransformOrDefault(nodeKey);
-
-		switch (index) {
-		case kBoneTransformX: transform.pos.x = value; break;
-		case kBoneTransformY: transform.pos.y = value; break;
-		case kBoneTransformZ: transform.pos.z = value; break;
-		}
-		safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformPosition, transform.pos.x, transform.pos.y, transform.pos.z);
+	switch (index) {
+	case kBoneTransformYaw:
+	case kBoneTransformPitch:
+	case kBoneTransformRoll:
+		SAF::MatrixFromEulerYPR(transform.rot, yaw * DEGREE_TO_RADIAN, pitch * DEGREE_TO_RADIAN, roll * DEGREE_TO_RADIAN);
+		break;
+	case kBoneTransformX: transform.pos.x = value; break;
+	case kBoneTransformY: transform.pos.y = value; break;
+	case kBoneTransformZ: transform.pos.z = value; break;
+	case kBoneTransformScale: transform.scale = value; break;
 	}
 
+	saf->SetTransform(adjustment, nodeKey, transform);
 	adjustments->UpdateNode(nodeKey.name);
 }
 
-void ResetAdjustmentTransform(const char* key, UInt32 adjustmentHandle) {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	if (!GetActorAdjustments(&adjustments))
+void ResetAdjustmentTransform(const char* key, UInt32 handle) {
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, handle, &adjustments, &adjustment, &nodeKey))
 		return;
 
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(key);
-	if (nodeKey.key) {
-		safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformReset, 0, 0, 0);
-		adjustments->UpdateNode(nodeKey.name);
-	}
+	StartBoneEdit(handle, key);
+	saf->SetTransform(adjustment, nodeKey, SAF::TransformIdentity());
+	EndBoneEdit(handle, key);
+	adjustments->UpdateNode(nodeKey.name);
 }
 
-void NegateTransform(const char* key, UInt32 adjustmentHandle) {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	if (!GetActorAdjustments(&adjustments))
+void NegateTransform(const char* key, UInt32 handle) {
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, handle, &adjustments, &adjustment, &nodeKey))
 		return;
 
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(key);
-	if (nodeKey.key) {
-		safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformNegate, 0, 0, 0);
-		adjustments->UpdateNode(nodeKey.name);
-	}
+	StartBoneEdit(handle, key);
+	saf->NegateTransform(adjustments, adjustment, nodeKey);
+	EndBoneEdit(handle, key);
+	adjustments->UpdateNode(nodeKey.name);
 }
 
-void SaveAdjustmentFile(const char* filename, int adjustmentHandle) {
-	std::shared_ptr<ActorAdjustments> adjustments;
+void SaveAdjustmentFile(GFxResult& result, const char* filename, int handle) {
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
-		return;
+		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
-	safDispatcher.SaveAdjustment(selected.refr->formID, filename, adjustmentHandle);
+	if (!saf->SaveAdjustment(adjustments, handle, filename))
+		return result.SetError("Failed to save adjustment");
+
 	adjustments->UpdateAllAdjustments();
+	samManager.SetLocal("adjustmentName", &GFxValue(filename));
 }
 
 bool LoadAdjustmentFile(const char* filename) 
@@ -167,65 +183,61 @@ bool LoadAdjustmentFile(const char* filename)
 
 bool LoadAdjustmentPath(const char* path) 
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return false;
 
-	safDispatcher.LoadAdjustment(selected.refr->formID, path);
+	UInt32 result = saf->LoadAdjustment(adjustments, path);
+	if (!result)
+		return false;
 
-	if (safDispatcher.GetResult()) {
-		adjustments->UpdateAllAdjustments();
-		return true;
-	}
-
-	return false;
+	adjustments->UpdateAllAdjustments();
+	return true;
 }
 
 void LoadAdjustmentPathGFx(GFxResult& result, const char* path)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(SKELETON_ERROR);
 
-	safDispatcher.LoadAdjustment(selected.refr->formID, path);
-
-	if (!safDispatcher.GetResult())
+	UInt32 handle = saf->LoadAdjustment(adjustments, path);
+	if (!handle)
 		return result.SetError("Failed to load adjustment");
-		
+
 	adjustments->UpdateAllAdjustments();
 }
 
 void PushNewAdjustment(const char* name) {
-	if (!selected.refr) 
-		return;
-
-	safDispatcher.CreateAdjustment(selected.refr->formID, name);
-}
-
-void EraseAdjustment(UInt32 adjustmentHandle) {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return;
 
-	safDispatcher.RemoveAdjustment(selected.refr->formID, adjustmentHandle);
+	saf->CreateAdjustment(adjustments, name, SAM_ESP);
+}
 
+void EraseAdjustment(UInt32 handle) {
+	ActorAdjustmentsPtr adjustments;
+	if (!GetActorAdjustments(&adjustments))
+		return;
+
+	saf->RemoveAdjustment(adjustments, handle);
 	adjustments->UpdateAllAdjustments();
 }
 
-void ClearAdjustment(UInt32 adjustmentHandle)
-{
-	std::shared_ptr<ActorAdjustments> adjustments;
-	if (!GetActorAdjustments(&adjustments))
+void ClearAdjustment(UInt32 handle) {
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	if (!GetActorAndAdjustment(handle, &adjustments, &adjustment))
 		return;
 
-	safDispatcher.ResetAdjustment(selected.refr->formID, adjustmentHandle);
-
+	saf->ResetAdjustment(adjustment);
 	adjustments->UpdateAllAdjustments();
 }
 
 void GetAdjustmentNegate(GFxResult& result)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
@@ -240,10 +252,11 @@ void GetAdjustmentNegate(GFxResult& result)
 	}
 }
 
-void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 adjustmentHandle)
+void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 handle)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	if (!GetActorAdjustments(&adjustments))
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	if (!GetActorAndAdjustment(handle, &adjustments, &adjustment))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
 	MenuCategoryList* groupsMenu = GetMenu(&selected, &groupsMenuCache);
@@ -254,8 +267,7 @@ void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 
 	for (auto it = groupsMenu->begin(); it < groupsMenu->end(); it++) {
 		if (it->first == adjustmentGroup) {
 			for (auto& kvp : it->second) {
-				safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle,
-					NodeKey(BSFixedString(kvp.first.c_str()), false), kAdjustmentTransformNegate, 0, 0, 0);
+				saf->NegateTransform(adjustments, adjustment, NodeKey(BSFixedString(kvp.first.c_str()), false));
 			}
 		}
 	}
@@ -263,58 +275,67 @@ void SetAdjustmentNegate(GFxResult& result, const char* adjustmentGroup, UInt32 
 	adjustments->UpdateAllAdjustments();
 }
 
-bool ShiftAdjustment(UInt32 adjustmentHandle, bool increment)
+bool ShiftAdjustment(UInt32 handle, bool increment)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return false;
 
-	UInt32 fromIndex = adjustments->GetAdjustmentIndex(adjustmentHandle);
+	UInt32 fromIndex = adjustments->GetAdjustmentIndex(handle);
 	if (fromIndex == -1) 
 		return false;
 
 	UInt32 toIndex = fromIndex + (increment ? 1 : -1);
 
-	safDispatcher.MoveAdjustment(selected.refr->formID, fromIndex, toIndex);
-
-	if (safDispatcher.GetResult()) {
-		adjustments->UpdateAllAdjustments();
-		return true;
-	}
-
-	return false;
+	UInt32 handleResult = saf->MoveAdjustment(adjustments, fromIndex, toIndex);
+	if (!handleResult)
+		return false;
+	
+	adjustments->UpdateAllAdjustments();
+	return true;
 }
 
-void SetAdjustmentName(GFxResult& result, UInt32 adjustmentHandle, const char* name)
+void SetAdjustmentName(GFxResult& result, UInt32 handle, const char* name)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	if (!GetActorAdjustments(&adjustments))
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	if (!GetActorAndAdjustment(handle, &adjustments, &adjustment))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
-	safDispatcher.RenameAdjustment(selected.refr->formID, adjustmentHandle, name);
+	saf->RenameAdjustment(adjustment, name);
+	samManager.SetLocal("adjustmentName", &GFxValue(adjustment->name.c_str()));
+}
+
+void SetLocalAdjustmentName(UInt32 handle)
+{
+	AdjustmentPtr adjustment;
+	if (!GetAdjustment(handle, &adjustment))
+		return;
+
+	samManager.SetLocal("adjustmentName", &GFxValue(adjustment->name.c_str()));
 }
 
 void MergeAdjustment(GFxResult& result, UInt32 adjustmentHandle)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
-	safDispatcher.MergeAdjustmentDown(selected.refr->formID, adjustmentHandle);
+	saf->MergeAdjustmentDown(adjustments, adjustmentHandle);
 }
 
-void MirrorAdjustment(GFxResult& result, UInt32 adjustmentHandle)
-{
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
-	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
-		return result.SetError(ADJUSTMENT_MISSING_ERROR);
-
-	if (adjustments->nodeSets->mirror.empty())
-		return result.SetError("Missing mirror nodeset for targeted race");
-
-	safDispatcher.MirrorAdjustment(selected.refr->formID, adjustmentHandle);
-}
+//void MirrorAdjustment(GFxResult& result, UInt32 adjustmentHandle)
+//{
+//	ActorAdjustmentsPtr adjustments;
+//	AdjustmentPtr adjustment;
+//	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
+//		return result.SetError(ADJUSTMENT_MISSING_ERROR);
+//
+//	if (adjustments->nodeSets->mirror.empty())
+//		return result.SetError("Missing mirror nodeset for targeted race");
+//
+//	safDispatcher.MirrorAdjustment(selected.refr->formID, adjustmentHandle);
+//}
 
 bool NiAVObjectVisitAll(NiAVObject* root, const std::function<bool(NiAVObject*)>& functor)
 {
@@ -336,8 +357,8 @@ bool NiAVObjectVisitAll(NiAVObject* root, const std::function<bool(NiAVObject*)>
 
 void GetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
+	ActorAdjustmentsPtr adjustments;
+	AdjustmentPtr adjustment;
 	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
@@ -347,8 +368,8 @@ void GetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle)
 
 void SetAdjustmentScale(GFxResult& result, UInt32 adjustmentHandle, int scale)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
+	ActorAdjustmentsPtr adjustments;
+	AdjustmentPtr adjustment;
 	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
@@ -364,13 +385,13 @@ MenuCategoryList* GetAdjustmentMenu()
 		return menu;
 
 	//If for some reason the human menu can't be found dump it all into one menu
-	std::shared_ptr<ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	ActorAdjustmentsPtr adjustments = saf->GetActorAdjustments(selected.refr->formID);
 
 	if (!adjustments || !adjustments->nodeSets) return nullptr;
 	
 	MenuList list;
 	for (auto& nodeKey : adjustments->nodeSets->all) {
-		std::string name = safDispatcher.GetNodeKeyName(nodeKey);
+		std::string name = saf->manager->GetNodeKeyName(nodeKey);
 		list.push_back(std::make_pair(name, name));
 	}
 
@@ -384,18 +405,18 @@ MenuCategoryList* GetAdjustmentMenu()
 
 void GetAdjustments(GFxResult& result)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(SKELETON_ERROR);
 
 	result.CreateMenuItems();
 
-	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+	adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 		result.PushItem(adjustment->name.c_str(), adjustment->handle);
 	});
 }
 
-bool CheckMenuHasNode(std::shared_ptr<ActorAdjustments> adjustments, MenuList& list)
+bool CheckMenuHasNode(ActorAdjustmentsPtr adjustments, MenuList& list)
 {
 	for (auto& kvp : list) {
 		if (adjustments->HasNode(kvp.first.c_str())) 
@@ -413,7 +434,7 @@ void GetBoneCategories(GFxResult& result)
 		return;
 	}
 
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
@@ -435,7 +456,7 @@ void GetBoneNames(GFxResult& result, SInt32 categoryIndex)
 	if (!categories || categoryIndex >= categories->size())
 		return result.SetError("Adjustment bones could not be found");
 		
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
@@ -474,14 +495,13 @@ void PushBackTransformGFx(GFxValue* result, NiTransform& transform) {
 	result->PushBack(&scale);
 }
 
-void GetBoneTransform(GFxResult& result, const char* nodeName, int adjustmentHandle) 
+void GetBoneTransform(GFxResult& result, const char* key, int handle) 
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
-	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment)) 
+	ActorAdjustmentsPtr adjustments;
+	AdjustmentPtr adjustment;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, handle, &adjustments, &adjustment, &nodeKey)) 
 		result.SetError(ADJUSTMENT_MISSING_ERROR);
-
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(nodeName);
 
 	NiTransform transform = adjustment->GetTransformOrDefault(nodeKey);
 
@@ -491,20 +511,20 @@ void GetBoneTransform(GFxResult& result, const char* nodeName, int adjustmentHan
 
 void GetPoseAdjustments(GFxResult& result)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		result.SetError(ADJUSTMENT_MISSING_ERROR);
 
 	result.CreateMenuItems();
 
-	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+	adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 		result.PushItem(adjustment->name.c_str(), adjustment->file.empty());
 	});
 }
 
 void SaveJsonPose(const char* filename, GFxValue& checkedAdjustments, int exportType)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return;
 
@@ -521,7 +541,7 @@ void SaveJsonPose(const char* filename, GFxValue& checkedAdjustments, int export
 	int i = 0;
 
 	//TODO This will get the wrong adjustments if they change while this menu is open, maybe store handles in the menu items
-	adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+	adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 		GFxValue checked;
 		checkedAdjustments.GetElement(i, &checked);
 		if (checked.GetBool()) {
@@ -533,9 +553,8 @@ void SaveJsonPose(const char* filename, GFxValue& checkedAdjustments, int export
 	//menu size +1 = Outfit Studio Xml
 	if (exportType == menu->size() + 1) 
 	{
-		std::string osPath = GetPathWithExtension(safDispatcher.manager->settings.outfitStudioPosePath.c_str(), filename, ".xml");
-
-		safDispatcher.SaveOSPose(selected.refr->formID, osPath.c_str(), &exports);
+		std::string osPath = GetPathWithExtension(saf->manager->settings.outfitStudioPosePath.c_str(), filename, ".xml");
+		saf->SaveOSPose(adjustments, osPath.c_str(), &exports);
 		return;
 	}
 
@@ -565,7 +584,7 @@ void SaveJsonPose(const char* filename, GFxValue& checkedAdjustments, int export
 	std::filesystem::path exportPath("Exports");
 	exportPath.append(filename);
 
-	safDispatcher.SavePose(selected.refr->formID, exportPath.string().c_str(), &exports);
+	saf->SavePose(adjustments, exportPath.string().c_str(), &exports);
 }
 
 bool LoadPoseFile(const char* filename)
@@ -577,30 +596,27 @@ bool LoadPoseFile(const char* filename)
 
 bool LoadPosePath(const char* path)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return false;
 
-	safDispatcher.LoadPose(selected.refr->formID, path);
+	UInt32 resultHandle = saf->LoadPose(adjustments, path);
+	if (!resultHandle)
+		return false;
 
-	if (safDispatcher.GetResult()) {
-		adjustments->UpdateAllAdjustments();
+	adjustments->UpdateAllAdjustments();
 
-		lastSelectedPose[selected.refr->formID] = GetRelativePath(constStrLen(POSES_PATH), constStrLen(".json"), path);
-		return true;
-	}
-
-	return false;
+	lastSelectedPose[selected.refr->formID] = GetRelativePath(constStrLen(POSES_PATH), constStrLen(".json"), path);
+	return true;
 }
 
 void LoadPoseGFx(GFxResult& result, const char* path) {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return result.SetError(SKELETON_ERROR);
 
-	safDispatcher.LoadPose(selected.refr->formID, path);
-
-	if (!safDispatcher.GetResult())
+	UInt32 resultHandle = saf->LoadPose(adjustments, path);
+	if (!resultHandle)
 		return result.SetError("Failed to load pose");
 
 	adjustments->UpdateAllAdjustments();
@@ -613,17 +629,17 @@ void LoadPoseGFx(GFxResult& result, const char* path) {
 
 void ResetJsonPose()
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return;
 
-	safDispatcher.ResetPose(selected.refr->formID);
+	saf->ResetPose(adjustments);
 	adjustments->UpdateAllAdjustments();
 }
 
 const char* GetCurrentPoseName()
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments))
 		return nullptr;
 
@@ -636,7 +652,7 @@ const char* GetCurrentPoseName()
 
 void GetSkeletonAdjustments(GFxResult& result, const char* path, const char* ext, bool race)
 {
-	std::shared_ptr<ActorAdjustments> adjustments;
+	ActorAdjustmentsPtr adjustments;
 	if (!GetActorAdjustments(&adjustments)) 
 		return result.SetError(SKELETON_ERROR);
 
@@ -645,14 +661,14 @@ void GetSkeletonAdjustments(GFxResult& result, const char* path, const char* ext
 	//build a set of all race/skeleton adjustments to compare to
 	InsensitiveStringSet adjustmentNames;
 	if (race) {
-		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 			if (adjustment->type == kAdjustmentTypeRace) {
 				adjustmentNames.insert(adjustment->file);
 			}
 		});
 	}
 	else {
-		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 			if (adjustment->type == kAdjustmentTypeSkeleton) {
 				adjustmentNames.insert(adjustment->file);
 			}
@@ -680,27 +696,25 @@ void LoadSkeletonAdjustment(GFxResult& result, const char* path, bool checked, b
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
 
-	std::shared_ptr<ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+	ActorAdjustmentsPtr adjustments = saf->GetActorAdjustments(selected.refr->formID);
 	if (!adjustments)
 		return result.SetError(SKELETON_ERROR);
 
 	//if race adjustment is true, send the formId instead of race
 	UInt32 formId = race ? selected.race : adjustments->formId;
 
-	safDispatcher.LoadSkeletonAdjustment(formId, selected.isFemale, path, race, !checkbox, checked);
+	saf->LoadSkeletonAdjustment(formId, selected.isFemale, path, race, !checkbox, checked);
 }
 
 void RotateAdjustmentXYZ(const char* key, int adjustmentHandle, int type, float dif) {
-	std::shared_ptr<ActorAdjustments> adjustments;
-	std::shared_ptr<Adjustment> adjustment;
-	if (!GetActorAndAdjustment(adjustmentHandle, &adjustments, &adjustment))
+	ActorAdjustmentsPtr adjustments;
+	AdjustmentPtr adjustment;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, adjustmentHandle, &adjustments, &adjustment, &nodeKey))
 		return;
 
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(key);
-	if (nodeKey.key) {
-		safDispatcher.TransformAdjustment(selected.refr->formID, adjustmentHandle, nodeKey, kAdjustmentTransformRotate, type, dif, 0);
-		adjustments->UpdateNode(nodeKey.name);
-	}
+	saf->RotateTransformXYZ(adjustments, adjustment, nodeKey, type, dif);
+	adjustments->UpdateNode(nodeKey.name);
 }
 
 void GetPoseExportTypes(GFxResult& result)
@@ -724,66 +738,70 @@ void GetPoseExportTypes(GFxResult& result)
 	result.PushItem("Outfit Studio", osIndex);
 }
 
-void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex)
-{
-	if (selected.refr) {
-		std::shared_ptr<ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-		if (adjustments != nullptr) {
-
-			MenuCategoryList* categories = GetAdjustmentMenu();
-			if (categories && categoryIndex < categories->size() && nodeIndex < (*categories)[categoryIndex].second.size()) {
-
-				NodeKey nodeKey = GetActorNodeKey(adjustments, (*categories)[categoryIndex].second[nodeIndex].first.c_str());
-
-				selectedNode = safDispatcher.GetNodeKeyName(nodeKey);
-				result->SetString(selectedNode.c_str());
-			}
-		}
-	}
-}
+//void GetNodeNameFromIndexes(GFxValue* result, UInt32 categoryIndex, UInt32 nodeIndex)
+//{
+//	if (selected.refr) {
+//		ActorAdjustmentsPtr adjustments = saf->GetActorAdjustments(selected.refr->formID);
+//		if (adjustments != nullptr) {
+//
+//			MenuCategoryList* categories = GetAdjustmentMenu();
+//			if (categories && categoryIndex < categories->size() && nodeIndex < (*categories)[categoryIndex].second.size()) {
+//
+//				NodeKey nodeKey = GetActorNodeKey(adjustments, (*categories)[categoryIndex].second[nodeIndex].first.c_str());
+//
+//				selectedNode = safDispatcher.GetNodeKeyName(nodeKey);
+//				result->SetString(selectedNode.c_str());
+//			}
+//		}
+//	}
+//}
 
 bool GetNodeIsOffset(const char* nodeName)
 {
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(nodeName);
+	NodeKey nodeKey = saf->manager->GetNodeKeyFromString(nodeName);
 	return nodeKey.offset;
 }
 
-bool GetNodeIsOffsetOnly(const char* nodeName)
+const char* GetBoneInit(const char* nodeName)
 {
-	NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(nodeName);
+	NodeKey nodeKey = saf->manager->GetNodeKeyFromString(nodeName);
 
-	//If it fails assume offset to prevent toggle
 	if (!nodeKey.key)
-		return true;
+		return nodeName;
 
-	if (!selected.refr) 
-		return true;
+	if (!selected.refr)
+		return nodeName;
 
-	std::shared_ptr<ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-	if (!adjustments) 
-		return true;
+	ActorAdjustmentsPtr adjustments = saf->manager->GetActorAdjustments(selected.refr->formID);
+	if (!adjustments)
+		return nodeName;
+	
+	//Force offset only to false and force others to true
+	nodeKey.SetOffset(adjustments->IsNodeOffset(nodeKey));
+	selectedNode = saf->manager->GetNodeKeyName(nodeKey);
 
-	return adjustments->IsNodeOffset(nodeKey);
+	return selectedNode.c_str();
 }
 
 void ToggleNodeName(GFxValue* result, const char* nodeName)
 {
 	if (selected.refr) {
-		std::shared_ptr<ActorAdjustments> adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
+		ActorAdjustmentsPtr adjustments = saf->GetActorAdjustments(selected.refr->formID);
 		if (adjustments != nullptr) {
-			NodeKey nodeKey = safDispatcher.GetNodeKeyFromString(nodeName);
+			NodeKey nodeKey = saf->manager->GetNodeKeyFromString(nodeName);
 
-			//If offset only, force to offset to prevent errors
-			if (adjustments->IsNodeOffset(nodeKey)) {
-				nodeKey.SetOffset(true);
+			if (nodeKey.key) {
+				if (adjustments->IsNodeOffset(nodeKey)) {
+					nodeKey.SetOffset(true);
+				}
+				else {
+					nodeKey.SetOffset(!nodeKey.offset);
+				}
+
+				selectedNode = saf->manager->GetNodeKeyName(nodeKey);
+				result->SetString(selectedNode.c_str());
+				return;
 			}
-			else {
-				nodeKey.SetOffset(!nodeKey.offset);
-			}
-			
-			selectedNode = safDispatcher.GetNodeKeyName(nodeKey);
-			result->SetString(selectedNode.c_str());
-			return;
 		}
 	}
 	
@@ -791,26 +809,26 @@ void ToggleNodeName(GFxValue* result, const char* nodeName)
 	result->SetString(nodeName);
 }
 
-void FindNodeIndexes(NodeKey& nodeKey, SInt32* categoryIndex, SInt32* nodeIndex)
-{
-	*categoryIndex = -1;
-	*nodeIndex = -1;
-
-	auto menu = GetAdjustmentMenu();
-	if (!menu)
-		return;
-
-	for (SInt32 i = 0; i < menu->size(); ++i) {
-		for (SInt32 j = 0; j < (*menu)[i].second.size(); ++j) {
-			NodeKey menuKey = safDispatcher.GetNodeKeyFromString((*menu)[i].second[j].first.c_str());
-			if (menuKey.key == nodeKey.key) {
-				*categoryIndex = i;
-				*nodeIndex = j;
-				return;
-			}
-		}
-	}
-}
+//void FindNodeIndexes(NodeKey& nodeKey, SInt32* categoryIndex, SInt32* nodeIndex)
+//{
+//	*categoryIndex = -1;
+//	*nodeIndex = -1;
+//
+//	auto menu = GetAdjustmentMenu();
+//	if (!menu)
+//		return;
+//
+//	for (SInt32 i = 0; i < menu->size(); ++i) {
+//		for (SInt32 j = 0; j < (*menu)[i].second.size(); ++j) {
+//			NodeKey menuKey = safDispatcher.GetNodeKeyFromString((*menu)[i].second[j].first.c_str());
+//			if (menuKey == nodeKey) {
+//				*categoryIndex = i;
+//				*nodeIndex = j;
+//				return;
+//			}
+//		}
+//	}
+//}
 
 void AppendPoseFavorite(GFxResult& result)
 {
@@ -841,4 +859,189 @@ void AppendPoseFavorite(GFxResult& result)
 
 	std::string notif = stem + " has been favorited!";
 	samManager.ShowNotification(notif.c_str(), false);
+}
+
+struct BoneEditAction {
+	UInt32 handle;
+	NodeKey nodeKey;
+	NiTransform src;
+	NiTransform dst;
+};
+
+struct BoneEditManager {
+	SInt32 index;
+	BoneEditAction stored;
+	std::vector<BoneEditAction> actions;
+
+	BoneEditManager() : index(-1) {}
+};
+
+std::unique_ptr<BoneEditManager> boneEdits = nullptr;
+
+void ClearBoneEdit(GFxResult& result)
+{
+	boneEdits.reset(new BoneEditManager());
+}
+
+void StartBoneEdit(UInt32 handle, const char* key)
+{
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, handle, &adjustments, &adjustment, &nodeKey))
+		return;
+
+	boneEdits->stored = BoneEditAction{ handle, nodeKey, adjustment->GetTransformOrDefault(nodeKey) };
+}
+
+void EndBoneEdit(UInt32 handle, const char* key)
+{
+	//Check if the handle/nodekey are the same
+	if (handle != boneEdits->stored.handle)
+		return;
+
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, handle, &adjustments, &adjustment, &nodeKey))
+		return;
+
+	if (nodeKey != boneEdits->stored.nodeKey)
+		return;
+
+	//check if updated
+	NiTransform dst = adjustment->GetTransformOrDefault(nodeKey);
+	if (SAF::TransformEqual(boneEdits->stored.src, dst))
+		return;
+
+
+	boneEdits->index++;
+	boneEdits->actions.resize(boneEdits->index);
+	boneEdits->actions.emplace_back(BoneEditAction{
+		handle,
+		nodeKey,
+		boneEdits->stored.src,
+		dst
+	});
+}
+
+void UndoBoneEdit(GFxResult& result)
+{
+	if (boneEdits->index < 0)
+		return result.SetError("");
+
+	auto& action = boneEdits->actions.at(boneEdits->index);
+	boneEdits->index--;
+
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	if (!GetActorAndAdjustment(action.handle, &adjustments, &adjustment))
+		return;
+	
+	saf->SetTransform(adjustment, action.nodeKey, action.src);
+	adjustments->UpdateNode(action.nodeKey.name);
+}
+
+void RedoBoneEdit(GFxResult& result)
+{
+	if (boneEdits->index + 1 >= (SInt32)boneEdits->actions.size())
+		return result.SetError("");
+
+	boneEdits->index++;
+	auto& action = boneEdits->actions.at(boneEdits->index);
+
+	AdjustmentPtr adjustment;
+	ActorAdjustmentsPtr adjustments;
+	if (!GetActorAndAdjustment(action.handle, &adjustments, &adjustment))
+		return;
+
+	saf->SetTransform(adjustment, action.nodeKey, action.dst);
+	adjustments->UpdateNode(action.nodeKey.name);
+}
+
+std::unordered_map<uintptr_t, std::vector<bool>> boneFilterCache;
+
+std::vector<bool>* GetCachedBoneFilter(MenuCategoryList* list) {
+	auto ptr = (uintptr_t)GetMenu(&selected, &filterMenuCache);
+	if (!ptr)
+		return nullptr;
+
+	auto it = boneFilterCache.find(ptr);
+	if (it != boneFilterCache.end())
+		return &it->second;
+	
+	auto emplaced = boneFilterCache.emplace(ptr, std::vector<bool> { true });
+	emplaced.first->second.resize(list->size(), false);
+
+	return &emplaced.first->second;
+}
+
+void GetBoneFilter(GFxResult& result)
+{
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	auto menu = GetMenu(&selected, &filterMenuCache);
+	if (!menu)
+		return result.SetError("Could not find filter menu for target");
+
+	auto filter = GetCachedBoneFilter(menu);
+
+	result.CreateMenuItems();
+
+	for (int i = 0; i < menu->size(); ++i) {
+		result.PushItem(menu->at(i).first.c_str(), (*filter)[i]);
+	}
+}
+
+void SetBoneFilter(GFxResult& result, SInt32 index, bool enabled)
+{
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	auto menu = GetMenu(&selected, &filterMenuCache);
+	if (!menu)
+		return result.SetError("Could not find filter menu for target");
+
+	auto filter = GetCachedBoneFilter(menu);
+	(*filter)[index] = enabled;
+
+	UpdateBoneFilter();
+}
+
+enum {
+	kTransformRotateX = 1,
+	kTransformRotateY,
+	kTransformRotateZ,
+	kTransformTranslateX,
+	kTransformTranslateY,
+	kTransformTranslateZ,
+	kTransformScale
+};
+
+void UpdateTransform(UInt32 adjustmentHandle, const char* key, SInt32 type, float scalar)
+{
+	ActorAdjustmentsPtr adjustments;
+	AdjustmentPtr adjustment;
+	NodeKey nodeKey;
+	if (!GetActorAdjustmentAndNodeKey(key, adjustmentHandle, &adjustments, &adjustment, &nodeKey))
+		return;
+
+	auto transform = adjustment->GetTransformOrDefault(nodeKey);
+
+	switch (type) {
+	case kTransformRotateX:
+	case kTransformRotateY:
+	case kTransformRotateZ:
+		saf->RotateTransformXYZ(adjustments, adjustment, nodeKey, type, scalar);
+		adjustments->UpdateNode(nodeKey.name);
+		return;
+	case kTransformTranslateX: transform.pos.x += scalar; break;
+	case kTransformTranslateY: transform.pos.y += scalar; break;
+	case kTransformTranslateZ: transform.pos.z += scalar; break;
+	case kTransformScale: transform.scale += scalar; break;
+	}
+
+	saf->SetTransform(adjustment, nodeKey, transform);
+	adjustments->UpdateNode(nodeKey.name);
 }

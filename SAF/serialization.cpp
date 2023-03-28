@@ -149,7 +149,7 @@ namespace SAF {
 		PersistentMap savedAdjustments;
 
 		//collect currently loaded actors
-		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+		ForEachActorAdjustments([&](ActorAdjustmentsPtr adjustments) {
 			StorePersistentIfValid(savedAdjustments, adjustments);
 			//remove from persistents
 			auto it = persistentAdjustments.find(adjustments->formId);
@@ -496,7 +496,7 @@ namespace SAF {
 		gameLoaded = false;
 	}
 
-	void AdjustmentManager::StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments) {
+	void AdjustmentManager::StorePersistentAdjustments(ActorAdjustmentsPtr adjustments) {
 		std::lock_guard<std::shared_mutex> persistenceLock(persistenceMutex);
 
 		auto raceGender = persistentAdjustments.find(adjustments->formId);
@@ -507,7 +507,7 @@ namespace SAF {
 		StorePersistentIfValid(persistentAdjustments, adjustments);
 	}
 
-	bool AdjustmentManager::StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments) {
+	bool AdjustmentManager::StorePersistentIfValid(PersistentMap& map, ActorAdjustmentsPtr adjustments) {
 		std::vector<PersistentAdjustment> persistents;
 		adjustments->GetPersistentAdjustments(persistents);
 

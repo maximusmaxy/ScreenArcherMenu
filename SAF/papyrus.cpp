@@ -13,6 +13,7 @@
 #include "eyes.h"
 #include "io.h"
 #include "types.h"
+#include "messaging.h"
 
 #include "f4se_common/Utilities.h"
 
@@ -51,7 +52,7 @@ namespace SAF {
 
 	void PapyrusRemoveAdjustment(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle)
 	{
-		std::shared_ptr<ActorAdjustments> adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+		ActorAdjustmentsPtr adjustments = g_adjustmentManager.GetActorAdjustments(refr);
 		if (!adjustments)
 			return;
 
@@ -78,7 +79,7 @@ namespace SAF {
 		if (!adjustments)
 			return result;
 
-		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 			if (!_stricmp(adjustment->mod.c_str(), espName.c_str())) {
 				result.Push(&adjustment->handle);
 			}
@@ -94,7 +95,7 @@ namespace SAF {
 		if (!adjustments)
 			return result;
 
-		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 			if (!_stricmp(adjustment->name.c_str(), name.c_str())) {
 				result.Push(&adjustment->handle);
 			}
@@ -125,7 +126,7 @@ namespace SAF {
 		else
 			return result;
 
-		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 			if (adjustment->type == type) {
 				result.Push(&adjustment->handle);
 			}
@@ -152,7 +153,7 @@ namespace SAF {
 		else
 			return 0;
 
-		auto adjustment = adjustments->FindAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		auto adjustment = adjustments->FindAdjustment([&](AdjustmentPtr adjustment) {
 			return (adjustment->type == type);
 		});
 
@@ -605,7 +606,7 @@ namespace SAF {
 		ExportSkeleton exports;
 		exports.skeleton = "All";
 
-		adjustments->ForEachAdjustment([&](std::shared_ptr<Adjustment> adjustment) {
+		adjustments->ForEachAdjustment([&](AdjustmentPtr adjustment) {
 			if (adjustment->type == kAdjustmentTypeDefault || adjustment->type == kAdjustmentTypePose) {
 				exports.handles.insert(adjustment->handle);
 			}

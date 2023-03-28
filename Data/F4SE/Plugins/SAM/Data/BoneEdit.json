@@ -42,7 +42,11 @@
     },
     "init": {
         "type": "local",
-        "name": "InitOffset"
+        "name": "InitBoneEdit"
+    },
+    "leave": {
+        "type": "sam",
+        "name": "UnselectNodeMarker"
     },
     "load": {
         "type": "toggle",
@@ -92,6 +96,60 @@
             ]
         }
     },
+    "save": {
+        "type": "toggle",
+        "off": "$SAM_Visible",
+        "on": "$SAM_Invisible",
+        "var": "listVisible",
+        "func": {
+            "type": "local",
+            "name": "ToggleListVisible"
+        }
+    },
+    "edit": {
+        "undo": {
+            "type": "sam",
+            "name": "UndoBoneEdit",
+            "refresh": true
+        },
+        "redo": {
+            "type": "sam",
+            "name": "RedoBoneEdit",
+            "refresh": true
+        },
+        "start": {
+            "type": "sam",
+            "name": "StartBoneEdit",
+            "args": [
+                {
+                    "type": "var",
+                    "name": "adjustmentHandle"
+                },
+                {
+                    "type": "var",
+                    "name": "boneName"
+                }
+            ]
+        },
+        "end": {
+            "type": "sam",
+            "name": "EndBoneEdit",
+            "args": [
+                {
+                    "type": "var",
+                    "name": "adjustmentHandle"
+                },
+                {
+                    "type": "var",
+                    "name": "boneName"
+                }
+            ]
+        }
+    },
+    "widgets": [
+        "BoneDisplay",
+        "RotateTool"
+    ],
     "items": [
         {
             "name": "$SAM_RotX",

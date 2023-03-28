@@ -9,6 +9,14 @@
         "name": "BoneCategory",
         "var": "adjustmentHandle"
     },
+    "enter": {
+        "type": "sam",
+        "name": "ClearBoneEdit"
+    },
+    "init": {
+        "type": "local",
+        "name": "ResetListVisible"
+    },
     "load": {
         "name": "$SAM_Load",
         "type": "func",

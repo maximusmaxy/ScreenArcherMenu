@@ -520,6 +520,21 @@ When the hotkey is held down, you can either move the mouse left/right or press 
     }
 }
 
+# Move
+This is the same as hold but will send the both the X and Y movment (Left/Right and Up/Down)
+
+{
+    "type": "move",
+    "move": {
+        "step": 2.0,    //Step value used for keyboard/controller
+        "mod": 0.01,    //Modifies the pixels moved by this amount
+        "func": {
+            "type": "sam",
+            "name": "RotateIdle"
+        }
+    }
+}
+
 # Toggle
 When the hotkey is pressed it will enable the toggle, change the button name and send a boolean to the specified function. It will default to false and manage the state in the local variable specified
 

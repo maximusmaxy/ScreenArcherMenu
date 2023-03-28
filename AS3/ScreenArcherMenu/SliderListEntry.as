@@ -131,13 +131,6 @@
 		public function onValueClick(event:MouseEvent)
 		{
 			if (value.visible && this.valueSelectable) {
-				if (Data.selectedText == null) {
-					try {
-						Data.f4se.AllowTextInput(true);
-					} catch (e:Error) {
-						trace("Failed to allow text input");
-					}
-				}
 				Data.selectedText = this;
 				value.type = TextFieldType.INPUT;
 				value.selectable = true;

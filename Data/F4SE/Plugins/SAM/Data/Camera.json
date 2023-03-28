@@ -16,6 +16,7 @@
         "func": {
             "type": "entry",
             "entry": {
+                "title": "Camera Filename",
                 "func": {
                     "type": "sam",
                     "name": "SaveCameraFile"
@@ -76,8 +77,8 @@
             "type": "slider",
             "slider": {
                 "type": "float",
-                "min":-180.0,
-                "max": 180.0,
+                "min": 0.0,
+                "max": 360.0,
                 "step": 0.1,
                 "stepkey": 1.0,
                 "fixed": 2
@@ -148,15 +149,18 @@
             "type": "list",
             "func": {
                 "type": "sam",
-                "name": "LoadCameraState"
+                "name": "LoadCameraState",
+                "refresh": true
             }
         },        
         {
             "name": "Load State 2",
             "type": "list",
+            
             "func": {
                 "type": "sam",
-                "name": "LoadCameraState"
+                "name": "LoadCameraState",
+                "refresh": true
             }
         },
         {
@@ -164,7 +168,8 @@
             "type": "list",
             "func": {
                 "type": "sam",
-                "name": "LoadCameraState"
+                "name": "LoadCameraState",
+                "refresh": true
             }
         }
     ]

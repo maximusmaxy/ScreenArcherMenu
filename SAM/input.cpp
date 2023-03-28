@@ -11,9 +11,9 @@ UInt32 inputRepeat[InputMap::kMaxMacros] = { 0 };
 
 void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 {
-	UInt32	keyCode;
-	UInt32	deviceType = inputEvent->deviceType;
-	UInt32	keyMask = inputEvent->keyMask;
+	UInt32 keyCode = 0;
+	UInt32 deviceType = inputEvent->deviceType;
+	UInt32 keyMask = inputEvent->keyMask;
 
 	// Mouse
 	if (deviceType == InputEvent::kDeviceType_Mouse)
@@ -30,12 +30,16 @@ void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 	else if (deviceType == InputEvent::kDeviceType_Gamepad)
 		keyCode = InputMap::GamepadMaskToKeycode(keyMask);
 	// Keyboard
-	else
+	else {
 		keyCode = keyMask;
+	}
+
+	if (!keyCode)
+		return;
 
 	// Valid scancode? Add two for mouse scroll
-	if (keyCode >= InputMap::kMaxMacros)// + 2)
-		return;
+	//if (keyCode >= InputMap::kMaxMacros)// + 2)
+	//	return;
 
 	//BSFixedString	control	= *inputEvent->GetControlID();
 	float timer = inputEvent->timer;

@@ -93,7 +93,7 @@ namespace SAF {
 	bool ReadJsonFile(const char* path, Json::Value& value);
 	bool WriteJsonFile(const char* path, Json::Value& value);
 	void LoadAllFiles();
-	bool SaveAdjustmentFile(const char* filename, std::shared_ptr<Adjustment> adjustment);
+	bool SaveAdjustmentFile(const char* filename, AdjustmentPtr adjustment);
 	bool LoadAdjustmentFile(const char* filename, LoadedAdjustment* map);
 	bool LoadAdjustmentPath(const char* path, LoadedAdjustment* map);
 	bool SavePoseFile(const char* file, TransformMap* poseMap, const char* skeleton);

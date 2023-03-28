@@ -129,7 +129,7 @@ namespace SAF {
 		return true;
 	}
 
-	PersistentAdjustment::PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 _updateType)
+	PersistentAdjustment::PersistentAdjustment(AdjustmentPtr adjustment, UInt32 _updateType)
 	{
 		type = adjustment->type;
 		name = adjustment->name;
@@ -453,7 +453,7 @@ namespace SAF {
 		GetPoseTransforms(name, offsetTransform, poseTransform, list);
 	}
 
-	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform, std::vector<std::shared_ptr<Adjustment>>& adjustmentList)
+	void ActorAdjustments::GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform, std::vector<AdjustmentPtr>& adjustmentList)
 	{
 		for (auto& adjustment : adjustmentList) {
 			if (adjustment->IsVisible()) {
@@ -512,7 +512,7 @@ namespace SAF {
 		}
 	}
 
-	void ActorAdjustments::UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment)
+	void ActorAdjustments::UpdateAllAdjustments(AdjustmentPtr adjustment)
 	{
 		auto map = adjustment->GetMap();
 		for (auto& kvp : *map) {
@@ -529,7 +529,7 @@ namespace SAF {
 				case kAdjustmentTypeTongue:
 				case kAdjustmentTypePose:
 				{
-					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.name.c_str());
+					AdjustmentPtr adjustment = CreateAdjustment(persistent.name.c_str());
 					adjustment->file = persistent.file;
 					adjustment->mod = persistent.mod;
 					adjustment->scale = persistent.scale;
@@ -546,7 +546,7 @@ namespace SAF {
 				case kAdjustmentTypeSkeleton:
 				case kAdjustmentTypeRace:
 				{
-					std::shared_ptr<Adjustment> adjustment;
+					AdjustmentPtr adjustment;
 					if (persistent.updated) 
 					{
 						adjustment = CreateAdjustment(persistent.name.c_str());
@@ -571,7 +571,7 @@ namespace SAF {
 				}
 				case kAdjustmentTypeRemovedFile:
 				{
-					std::shared_ptr<Adjustment> adjustment = CreateAdjustment(persistent.file.c_str());
+					AdjustmentPtr adjustment = CreateAdjustment(persistent.file.c_str());
 					adjustment->file = persistent.file;
 					adjustment->name = persistent.file;
 					adjustment->mod = persistent.mod;
@@ -585,7 +585,7 @@ namespace SAF {
 		if (data.race) {
 			for (auto& raceAdjustment : *data.race) {
 				//Find the filename if exists and add if necessary, this should prevent removed race adjustments from being loaded
-				std::shared_ptr<Adjustment> adjustment = GetFile(raceAdjustment.c_str());
+				AdjustmentPtr adjustment = GetFile(raceAdjustment.c_str());
 				if (!adjustment) {
 					adjustment = LoadAdjustment(raceAdjustment.c_str(), true);
 					if (adjustment != nullptr) {
@@ -598,7 +598,7 @@ namespace SAF {
 		if (data.defaultRace) {
 			for (auto& raceAdjustment : *data.defaultRace) {
 				//Find the filename if exists and add if necessary, this should prevent removed race adjustments from being loaded
-				std::shared_ptr<Adjustment> adjustment = GetFile(raceAdjustment.c_str());
+				AdjustmentPtr adjustment = GetFile(raceAdjustment.c_str());
 				if (!adjustment) {
 					adjustment = LoadAdjustment(raceAdjustment.c_str(), true);
 					if (adjustment != nullptr) {
@@ -611,7 +611,7 @@ namespace SAF {
 		if (data.defaultActor) {
 			for (auto& actorAdjustment : *data.defaultActor) {
 				//Find the filename if exists and add if necessary, this should prevent removed race adjustments from being loaded
-				std::shared_ptr<Adjustment> adjustment = GetFile(actorAdjustment.c_str());
+				AdjustmentPtr adjustment = GetFile(actorAdjustment.c_str());
 				if (!adjustment) {
 					adjustment = LoadAdjustment(actorAdjustment.c_str(), true);
 					if (adjustment != nullptr) {
@@ -639,11 +639,11 @@ namespace SAF {
 		}
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::CreateAdjustment(const char* name)
+	AdjustmentPtr ActorAdjustments::CreateAdjustment(const char* name)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
-		std::shared_ptr<Adjustment> adjustment = std::make_shared<Adjustment>(nextHandle, std::string(name));
+		AdjustmentPtr adjustment = std::make_shared<Adjustment>(nextHandle, std::string(name));
 		map[nextHandle] = adjustment;
 		list.push_back(adjustment);
 		nextHandle++;
@@ -654,12 +654,12 @@ namespace SAF {
 
 	UInt32 ActorAdjustments::CreateAdjustment(const char* name, const char* modName)
 	{
-		std::shared_ptr<Adjustment> adjustment = CreateAdjustment(name);
+		AdjustmentPtr adjustment = CreateAdjustment(name);
 		adjustment->mod = std::string(modName);
 		return adjustment->handle;
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::GetAdjustment(UInt32 handle)
+	AdjustmentPtr ActorAdjustments::GetAdjustment(UInt32 handle)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -670,7 +670,7 @@ namespace SAF {
 		return (found != map.end() ? found->second : nullptr);
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::GetListAdjustment(UInt32 index)
+	AdjustmentPtr ActorAdjustments::GetListAdjustment(UInt32 index)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -748,7 +748,7 @@ namespace SAF {
 		return false;
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::GetFile(const char* filename)
+	AdjustmentPtr ActorAdjustments::GetFile(const char* filename)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -817,7 +817,7 @@ namespace SAF {
 		if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.size() || toIndex >= list.size()) 
 			return 0;
 
-		std::shared_ptr<Adjustment> adjustment = list[fromIndex];
+		AdjustmentPtr adjustment = list[fromIndex];
 
 		if (fromIndex < toIndex) {
 
@@ -896,7 +896,7 @@ namespace SAF {
 		return (*it)->handle;
 	}
 
-	NiTransform GetMirroredTransform(std::shared_ptr<Adjustment> adjustment, NiTransform& base, NiTransform& pose, BSFixedString name) {
+	NiTransform GetMirroredTransform(AdjustmentPtr adjustment, NiTransform& base, NiTransform& pose, BSFixedString name) {
 		//get current position
 		NiTransform result = adjustment->GetTransformOrDefault(NodeKey(name, true));
 		result = MultiplyNiTransform(result, base);
@@ -913,7 +913,7 @@ namespace SAF {
 		return result;
 	}
 
-	bool ActorAdjustments::SetMirroredTransform(std::shared_ptr<Adjustment> adjustment, BSFixedString name, NiTransform* mirrored) {
+	bool ActorAdjustments::SetMirroredTransform(AdjustmentPtr adjustment, BSFixedString name, NiTransform* mirrored) {
 		auto base = GetFromBaseMap(*baseMap, name);
 		if (!base)
 			return false;
@@ -935,7 +935,7 @@ namespace SAF {
 		return true;
 	}
 
-	bool ActorAdjustments::SwapMirroredTransform(std::shared_ptr<Adjustment> adjustment,
+	bool ActorAdjustments::SwapMirroredTransform(AdjustmentPtr adjustment,
 		BSFixedString left, BSFixedString right, NiTransform * leftMirrored, NiTransform * rightMirrored) {
 
 		auto leftBase = GetFromBaseMap(*baseMap, left);
@@ -1029,10 +1029,10 @@ namespace SAF {
 		}
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::GetFileOrCreate(const char* filename)
+	AdjustmentPtr ActorAdjustments::GetFileOrCreate(const char* filename)
 	{
 		//If an adjustment with the same file name already exists, load over that instead
-		std::shared_ptr<Adjustment> adjustment = GetFile(filename);
+		AdjustmentPtr adjustment = GetFile(filename);
 
 		if (!adjustment) {
 			adjustment = CreateAdjustment(filename);
@@ -1078,7 +1078,7 @@ namespace SAF {
 		return GetRelativePath(constStrLen(ADJUSTMENTS_PATH), constStrLen(".json"), path);
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustmentPath(const char* path, bool cached)
+	AdjustmentPtr ActorAdjustments::LoadAdjustmentPath(const char* path, bool cached)
 	{
 		//need to seperate the root folder and extension from the path
 		std::string substring = GetAdjustmentNameFromPath(path);
@@ -1089,14 +1089,14 @@ namespace SAF {
 		return LoadAdjustment(substring.c_str(), cached);
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::LoadAdjustment(const char* filename, bool cached)
+	AdjustmentPtr ActorAdjustments::LoadAdjustment(const char* filename, bool cached)
 	{
 		if (cached) {
 			//get from cache
 			auto adjustmentFile = g_adjustmentManager.GetAdjustmentFile(filename);
 			if (adjustmentFile) {
 
-				std::shared_ptr<Adjustment> adjustment = GetFileOrCreate(filename);
+				AdjustmentPtr adjustment = GetFileOrCreate(filename);
 
 				adjustment->name = std::filesystem::path(filename).stem().string();
 				adjustment->file = std::string(filename);
@@ -1121,7 +1121,7 @@ namespace SAF {
 				g_adjustmentManager.SetAdjustmentFile(filename, map);
 			}
 
-			std::shared_ptr<Adjustment> adjustment = GetFileOrCreate(filename);
+			AdjustmentPtr adjustment = GetFileOrCreate(filename);
 
 			adjustment->name = std::filesystem::path(filename).stem().string();
 			adjustment->file = std::string(filename);
@@ -1141,7 +1141,7 @@ namespace SAF {
 
 	UInt32 ActorAdjustments::LoadAdjustmentHandle(const char* filename, const char* modName, bool cached)
 	{
-		std::shared_ptr<Adjustment> adjustment = LoadAdjustment(filename, cached);
+		AdjustmentPtr adjustment = LoadAdjustment(filename, cached);
 		if (!adjustment) return 0;
 
 		adjustment->mod = modName;
@@ -1150,38 +1150,40 @@ namespace SAF {
 
 	UInt32 ActorAdjustments::LoadAdjustmentPathHandle(const char* filename, const char* modName, bool cached)
 	{
-		std::shared_ptr<Adjustment> adjustment = LoadAdjustmentPath(filename, cached);
+		AdjustmentPtr adjustment = LoadAdjustmentPath(filename, cached);
 		if (!adjustment) return 0;
 
 		adjustment->mod = modName;
 		return adjustment->handle;
 	}
 
-	void ActorAdjustments::SaveAdjustment(const char* filename, UInt32 handle)
+	UInt32 ActorAdjustments::SaveAdjustment(const char* filename, UInt32 handle)
 	{
 		if (!filename)
-			return;
+			return 0;
 
-		std::shared_ptr<Adjustment> adjustment = GetAdjustment(handle);
-		if (!adjustment) 
-			return;
+		AdjustmentPtr adjustment = GetAdjustment(handle);
+		if (!adjustment)
+			return 0;
 
-		if (SaveAdjustmentFile(filename, adjustment)) {
+		if (!SaveAdjustmentFile(filename, adjustment))
+			return 0;
 
-			//Need to delete all other adjustments with the same file name to enforce name uniqueness
-			RemoveFile(filename, handle);
+		//Need to delete all other adjustments with the same file name to enforce name uniqueness
+		RemoveFile(filename, handle);
 
-			adjustment->name = filename;
-			adjustment->file = filename;
-			adjustment->updated = false;
+		adjustment->name = filename;
+		adjustment->file = filename;
+		adjustment->updated = false;
 
-			//Only update if not a tongue adjustment
-			if (adjustment->type != kAdjustmentTypeTongue)
-				adjustment->type = kAdjustmentTypeSkeleton;
-		}
+		//Only update if not a tongue adjustment
+		if (adjustment->type != kAdjustmentTypeTongue)
+			adjustment->type = kAdjustmentTypeSkeleton;
+
+		return handle;
 	}
 
-	void ActorAdjustments::ForEachAdjustment(const std::function<void(std::shared_ptr<Adjustment>)>& functor)
+	void ActorAdjustments::ForEachAdjustment(const std::function<void(AdjustmentPtr)>& functor)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -1192,7 +1194,7 @@ namespace SAF {
 		}
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::FindAdjustment(const std::function<bool(std::shared_ptr<Adjustment>)>& functor)
+	AdjustmentPtr ActorAdjustments::FindAdjustment(const std::function<bool(AdjustmentPtr)>& functor)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -1253,7 +1255,7 @@ namespace SAF {
 	}
 
 	//Sets the override node such that it negates the base node back to the a-pose position
-	void ActorAdjustments::NegateTransform(std::shared_ptr<Adjustment> adjustment, NodeKey& key)
+	void ActorAdjustments::NegateTransform(AdjustmentPtr adjustment, NodeKey& key)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 		
@@ -1281,7 +1283,7 @@ namespace SAF {
 	}
 
 	//Sets the override node such that it negates the base node to the specified transform position
-	void ActorAdjustments::OverrideTransform(std::shared_ptr<Adjustment> adjustment, const NodeKey& key, NiTransform& transform)
+	void ActorAdjustments::OverrideTransform(AdjustmentPtr adjustment, const NodeKey& key, NiTransform& transform)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
@@ -1310,7 +1312,7 @@ namespace SAF {
 		adjustment->updated = true;
 	}
 
-	void ActorAdjustments::RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& key, UInt32 type, float scalar)
+	void ActorAdjustments::RotateTransformXYZ(AdjustmentPtr adjustment, NodeKey& key, UInt32 type, float scalar)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
@@ -1354,7 +1356,7 @@ namespace SAF {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		//Order matters for applying translations so get them from the list in the correct order
-		std::vector<std::shared_ptr<Adjustment>> adjustments;
+		std::vector<AdjustmentPtr> adjustments;
 		for (auto& adjustment : list) {
 			if (exports->handles.count(adjustment->handle))
 				adjustments.push_back(adjustment);
@@ -1424,7 +1426,7 @@ namespace SAF {
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
 		//Order matters for applying translations so get them from the list in the correct order
-		std::vector<std::shared_ptr<Adjustment>> adjustments;
+		std::vector<AdjustmentPtr> adjustments;
 		for (auto& adjustment : list) {
 			if (exports->handles.count(adjustment->handle))
 				adjustments.push_back(adjustment);
@@ -1477,7 +1479,7 @@ namespace SAF {
 		
 		if (LoadPosePath(path, &transformMap)) {
 
-			std::shared_ptr<Adjustment> adjustment;
+			AdjustmentPtr adjustment;
 			
 			std::filesystem::path filepath(path);
 			std::string name = filepath.stem().string();
@@ -1554,7 +1556,7 @@ namespace SAF {
 			return;
 
 		if (enable) {
-			std::shared_ptr<Adjustment> adjustment = LoadAdjustment(name, true);
+			AdjustmentPtr adjustment = LoadAdjustment(name, true);
 			if (!adjustment) 
 				return;
 
@@ -1604,7 +1606,7 @@ namespace SAF {
 		return 0;
 	}
 
-	std::shared_ptr<Adjustment> ActorAdjustments::GetAdjustmentByType(UInt32 type) {
+	AdjustmentPtr ActorAdjustments::GetAdjustmentByType(UInt32 type) {
 		for (auto& adjustment : list) {
 			if (adjustment->type == type) {
 				return adjustment;
@@ -1614,14 +1616,14 @@ namespace SAF {
 		return nullptr;
 	}
 
-	bool ActorAdjustments::ShouldRemoveFile(std::shared_ptr<Adjustment> adjustment) {
+	bool ActorAdjustments::ShouldRemoveFile(AdjustmentPtr adjustment) {
 		if (adjustment->file.empty())
 			return false;
 
 		return g_adjustmentManager.HasFile(race, isFemale, npc->formID, adjustment->file.c_str());
 	}
 
-	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(UInt32 formId) {
+	ActorAdjustmentsPtr AdjustmentManager::GetActorAdjustments(UInt32 formId) {
 		std::shared_lock<std::shared_mutex> lock(actorMutex);
 
 		auto it = actorAdjustmentCache.find(formId);
@@ -1649,10 +1651,10 @@ namespace SAF {
 		return nullptr;
 	}
 
-	std::shared_ptr<ActorAdjustments> AdjustmentManager::GetActorAdjustments(TESObjectREFR* refr) {
+	ActorAdjustmentsPtr AdjustmentManager::GetActorAdjustments(TESObjectREFR* refr) {
 		if (!refr) return nullptr;
 
-		std::shared_ptr<ActorAdjustments> adjustments = GetActorAdjustments(refr->formID);
+		ActorAdjustmentsPtr adjustments = GetActorAdjustments(refr->formID);
 
 		if (!adjustments) {
 			std::lock_guard<std::shared_mutex> lock(actorMutex);
@@ -1674,7 +1676,7 @@ namespace SAF {
 		return adjustments;
 	}
 
-	void AdjustmentManager::ForEachActorAdjustments(const std::function<void(std::shared_ptr<ActorAdjustments> adjustments)>& functor) 
+	void AdjustmentManager::ForEachActorAdjustments(const std::function<void(ActorAdjustmentsPtr adjustments)>& functor) 
 	{
 		for (auto& kvp : actorAdjustmentCache)
 		{
@@ -1719,25 +1721,25 @@ namespace SAF {
 		return nullptr;
 	}
 	
-	std::shared_ptr<ActorAdjustments> AdjustmentManager::CreateActorAdjustment(UInt32 formId)
-	{
-		TESForm* form = LookupFormByID(formId);
+	//ActorAdjustmentsPtr AdjustmentManager::CreateActorAdjustment(UInt32 formId)
+	//{
+	//	TESForm* form = LookupFormByID(formId);
 
-		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
-		if (!actor) 
-			return nullptr;
+	//	Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
+	//	if (!actor) 
+	//		return nullptr;
 
-		TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
-		if (!npc) 
-			return nullptr;
+	//	TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
+	//	if (!npc) 
+	//		return nullptr;
 
-		std::shared_ptr<ActorAdjustments> adjustments = std::make_shared<ActorAdjustments>(actor, npc);
-		
-		if (!UpdateActorCache(adjustments))
-			return nullptr;
+	//	ActorAdjustmentsPtr adjustments = std::make_shared<ActorAdjustments>(actor, npc);
+	//	
+	//	if (!UpdateActorCache(adjustments))
+	//		return nullptr;
 
-		return adjustments;
-	}
+	//	return adjustments;
+	//}
 
 	InsensitiveStringSet* AdjustmentManager::GetRaceAdjustments(UInt32 race, bool isFemale)
 	{
@@ -1807,7 +1809,7 @@ namespace SAF {
 		return false;
 	}
 
-	std::vector<PersistentAdjustment>* AdjustmentManager::GetPersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments)
+	std::vector<PersistentAdjustment>* AdjustmentManager::GetPersistentAdjustments(ActorAdjustmentsPtr adjustments)
 	{
 		auto raceGender = persistentAdjustments.find(adjustments->formId);
 		if (raceGender == persistentAdjustments.end())
@@ -1874,7 +1876,7 @@ namespace SAF {
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		std::shared_ptr<ActorAdjustments> adjustments = nullptr;
+		ActorAdjustmentsPtr adjustments = nullptr;
 
 		auto found = actorAdjustmentCache.find(actor->formID);
 		if (found != actorAdjustmentCache.end())
@@ -1905,7 +1907,7 @@ namespace SAF {
 		UpdateActorCache(adjustments);
 	}
 
-	bool AdjustmentManager::UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments) {
+	bool AdjustmentManager::UpdateActorCache(ActorAdjustmentsPtr adjustments) {
 		if (CopyActorCache(adjustments)) {
 			actorAdjustmentCache.emplace(adjustments->formId, adjustments);
 		}
@@ -1920,7 +1922,7 @@ namespace SAF {
 		return true;
 	}
 
-	bool AdjustmentManager::CopyActorCache(std::shared_ptr<ActorAdjustments> adjustments) 
+	bool AdjustmentManager::CopyActorCache(ActorAdjustmentsPtr adjustments) 
 	{
 		//If the actor is the AAF Doppelganger, copy the adjustments from the player
 		if (adjustments->npc->formID == settings.fullDoppelgangerID) {
@@ -1954,7 +1956,7 @@ namespace SAF {
 		return extraData->value;
 	}
 
-	bool AdjustmentManager::CopyActor(std::shared_ptr<ActorAdjustments> srcActor, std::shared_ptr<ActorAdjustments> dstActor)
+	bool AdjustmentManager::CopyActor(ActorAdjustmentsPtr srcActor, ActorAdjustmentsPtr dstActor)
 	{
 		if (!UpdateActorNodes(dstActor))
 			return false;
@@ -1974,7 +1976,7 @@ namespace SAF {
 		return true;
 	}
 
-	bool AdjustmentManager::UpdateActorNodes(std::shared_ptr<ActorAdjustments> adjustments) {
+	bool AdjustmentManager::UpdateActorNodes(ActorAdjustmentsPtr adjustments) {
 		if (adjustments->baseRoot)
 			RemoveNodeMap(adjustments->baseRoot);
 
@@ -2056,7 +2058,7 @@ namespace SAF {
 		return true;
 	}
 
-	bool AdjustmentManager::UpdateActor(std::shared_ptr<ActorAdjustments> adjustments) {
+	bool AdjustmentManager::UpdateActor(ActorAdjustmentsPtr adjustments) {
 		if (!UpdateActorNodes(adjustments))
 			return false;
 
@@ -2204,134 +2206,13 @@ namespace SAF {
 		return &(adjustmentFileCache[filename] = map);
 	}
 
-	std::shared_ptr<Adjustment> AdjustmentManager::GetAdjustment(UInt32 formId, UInt32 handle) {
+	AdjustmentPtr AdjustmentManager::GetAdjustment(UInt32 formId, UInt32 handle) {
 		auto it = actorAdjustmentCache.find(formId);
 		if (it != actorAdjustmentCache.end()) {
 			return it->second->GetAdjustment(handle);
 		}
 
 		return nullptr;
-	}
-
-	UInt32 AdjustmentManager::CreateNewAdjustment(UInt32 formId, const char* name, const char* mod) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end()) {
-			return it->second->CreateAdjustment(name, mod);
-		}
-
-		return 0;
-	}
-
-	void  AdjustmentManager::SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end()) {
-			it->second->SaveAdjustment(filename, handle);
-		}
-	}
-
-	UInt32 AdjustmentManager::LoadAdjustment(UInt32 formId, const char* filename, const char* mod) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end()) {
-			return it->second->LoadAdjustmentPathHandle(filename, mod);
-		}
-
-		return 0;
-	}
-
-	void AdjustmentManager::RemoveAdjustment(UInt32 formId, UInt32 handle) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end())
-			it->second->RemoveAdjustment(handle);
-	}
-
-	void AdjustmentManager::ResetAdjustment(UInt32 formId, UInt32 handle) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto adjustment = GetAdjustment(formId, handle);
-		if (adjustment)
-			adjustment->Clear();
-	}
-
-	void AdjustmentManager::SetTransform(AdjustmentTransformMessage* message) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(message->formId);
-		if (it == actorAdjustmentCache.end())
-			return; 
-		auto& adjustments = it->second;
-		
-		auto adjustment = adjustments->GetAdjustment(message->handle);
-		if (!adjustment)
-			return;
-
-		//make sure node exists
-		if (!adjustments->HasNode(message->nodeKey.name))
-			return;
-
-		switch (message->type) {
-		case kAdjustmentTransformPosition:
-			adjustment->SetTransformPos(message->nodeKey, message->a, message->b, message->c);
-			break;
-		case kAdjustmentTransformRotation:
-			adjustment->SetTransformRot(message->nodeKey, message->a, message->b, message->c);
-			break;
-		case kAdjustmentTransformScale:
-			adjustment->SetTransformSca(message->nodeKey, message->a);
-			break;
-		case kAdjustmentTransformReset:
-			adjustment->ResetTransform(message->nodeKey);
-			break;
-		case kAdjustmentTransformNegate:
-			adjustments->NegateTransform(adjustment, message->nodeKey);
-			break;
-		case kAdjustmentTransformRotate:
-			adjustments->RotateTransformXYZ(adjustment, message->nodeKey, message->a, message->b);
-			break;
-		}
-	}
-
-	void AdjustmentManager::SavePose(UInt32 formId, const char* filename, ExportSkeleton* exports)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end())
-			it->second->SavePose(filename, exports);
-	}
-
-	void AdjustmentManager::SaveOSPose(UInt32 formId, const char* filename, ExportSkeleton* exports)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end())
-			it->second->SaveOutfitStudioPose(filename, exports);
-	}
-
-	UInt32 AdjustmentManager::LoadPose(UInt32 formId, const char* filename) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end())
-			return it->second->LoadPose(filename);
-
-		return 0;
-	}
-
-	void AdjustmentManager::ResetPose(UInt32 formId) {
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end())
-			it->second->ResetPose();
 	}
 
 	void AdjustmentManager::LoadRaceAdjustment(UInt32 formId, bool isFemale, const char* path, bool race, bool clear, bool enable)
@@ -2391,7 +2272,7 @@ namespace SAF {
 			}
 
 			//load default adjustments
-			ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+			ForEachActorAdjustments([&](ActorAdjustmentsPtr adjustments) {
 				if (adjustments->race == formId && adjustments->isFemale == isFemale)
 				{
 					//we need a reference actor to update the version so use the first actor found as a reference to update the file
@@ -2433,7 +2314,7 @@ namespace SAF {
 			if (found == actorAdjustmentCache.end())
 				return;
 
-			std::shared_ptr<ActorAdjustments> adjustments = found->second;
+			ActorAdjustmentsPtr adjustments = found->second;
 
 			if (clear) {
 				adjustments->RemoveAdjustmentsByType(kAdjustmentTypeSkeleton, true);
@@ -2441,7 +2322,7 @@ namespace SAF {
 			
 			if (path) {
 				if (enable) {
-					std::shared_ptr<Adjustment> adjustment = adjustments->LoadAdjustment(name.c_str(), false);
+					AdjustmentPtr adjustment = adjustments->LoadAdjustment(name.c_str(), false);
 					if (adjustment != nullptr) {
 						adjustment->type = kAdjustmentTypeSkeleton;
 					}
@@ -2464,34 +2345,10 @@ namespace SAF {
 		}
 	}
 
-	UInt32 AdjustmentManager::MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex) 
+
+	void AdjustmentManager::LoadTongueAdjustment(ActorAdjustmentsPtr adjustments, TransformMap* transforms)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
-		
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end())
-			return it->second->MoveAdjustment(fromIndex, toIndex);
-
-		return 0;
-	}
-
-	void AdjustmentManager::RenameAdjustment(UInt32 formId, UInt32 handle, const char* name)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto adjustment = GetAdjustment(formId, handle);
-		if (adjustment)
-			adjustment->Rename(name);
-	}
-
-	void AdjustmentManager::LoadTongueAdjustment(UInt32 formId, TransformMap* transforms)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it == actorAdjustmentCache.end())
-			return;
-		auto& adjustments = it->second;
 
 		UInt32 tongueHandle = adjustments->GetHandleByType(kAdjustmentTypeTongue);
 
@@ -2513,7 +2370,7 @@ namespace SAF {
 
 		if (updated) {
 
-			std::shared_ptr<Adjustment> adjustment;
+			AdjustmentPtr adjustment;
 
 			if (tongueHandle) {
 				adjustment = adjustments->GetAdjustment(tongueHandle); 
@@ -2539,46 +2396,11 @@ namespace SAF {
 		adjustments->UpdateAllAdjustments();
 	}
 
-	void AdjustmentManager::SetAdjustmentScale(UInt32 formId, UInt32 handle, float scale)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto adjustment = GetAdjustment(formId, handle);
-		if (adjustment)
-			adjustment->SetScale(scale);
-	}
-
-	void AdjustmentManager::MergeAdjustmentDown(UInt32 formId, UInt32 handle)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end()) {
-			UInt32 remove = it->second->MergeAdjustmentDown(handle);
-			if (remove) {
-				it->second->RemoveAdjustment(remove);
-				it->second->UpdateAllAdjustments();
-			}
-		}
-	}
-
-	void AdjustmentManager::MirrorAdjustment(UInt32 formId, UInt32 handle)
-	{
-		std::lock_guard<std::shared_mutex> lock(actorMutex);
-
-		auto it = actorAdjustmentCache.find(formId);
-		if (it != actorAdjustmentCache.end()) {
-			if (it->second->MirrorAdjustment(handle)) {
-				it->second->UpdateAllAdjustments();
-			}
-		}
-	}
-
 	void AdjustmentManager::RemoveMod(BSFixedString modName)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
-		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+		ForEachActorAdjustments([&](ActorAdjustmentsPtr adjustments) {
 			bool removed = adjustments->RemoveMod(modName);
 			if (removed) adjustments->UpdateAllAdjustments();
 		});
@@ -2591,7 +2413,7 @@ namespace SAF {
 		raceAdjustments.clear();
 		persistentAdjustments.clear();
 
-		ForEachActorAdjustments([&](std::shared_ptr<ActorAdjustments> adjustments) {
+		ForEachActorAdjustments([&](ActorAdjustmentsPtr adjustments) {
 			adjustments->Clear();
 			adjustments->UpdateAllAdjustments();
 		});

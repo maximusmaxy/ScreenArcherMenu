@@ -27,7 +27,7 @@
         "type": "hold",
         "hold": {
             "type": "float",
-            "step": 2.0,
+            "step": 0.1,
             "mod": 0.01,
             "func": {
                 "type": "sam",

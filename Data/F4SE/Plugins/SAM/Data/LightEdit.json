@@ -123,6 +123,7 @@
             "func": {
                 "type": "entry",
                 "entry": {
+                    "title": "Rename Light",
                     "func": {
                         "type": "sam",
                         "name": "RenameLight",

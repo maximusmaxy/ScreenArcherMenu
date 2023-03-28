@@ -833,3 +833,13 @@ void RemoveAllEquipment(GFxResult& result) {
 		UpdateActorModel(actor, false);
 	}
 }
+
+typedef UInt32(*_ShowLooksMenuInternal)(TESObjectREFR* refr, UInt32 unk1, TESObjectREFR* unk2, TESObjectREFR* unk3, TESObjectREFR* unk4);
+RelocAddr<_ShowLooksMenuInternal> ShowLooksMenuInternal(0x0B42C40);
+
+void ShowLooksMenu(GFxResult& result) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	ShowLooksMenuInternal(selected.refr, 0, nullptr, nullptr, nullptr);
+}

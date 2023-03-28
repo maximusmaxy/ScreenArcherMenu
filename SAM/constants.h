@@ -8,6 +8,7 @@
 #define CONSOLE_MENU_NAME "Console"
 #define PHOTO_MENU_NAME "PhotoMenu"
 #define CONTAINER_MENU_NAME "ContainerMenu"
+#define LOOKS_MENU_NAME "LooksMenu"
 
 #define MAIN_MENU_NAME "Main"
 

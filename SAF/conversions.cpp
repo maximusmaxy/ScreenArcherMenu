@@ -34,26 +34,20 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace SAF {
 
-	float niMatrix43Identity[12]{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
-	float niTransformIdentity[16]{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-	float quatIdentity[4]{ 1.0f, 0.0f, 0.0f, 0.0f };
-
 	NiMatrix43 MatrixIdentity() {
-		NiMatrix43 m;
-		memcpy(m.arr, niMatrix43Identity, sizeof(niMatrix43Identity));
-		return m;
+		return NiMatrix43{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 };
 	}
 
 	NiTransform TransformIdentity() {
-		NiTransform t;
-		memcpy(&t, niTransformIdentity, sizeof(niTransformIdentity));
-		return t;
+		return NiTransform{
+			NiMatrix43{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 },
+			NiPoint3 { 0, 0, 0 },
+			1
+		};
 	}
 
 	Quat QuaternionIdentity() {
-		Quat q;
-		memcpy(&q, quatIdentity, sizeof(quatIdentity));
-		return q;
+		return Quat{ 1, 0, 0, 0 };
 	}
 
 	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt) {

@@ -16,10 +16,6 @@
 	import scaleform.clik.events.InputEvent;
 	import scaleform.clik.ui.InputDetails;
 	import utils.Translator;
-	import Mobile.ScrollList.EventWithParams;
-	import flash.media.ID3Info;
-	import flash.net.LocalConnection;
-	import flash.display3D.IndexBuffer3D;
 
 	public class ScreenArcherMenu extends Shared.IMenu
 	{
@@ -33,12 +29,26 @@
 		public var filenameInput:MovieClip;
 		public var border:MovieClip;
 		public var notification:MovieClip;
-		//public var boneDisplay:Sprite = null;
+		public var bounds:MovieClip;
 		
-		public var debug1:MovieClip;
-		public var testMarker1:MovieClip;
-		public var testMarker2:MovieClip;
-		public var boneMarker1:MovieClip;
+//		public var debug1:MovieClip;
+//		public var testMarker1:NodeMarker;
+//		public var testMarker2:NodeMarker;
+//		public var boneMarker1:MovieClip;
+//		public var axisMarker1:MovieClip;
+//		public var rotateTool:RotateTool;
+//		public var rotateAxis1:RotateMarker;
+//		public var rotateAxis2:RotateMarker;
+//		public var rotateAxis3:RotateMarker;
+//		public var rotateMarkers:RotateMarkerGroup;
+		
+//		public var testScrollbar1:Option_Scrollbar;
+//		public var testScrollbar2:Option_Scrollbar;
+//		public var testScrollbar3:Option_Scrollbar;
+//		public var testScrollbar4:Option_Scrollbar;
+//		public var testScrollbar5:Option_Scrollbar;
+//		public var testScrollbar6:Option_Scrollbar;
+//		public var testScrollbar7:Option_Scrollbar;
 		
 		public var notificationMessage = "";
 		public var titleName:String = "";
@@ -66,8 +76,21 @@
 		
 		public var hold:Boolean = false;
 		public var holdType:int = 0;
+		public var holdMoveFunc:Function = OnHoldMove;
+		public var holdStepFunc:Function = OnHoldStep;
+		
+		public var mouseHold:Boolean = false;
+		public var mouseHoldType:int = 0;
+		public var lastMousePressed:int = 0;
+		public var transformIndex:int = 0;
+		
+		public var ctrlHold:Boolean = false;
 		
 		public var isOpen:Boolean = false;
+		
+		public var overNode:NodeMarker = null;
+		public var selectedNode:NodeMarker = null;
+		public var nodeMarkers:Vector.<NodeMarker> = new Vector.<NodeMarker>();
 		
 		public static const NAME_MAIN:String = "Main";
 		
@@ -89,7 +112,7 @@
 			Translator.Create(root);
 			
 			InitButtonHints();
-			InitSliderFuncs();
+			InitFunctions();
 			Data.initLatents(LatentTimeout);
 			
 			filenameInput.visible = false;
@@ -100,7 +123,8 @@
 			notification.visible = false;
 			
 			InitState();
-			
+			InitEvents();
+
 //			if (Util.debug) {
 //				Data.menuName = "Main";
 //				rootMenu = "Main";
@@ -108,8 +132,139 @@
 //			}
 			
 			UpdateAlignment();
+
+			//this.boneMarker1.setPosAndAngle(this.testMarker1, this.testMarker2);
 			
-			this.boneMarker1.setPosAndAngle(this.testMarker1, this.testMarker2);
+	  		//DebugRotateTool();
+//			testScrollbar1.visible = false;
+//			testScrollbar2.visible = false;
+//			testScrollbar3.visible = false;
+//			testScrollbar4.visible = false;
+//			testScrollbar5.visible = false;
+//			testScrollbar6.visible = false;
+//			testScrollbar7.visible = false;
+//			rotateTool.visible = false;
+//			rotateAxis1.visible = false;
+//			rotateAxis2.visible = false;
+//			rotateAxis3.visible = false;
+
+//			var ss:Function = function(s:Option_Scrollbar) {
+//				s.minimum = 0.0;
+//				s.maximum = 2.0;
+//				s.position = 1.0;
+//			};
+//			
+//			ss(testScrollbar1);
+//			ss(testScrollbar2);
+//			ss(testScrollbar3);
+//			testScrollbar1.addEventListener(Option_Scrollbar.VALUE_CHANGE, function(e:Event) {
+//				sam.Test(testScrollbar1.value, 1);
+//			});
+//			testScrollbar2.addEventListener(Option_Scrollbar.VALUE_CHANGE, function(e:Event) {
+//				sam.Test(testScrollbar2.value, 2);
+//			});
+//			testScrollbar3.addEventListener(Option_Scrollbar.VALUE_CHANGE, function(e:Event) {
+//				sam.Test(testScrollbar3.value, 3);
+//			});
+			
+//			testMarker1.init("Neck");
+//			testMarker1.visible = true;
+//			testMarker2.init("Head");
+//			testMarker2.visible = true;
+//			nodeMarkers.push(testMarker1);
+//			nodeMarkers.push(testMarker2);
+		}
+		
+		internal function DebugRotateTool()
+		{
+//			var xaxis:RotateToolAxis = new RotateToolAxis();
+//			var yaxis:RotateToolAxis = new RotateToolAxis();
+//			var zaxis:RotateToolAxis = new RotateToolAxis();
+//			this.rotateTool.InitAxes(xaxis, yaxis, zaxis);
+			
+			this.rotateTool.addEventListener(MouseEvent.CLICK, function(e:MouseEvent) {
+				
+			});
+			
+			var ss:Function = function(s:Option_Scrollbar) {
+				s.minimum = 0.0;
+				s.maximum = 2.0;
+				s.position = 1.0;
+			};
+			
+			ss(testScrollbar1);
+			ss(testScrollbar2);
+			ss(testScrollbar3);
+			ss(testScrollbar4);
+			ss(testScrollbar5);
+			ss(testScrollbar6);
+			ss(testScrollbar7);
+			
+			var scrollValueChange:Function = function(e:Event) {
+				var xrot:Number = (testScrollbar1.value * Math.PI) - Math.PI;
+				var yrot:Number = (testScrollbar2.value * Math.PI) - Math.PI;
+				var zrot:Number = (testScrollbar3.value * Math.PI) - Math.PI;
+				
+				var xpos:Number = (testScrollbar4.value - 1) * 50;
+				var ypos:Number = (testScrollbar5.value - 1) * 50;
+				var zpos:Number = (testScrollbar6.value - 1) * 50;
+
+//				rotateTool.transform.matrix3D.identity();
+//				rotateTool.appendPos(xpos, ypos, zpos);
+//				rotateTool.appendEulerXYZ(xrot, yrot, zrot);
+//				
+//				var scale:Number = testScrollbar7.value;
+//				if (scale == 0) scale = 0.001;
+//				rotateTool.transform.matrix3D.prependScale(scale, scale, scale);
+				
+//				var vec:Vector.<Number> = rotateTool.transform.matrix3D.rawData;
+//				
+//				var shape:RotateMarker = rotateAxis;//.getChildAt(0);
+//				shape.setTo(vec[0], vec[1], vec[4], vec[5], vec[12], vec[13]);
+
+				var m:Matrix3D = new Matrix3D();
+				m.prependTranslation(xpos, ypos, zpos);
+				m.prepend(Util.getAxisRotation(Util.X_AXIS, xrot));
+				m.prepend(Util.getAxisRotation(Util.Y_AXIS, yrot));
+				m.prepend(Util.getAxisRotation(Util.Z_AXIS, zrot));
+
+				//var m:Matrix3D = rotateTool.transform.matrix3D;
+				//m.prepend(new Matrix3D(new <Number>[1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1]));
+
+				var m1:Matrix3D = m.clone();
+				m1.prepend(new Matrix3D(new <Number>[0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 0, 1]));
+
+				var m2:Matrix3D = m.clone();
+				
+				var m3:Matrix3D = m.clone();
+				m3.prepend(new Matrix3D(new <Number>[1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1]));
+				
+				var setFromMatrix:Function = function(r:RotateMarker, m:Matrix3D) {
+					var v:Vector.<Number> = m.rawData;
+					if (v[0] == 0) v[0] = 0.001;
+					if (v[1] == 0) v[1] = 0.001;
+					if (v[4] == 0) v[4] = 0.001;
+					if (v[5] == 0) v[5] = 0.001;
+					r.transform.matrix = new Matrix(v[0], v[1], v[4], v[5], v[12], v[13]);
+				};
+				
+				setFromMatrix(rotateAxis1, m1);
+				setFromMatrix(rotateAxis2, m2);
+				setFromMatrix(rotateAxis3, m3);
+//				
+//				rotateAxis1.visible = false;
+//				rotateAxis2.visible = false
+//				rotateAxis3.visible = false;
+				rotateTool.visible = false;
+			};
+			
+			testScrollbar1.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
+			testScrollbar2.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
+			testScrollbar3.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
+			testScrollbar4.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
+			testScrollbar5.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
+			testScrollbar6.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
+			testScrollbar7.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
 		}
 		
 		internal function InitState():void
@@ -122,7 +277,13 @@
 			currentState.pos = 0;
 		}
 		
-		internal function InitSliderFuncs():void
+		internal function InitEvents():void
+		{
+			this.bounds.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown);
+			this.bounds.addEventListener(MouseEvent.MOUSE_WHEEL, OnMouseWheel);
+		}
+		
+		internal function InitFunctions():void
 		{
 			//Define callback functions for the slider list entries to avoid generating events
 			var functions:EntryFunctions = new EntryFunctions();
@@ -134,6 +295,160 @@
 			functions.checkbox2 = this.SelectCheckbox2;
 
 			sliderList.initEntryFunctions(functions);
+			
+			Data.undoEditFunction = function() {
+				if (Data.editData) {
+					var result:GFxResult = CallDataFunction(Data.editData.undo);
+					if (CheckError(result)) {
+						UpdateDataFunction(Data.editData.undo);
+						Util.playOk();
+					} else  {
+						Util.playCancel();
+					}
+				}
+			}
+			
+			Data.redoEditFunction = function() {
+				if (Data.editData) {
+					var result:GFxResult = CallDataFunction(Data.editData.redo);
+					if (CheckError(result)) {
+						UpdateDataFunction(Data.editData.redo);
+						Util.playOk();
+					} else  {
+						Util.playCancel();
+					}
+				}
+			}
+			
+			Data.startEditFunction = function() {
+				if (Data.editData) {
+					CallDataFunction(Data.editData.start);
+				}
+			}
+			
+			Data.endEditFunction = function() {
+				if (Data.editData) {
+					CallDataFunction(Data.editData.end);
+				}
+			}
+			
+			Data.selectNodeMarker = SelectBoneDisplay;
+			
+			Data.selectRotateMarker = function(index:int) {
+				if (lastMousePressed == Data.BUTTON_LMB) {
+					EnableMouseHold();
+					transformIndex = index;
+					EnableHold(Data.EMPTY_OBJ, Data.BUTTON_LMB, OnTransformMove, OnMouseStep);
+				}
+			}
+			
+			Data.overNodeMarker = function(node:NodeMarker) {
+				overNode = node;
+				
+				if (!mouseHold) {
+					OnNodeSelect(node);
+				}
+			}
+			
+			Data.outNodeMarker = function(node:NodeMarker, stageX:Number, stageY:Number) {
+				if (!mouseHold)
+					node.gotoAndStop(1);
+				
+				if (overNode == node) {
+					overNode = null;
+					ShowNotification("");
+				}
+				
+				if (selectedNode != null) {
+					if (!selectedNode.hitTestPoint(stageX, stageY, true)) {
+						selectedNode.gotoAndStop(1);
+					}
+				}
+			}
+			
+			Data.scrollNodeMarker = ScrollNodeMarker;
+		}
+		
+		public function ScrollNodeMarker(inc:Boolean) {
+			var index:int = nodeMarkers.indexOf(selectedNode);
+			if (index < 0)
+				return;
+			
+			var i:int;
+			var checkIndex:int
+			var checkNode:NodeMarker;
+			var stageX:Number = stage.mouseX;
+			var stageY:Number = stage.mouseY;
+
+			for (i = 1; i < nodeMarkers.length; i++) {
+				
+				if (inc) {
+					checkIndex = index + i;
+					if (checkIndex >= nodeMarkers.length)
+						checkIndex -= nodeMarkers.length;
+				} else {
+					checkIndex = index - i;
+					if (checkIndex < 0)
+						checkIndex += nodeMarkers.length;
+				}
+				
+				checkNode = nodeMarkers[checkIndex];
+				if (checkNode.visible && checkNode.bounds.hitTestPoint(stageX, stageY, true)) {
+					OnNodeSelect(checkNode);
+				}
+			}
+		}
+		
+		public function NextBone():GFxResult {
+			ScrollNodeMarker(true);
+			
+			return Data.resultSuccess;
+		}
+		
+		public function OnNodeSelect(node:NodeMarker) {
+			if (selectedNode != null) {
+				selectedNode.gotoAndStop(1);
+			}
+			
+			if (node.boneName) {
+				selectedNode = node;
+				selectedNode.gotoAndStop(2);
+				ShowNotification(node.boneName);
+			}
+		}
+
+		public function OnTransformMove(event:MouseEvent) {
+			var mod:Number;
+			
+			switch (transformIndex) {
+				case Data.TRANSFORM_ROTATEX:
+				case Data.TRANSFORM_ROTATEY:
+				case Data.TRANSFORM_ROTATEZ:
+					mod = Data.menuData.items[transformIndex + 6].touch.mod;
+					break;
+				case Data.TRANSFORM_TRANSLATEX:
+				case Data.TRANSFORM_TRANSLATEY:
+				case Data.TRANSFORM_TRANSLATEZ:
+				case Data.TRANSFORM_SCALE:
+					mod = Data.menuData.items[7].touch.mod;
+					break;
+			}
+			
+			var difs:Array = Data.updateCursorMove(mod);
+			
+			try {
+				sam.UpdateTransform(Data.locals.adjustmentHandle, Data.locals.boneName, transformIndex, difs[0]);
+			} catch (e:Error) {}
+
+			RefreshValues();
+		}
+		
+		public function AddNodeMarker(marker:NodeMarker) {
+			this.nodeMarkers.push(marker);
+		}
+		
+		public function ClearNodeMarkers() {
+			this.nodeMarkers.length = 0;
 		}
 		
 		internal function InitButtonHints():void
@@ -154,6 +469,58 @@
 			buttonHintData.push(buttonHintReset);
 			buttonHintData.push(buttonHintConfirm);
 			ButtonHintBar_mc.SetButtonHintData(buttonHintData);
+		}		
+		
+		internal function OnMouseWheel(e:MouseEvent) 
+		{
+			if (e.target == this.bounds && sam.IsFreeCamera()) {
+				var value:Number = e.delta * Data.globalFunctions.scrollZoom.hold.mod;
+				var result:GFxResult = sam.UpdateCameraZoom(value);
+				if (stage.parent) {
+					Util.traceObj(stage.parent.filters);
+				}
+			}
+		}
+		
+		public function OnMouseDown(e:MouseEvent) {
+			if (this.mouseHold)
+				return;
+				
+			EnableMouseHold();
+
+			if (e.target == this.bounds && sam.IsFreeCamera()) {
+				var data:Object = Data.globalFunctions[this.lastMousePressed];
+				if (data) {
+					
+					//the get objects under point method is so slow that it is possible the mouse is
+					//released before completion so we need to account for that
+					//var objs:Array = stage.getObjectsUnderPoint(new Point(e.stageX, e.stageY));
+					//if (objs.length == 0 && this.mouseHold)
+					
+					if (this.mouseHold)
+						EnableHold(data.hold, lastMousePressed, OnMouseMove, OnMouseStep);
+				}
+			}
+		}
+		
+		public function EnableMouseHold() {
+			this.mouseHold = true;
+			this.mouseHoldType = this.lastMousePressed;
+			
+			this.bounds.removeEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown);
+			stage.addEventListener(MouseEvent.MOUSE_UP, OnMouseUp);
+		}
+
+		public function OnMouseUp(e:MouseEvent) {
+			if (!this.mouseHold)
+				return;
+				
+			this.mouseHold = false;
+
+			stage.removeEventListener(MouseEvent.MOUSE_UP, OnMouseUp);
+			this.bounds.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown);
+			
+			DisableHold(this.mouseHoldType);
 		}
 		
 		public function MenuOpened(data:Object)
@@ -162,7 +529,11 @@
 			
 			this.sam = root.f4se.plugins.ScreenArcherMenu;
 			Data.load(data, this.sam, this.f4seObj, stage);
-
+			
+			if (data.global) {
+				Data.globalFunctions = data.global.funcs;
+			}
+			
 			if (data.title) {
 				titleName = data.title;
 			}
@@ -270,8 +641,14 @@
 		{
 			//trace("Process Key Down", keyCode);
 			//https://www.creationkit.com/fallout4/index.php?title=DirectX_Scan_Codes
+			if (keyCode == 162 || keyCode == 163)
+				ctrlHold = true;
+			
 			if (this.IsWaiting())
 				return;
+				
+			if (ctrlHold)
+				keyCode += 512;
 				
 			ProcessKeyRepeat(keyCode);
 			
@@ -285,7 +662,7 @@
 					if (buttonHintBack.ButtonVisible) {
 						BackButton();
 					}
-					break;
+					return;
 				case 13://Enter
 				case 276://Pad A
 					if (buttonHintConfirm.ButtonVisible) {
@@ -294,7 +671,7 @@
 						sliderList.processInput(SliderList.A);
 					}
 					Util.unselectText();
-					break;
+					return;
 				case 69://E
 				case 273://Pad R1
 				case 275://Pad R2
@@ -304,45 +681,68 @@
 //					else if (buttonHintTarget.ButtonVisible) {
 //						targetButton();
 //					}
-					break;
+					return;
 				case 81://Q
 				case 272://Pad L1
 				case 274://Pad L2
 					if (buttonHintSave.ButtonVisible) {
 						SaveButton();
 					}
-					break;
+					return;
 				case 82://R
 				case 279://Pad Y
 					if (buttonHintReset.ButtonVisible) {
 						ResetButton();
 					}
-					break;
+					return;
 				case 88://X
 				case 278://Pad X
 					if (buttonHintExtra.ButtonVisible) {
 						ExtraButton();
 					}
-					break;
+					return;
 				case 70://F
 				case 271://Pad Select
 					if (buttonHintHide.ButtonVisible) {
 						HideButton();
 					}
-					break;
-//				case 257://Mouse2
-//					hide();
-//					break;
+					return;					
+//				case 162://left ctrl
+//				case 163://right ctrl
+//					ctrlHold = true;
+//					return;
+					
+				case 256://Mouse1
+				case 257://Mouse2
+				case 258://Mouse3
+					//The mouse event click/down is triggered by any mouse button so we need this to differentiate them
+					lastMousePressed = keyCode;
+					return;
 //				case 282://ScrollUp
 //					if (Data.isLocked(Data.KEYBOARD)) {
 //						sliderList.scrollList(-1);
 //					}
-//					break;
+//					return;
 //				case 283://ScrollDown
 //					if (Data.isLocked(Data.KEYBOARD)) {
 //						sliderList.scrollList(1);
 //					}
-//					break;
+//					return;
+
+				case 601://CTRL+Y	
+					Data.redoEditFunction();
+					return;
+					
+				case 602://CTRL+Z
+					Data.undoEditFunction();
+					return;
+			}
+			
+			if (Data.menuData.keys) {
+				var keyData:Object = Data.menuData.keys[keyCode];
+				if (keyData) {
+					CallKeyFunction(keyCode, keyData);
+				}
 			}
 		};
 		
@@ -354,12 +754,12 @@
 				case 37://Left
 				case 65://A
 				case 268://Pad Left
-					OnHoldStep(false);
+					this.holdStepFunc(false);
 					break;
 				case 39://Right
 				case 68://D
 				case 269://Pad Right
-					OnHoldStep(true);
+					this.holdStepFunc(true);
 					break;
 			}
 		}
@@ -423,28 +823,36 @@
 				case 273://Pad R1
 				case 275://Pad R2
 					DisableHold(Data.BUTTON_LOAD);
-					break;
+					return;
 					
 				case 81://Q
 				case 272://Pad L1
 				case 274://Pad L2
 					DisableHold(Data.BUTTON_SAVE);
-					break;
+					return;
 					
 				case 82://R
 				case 279://Pad Y
 					DisableHold(Data.BUTTON_RESET);
-					break;
+					return;
 					
 				case 88://X
 				case 278://Pad X
 					DisableHold(Data.BUTTON_EXTRA);
-					break;
+					return;
 				
-//				case 257://Mouse2
-//					show();
-//					break;
+				case 162://left ctrl
+				case 163://right ctrl
+					ctrlHold = false;
+					return;
+					
+				case 256://Mouse1
+				case 257://Mouse2
+					//Handle hold disable in OnMouseUp
+					return;
 			}
+			
+			DisableHold(keyCode);
 		}
 		
 		public function ShowNotification(msg:String, store:Boolean = false)
@@ -915,9 +1323,7 @@
 			Data.menuFolder = null;
 			
 			stateStack.length = index + 1;
-			if (filenameInput.visible) {
-				SetTextInput(false);
-			}
+			StopTextInput();
 
 			PopMenu();
 		}
@@ -933,9 +1339,10 @@
 			stateStack.length = 0;
 			Data.folderStack.length = 0;
 
-			if (filenameInput.visible) {
-				SetTextInput(false);
-			}
+			StopTextInput();
+			ClearWidgets();
+			
+			sliderList.visible = true;
 			
 			PushMenu(NAME_MAIN);
 		}
@@ -959,6 +1366,7 @@
 		{
 			//trace("Load Menu", data, get);
 			Data.updateMenu(name, data, get);
+			UpdateEditFunctions(data);
 			state = STATE_MAIN;
 			Util.unselectText();
 
@@ -976,6 +1384,15 @@
 			UpdateButtonHints();
 			UpdateNotification();
 			UpdateTitle();
+			UpdateWidgets();
+		}
+		
+		public function UpdateEditFunctions(data:Object)
+		{
+			if (data.edit)
+				Data.editData = data.edit;
+			else
+				Data.editData = null;
 		}
 		
 		public function GetResult(menu:Object):GFxResult
@@ -1286,24 +1703,10 @@
 				}
 				
 				for (var i:int = 0; i < data.args.length; i++) {
-					switch (data.args[i].type) {
-						case Data.ARGS_VAR:
-							var property:String = data.args[i].name;
-							//need to use hasOwnProperty because of falsy values
-							if (Data.locals.hasOwnProperty(property)) {
-								args.push(Data.locals[property]);
-							} else {
-								Data.error = ("Local property not found: " + property);
-								return null;
-							}
-							break;
-						case Data.ARGS_INDEX:
-							args.push(Data.menuValues[data.args[i].index]);
-							break;
-						case Data.ARGS_VALUE:
-							args.push(data.args[i].value)
-							break;
-					}
+					var arg:Object = GetDataArg(data.args[i]);
+					if (arg == null)
+						return null;
+					args.push(arg);
 				}
 			}
 			
@@ -1323,6 +1726,26 @@
 			
 			Data.error = "Could not resolve function type";
 			return null;
+		}
+		
+		public function GetDataArg(arg:Object):Object
+		{
+			switch (arg.type) {
+				case Data.ARGS_VAR:
+					var property:String = arg.name;
+					//need to use hasOwnProperty because of falsy values
+					if (Data.locals.hasOwnProperty(property)) {
+						return Data.locals[property];
+					} else {
+						Data.error = ("Local property not found: " + property);
+						return null;
+					}
+					break;
+				case Data.ARGS_INDEX:
+					return Data.menuValues[arg.index];
+				case Data.ARGS_VALUE:
+					return arg.value;
+			}
 		}
 		
 		public function CallSamFunction(name:String, args:Array):GFxResult 
@@ -1470,45 +1893,70 @@
 		{
 			if (this.filenameInput.visible) 
 			{
-				var func:Object = Data.entryData.func;
-				var result:GFxResult = CallDataFunction(func, [this.filenameInput.Input_tf.text]);
-				
-				ClearEntry();
-				
-				if (CheckError(result))	
-					Util.playOk();
-				else
+				if (this.filenameInput.Input_tf.text.length > 0) {
+					var func:Object = Data.entryData.func;
+					var result:GFxResult = CallDataFunction(func, [this.filenameInput.Input_tf.text]);
+					
+					ClearEntry();
+					
+					if (CheckError(result))	
+						Util.playOk();
+					else
+						Util.playCancel();
+					
+					//check for these only, ignore pops
+					if (func.refresh)
+						RefreshValues();
+					else if (func.update)
+						ReloadMenu();
+					}
+				else {
+					ClearEntry();
 					Util.playCancel();
-				
-				//check for these only, ignore pops
-				if (func.refresh)
-					RefreshValues();
-				else if (func.update)
-					ReloadMenu();
+				}
 			}
 		}
 		
 		public function SetEntry(data:Object):void
 		{
+			//trace("set entry");
+			//Util.traceObj(data);
 			Data.entryData = data;
-			SetTextInput(true);
-			UpdateMenus();
+			
+			var txt:String = "";
+			if (data.text) {
+				var arg:Object = this.GetDataArg(data.text);
+				if (arg != null) {
+					txt = arg;
+				}
+			}
+			
+			var title:String;
+			if (data.title)
+				title = data.title;
+			else
+				title = "$SAM_Input";
+			
+			this.StartTextInput(txt, title);
+			this.UpdateMenus();
 		}
 		
 		public function ClearEntry():void
 		{
-			SetTextInput(false);
+			StopTextInput();
 			Data.entryData = null;
 			UpdateMenus();
 		}
-
-		internal function SetTextInput(enabled:Boolean)
+		
+		internal function StartTextInput(txt:String, title:String)
 		{
-			if (enabled)
-			{
+			if (!filenameInput.visible) {
+				AllowTextInput(false);
 				state = STATE_ENTRY;
-				filenameInput.visible = true;
 				sliderList.visible = false;
+				filenameInput.visible = true;
+				filenameInput.NameField.text = title;
+				filenameInput.Input_tf.text = txt;
 				filenameInput.Input_tf.type = TextFieldType.INPUT;
 				filenameInput.Input_tf.selectable = true;
 				filenameInput.Input_tf.maxChars = 100;
@@ -1516,21 +1964,24 @@
 				filenameInput.Input_tf.setSelection(0, filenameInput.Input_tf.text.length);
 				AllowTextInput(true);
 			}
-			else
-			{
-				state = STATE_MAIN;
+		}
+		
+		internal function StopTextInput()
+		{
+			if (filenameInput.visible) {
+				state = STATE_MAIN; //TODO could be folder
 				filenameInput.Input_tf.text = "";
 				filenameInput.Input_tf.type = TextFieldType.DYNAMIC;
 				filenameInput.Input_tf.setSelection(0,0);
 				filenameInput.Input_tf.selectable = false;
 				filenameInput.Input_tf.maxChars = 0;
-				AllowTextInput(false);
+				//AllowTextInput(false);
 				filenameInput.visible = false;
 				sliderList.visible = true;
 				stage.focus = sliderList;
 			}
 		}
-
+		
 		public function GetButton(type:int):BSButtonHintData
 		{
 			switch(type) {
@@ -1572,7 +2023,16 @@
 			var data:Object = (this.state == STATE_FOLDER ? Data.getFolderHotkey(type) : Data.getHotkey(type));
 			if (!data)
 				return;
-				
+			
+			
+			CallKeyFunction(type, data);
+		}
+		
+		public function CallKeyFunction(type:int, data:Object)
+		{
+			//trace("call key");
+			//Util.traceObj(data);
+			
 			var result:GFxResult;
 
 			switch (data.type) {
@@ -1612,7 +2072,7 @@
 					}
 					break;
 				case Data.HOTKEY_HOLD:
-					EnableHold(data.hold, type);
+					EnableHold(data.hold, type, OnHoldMove, OnHoldStep);
 					break;
 			}
 		}
@@ -1650,39 +2110,53 @@
 			}
 		}
 
-		public function EnableHold(data:Object, type:int)
+		public function EnableHold(data:Object, type:int, move:Function, step:Function)
 		{
 			if (!hold) {
-				hold = true;
-				holdType = type;
-				stage.addEventListener(MouseEvent.MOUSE_MOVE, OnHoldMove);
+				this.hold = true;
+				this.holdType = type;
+				this.holdMoveFunc = move;
+				this.holdStepFunc = step;
+				stage.addEventListener(MouseEvent.MOUSE_MOVE, move);
 				Data.holdData = data;
 				Data.setCursorVisible(false);
 				Data.storeCursorPos();
-				sliderList.storeSelected();
+				this.sliderList.storeSelected();
 			}
 		}
 		
 		public function DisableHold(type:int) {
 			if (hold && holdType == type) {
-				hold = false;
-				stage.removeEventListener(MouseEvent.MOUSE_MOVE, OnHoldMove);
+				this.hold = false;
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, this.holdMoveFunc);
 				Data.holdData = null;
 				Data.setCursorVisible(true);
 				Data.endCursorDrag();
-				sliderList.restoreSelected();
+				this.sliderList.restoreSelected();
 			}
 		}
 		
 		public function OnHoldMove(event:MouseEvent) {
 			var dif:int = Data.updateCursorDrag();
 			var result:GFxResult = CallDataFunction(Data.holdData.func, [dif * Data.holdData.mod]);
-			//CheckError(result);
 		}
 		
 		public function OnHoldStep(inc:Boolean) {
 			var result:GFxResult = CallDataFunction(Data.holdData.func, [(inc ? Data.holdData.step : -Data.holdData.step)]);
-			//CheckError(result);
+		}
+		
+		public function OnMouseMove(event:MouseEvent) {
+			var difs:Array = Data.updateCursorMove(Data.holdData.mod);
+			var result:GFxResult = CallDataFunction(Data.holdData.func, difs);
+			
+//			if (Data.holdData.func.refresh)
+//				RefreshValues();
+//			else if (Data.holdData.func.update)
+//				ReloadMenu();
+		}
+		
+		public function OnMouseStep(inc:Boolean) {
+			//ignore
 		}
 		
 		public function AllowTextInput(allow:Boolean)
@@ -1805,6 +2279,46 @@
 				sliderList.title.text = titleName;
 			}
 		}
+		
+		public function UpdateWidgets()
+		{
+			var widget:String;
+			var i:int;
+			var prevWidgets:Array = Data.menuWidgets;
+			var newWidgets:Array = Data.menuData.widgets;
+
+			if (newWidgets) {
+				for (i = 0; i < prevWidgets.length; i++) {
+					widget = prevWidgets[i];
+					if (newWidgets.indexOf(widget) == -1)
+						sam.SetWidget(widget, false);
+				}
+				
+				for (i = 0; i < newWidgets.length; i++) {
+					widget = newWidgets[i];
+					if (prevWidgets.indexOf(widget) == -1)
+						sam.SetWidget(widget, true);
+				}
+				
+				Data.menuWidgets = newWidgets;
+			} else {
+				for (i = 0; i < prevWidgets.length; i++) {
+					widget = prevWidgets[i];
+					sam.SetWidget(widget, false);
+				}
+				
+				Data.menuWidgets = Data.EMPTY_ARR;
+			}
+		}
+		
+		public function ClearWidgets()
+		{
+			for (var i:int = 0; i < Data.menuWidgets.length; i++) {
+				sam.SetWidget(Data.menuWidgets[i], false);
+			}
+			
+			Data.menuWidgets.length = 0;
+		}
 
 		internal function HideButton():void
 		{
@@ -1814,6 +2328,43 @@
 			}
 		}
 		
+		public function SetAlignment(i:int, checked:Boolean)
+		{
+			swapped = checked;
+			Data.menuValues[i] = checked;
+			UpdateAlignment();
+			try {
+				this.sam.SetOption(i, checked);
+			} catch (e:Error) {
+				trace("Failed to set alignment");
+			}
+		}
+		
+		public function SetWidescreen(i:int, checked:Boolean)
+		{
+			widescreen = checked;
+			Data.menuValues[i] = checked;
+			UpdateAlignment();
+			try {
+				this.sam.SetOption(i, checked);
+			} catch (e:Error) {
+				trace("Failed to get alignment");
+			}
+		}
+		
+		internal function UpdateAlignment():void
+		{
+			if (widescreen) {
+				notification.x = swapped ? 480 : -834;
+				sliderList.x = swapped ? -836 : 496;
+			}
+			else {
+				notification.x = swapped ? 278 : -631;
+				sliderList.x = swapped ? -623 : 278;
+			}
+		}
+
+		
 		public function ToggleOrder(checked:Boolean):GFxResult
 		{
 			sliderList.update();
@@ -1821,22 +2372,26 @@
 			return Data.resultSuccess;
 		}
 		
-		public function InitOffset():GFxResult
-		{
-			Data.locals.offset = sam.GetNodeIsOffsetOnly(Data.locals.boneName);
+		public function SetBoneName(name:String) {
+			Data.locals.boneName = name;
+			Data.locals.offset = sam.GetNodeIsOffset(Data.locals.boneName);
 			buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
 			sliderList.title.text = Data.locals.boneName;
-			
+		}
+		
+		public function InitBoneEdit():GFxResult
+		{
+			SetBoneName(sam.GetBoneInit(Data.locals.boneName));
+			sam.SelectNodeMarker(Data.locals.boneName, false);
+			sliderList.visible = !Data.locals.listVisible;
+
 			return Data.resultSuccess;
 		}
 		
 		public function ToggleOffset(checked:Boolean):GFxResult
 		{
 			var previousName:String = Data.locals.boneName;
-			Data.locals.boneName = sam.ToggleNodeName(Data.locals.boneName);
-			Data.locals.offset = sam.GetNodeIsOffset(Data.locals.boneName);
-			buttonHintLoad.ButtonText = (Data.locals.offset ? "$SAM_Offset" : "$SAM_Pose");
-			sliderList.title.text = Data.locals.boneName;
+			SetBoneName(sam.ToggleNodeName(Data.locals.boneName));
 			if (previousName != Data.locals.boneName) {
 				RefreshValues();
 			}
@@ -1899,17 +2454,16 @@
 			return Data.resultSuccess;
 		}
 		
-		public function InitAddItem():GFxResult
-		{
-			if (!Data.locals.hasOwnProperty("addItemEquip"))
-				Data.locals.addItemEquip = false;
-				
-			return Data.resultSuccess;
-		}
+//		public function InitAddItem():GFxResult
+//		{
+//			if (!Data.locals.hasOwnProperty("addItemEquip"))
+//				Data.locals.addItemEquip = false;
+//				
+//			return Data.resultSuccess;
+//		}
 		
 		public function OpenEntryIfEmpty():GFxResult
 		{
-			//trace("open entry if empty", Data.menuOptions.length);
 			if (Data.menuOptions.length == 0) {
 				var hotkey:Object = FindEntryHotkey();
 				if (hotkey)
@@ -1921,9 +2475,16 @@
 		
 		public function FindEntryHotkey():Object
 		{
-			//TODO this will break if the number of hotkeys increases
-			for (var i:int = 1; i < 5; ++i) {
-				var hotkey:Object = Data.getHotkey(i);
+			var hotkeys:Array = [
+				 Data.BUTTON_SAVE,
+				 Data.BUTTON_LOAD,
+				 Data.BUTTON_RESET,
+				 Data.BUTTON_EXTRA
+			];
+			
+			//TODO this doesn't account for menu data keys
+			for (var i:int = 0; i < hotkeys.length; ++i) {
+				var hotkey:Object = Data.getHotkey(hotkeys[i]);
 				if (hotkey && hotkey.func && hotkey.func.type == Data.FUNC_ENTRY) {
 					return hotkey;
 				}
@@ -1979,6 +2540,41 @@
 			return Data.resultSuccess;
 		}
 		
+		public function SelectBoneDisplay(boneName:String, stageX:Number, stageY:Number)
+		{
+			if (Util.caseInsensitiveCompare(Data.menuName, Data.BONE_EDIT)) {
+				var nextBone:String = GetNextBone(boneName, stageX, stageY);
+				SetBoneName(sam.GetBoneInit(nextBone));
+				RefreshValues();
+				sam.SelectNodeMarker(nextBone, false);
+				ShowNotification(nextBone);
+			} else {
+//				Data.locals.boneName = boneName;
+//				sam.SelectNodeMarker(boneName, true);
+				Data.locals.boneName = selectedNode.boneName;
+				selectedNode.gotoAndStop(1);
+				sam.SelectNodeMarker(selectedNode.boneName, true);
+			}
+		}
+		
+		public function ToggleListVisible(hide:Boolean):GFxResult
+		{
+			this.sliderList.visible = !hide;
+			return Data.resultSuccess;
+		}
+		
+		public function UpdateListVisible():GFxResult
+		{
+			this.sliderList.visible = !Data.locals.listVisible;
+			return Data.resultSuccess;
+		}
+		
+		public function ResetListVisible():GFxResult
+		{
+			this.sliderList.visible = true;
+			return Data.resultSuccess;
+		}
+		
 //		public function EnableBoneDisplay()
 //		{
 //			this.boneDisplay = new Sprite();
@@ -1994,42 +2590,6 @@
 //			this.removeChild(this.boneDisplay);
 //			this.boneDisplay = null;
 //		}
-		
-		public function SetAlignment(i:int, checked:Boolean)
-		{
-			swapped = checked;
-			Data.menuValues[i] = checked;
-			UpdateAlignment();
-			try {
-				this.sam.SetOption(i, checked);
-			} catch (e:Error) {
-				trace("Failed to set alignment");
-			}
-		}
-		
-		public function SetWidescreen(i:int, checked:Boolean)
-		{
-			widescreen = checked;
-			Data.menuValues[i] = checked;
-			UpdateAlignment();
-			try {
-				this.sam.SetOption(i, checked);
-			} catch (e:Error) {
-				trace("Failed to get alignment");
-			}
-		}
-		
-		internal function UpdateAlignment():void
-		{
-			if (widescreen) {
-				notification.x = swapped ? 480 : -834;
-				sliderList.x = swapped ? -836 : 496;
-			}
-			else {
-				notification.x = swapped ? 278 : -631;
-				sliderList.x = swapped ? -623 : 278;
-			}
-		}
 		
 		public function CanClose():Boolean
 		{
@@ -2071,9 +2631,15 @@
 		{
 			//trace("Clean up");
 			InitState();
+			InitEvents();
 			Util.unselectText();
-			stage.removeEventListener(MouseEvent.MOUSE_MOVE, OnHoldMove);
-			hold = false;
+			if (hold) {
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, this.holdMoveFunc);
+				hold = false;
+			}
+			stage.removeEventListener(MouseEvent.MOUSE_UP, OnMouseUp);
+			ctrlHold = false;
+			mouseHold = false
 			Data.clearLatents();
 		}
 	}

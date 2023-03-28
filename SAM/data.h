@@ -27,6 +27,7 @@ public:
 	void ValidateSliderMenu(Json::Value& value);
 	void ValidateFolderMenu(Json::Value& value);
 	void ValidateAdjustmentMenu(Json::Value& value);
+	void ValidateGlobalMenu(Json::Value& value);
 	void ValidateItem(Json::Value& value);
 	void ValidateTouch(Json::Value& value);
 	void ValidateSlider(Json::Value& value);
@@ -38,6 +39,10 @@ public:
 	void ValidateEntry(Json::Value& value);
 	void ValidateFolder(Json::Value& value);
 	void ValidateHold(Json::Value& value);
+	//void ValidateMove(Json::Value& value);
+	void ValidateKeys(Json::Value& value);
+	void ValidateEdit(Json::Value& value);
+	void ValidateWidgets(Json::Value& value);
 
 	void LogError(const char* error);
 	void LogError(const char* error, const char* error2);

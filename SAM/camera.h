@@ -4,6 +4,7 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 #include "f4se/PluginAPI.h"
+#include "f4se/NiTypes.h"
 
 #include "gfx.h"
 
@@ -33,8 +34,8 @@ FreeCameraState* GetFreeCameraState();
 
 void GetCamera(GFxResult& result);
 void SetCamera(GFxResult& result, int index, float value);
-bool SaveCameraState(int index);
-bool LoadCameraState(int index);
+bool SaveCameraState(SInt32 index);
+bool LoadCameraState(SInt32 index);
 
 bool SaveCameraFile(const char* file);
 bool LoadCameraFile(const char* file);
@@ -44,3 +45,13 @@ void LoadCameraGFx(GFxResult& result, const char* path);
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void RevertCamera();
+
+NiTransform GetCameraTransform(FreeCameraState* state);
+void SetCameraTransform(FreeCameraState* state, NiTransform& transform);
+
+void RotateCameraAroundTransform(NiTransform& transform, float x, float y);
+void PanCamera(float x, float y);
+
+void UpdateCameraRotation(GFxResult& result, float x, float y);
+void UpdateCameraPan(GFxResult& result, float x, float y);
+void UpdateCameraZoom(GFxResult& result, float x);

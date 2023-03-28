@@ -23,8 +23,11 @@
 namespace SAF {
 
 	class Adjustment;
-	class ActorAdjustment;
+	class ActorAdjustments;
 	class AdjustmentManager;
+
+	typedef std::shared_ptr<Adjustment> AdjustmentPtr;
+	typedef std::shared_ptr<ActorAdjustments> ActorAdjustmentsPtr;
 
 	typedef std::unordered_map<NodeKey, NiTransform, NodeKeyHash, NodeKeyEqual> TransformMap;
 	typedef std::unordered_map<BSFixedString, NiTransform, BSFixedStringHash, BSFixedStringKeyEqual> StringTransformMap;
@@ -64,15 +67,6 @@ namespace SAF {
 		kAdjustmentUpdateFile			//Update adjustment file to version 1.0+
 	};
 
-	struct AdjustmentTransformMessage {
-		UInt32 formId;
-		UInt32 handle;
-		NodeKey nodeKey;
-		UInt32 type;
-		float a;
-		float b;
-		float c;
-	};
 	struct ExportSkeleton
 	{
 		const char* skeleton;
@@ -106,7 +100,7 @@ namespace SAF {
 
 		PersistentAdjustment() : type(kAdjustmentTypeNone) {}
 
-		PersistentAdjustment(std::shared_ptr<Adjustment> adjustment, UInt32 updateType);
+		PersistentAdjustment(AdjustmentPtr adjustment, UInt32 updateType);
 
 		PersistentAdjustment(const char* file, UInt8 type) :
 			name(file),
@@ -262,8 +256,8 @@ namespace SAF {
 		NiNode* baseRoot = nullptr;
 		UInt32 formId = 0;
 
-		std::vector<std::shared_ptr<Adjustment>> list;
-		std::unordered_map<UInt32, std::shared_ptr<Adjustment>> map;
+		std::vector<AdjustmentPtr> list;
+		std::unordered_map<UInt32, AdjustmentPtr> map;
 
 		NodeSets* nodeSets = nullptr;
 		NodeMap poseMap;
@@ -281,10 +275,10 @@ namespace SAF {
 		ActorAdjustmentState IsValid();
 		UInt64 GetRaceGender();
 
-		std::shared_ptr<Adjustment> CreateAdjustment(const char* name);
+		AdjustmentPtr CreateAdjustment(const char* name);
 		UInt32 CreateAdjustment(const char* name, const char* espName);
-		std::shared_ptr<Adjustment> GetAdjustment(UInt32 handle);
-		std::shared_ptr<Adjustment> GetListAdjustment(UInt32 index);
+		AdjustmentPtr GetAdjustment(UInt32 handle);
+		AdjustmentPtr GetListAdjustment(UInt32 index);
 		void RemoveAdjustment(UInt32 handle);
 		void RemoveAdjustment(const char* name);
 		bool HasAdjustment(const char* name);
@@ -293,13 +287,13 @@ namespace SAF {
 		UInt32 MoveAdjustment(SInt32 fromIndex, SInt32 toIndex);
 		UInt32 MergeAdjustmentDown(UInt32 handle);
 
-		bool SetMirroredTransform(std::shared_ptr<Adjustment> adjustment, BSFixedString name, NiTransform* result);
-		bool SwapMirroredTransform(std::shared_ptr<Adjustment> adjustment,
+		bool SetMirroredTransform(AdjustmentPtr adjustment, BSFixedString name, NiTransform* result);
+		bool SwapMirroredTransform(AdjustmentPtr adjustment,
 			BSFixedString left, BSFixedString right, NiTransform* leftResult, NiTransform* rightResult);
 		bool MirrorAdjustment(UInt32 handle);
 
-		std::shared_ptr<Adjustment> GetFile(const char* filename);
-		std::shared_ptr<Adjustment> GetFileOrCreate(const char* filename);
+		AdjustmentPtr GetFile(const char* filename);
+		AdjustmentPtr GetFileOrCreate(const char* filename);
 		void RemoveFile(const char* filename, UInt32 handle);
 
 		void Clear();
@@ -307,36 +301,36 @@ namespace SAF {
 		void GetOffsetTransform(BSFixedString name, NiTransform* offsetTransform);
 		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform);
 		void GetPoseTransforms(BSFixedString name, NiTransform* offsetTransform, NiTransform* poseTransform,
-			std::vector<std::shared_ptr<Adjustment>>& adjustmentList);
+			std::vector<AdjustmentPtr>& adjustmentList);
 		void UpdateNode(BSFixedString name);
 		void UpdateAllAdjustments();
-		void UpdateAllAdjustments(std::shared_ptr<Adjustment> adjustment);
+		void UpdateAllAdjustments(AdjustmentPtr adjustment);
 		
 		void UpdateAdjustmentVersion(TransformMap* map, UInt32 updateType);
-		std::shared_ptr<Adjustment> LoadAdjustment(const char* filename, bool cached = false);
-		std::shared_ptr<Adjustment> LoadAdjustmentPath(const char* filename, bool cached = false);
+		AdjustmentPtr LoadAdjustment(const char* filename, bool cached = false);
+		AdjustmentPtr LoadAdjustmentPath(const char* filename, bool cached = false);
 		UInt32 LoadAdjustmentHandle(const char* filename, const char* espName, bool cached = false);
 		UInt32 LoadAdjustmentPathHandle(const char* filename, const char* espName, bool cached = false);
-		void SaveAdjustment(const char* filename, UInt32 handle);
+		UInt32 SaveAdjustment(const char* filename, UInt32 handle);
 		bool LoadUpdatedAdjustment(const char* filename, TransformMap* map);
 		bool CacheUpdatedAdjustment(const char* filename);
 
-		void ForEachAdjustment(const std::function<void(std::shared_ptr<Adjustment>)>& functor);
-		std::shared_ptr<Adjustment> FindAdjustment(const std::function<bool(std::shared_ptr<Adjustment>)>& functor);
+		void ForEachAdjustment(const std::function<void(AdjustmentPtr)>& functor);
+		AdjustmentPtr FindAdjustment(const std::function<bool(AdjustmentPtr)>& functor);
 
 		bool RemoveMod(BSFixedString espName);
 
 		bool HasNode(BSFixedString name);
 		bool IsNodeOffset(NodeKey& nodeKey);
-		void NegateTransform(std::shared_ptr<Adjustment> adjustment, NodeKey& name);
-		void OverrideTransform(std::shared_ptr<Adjustment> adjustment, const NodeKey& name, NiTransform& transform);
-		void RotateTransformXYZ(std::shared_ptr<Adjustment> adjustment, NodeKey& name, UInt32 type, float scalar);
+		void NegateTransform(AdjustmentPtr adjustment, NodeKey& name);
+		void OverrideTransform(AdjustmentPtr adjustment, const NodeKey& name, NiTransform& transform);
+		void RotateTransformXYZ(AdjustmentPtr adjustment, NodeKey& name, UInt32 type, float scalar);
 
 		void LoadRaceAdjustment(const char* name, bool clear, bool enable);
 		void RemoveAdjustmentsByType(UInt32 type, bool checkRace);
 		UInt32 GetHandleByType(UInt32 type);
-		std::shared_ptr<Adjustment> GetAdjustmentByType(UInt32 type);
-		bool ShouldRemoveFile(std::shared_ptr<Adjustment> adjustment);
+		AdjustmentPtr GetAdjustmentByType(UInt32 type);
+		bool ShouldRemoveFile(AdjustmentPtr adjustment);
 
 		void SavePose(const char* filename, ExportSkeleton* nodes);
 		void SaveOutfitStudioPose(const char* filename, ExportSkeleton* nodes);
@@ -348,15 +342,13 @@ namespace SAF {
 
 	class AdjustmentManager
 	{
-	private:
+	public:
 		std::shared_mutex actorMutex;
 		std::shared_mutex fileMutex;
 		std::shared_mutex persistenceMutex;
 		std::shared_mutex nodeMapMutex;
 
 		bool filesLoaded = false;
-
-	public:
 		bool gameLoaded = false;
 		Settings settings;
 		BSFixedStdStringMap nodeCasingMap;
@@ -367,7 +359,7 @@ namespace SAF {
 		PersistentMap persistentAdjustments;
 
 		std::unordered_map<NiNode*, NodeMapRef> nodeMapCache;
-		std::unordered_map<UInt32, std::shared_ptr<ActorAdjustments>> actorAdjustmentCache;
+		std::unordered_map<UInt32, ActorAdjustmentsPtr> actorAdjustmentCache;
 		InsensitiveTransformMap adjustmentFileCache;
 
 		std::unordered_map<UInt64, InsensitiveStringSet> defaultRaceCache;
@@ -379,35 +371,37 @@ namespace SAF {
 		void LoadFiles();
 		void GameLoaded();
 		void ActorLoaded(Actor* actor, bool loaded);
-		bool UpdateActor(std::shared_ptr<ActorAdjustments> adjustments);
-		bool UpdateActorCache(std::shared_ptr<ActorAdjustments> adjustments);
-		bool UpdateActorNodes(std::shared_ptr<ActorAdjustments> adjustments);
-		bool CopyActor(std::shared_ptr<ActorAdjustments> src, std::shared_ptr<ActorAdjustments> dst);
-		bool CopyActorCache(std::shared_ptr<ActorAdjustments> adjustments);
+		bool UpdateActor(ActorAdjustmentsPtr adjustments);
+		bool UpdateActorCache(ActorAdjustmentsPtr adjustments);
+		bool UpdateActorNodes(ActorAdjustmentsPtr adjustments);
+		bool CopyActor(ActorAdjustmentsPtr src, ActorAdjustmentsPtr dst);
+		bool CopyActorCache(ActorAdjustmentsPtr adjustments);
 
-		std::shared_ptr<Adjustment> GetAdjustment(UInt32 formId, UInt32 handle);
-		UInt32 CreateNewAdjustment(UInt32 formId, const char* name, const char* mod);
-		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
-		UInt32 LoadAdjustment(UInt32 formId, const char* filename, const char* mod);
-		void RemoveAdjustment(UInt32 formId, UInt32 handle);
-		void ResetAdjustment(UInt32 formId, UInt32 handle);
-		void SetTransform(AdjustmentTransformMessage* message);
-		std::shared_ptr<ActorAdjustments> CreateActorAdjustment(UInt32 formId);
-		void SavePose(UInt32 formId, const char* filename, ExportSkeleton* exports);
-		void SaveOSPose(UInt32 formId, const char* filename, ExportSkeleton* exports);
-		UInt32 LoadPose(UInt32 formId, const char* filename);
-		void ResetPose(UInt32 formId);
+		AdjustmentPtr GetAdjustment(UInt32 formId, UInt32 handle);
+
+		//UInt32 CreateNewAdjustment(UInt32 formId, const char* name, const char* mod);
+		//void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
+		//UInt32 LoadAdjustment(UInt32 formId, const char* filename, const char* mod);
+		//void RemoveAdjustment(UInt32 formId, UInt32 handle);
+		//void ResetAdjustment(UInt32 formId, UInt32 handle);
+		//void SetTransform(AdjustmentSetMessage* message);
+		//void SetTransform(AdjustmentTransformMessage* message);
+		//ActorAdjustmentsPtr CreateActorAdjustment(UInt32 formId);
+		//void SavePose(UInt32 formId, const char* filename, ExportSkeleton* exports);
+		//void SaveOSPose(UInt32 formId, const char* filename, ExportSkeleton* exports);
+		//UInt32 LoadPose(UInt32 formId, const char* filename);
+		//void ResetPose(UInt32 formId);
 		void LoadRaceAdjustment(UInt32 formId, bool isFemale, const char* path, bool npc, bool clear, bool enable);
-		UInt32 MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex);
-		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
-		void LoadTongueAdjustment(UInt32 formId, TransformMap* transforms);
-		void SetAdjustmentScale(UInt32 formId, UInt32 handle, float scale);
-		void MergeAdjustmentDown(UInt32 formId, UInt32 handle);
-		void MirrorAdjustment(UInt32 formId, UInt32 handle);
+		//UInt32 MoveAdjustment(UInt32 formId, UInt32 fromIndex, UInt32 toIndex);
+		//void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
+		void LoadTongueAdjustment(ActorAdjustmentsPtr adjustments, TransformMap* transforms);
+		//void SetAdjustmentScale(UInt32 formId, UInt32 handle, float scale);
+		//void MergeAdjustmentDown(UInt32 formId, UInt32 handle);
+		//void MirrorAdjustment(UInt32 formId, UInt32 handle);
 		
-		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
-		std::shared_ptr<ActorAdjustments> GetActorAdjustments(TESObjectREFR* refr);
-		void ForEachActorAdjustments(const std::function<void(std::shared_ptr<ActorAdjustments> adjustments)>& functor);
+		ActorAdjustmentsPtr GetActorAdjustments(UInt32 formId);
+		ActorAdjustmentsPtr GetActorAdjustments(TESObjectREFR* refr);
+		void ForEachActorAdjustments(const std::function<void(ActorAdjustmentsPtr adjustments)>& functor);
 
 		NodeSets* GetNodeSets(UInt32 race, bool isFemale);
 
@@ -420,7 +414,7 @@ namespace SAF {
 
 		bool HasFile(UInt32 race, bool isFemale, UInt32 formId, const char* filename);
 
-		std::vector<PersistentAdjustment>* GetPersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
+		std::vector<PersistentAdjustment>* GetPersistentAdjustments(ActorAdjustmentsPtr adjustments);
 
 		void CreateNodeMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings, NodeMap* poseMap, NodeMap* offsetMap);
 		StringTransformMap* GetCachedTransformMap(NiNode* root, NodeKeyMap* nodeKeys, BSFixedStringSet* strings);
@@ -434,8 +428,8 @@ namespace SAF {
 		void SerializeRevert(const F4SESerializationInterface* ifc);
 
 		void LoadPersistentIfValid(UInt32 formId, UInt64 raceGenderId, PersistentAdjustment& persistent);
-		void StorePersistentAdjustments(std::shared_ptr<ActorAdjustments> adjustments);
-		bool StorePersistentIfValid(PersistentMap& map, std::shared_ptr<ActorAdjustments> adjustments);
+		void StorePersistentAdjustments(ActorAdjustmentsPtr adjustments);
+		bool StorePersistentIfValid(PersistentMap& map, ActorAdjustmentsPtr adjustments);
 		//void StorePersistentIfValid(PersistentMap& map, UInt32 id, std::vector<PersistentAdjustment>& persistents);
 		bool IsPersistentValid(PersistentAdjustment& persistent);
 		void ValidatePersistents(PersistentMap& map, UInt32 formId, UInt64 raceGenderId);
@@ -446,158 +440,4 @@ namespace SAF {
 	void SaveCallback(const F4SESerializationInterface* ifc);
 	void LoadCallback(const F4SESerializationInterface* ifc);
 	void RevertCallback(const F4SESerializationInterface* ifc);
-
-	enum {
-		kSafAdjustmentManager = 1,
-		kSafAdjustmentCreate,
-		kSafAdjustmentSave,
-		kSafAdjustmentLoad,
-		kSafAdjustmentErase,
-		kSafAdjustmentReset,
-		kSafAdjustmentTransform,
-		kSafAdjustmentActor,
-		kSafAdjustmentNegate,
-		kSafPoseSave,
-		kSafOSPoseSave,
-		kSafPoseLoad,
-		kSafPoseReset,
-		kSafResult,
-		kSafSkeletonAdjustmentLoad,
-		kSafAdjustmentRotate,
-		kSafAdjustmentMove,
-		kSafAdjustmentRename,
-		kSafAdjustmentTongue,
-		kSafAdjustmentScale,
-		kSafAdjustmentMerge,
-		kSafAdjustmentMirror
-	};
-
-	struct AdjustmentMessage {
-		UInt32 formId;
-		UInt32 handle;
-	};
-
-	struct AdjustmentCreateMessage {
-		UInt32 formId;
-		const char* name;
-		const char* esp;
-	};
-
-	struct AdjustmentSaveMessage {
-		UInt32 formId;
-		const char* filename;
-		UInt32 handle;
-	};
-
-	enum {
-		kAdjustmentTransformPosition = 1,
-		kAdjustmentTransformRotation,
-		kAdjustmentTransformScale,
-		kAdjustmentTransformReset,
-		kAdjustmentTransformNegate,
-		kAdjustmentTransformRotate
-	};
-
-	struct AdjustmentActorMessage {
-		UInt32 formId;
-	};
-
-	struct AdjustmentNegateMessage {
-		UInt32 formId;
-		UInt32 handle;
-		const char* group;
-	};
-
-	struct PoseMessage {
-		UInt32 formId;
-		const char* filename;
-	};
-
-	struct SkeletonMessage {
-		UInt32 raceId;
-		bool isFemale;
-		const char* filename;
-		bool npc;
-		bool clear;
-		bool enable;
-	};
-
-	struct MoveMessage {
-		UInt32 formId;
-		UInt32 from;
-		UInt32 to;
-	};
-
-	struct TransformMapMessage {
-		UInt32 formId;
-		TransformMap* transforms;
-	};
-
-	struct PoseExportMessage {
-		UInt32 formId;
-		const char* filename;
-		ExportSkeleton* exports;
-	};
-
-	class SAFMessaging
-	{
-	public:
-		PluginHandle pluginHandle;
-		F4SEMessagingInterface* messaging;
-		F4SEPapyrusInterface* papyrus;
-		F4SESerializationInterface* serialization;
-
-		SAFMessaging() :
-			pluginHandle(kPluginHandle_Invalid),
-			messaging(nullptr),
-			papyrus(nullptr),
-			serialization(nullptr)
-		{};
-	};
-
-	extern SAFMessaging safMessaging;
-
-	void F4SEMessageHandler(F4SEMessagingInterface::Message* msg);
-
-	class SAFDispatcher
-	{
-	private:
-		std::mutex mutex;
-	public:
-		AdjustmentManager* manager;
-		std::shared_ptr<ActorAdjustments> actorAdjustments;
-		UInt32 result = 0;
-
-		PluginHandle pluginHandle;
-		F4SEMessagingInterface* messaging;
-		const char* modName;
-
-		std::shared_ptr<ActorAdjustments> GetActorAdjustments(UInt32 formId);
-		UInt32 GetResult();
-
-		void Recieve(F4SEMessagingInterface::Message* msg);
-
-		std::string GetNodeKeyName(const NodeKey& nodeKey);
-		const NodeKey GetNodeKeyFromString(const char* str);
-
-		void CreateAdjustment(UInt32 formId, const char* name);
-		void SaveAdjustment(UInt32 formId, const char* filename, UInt32 handle);
-		void LoadAdjustment(UInt32 formId, const char* filename);
-		void RemoveAdjustment(UInt32 formId, UInt32 handle);
-		void ResetAdjustment(UInt32 formId, UInt32 handle);
-		void TransformAdjustment(UInt32 formId, UInt32 handle, const NodeKey nodeKey, UInt32 type, float a, float b, float c);
-		void CreateActorAdjustments(UInt32 formId);
-		void NegateAdjustmentGroup(UInt32 formId, UInt32 handle, const char* group);
-		void SavePose(UInt32 formId, const char* filename, ExportSkeleton* exports);
-		void SaveOSPose(UInt32 formId, const char* filename, ExportSkeleton* exports);
-		void LoadPose(UInt32 formId, const char* filename);
-		void ResetPose(UInt32 formId);
-		void LoadSkeletonAdjustment(UInt32 raceId, bool isFemale, const char* filename, bool npc, bool clear, bool enable);
-		void MoveAdjustment(UInt32 formId, UInt32 from, UInt32 to);
-		void RenameAdjustment(UInt32 formId, UInt32 handle, const char* name);
-		void LoadTongueAdjustment(UInt32 formId, TransformMap* transforms);
-		void ScaleAdjustment(UInt32 formId, UInt32 handle, float scale);
-		void MergeAdjustmentDown(UInt32 formId, UInt32 handle);
-		void MirrorAdjustment(UInt32 formId, UInt32 handle);
-	};
 }

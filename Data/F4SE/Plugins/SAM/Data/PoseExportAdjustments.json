@@ -37,6 +37,7 @@
             "var": "selectedAdjustments",
             "all": true,
             "entry": {
+                "title": "Export Filename",
                 "func": {
                     "type": "sam",
                     "name": "SavePose",

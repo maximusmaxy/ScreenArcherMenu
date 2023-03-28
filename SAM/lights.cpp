@@ -117,6 +117,7 @@ float DistanceBetweenPoints(NiPoint3& a, NiPoint3& b)
 	return std::sqrt((xDif * xDif) + (yDif * yDif));
 }
 
+//TODO convert to unit circle https://www.mathsisfun.com/geometry/unit-circle.html
 float CurrentRotation(NiPoint3& a, NiPoint3& b, float distance)
 {
 	if (distance == 0.0f)

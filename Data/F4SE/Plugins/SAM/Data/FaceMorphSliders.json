@@ -42,6 +42,7 @@
         "func": {
             "type": "entry",
             "entry": {
+                "title": "Morphs Filename",
                 "func": {
                     "type": "sam",
                     "name": "SaveFaceMorphs"

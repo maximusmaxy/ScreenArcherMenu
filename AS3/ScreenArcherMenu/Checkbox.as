@@ -31,6 +31,7 @@
 			super();
 			bounds.addEventListener(MouseEvent.CLICK, onClick);
 			bounds.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+			gotoAndStop(1);
 		}
 		
 		public function init(x:int, id:int, type:int, selectable:Boolean)
@@ -155,6 +156,7 @@
 			dragState = SELECTED;
 			Data.setCursorVisible(false);
 			Data.storeCursorPos();
+			Data.startEditFunction();
 		}
 		
 		public function onMove(event:MouseEvent) {
@@ -169,11 +171,14 @@
 			dragState = UNSELECTED;
 			Data.setCursorVisible(true);
 			Data.endCursorDrag();
+			Data.endEditFunction();
 		}
 		
 		public function forceDrag(inc:Boolean)
 		{
+			Data.startEditFunction();
 			functions.valueFloat(id, inc ? increment : -increment);
+			Data.endEditFunction();
 		}
 	}
 }

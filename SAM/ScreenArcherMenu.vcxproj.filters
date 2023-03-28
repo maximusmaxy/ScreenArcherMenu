@@ -26,6 +26,7 @@
     <ClCompile Include="types.cpp" />
     <ClCompile Include="companion.cpp" />
     <ClCompile Include="material.cpp" />
+    <ClCompile Include="messaging.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -53,6 +54,7 @@
     <ClInclude Include="types.h" />
     <ClInclude Include="companion.h" />
     <ClInclude Include="material.h" />
+    <ClInclude Include="messaging.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
