@@ -1721,25 +1721,25 @@ namespace SAF {
 		return nullptr;
 	}
 	
-	//ActorAdjustmentsPtr AdjustmentManager::CreateActorAdjustment(UInt32 formId)
-	//{
-	//	TESForm* form = LookupFormByID(formId);
+	ActorAdjustmentsPtr AdjustmentManager::CreateActorAdjustment(UInt32 formId)
+	{
+		TESForm* form = LookupFormByID(formId);
 
-	//	Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
-	//	if (!actor) 
-	//		return nullptr;
+		Actor* actor = DYNAMIC_CAST(form, TESForm, Actor);
+		if (!actor) 
+			return nullptr;
 
-	//	TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
-	//	if (!npc) 
-	//		return nullptr;
+		TESNPC* npc = DYNAMIC_CAST(actor->baseForm, TESForm, TESNPC);
+		if (!npc) 
+			return nullptr;
 
-	//	ActorAdjustmentsPtr adjustments = std::make_shared<ActorAdjustments>(actor, npc);
-	//	
-	//	if (!UpdateActorCache(adjustments))
-	//		return nullptr;
+		ActorAdjustmentsPtr adjustments = std::make_shared<ActorAdjustments>(actor, npc);
+		
+		if (!UpdateActorCache(adjustments))
+			return nullptr;
 
-	//	return adjustments;
-	//}
+		return adjustments;
+	}
 
 	InsensitiveStringSet* AdjustmentManager::GetRaceAdjustments(UInt32 race, bool isFemale)
 	{

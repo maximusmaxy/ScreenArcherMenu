@@ -38,6 +38,9 @@
 				Data.selectedText.value.setSelection(0,0);
 				Data.selectedText.value.selectable = false;
 				Data.selectedText = null;
+
+				if (!Data.extraHotkeys)
+					Data.f4se.AllowTextInput(false);
 			}
 		}
 		

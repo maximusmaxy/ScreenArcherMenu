@@ -52,6 +52,7 @@ RelocAddr<_BSGFxShaderFXTargetSetUseAlphaForDropShadow> BSGFxShaderFXTargetSetUs
 
 ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 {
+	//looksmenu = 0x8058404
 	flags =
 		IMenu::kFlag_AlwaysOpen |
 		IMenu::kFlag_UsesCursor |
@@ -60,7 +61,7 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 		IMenu::kFlag_UpdateUsesCursor |
 		IMenu::kFlag_CustomRendering |
 		IMenu::kFlag_AssignCursorToRenderer |
-		//IMenu::kFlag_HasButtonBar | 
+		IMenu::kFlag_HasButtonBar | 
 		//IMenu::kFlag_IsTopButtonBar |
 		IMenu::kFlag_UsesMovementToDirection;
 
@@ -269,6 +270,16 @@ void ScreenArcherMenu::EnableBoneDisplay(SAF::ActorAdjustmentsPtr actorAdjustmen
 	boneDisplay.rootMarker = PushNodeMarker(actorAdjustments->root);
 	//Clear root name to prevent selection
 	boneDisplay.rootMarker->marker.SetMember("boneName", &GFxValue());
+
+	GFxValue dimension;
+	movie->movieRoot->GetVariable(&dimension, "root1.Menu_mc.x");
+	boneDisplay.dimensions.x = -dimension.GetNumber();
+	movie->movieRoot->GetVariable(&dimension, "root1.Menu_mc.y");
+	boneDisplay.dimensions.y = -dimension.GetNumber();
+	movie->movieRoot->GetVariable(&dimension, "root1.Menu_mc.stage.stageWidth");
+	boneDisplay.dimensions.width = dimension.GetNumber();
+	movie->movieRoot->GetVariable(&dimension, "root1.Menu_mc.stage.stageHeight");
+	boneDisplay.dimensions.height = dimension.GetNumber();
 
 	VisitNodes(boneDisplay.actor->nodeSets->baseStrings, boneDisplay.actor->root, boneDisplay.rootMarker);
 	UpdateBoneFilter();
@@ -506,7 +517,7 @@ void ScreenArcherMenu::BoneDisplay::Update()
 		if (it.visible) {
 			GFxValue::DisplayInfo displayInfo;
 			it.marker.GetDisplayInfo(&displayInfo);
-			displayInfo.SetPosition(SAM_X + (SAM_WIDTH * outPos.x), SAM_Y + (SAM_HEIGHT * (1 - outPos.y)));
+			displayInfo.SetPosition(dimensions.x + (dimensions.width * outPos.x), dimensions.y + (dimensions.height * (1 - outPos.y)));
 			it.marker.SetDisplayInfo(&displayInfo);
 		}
 	}
@@ -541,7 +552,7 @@ void ScreenArcherMenu::BoneDisplay::Update()
 		if (visible) {
 			GFxValue::DisplayInfo info;
 			rotateMarker->marker.GetDisplayInfo(&info);
-			info.SetPosition(SAM_X + (SAM_WIDTH * outPos.x), SAM_Y + (SAM_HEIGHT * (1 - outPos.y)));
+			info.SetPosition(dimensions.x + (dimensions.width * outPos.x), dimensions.y + (dimensions.height * (1 - outPos.y)));
 			rotateMarker->marker.SetDisplayInfo(&info);
 		}
 
@@ -1001,6 +1012,8 @@ IMenuWrapper SamManager::GetWrapped() {
 	return IMenuWrapper(storedMenu);
 }
 
+RelocAddr<bool> bLoadingMenuOpen(0x58D08B3);
+
 void SamManager::OpenOrCloseMenu(const char* menuName) {
 	BSFixedString menuStr(SAM_MENU_NAME);
 	BSFixedString containerMenu(CONTAINER_MENU_NAME);
@@ -1021,14 +1034,15 @@ void SamManager::OpenOrCloseMenu(const char* menuName) {
 					if (root->Invoke("root1.Menu_mc.TryClose", &gfxResult, nullptr, 0))
 						result = gfxResult.GetBool();
 
-					if (result)
+					if (result) {
+						//*((bool*)bLoadingMenuOpen.GetUIntPtr()) = true;
 						CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuStr, kMessage_Close);
+					}	
 				}
 			}
 		}
 		else {
 			if ((*g_ui)->IsMenuRegistered(menuStr)) {
-				//should make this a set or something
 				if (!(*g_ui)->IsMenuOpen(menuStr))
 				{
 					storedName = menuName ? menuName : MAIN_MENU_NAME;
@@ -1055,7 +1069,7 @@ void SamManager::CloseMenu()
 {
 	auto wrapped = GetWrapped();
 	if (wrapped.IsOpen()) {
-		//RemoveDuplicateIMenusFromStack(wrapped.menu);
+		//storedName = MAIN_MENU_NAME;
 		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(BSFixedString(SAM_MENU_NAME), kMessage_Close);
 	}
 }
@@ -1472,8 +1486,9 @@ bool SamManager::OnMenuOpen() {
 	}
 
 	SetInputEnableLayer(true);
-	(*g_inputMgr)->AllowTextInput(true);
 	LockFfc(true);
+	if (menuOptions.extrahotkeys)
+		(*g_inputMgr)->AllowTextInput(true);
 
 	TESObjectREFR* refr = GetRefr();
 	selected.Update(refr);
@@ -1490,11 +1505,14 @@ bool SamManager::OnMenuOpen() {
 	if (LoadData(root, &saved))
 		data.SetMember("saved", &saved);
 
-	GFxValue widescreen(GetMenuOption(kOptionWidescreen));
+	GFxValue widescreen(menuOptions.widescreen);
 	data.SetMember("widescreen", &widescreen);
 
-	GFxValue alignment(GetMenuOption(kOptionAlignment));
+	GFxValue alignment(menuOptions.alignment);
 	data.SetMember("swap", &alignment);
+
+	GFxValue extraHotkeys(menuOptions.extrahotkeys);
+	data.SetMember("extraHotkeys", &extraHotkeys);
 
 	auto globalJson = GetCachedMenu("Global");
 	if (globalJson) {
@@ -1510,10 +1528,12 @@ bool SamManager::OnMenuOpen() {
 }
 
 bool SamManager::OnMenuClose() {
-	(*g_inputMgr)->AllowTextInput(false);
+	if (menuOptions.extrahotkeys)
+		(*g_inputMgr)->AllowTextInput(false);
 	SetInputEnableLayer(false);
 	LockFfc(false);
 	selected.Clear();
+	//*((bool*)bLoadingMenuOpen.GetUIntPtr()) = false;
 	return ReleaseMenu();
 }
 
@@ -1532,7 +1552,7 @@ bool SamManager::OnConsoleUpdate() {
 	TESObjectREFR* refr = GetRefr();
 	bool refUpdated = false;
 
-	if (selected.refr != refr && GetMenuOption(kOptionHotswap))
+	if (selected.refr != refr && menuOptions.hotswap)
 	{
 		selected.Update(refr);
 		refUpdated = true;

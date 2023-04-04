@@ -380,15 +380,14 @@ void GetItemList(GFxResult& result, const char* modName, SInt32 groupIndex)
 	}
 }
 
-typedef void (*_AddInventoryItem)(TESObjectREFR* refr, TESForm* form, ExtraDataList* filter, UInt64 unk);
+typedef void (*_AddInventoryItem)(TESObjectREFR* refr, TESForm* form, UInt64* extraDataList, UInt64 unk1, UInt64 unk2, UInt64 unk3, UInt64 unk4);
 RelocAddr<_AddInventoryItem> AddInventoryItem(0x3FBB00);
 
 void AddItemFromForm(TESObjectREFR* refr, TESForm* form)
 {
-	ExtraDataList list;
-	memset(&list, 0, sizeof(ExtraDataList));
+	UInt64 extraData = 0;
 
-	AddInventoryItem(refr, form, &list, 1);
+	AddInventoryItem(refr, form, &extraData, 1, 0, 0, 0);
 }
 
 bool RefrHasItem(TESObjectREFR* refr, TESForm* form) {

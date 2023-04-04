@@ -137,6 +137,9 @@
 				value.maxChars = 10;
 				stage.focus = value;
 				value.setSelection(0, value.text.length);
+				
+				if (!Data.extraHotkeys)
+					Data.f4se.AllowTextInput(true);
 			}
 		}
 		

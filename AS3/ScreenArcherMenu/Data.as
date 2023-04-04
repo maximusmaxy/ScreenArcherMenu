@@ -30,6 +30,7 @@
 		public static var cursorPosY:int = -1;
 
 		public static var selectedText:SliderListEntry = null;
+		public static var extraHotkeys:Boolean = false;
 		
 		public static var latentWaiting:Boolean = false;
 		public static var latentMenuData:Object;
@@ -1011,7 +1012,7 @@
 			sam = samObj;
 			f4se = f4seObj;
 			stage = stageObj;
-			
+
 			if (data.saved) {
 				menuOptions = data.saved.options;
 				menuValues = data.saved.values;
@@ -1277,16 +1278,22 @@
 			try {
 				var result:GFxResult = sam.GetFolder(path, ext);
 				
-				if (result && result.type == RESULT_FOLDER)
-					return result;
+				if (result) {
+					if (result.type == RESULT_FOLDER) {
+						return result;
+					} else if (result.type == RESULT_ERROR) {
+						error = result.result;
+						return null;
+					}
+				}
 			}
 			catch (e:Error) {}
 			
-			if (Util.debug) {
-				var debugFolder:Object = getDebugFolder(path);
-				if (debugFolder)
-					return new GFxResult(RESULT_FOLDER, debugFolder);
-			}
+//			if (Util.debug) {
+//				var debugFolder:Object = getDebugFolder(path);
+//				if (debugFolder)
+//					return new GFxResult(RESULT_FOLDER, debugFolder);
+//			}
 			
 			error = "Failed to get folder";
 			return null;
@@ -1298,8 +1305,14 @@
 			try {
 				var result:GFxResult = sam.GetSkeletonAdjustments(path, ext, race);
 				
-				if (result && result.type == RESULT_FOLDERCHECKBOX)
-					return result;
+				if (result) {
+					if (result.type == RESULT_FOLDERCHECKBOX) {
+						return result;
+					} else if (result.type == RESULT_ERROR) {
+						error = result.result;
+						return null;
+					}
+				}
 			}
 			catch (e:Error) {}
 

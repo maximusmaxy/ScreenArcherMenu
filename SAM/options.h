@@ -12,6 +12,7 @@ public:
 	bool hotswap;
 	bool alignment;
 	bool widescreen;
+	bool extrahotkeys;
 
 	void Initialize();
 	void ToJson(Json::Value& value);
@@ -24,10 +25,10 @@ enum {
 	kOptionHotswap = 0,
 	kOptionAlignment,
 	kOptionWidescreen,
+	kOptionExtraHotkeys,
 
 	kOptionMax
 };
 
 void GetMenuOptions(GFxResult& result);
-bool GetMenuOption(SInt32 index);
 void SetMenuOption(GFxResult& result, SInt32 index, bool value);

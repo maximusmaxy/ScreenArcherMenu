@@ -9,18 +9,21 @@ void Options::Initialize() {
 	hotswap = true;
 	alignment = false;
 	widescreen = false;
+	extrahotkeys = true;
 }
 
 void Options::ToJson(Json::Value& value) {
 	value["hotswap"] = hotswap;
 	value["alignment"] = alignment;
 	value["widescreen"] = widescreen;
+	value["extrahotkeys"] = extrahotkeys;
 }
 
 void Options::FromJson(Json::Value& value) {
 	hotswap = value.get("hotswap", true).asBool();
 	alignment = value.get("alignment", false).asBool();
 	widescreen = value.get("widescreen", false).asBool();
+	extrahotkeys = value.get("extrahotkeys", true).asBool();
 }
 
 void GetMenuOptions(GFxResult& result)
@@ -30,16 +33,7 @@ void GetMenuOptions(GFxResult& result)
 	result.PushValue(menuOptions.hotswap);
 	result.PushValue(menuOptions.alignment);
 	result.PushValue(menuOptions.widescreen);
-}
-
-bool GetMenuOption(SInt32 index) {
-	switch (index) {
-	case kOptionHotswap: return menuOptions.hotswap;
-	case kOptionAlignment: return menuOptions.alignment;
-	case kOptionWidescreen: return menuOptions.widescreen;
-	}
-
-	return false;
+	result.PushValue(menuOptions.extrahotkeys);
 }
 
 void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
@@ -47,9 +41,9 @@ void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
 	case kOptionHotswap: menuOptions.hotswap = value; break;
 	case kOptionAlignment: menuOptions.alignment = value; break;
 	case kOptionWidescreen: menuOptions.widescreen = value; break;
+	case kOptionExtraHotkeys: menuOptions.extrahotkeys = value; break;
 	default: return;
 	}
 
-	if (!SaveOptionsFile(OPTIONS_PATH))
-		_Log("Failed to save options: ", OPTIONS_PATH);
+	SaveOptionsFile(OPTIONS_PATH);
 }

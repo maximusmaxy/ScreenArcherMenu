@@ -571,7 +571,7 @@ namespace SAF {
 		value["version"] = 1;
 
 		std::filesystem::path filepath(filename);
-		value["name"] = filepath.stem().string();
+		value["name"] = filepath.filename().string();
 
 		Json::Value transforms(Json::ValueType::objectValue);
 
@@ -643,7 +643,7 @@ namespace SAF {
 		value["skeleton"] = (skeleton ? skeleton : "Vanilla");
 
 		std::filesystem::path filepath(filename);
-		value["name"] = filepath.stem().string();
+		value["name"] = filepath.filename().string();
 
 		Json::Value transforms(Json::ValueType::objectValue);
 
@@ -701,7 +701,7 @@ namespace SAF {
 			return false;
 		}
 
-		std::string name = std::filesystem::path(path).stem().string();
+		std::string name = std::filesystem::path(path).filename().string();
 
 		xml_document<> doc;
 		xml_node<>* declaration = doc.allocate_node(node_declaration);

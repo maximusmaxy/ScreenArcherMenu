@@ -386,7 +386,7 @@ namespace SAF {
 		//void ResetAdjustment(UInt32 formId, UInt32 handle);
 		//void SetTransform(AdjustmentSetMessage* message);
 		//void SetTransform(AdjustmentTransformMessage* message);
-		//ActorAdjustmentsPtr CreateActorAdjustment(UInt32 formId);
+		ActorAdjustmentsPtr CreateActorAdjustment(UInt32 formId);
 		//void SavePose(UInt32 formId, const char* filename, ExportSkeleton* exports);
 		//void SaveOSPose(UInt32 formId, const char* filename, ExportSkeleton* exports);
 		//UInt32 LoadPose(UInt32 formId, const char* filename);

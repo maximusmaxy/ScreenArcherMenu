@@ -58,7 +58,7 @@
 #define MORPH_MAX 54
 #define CAM_SAVE_STATE_SLOTS 3
 
-#define SAM_X -646.85f
-#define SAM_Y -360.9f
-#define SAM_WIDTH 1279.6f
-#define SAM_HEIGHT 719.6f
+//#define SAM_X -646.85f
+//#define SAM_Y -360.9f
+//#define SAM_WIDTH 1279.6f
+//#define SAM_HEIGHT 719.6f

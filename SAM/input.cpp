@@ -34,18 +34,11 @@ void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 		keyCode = keyMask;
 	}
 
-	if (!keyCode)
+	if (!keyCode || keyCode >= InputMap::kMaxMacros)
 		return;
 
-	// Valid scancode? Add two for mouse scroll
-	//if (keyCode >= InputMap::kMaxMacros)// + 2)
-	//	return;
-
-	//BSFixedString	control	= *inputEvent->GetControlID();
-	float timer = inputEvent->timer;
-
 	if (inputEvent->isDown == 1.0f) {
-		if (timer == 0.0f) {
+		if (inputEvent->timer == 0.0f) {
 			samManager.Invoke("root1.Menu_mc.ProcessKeyDown", nullptr, &GFxValue(keyCode), 1);
 			inputRepeat[keyCode] = 0;
 		}
@@ -56,7 +49,7 @@ void SamInputHandler::OnButtonEvent(ButtonEvent* inputEvent)
 			}
 		}
 	}
-	else if (inputEvent->isDown == 0.0f && timer != 0.0f) {
+	else if (inputEvent->isDown == 0.0f && inputEvent->timer != 0.0f) {
 		samManager.Invoke("root1.Menu_mc.ProcessKeyUp", nullptr, &GFxValue(keyCode), 1);
 	}
 }

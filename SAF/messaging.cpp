@@ -57,7 +57,12 @@ namespace SAF {
 
 	ActorAdjustmentsPtr GetActorAdjustment(UInt32 formId)
 	{
-		return g_adjustmentManager.GetActorAdjustments(formId);
+		auto adjustments = g_adjustmentManager.GetActorAdjustments(formId);
+		
+		if (!adjustments)
+			adjustments = g_adjustmentManager.CreateActorAdjustment(formId);
+
+		return adjustments;
 	}
 
 	UInt32 CreateAdjustment(ActorAdjustmentsPtr adjustments, const char* name, const char* mod) {

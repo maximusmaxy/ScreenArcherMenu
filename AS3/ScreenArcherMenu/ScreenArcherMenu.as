@@ -534,18 +534,13 @@
 			if (data.title) {
 				titleName = data.title;
 			}
-			var alignment:Boolean = false;
-			if (data.swap) {
-				swapped = data.swap;
-				alignment = true;
-			}
-			if (data.widescreen) {
-				widescreen = data.widescreen;
-				alignment = true;
-			}
-			if (alignment) {
-				UpdateAlignment();
-			}
+
+			swapped = data.swap;
+			widescreen = data.widescreen;
+			UpdateAlignment();
+			
+			Data.extraHotkeys = data.extraHotkeys;
+
 			this.rootMenu = data.menuName;
 			Data.menuName = data.menuName;
 			if (data.saved) {
@@ -726,11 +721,13 @@
 //					return;
 
 				case 601://CTRL+Y	
-					Data.redoEditFunction();
+					if (Data.extraHotkeys)
+						Data.redoEditFunction();
 					return;
 					
 				case 602://CTRL+Z
-					Data.undoEditFunction();
+					if (Data.extraHotkeys)
+						Data.undoEditFunction();
 					return;
 			}
 			
@@ -1953,7 +1950,11 @@
 		internal function StartTextInput(txt:String, title:String)
 		{
 			if (!filenameInput.visible) {
-				AllowTextInput(false);
+				
+				//if extra hotkeys are enabled, disable text input to prevent the hotkey from being entered in the field
+				if (Data.extraHotkeys)
+					AllowTextInput(false);
+					
 				state = STATE_ENTRY;
 				sliderList.visible = false;
 				filenameInput.visible = true;
@@ -1964,6 +1965,7 @@
 				filenameInput.Input_tf.maxChars = 100;
 				stage.focus = filenameInput.Input_tf;
 				filenameInput.Input_tf.setSelection(0, filenameInput.Input_tf.text.length);
+				
 				AllowTextInput(true);
 			}
 		}
@@ -1977,10 +1979,13 @@
 				filenameInput.Input_tf.setSelection(0,0);
 				filenameInput.Input_tf.selectable = false;
 				filenameInput.Input_tf.maxChars = 0;
-				//AllowTextInput(false);
 				filenameInput.visible = false;
 				sliderList.visible = true;
 				stage.focus = sliderList;
+				
+				//if extra hotkeys are disable, disable the text input too
+				if (!Data.extraHotkeys)
+					AllowTextInput(false);
 			}
 		}
 		
@@ -2329,11 +2334,8 @@
 			}
 		}
 		
-		public function SetAlignment(i:int, checked:Boolean)
+		public function SetOption(i:int, checked:Boolean)
 		{
-			swapped = checked;
-			Data.menuValues[i] = checked;
-			UpdateAlignment();
 			try {
 				this.sam.SetOption(i, checked);
 			} catch (e:Error) {
@@ -2341,16 +2343,34 @@
 			}
 		}
 		
-		public function SetWidescreen(i:int, checked:Boolean)
+		public function SetAlignment(i:int, checked:Boolean):GFxResult
+		{
+			swapped = checked;
+			Data.menuValues[i] = checked;
+			UpdateAlignment();
+			SetOption(i, checked);
+			
+			return Data.resultSuccess;
+		}
+		
+		public function SetWidescreen(i:int, checked:Boolean):GFxResult
 		{
 			widescreen = checked;
 			Data.menuValues[i] = checked;
 			UpdateAlignment();
-			try {
-				this.sam.SetOption(i, checked);
-			} catch (e:Error) {
-				trace("Failed to get alignment");
-			}
+			SetOption(i, checked);
+			
+			return Data.resultSuccess;
+		}
+		
+		public function SetExtraHotkeys(i:int, checked:Boolean):GFxResult
+		{
+			Data.extraHotkeys = checked;
+			Data.menuValues[i] = checked;
+			SetOption(i, checked);
+			AllowTextInput(checked);
+			
+			return Data.resultSuccess;
 		}
 		
 		internal function UpdateAlignment():void
@@ -2365,7 +2385,6 @@
 			}
 		}
 
-		
 		public function ToggleOrder(checked:Boolean):GFxResult
 		{
 			sliderList.update();

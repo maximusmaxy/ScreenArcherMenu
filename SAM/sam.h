@@ -41,6 +41,12 @@ public:
 		//bool rotateEnabled;
 		std::mutex mutex;
 		//std::list<const char*> hovers;
+		struct {
+			double x;
+			double y;
+			double width;
+			double height;
+		} dimensions;
 		
 		struct NodeMarker {
 			GFxValue marker;
