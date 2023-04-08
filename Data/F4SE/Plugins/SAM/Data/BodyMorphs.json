@@ -1,0 +1,74 @@
+{
+    "type": "slider",
+    "slider": {
+        "type": "int",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "stepkey": 1
+    },
+    "get": {
+        "type": "sam",
+        "name": "GetBodyMorphs"
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetBodyMorph"
+    },
+    "save": {
+        "name": "$SAM_Save",
+        "type": "func",
+        "func": {
+            "type": "entry",
+            "entry": {
+                "title": "Bodyslide Preset",
+                "func": {
+                    "type": "sam",
+                    "name": "SaveBodyslidePreset"
+                }
+            }
+        }
+    },
+    "load": {
+        "name": "$SAM_Load",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "format": "full",
+                "path": "Data\\tools\\bodyslide\\SliderPresets",
+                "ext": ".xml",
+                "pop": false,
+                "func": {
+                    "type": "sam",
+                    "name": "LoadBodyslidePreset"
+                }
+            }
+        }
+    },
+    "reset": {
+        "name": "$SAM_Reset",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "ResetBodyMorphs",
+            "refresh": true
+        }
+    },
+    "extra": {
+        "name": "$SAM_SliderSet",
+        "type": "func",
+        "func": {
+            "type": "folder",
+            "folder": {
+                "format": "full",
+                "path": "Data\\tools\\bodyslide\\SliderSets",
+                "ext": ".osp",
+                "func": {
+                    "type": "sam",
+                    "name": "LoadSliderSet"
+                }
+            }
+        }
+    }
+}

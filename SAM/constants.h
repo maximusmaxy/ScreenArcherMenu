@@ -23,6 +23,8 @@
 #define OPTIONS_PATH "Data\\F4SE\\Plugins\\SAM\\options.json"
 #define COMPANION_PATH "Data\\F4SE\\Plugins\\SAM\\Companions"
 #define RESOURCES_PATH "Data\\F4SE\\Plugins\\SAM\\Resources"
+#define BODYSLIDE_PRESETS_PATH "Data\\tools\\bodyslide\\SliderPresets"
+#define BODYSLIDE_SLIDERSETS_PATH "Data\\tools\\bodyslide\\SliderSets"
 
 #define IDLE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\IdleFavorites.txt"
 //#define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"
@@ -43,6 +45,8 @@
 #define LIGHT_FORM_ERROR "Light form ID not found"
 #define BONE_MISSING_ERROR "Bone could not be found"
 #define TONGUE_BONES_ERROR "Tongue menu not found"
+#define LOOKSMENU_ERROR "LooksMenu function not found"
+#define BODYSLIDE_PRESET_ERROR "Failed to read bodyslide preset"
 
 #define F4SE_NOT_INSTALLED "Menu not registered. Make sure F4SE is installed correctly"
 

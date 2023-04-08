@@ -79,8 +79,6 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 
 		CreateBaseShaderTarget(filterHolder, stage);
 		filterHolder->SetFilterColor(false);
-		//BSGFxShaderFXTargetSetUseAlphaForDropShadow(filterHolder, true);
-		//(*g_colorUpdateDispatcher)->eventDispatcher.AddEventSink(filterHolder);
 		shaderFXObjects.Push(filterHolder);
 	}
 }
@@ -163,74 +161,20 @@ void SetShaderColor(BSGFxShaderFXTarget* target, float r, float g, float b) {
 	target->EnableColorMultipliers(&color, 1.0f);
 }
 
-ScreenArcherMenu::BoneDisplay::NodeMarker* ScreenArcherMenu::PushNodeMarker(NiAVObject* node) {
-	auto& emplaced = boneDisplay.nodes.emplace_back(BoneDisplay::NodeMarker(node));
+void ScreenArcherMenu::PushNodeMarker(NiAVObject* node, BSFixedString name) {
+	auto& emplaced = boneDisplay.nodes.emplace_back(BoneDisplay::NodeMarker(node, name));
 	movie->movieRoot->CreateObject(&emplaced.marker, "NodeMarker", &GFxValue(node->m_name.c_str()), 1);
 	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
 	movie->movieRoot->Invoke("root1.Menu_mc.AddNodeMarker", nullptr, &emplaced.marker, 1);
-
-	//emplaced.target = new BSGFxShaderFXTarget(&emplaced.marker);
-	//BSGFxShaderFXTargetSetUseAlphaForDropShadow(emplaced.target, true);
-	//EnableHUDColor(emplaced.target);
-
-	return &emplaced;
 }
 
 void ScreenArcherMenu::PushBoneMarker(BoneDisplay::NodeMarker* start, BoneDisplay::NodeMarker* end) {
 	auto& emplaced = boneDisplay.bones.emplace_back(BoneDisplay::BoneMarker(start, end));
 	movie->movieRoot->CreateObject(&emplaced.marker, "BoneMarker", nullptr, 0);
 	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
-
-	//emplaced.target = new BSGFxShaderFXTarget(&emplaced.marker);
-	//BSGFxShaderFXTargetSetUseAlphaForDropShadow(emplaced.target, true);
-	//EnableHUDColor(emplaced.target);
 }
 
-//void ScreenArcherMenu::PushAxisMarker(NiColor& color, NiTransform& transform) {
-//	auto& emplaced = boneDisplay.axes.emplace_back(BoneDisplay::AxisMarker(transform));
-//	movie->movieRoot->CreateObject(&emplaced.marker, "AxisMarker", nullptr, 0);
-//	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
-//
-//	emplaced.target = new BSGFxShaderFXTarget(&emplaced.marker);
-//	emplaced.target->EnableColorMultipliers(&color, 2.0f);
-//}
-
-//void ScreenArcherMenu::InitRotateTool() {
-//	boneDisplay.rotateTool = std::make_unique<BoneDisplay::RotateTool>();
-//
-//	movie->movieRoot->CreateObject(&boneDisplay.rotateTool->tool, "RotateTool", nullptr, 0);
-//	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &boneDisplay.rotateTool->tool, 1);
-//
-//	//boneDisplay.rotateTool->targets[0] = new BSGFxShaderFXTarget(&boneDisplay.rotateTool->tool);
-//	//EnableHUDColor(boneDisplay.rotateTool->targets[0]);
-//
-//	boneDisplay.rotateTool->tool.GetMember("xAxis", &boneDisplay.rotateTool->axis[0]);
-//	boneDisplay.rotateTool->tool.GetMember("yAxis", &boneDisplay.rotateTool->axis[1]);
-//	boneDisplay.rotateTool->tool.GetMember("zAxis", &boneDisplay.rotateTool->axis[2]);
-//
-//	NiColor color = GetNiColor(1.0f, 0.0f, 0.0f);
-//	boneDisplay.rotateTool->targets[0] = new BSGFxShaderFXTarget(&boneDisplay.rotateTool->axis[0]);
-//	boneDisplay.rotateTool->targets[0]->EnableColorMultipliers(&color, 2.0f);
-//
-//	color = GetNiColor(0.0f, 1.0f, 0.0f);
-//	boneDisplay.rotateTool->targets[1] = new BSGFxShaderFXTarget(&boneDisplay.rotateTool->axis[1]);
-//	boneDisplay.rotateTool->targets[1]->EnableColorMultipliers(&color, 2.0f);
-//
-//	color = GetNiColor(0.0f, 0.0f, 1.0f);
-//	boneDisplay.rotateTool->targets[2] = new BSGFxShaderFXTarget(&boneDisplay.rotateTool->axis[2]);
-//	boneDisplay.rotateTool->targets[2]->EnableColorMultipliers(&color, 2.0f);
-//}
-
-//void ScreenArcherMenu::PushRotateMarker(SInt32 axis, NiColor& color, NiTransform& transform) {
-//	auto& emplaced = boneDisplay.rotates.emplace_back(BoneDisplay::RotateMarker(transform));
-//	movie->movieRoot->CreateObject(&emplaced.marker, "RotateMarker", &GFxValue(axis), 1);
-//	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
-//
-//	emplaced.target = new BSGFxShaderFXTarget(&emplaced.marker);
-//	emplaced.target->EnableColorMultipliers(&color, 2.0f);
-//}
-
-void ScreenArcherMenu::VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent, BoneDisplay::NodeMarker* start)
+void ScreenArcherMenu::VisitNodes(SAF::BSFixedStringSet& set, SAF::BSFixedStringSet& found, NiAVObject* parent, BSFixedString parentName)
 {
 	NiPointer<NiNode> node(parent->GetAsNiNode());
 
@@ -240,17 +184,33 @@ void ScreenArcherMenu::VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent
 			if (object) {
 
 				//if child is found, add markers and recursive call with new parent
-				if (set.count(object->m_name)) {
-					BoneDisplay::NodeMarker* end = PushNodeMarker(object);
-					PushBoneMarker(start, end);
-					VisitNodes(set, object, end);
+				if (set.count(object->m_name) && !found.count(object->m_name)) 
+				{
+					PushNodeMarker(object, parentName);
+					found.emplace(object->m_name);
+					VisitNodes(set, found, object, object->m_name);
 				}
-
 				//Else keep searching for children
 				else {
-					VisitNodes(set, object, start);
+					VisitNodes(set, found, object, parentName);
 				}
 			}
+		}
+	}
+}
+
+void ScreenArcherMenu::AddBones() 
+{
+	//make a map of parents
+	std::unordered_map<BSFixedString, BoneDisplay::NodeMarker*, SAF::BSFixedStringHash, SAF::BSFixedStringKeyEqual> parents;
+	for (auto it = boneDisplay.nodes.begin(); it != boneDisplay.nodes.end(); ++it) {
+		parents.emplace(it->node->m_name, &*it);
+	}
+	//push start->end bones
+	for (auto it = boneDisplay.nodes.begin(); it != boneDisplay.nodes.end(); ++it) {
+		auto parent = parents.find(it->parent);
+		if (parent != parents.end()) {
+			PushBoneMarker(parent->second, &*it);
 		}
 	}
 }
@@ -267,9 +227,7 @@ void ScreenArcherMenu::EnableBoneDisplay(SAF::ActorAdjustmentsPtr actorAdjustmen
 	boneDisplay.enabled = true;
 	boneDisplay.Reserve(actorAdjustments->nodeSets->baseStrings.size() + 1);
 
-	boneDisplay.rootMarker = PushNodeMarker(actorAdjustments->root);
-	//Clear root name to prevent selection
-	boneDisplay.rootMarker->marker.SetMember("boneName", &GFxValue());
+	PushNodeMarker(actorAdjustments->root, BSFixedString());
 
 	GFxValue dimension;
 	movie->movieRoot->GetVariable(&dimension, "root1.Menu_mc.x");
@@ -281,7 +239,9 @@ void ScreenArcherMenu::EnableBoneDisplay(SAF::ActorAdjustmentsPtr actorAdjustmen
 	movie->movieRoot->GetVariable(&dimension, "root1.Menu_mc.stage.stageHeight");
 	boneDisplay.dimensions.height = dimension.GetNumber();
 
-	VisitNodes(boneDisplay.actor->nodeSets->baseStrings, boneDisplay.actor->root, boneDisplay.rootMarker);
+	SAF::BSFixedStringSet foundNodes;
+	VisitNodes(boneDisplay.actor->nodeSets->baseStrings, foundNodes, boneDisplay.actor->root, actorAdjustments->root->m_name);
+	AddBones();
 	UpdateBoneFilter();
 }
 
@@ -335,23 +295,11 @@ void ScreenArcherMenu::DisableBoneDisplay()
 	if (!boneDisplay.enabled)
 		return;
 
-	//DisableAxisDisplay();
-	//movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &boneDisplay.rotateTool->tool, 1);
-	//DisableRotateDisplay();
-
-	//we're shrinking the shader objects array so go backwards
-
-	//for (auto it = boneDisplay.rotates.rbegin(); it != boneDisplay.rotates.rend(); ++it) {
-	//	movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
-	//}
-
 	for (auto it = boneDisplay.bones.rbegin(); it != boneDisplay.bones.rend(); ++it) {
-		//RemoveShaderTarget(shaderFXObjects, it->target);
 		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
 	}
 
 	for (auto it = boneDisplay.nodes.rbegin(); it != boneDisplay.nodes.rend(); ++it) {
-		//RemoveShaderTarget(shaderFXObjects, it->target);
 		it->marker.Invoke("destroy", nullptr, nullptr, 0);
 		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
 	}
@@ -362,72 +310,11 @@ void ScreenArcherMenu::DisableBoneDisplay()
 	boneDisplay.enabled = false;
 }
 
-//void ScreenArcherMenu::EnableAxisDisplay()
-//{
-//	NiColor red = GetNiColor(1.0f, 0.0f, 0.0f);
-//	NiColor green = GetNiColor(0.0f, 1.0f, 0.0f);
-//	NiColor blue = GetNiColor(0.0f, 0.0f, 1.0f);
-//
-//	NiTransform redTransform{ SAF::MatrixIdentity(), NiPoint3(2.0f, 0.0f, 0.0f), 1.0f };
-//	NiTransform greenTransform{ SAF::MatrixIdentity(), NiPoint3(0.0f, 2.0f, 0.0f), 1.0f };
-//	NiTransform blueTransform{ SAF::MatrixIdentity(), NiPoint3(0.0f, 0.0f, 2.0f), 1.0f };
-//
-//	boneDisplay.axes.reserve(3);
-//	PushAxisMarker(red, redTransform);
-//	PushAxisMarker(green, greenTransform);
-//	PushAxisMarker(blue, blueTransform);
-//}
-//
-//void ScreenArcherMenu::DisableAxisDisplay()
-//{
-//	for (auto it = boneDisplay.axes.rbegin(); it != boneDisplay.axes.rend(); ++it) {
-//		//RemoveShaderTarget(shaderFXObjects, it->target);
-//		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
-//	}
-//
-//	boneDisplay.axes.clear();
-//}
-
-//void ScreenArcherMenu::EnableRotateDisplay()
-//{
-//	NiColor red = GetNiColor(1.0f, 0.0f, 0.0f);
-//	NiColor green = GetNiColor(0.0f, 1.0f, 0.0f);
-//	NiColor blue = GetNiColor(0.0f, 0.0f, 1.0f);
-//
-//	NiTransform redTransform { 
-//		NiMatrix43 { 0, 0, 1, 0, 0, 1, 0, 0, 0, -1, 0, 0 },
-//		NiPoint3(),
-//		1 
-//	};
-//
-//	NiTransform greenTransform = SAF::TransformIdentity();
-//
-//	NiTransform blueTransform { 
-//		NiMatrix43{ 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0 },
-//		NiPoint3(),
-//		1
-//	};
-//
-//	boneDisplay.rotates.reserve(3);
-//	PushRotateMarker(kAxisX, red, redTransform);
-//	PushRotateMarker(kAxisY, green, greenTransform);
-//	PushRotateMarker(kAxisZ, blue, blueTransform);
-//}
-//
-//void ScreenArcherMenu::DisableRotateDisplay()
-//{
-//	for (auto it = boneDisplay.rotates.rbegin(); it != boneDisplay.rotates.rend(); ++it) {
-//		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &it->marker, 1);
-//	}
-//
-//	boneDisplay.rotates.clear();
-//}
-
 void ScreenArcherMenu::EnableRotateDisplay() {
 	if (!boneDisplay.rotateMarker) {
-		boneDisplay.rotateMarker = std::make_unique<BoneDisplay::RotateMarker>();
-		movie->movieRoot->CreateObject(&boneDisplay.rotateMarker->marker, "RotateTool", nullptr, 0);
-		movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &boneDisplay.rotateMarker->marker, 1);
+		boneDisplay.rotateMarker = std::make_unique<GFxValue>();
+		movie->movieRoot->CreateObject(boneDisplay.rotateMarker.get(), "RotateTool", nullptr, 0);
+		movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, boneDisplay.rotateMarker.get(), 1);
 
 		auto hudColor = (NiColor*)gameHudColor.GetUIntPtr();
 		GFxValue color[] = {
@@ -435,32 +322,16 @@ void ScreenArcherMenu::EnableRotateDisplay() {
 			GFxValue(hudColor->g == 0 ? 1.0 : 1.0 / hudColor->g),
 			GFxValue(hudColor->b == 0 ? 1.0 : 1.0 / hudColor->b)
 		};
-		boneDisplay.rotateMarker->marker.Invoke("setColor", nullptr, color, 3);
-
-		//boneDisplay.rotateMarker->target = new BSGFxShaderFXTarget(&boneDisplay.rotateMarker->marker);
+		boneDisplay.rotateMarker->Invoke("setColor", nullptr, color, 3);
 	}
 }
 
 void ScreenArcherMenu::DisableRotateDisplay() {
 	if (boneDisplay.rotateMarker) {
-		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, &boneDisplay.rotateMarker->marker, 1);
+		movie->movieRoot->Invoke("root1.Menu_mc.removeChild", nullptr, boneDisplay.rotateMarker.get(), 1);
 		boneDisplay.rotateMarker = nullptr;
 	}
 }
-
-//const char* debugTexts[] = {
-//	"root1.Menu_mc.debug1.text1.text",
-//	"root1.Menu_mc.debug1.text2.text",
-//	"root1.Menu_mc.debug1.text3.text",
-//	"root1.Menu_mc.debug1.text4.text",
-//};
-//
-//void ScreenArcherMenu::DrawDebug(SInt32 i, const char* text)
-//{
-//	GFxValue textValue;
-//	movie->movieRoot->CreateString(&textValue, text);
-//	movie->movieRoot->SetVariable(debugTexts[i], &textValue);
-//}
 
 void SetRotatedDisplayInfo(GFxValue& value, float x1, float x2, float y1, float y2)
 {
@@ -547,144 +418,21 @@ void ScreenArcherMenu::BoneDisplay::Update()
 				visible = false;
 		}
 
-		rotateMarker->marker.SetMember("visible", &GFxValue(visible));
+		rotateMarker->SetMember("visible", &GFxValue(visible));
 
 		if (visible) {
 			GFxValue::DisplayInfo info;
-			rotateMarker->marker.GetDisplayInfo(&info);
+			rotateMarker->GetDisplayInfo(&info);
 			info.SetPosition(dimensions.x + (dimensions.width * outPos.x), dimensions.y + (dimensions.height * (1 - outPos.y)));
-			rotateMarker->marker.SetDisplayInfo(&info);
+			rotateMarker->SetDisplayInfo(&info);
 		}
-
-		//for (auto& it : rotates) {
-
-		//	it.marker.SetMember("visible", &GFxValue(visible));
-		//	if (visible)
-		//	{
-		//		NiTransform result = SAF::MultiplyNiTransform(selectedNode->node->m_worldTransform, it.transform);
-
-				//GFxMatrix2x4 matrix {
-				//	result.rot.arr[0] * result.scale,
-				//	result.rot.arr[4] * result.scale,
-				//	0,
-				//	(float)info._x,
-				//	result.rot.arr[1] * result.scale,
-				//	result.rot.arr[5] * result.scale,
-				//	0,
-				//	(float)info._y
-				//};
-
-				//SetDisplayMatrix(nullptr, it.marker.objectInterface, &matrix);
-
-		//		GFxValue matrix[] = {
-		//			GFxValue(result.rot.arr[0] * result.scale),
-		//			GFxValue(result.rot.arr[1] * result.scale),
-		//			GFxValue(result.rot.arr[4] * result.scale),
-		//			GFxValue(result.rot.arr[5] * result.scale),
-		//			GFxValue(info._x),
-		//			GFxValue(info._y)
-		//		};
-
-		//		it.marker.Invoke("setTo", nullptr, matrix, sizeof(matrix) / sizeof(GFxValue));
-		//	}
-		//}
-
-		//rotateTool->tool.SetMember("visible", &GFxValue(true));
-
-		//GFxValue::DisplayInfo info;
-		//selectedNode->marker.GetDisplayInfo(&info);
-
-		//auto& rot = selectedNode->node->m_worldTransform.rot.arr;
-		//float scale = selectedNode->node->m_worldTransform.scale;
-		//GFxValue transform[] = {
-		//	GFxValue(rot[0] * scale),
-		//	GFxValue(rot[1] * scale),
-		//	GFxValue(rot[2] * scale),
-		//	GFxValue(rot[4] * scale),
-		//	GFxValue(rot[5] * scale),
-		//	GFxValue(rot[6] * scale),
-		//	GFxValue(rot[8] * scale),
-		//	GFxValue(rot[9] * scale),
-		//	GFxValue(rot[10] * scale),
-		//	GFxValue(info._x),
-		//	GFxValue(info._y),
-		//	GFxValue(info._z),
-		//};
-
-		//rotateTool->tool.Invoke("setTransform", nullptr, transform, sizeof(transform) / sizeof(GFxValue));
-
-		//for (auto& it : axes) {
-		//	NiTransform world = SAF::MultiplyNiTransform(selectedNode->node->m_worldTransform, it.transform);
-		//	NiPoint3 outPos;
-		//	WorldToScreen_Internal(&world.pos, &outPos);
-
-		//	bool axisVisible = outPos.z >= 0.0;
-		//	it.marker.SetMember("visible", &GFxValue(axisVisible));
-
-		//	if (axisVisible)
-		//		SetRotatedDisplayInfo(it.marker, boneInfo._x, SAM_X + (SAM_WIDTH * outPos.x), boneInfo._y, SAM_Y + (SAM_HEIGHT * (1 - outPos.y)));
-		//}
 	}
 }
-
-//void ScreenArcherMenu::UpdateDebug() {
-//
-//	auto freeState = GetFreeCameraState();
-//	if (freeState) {
-//		std::stringstream r;
-//		r << "Rot: ";
-//		r << freeState->yaw;
-//		r << " ";
-//		r << freeState->pitch;
-//		r << " ";
-//		r << GetCameraRoll();
-//		DrawDebug(0, r.str().c_str());
-//	}
-//
-//	if (selected.refr) {
-//
-//		auto playerCam = *g_playerCamera;
-//		auto& pos = playerCam->cameraNode->m_worldTransform.pos;
-//
-//		float x, y, z;
-//		SAF::MatrixToEulerYPR(playerCam->cameraNode->m_worldTransform.rot, x, y, z);
-//		std::stringstream r;
-//		r << "Rot: ";
-//		r << x;
-//		r << " ";
-//		r << y;
-//		r << " ";
-//		r << z;
-//		DrawDebug(1, r.str().c_str());
-//
-//		NiMatrix3ToEulerAnglesZXY2(&playerCam->cameraNode->m_worldTransform.rot, &x, &y, &z);
-//		std::stringstream r2;
-//		r2 << "Rot: ";
-//		r2 << x;
-//		r2 << " ";
-//		r2 << y;
-//		r2 << " ";
-//		r2 << z;
-//		DrawDebug(2, r2.str().c_str());
-//
-//		NiMatrix3ToEulerAnglesXZY2(&playerCam->cameraNode->m_worldTransform.rot, &x, &y, &z);
-//		std::stringstream r3;
-//		r3 << "Rot: ";
-//		r3 << x;
-//		r3 << " ";
-//		r3 << y;
-//		r3 << " ";
-//		r3 << z;
-//		DrawDebug(3, r3.str().c_str());
-//	}
-//}
 
 void ScreenArcherMenu::AdvanceMovie(float unk0, void* unk1)
 {
 	if (boneDisplay.enabled)
 		boneDisplay.Update();
-
-	//UpdateDebug();
 
 	__super::AdvanceMovie(unk0, unk1);
 }
@@ -741,30 +489,7 @@ bool ScreenArcherMenu::SelectNode(const char* name) {
 		return false;
 	}
 
-	//if (boneDisplay.selectedNode) {
-		//NiColor white = GetNiColor(1.0f, 1.0f, 1.0f);
-		//nodeIt->target->EnableColorMultipliers(&white, 1.0f);
-	//}
-	//else {
-		//EnableAxisDisplay();
-		//EnableRotateDisplay();
-	//}
-	
-	//SetShaderColor(nodeIt->target, 1.0f, 0.0f, 0.0f);
 	boneDisplay.selectedNode = nodeIt._Ptr;
-
-	//auto boneIt = std::find_if(boneDisplay.bones.begin(), boneDisplay.bones.end(), [&nodeIt](const BoneDisplay::BoneMarker& marker) {
-	//	return marker.start == nodeIt._Ptr;
-	//});
-
-	//dw if this fails
-	//if (boneIt != boneDisplay.bones.end()) {
-		//SetShaderColor(boneIt->target, 1.0f, 0.0f, 0.0f);
-	//	boneDisplay.selectedBone = boneIt._Ptr;
-	//}
-	//else {
-	//	boneDisplay.selectedBone = nullptr;
-	//}
 
 	return true;
 }
@@ -773,21 +498,6 @@ void ScreenArcherMenu::UnselectNode() {
 	std::lock_guard lock(boneDisplay.mutex);
 
 	boneDisplay.selectedNode = nullptr;
-
-	//NiColor white = GetNiColor(1.0f, 1.0f, 1.0f);
-
-	//if (boneDisplay.selectedNode) {
-		//boneDisplay.selectedNode->target->EnableColorMultipliers(&white, 1.0f);
-	//	boneDisplay.selectedNode = nullptr;
-	//}
-
-	//if (boneDisplay.selectedBone) {
-		//boneDisplay.selectedBone->target->EnableColorMultipliers(&white, 1.0f);
-	//	boneDisplay.selectedBone = nullptr;
-	//}
-
-	//DisableAxisDisplay();
-	//DisableRotateDisplay();
 }
 
 void SelectNodeMarker(GFxResult& result, const char* name, bool pushMenu) {
@@ -804,20 +514,6 @@ void SelectNodeMarker(GFxResult& result, const char* name, bool pushMenu) {
 
 	if (pushMenu)
 		samManager.PushMenu("BoneEdit");
-
-	//auto actorAdjustments = saf->GetActorAdjustments(selected.refr->formID);
-	//if (!actorAdjustments)
-	//	return result.SetError(SKELETON_ERROR);
-
-	//auto it = actorAdjustments->poseMap.find(name);
-	//if (it == actorAdjustments->poseMap.end())
-	//	return result.SetError("Node not found");
-
-	//auto camera = GetFreeCameraState();
-	//if (!camera)
-	//	return result.SetError(CAMERA_ERROR);
-
-	//SetCameraTransform(camera, it->second->m_worldTransform);
 }
 
 void UnselectNodeMarker(GFxResult& result)
@@ -855,30 +551,6 @@ NiPoint3 GetCameraPivot()
 
 	return pos;
 }
-
-//void OverNodeMarker(GFxResult& result, const char* name) 
-//{
-//	auto wrapped = samManager.GetWrapped();
-//	if (!wrapped.menu)
-//		return result.SetError(MENU_MISSING_ERROR);
-//	auto menu = (ScreenArcherMenu*)wrapped.menu;
-//
-//	menu->boneDisplay.hovers.push_back(name);
-//	wrapped.GetRoot()->Invoke("root1.Menu_mc.ShowNotification", nullptr, &GFxValue(name), 1);
-//}
-//
-//void OutNodeMarker(GFxResult& result, const char* name) 
-//{
-//	auto wrapped = samManager.GetWrapped();
-//	if (!wrapped.menu)
-//		return result.SetError(MENU_MISSING_ERROR);
-//	auto menu = (ScreenArcherMenu*)wrapped.menu;
-//
-//	menu->boneDisplay.hovers.remove(name);
-//
-//	const char* notif = (menu->boneDisplay.hovers.size() ? menu->boneDisplay.hovers.back() : "");
-//	wrapped.GetRoot()->Invoke("root1.Menu_mc.ShowNotification", nullptr, &GFxValue(notif), 1);
-//}
 
 typedef void(*_ScaleformRefCountImplAddRef)(IMenu* menu);
 RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
@@ -938,42 +610,6 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 	if (!root->SetVariable(visiblePath, &GFxValue(visible)))
 		_Log("Failed to set visibility of menu: ", menuName.c_str());
 }
-
-//RelocPtr <BSReadWriteLock> g_menuStackLock(0x65774B0);
-//
-//void RemoveDuplicateIMenusFromStack(IMenu* menu)
-//{
-//	BSWriteLocker locker(g_menuStackLock);
-//
-//	auto& stack = (*g_ui)->menuStack;
-//
-//	int removeIndex;
-//	int foundIndex;
-//
-//	//loop until every duplicate is removed
-//	do {
-//		removeIndex = -1;
-//		foundIndex = -1;
-//
-//		//find index of duplicate
-//		for (int i = 0; i < stack.count; ++i) {
-//			if (stack.entries[i] == menu) {
-//				if (foundIndex != -1) {
-//					removeIndex = i;
-//					break;
-//				}
-//				foundIndex = i;
-//			}
-//		}
-//
-//		//remove duplicate if found
-//		if (removeIndex != -1) {
-//			_DMESSAGE("Duplicate menu on stack found");
-//			stack.Remove(removeIndex);
-//		}
-//
-//	} while (removeIndex != -1);
-//}
 
 IMenuWrapper SamManager::StoreMenu() {
 	std::lock_guard lock(mutex);

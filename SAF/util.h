@@ -20,6 +20,7 @@ float Modulo(float a, float b);
 
 UInt32 HexStringToUInt32(const char* str);
 UInt32 StringToUInt32(const char* str);
+SInt32 StringToSInt32(const char* str);
 std::string UInt32ToHexString(UInt32 hex);
 UInt32 ComparePostfix(const char* comparer, UInt32 cLength, const char* postfix, UInt32 pLength);
 std::string GetPathWithExtension(const char* folder, const char* path, const char* ext);

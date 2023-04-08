@@ -27,6 +27,8 @@
     <ClCompile Include="companion.cpp" />
     <ClCompile Include="material.cpp" />
     <ClCompile Include="messaging.cpp" />
+    <ClCompile Include="bodymorphs.cpp" />
+    <ClCompile Include="smartpointer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -55,6 +57,8 @@
     <ClInclude Include="companion.h" />
     <ClInclude Include="material.h" />
     <ClInclude Include="messaging.h" />
+    <ClInclude Include="bodymorphs.h" />
+    <ClInclude Include="smartpointer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

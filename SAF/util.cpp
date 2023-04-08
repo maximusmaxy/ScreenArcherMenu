@@ -91,6 +91,16 @@ UInt32 StringToUInt32(const char* str) {
 	}
 }
 
+SInt32 StringToSInt32(const char* str) {
+	try {
+		return std::stoi(str);
+	}
+	catch (...)
+	{
+		return 0;
+	}
+}
+
 //returns the size of the prefix if match or 0 if no match
 UInt32 ComparePostfix(const char* comparer,  UInt32 cLength, const char* postFix, UInt32 pLength)
 {

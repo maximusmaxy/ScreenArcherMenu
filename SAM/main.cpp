@@ -21,7 +21,7 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 
 	info->infoVersion =	PluginInfo::kInfoVersion;
 	info->name =		SAM_MENU_NAME;
-	info->version =		2;
+	info->version =		3;
 
 	samMessaging.pluginHandle = f4se->GetPluginHandle();
 

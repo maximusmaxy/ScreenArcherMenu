@@ -29,6 +29,14 @@
                 "type": "local",
                 "name": "SetWidescreen"
             }
+        },
+        {
+            "name": "$SAM_ExtraHotkeys",
+            "type": "checkbox",
+            "func": {
+                "type": "local",
+                "name": "SetExtraHotkeys"
+            }
         }
     ]
 }

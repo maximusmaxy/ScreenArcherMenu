@@ -6,6 +6,7 @@
 #include "json/json.h"
 
 #include "gfx.h"
+#include "types.h"
 
 class Options {
 public:
@@ -13,22 +14,16 @@ public:
 	bool alignment;
 	bool widescreen;
 	bool extrahotkeys;
+	std::string sliderSet;
+	NaturalSortedSet sliderGroups;
 
 	void Initialize();
 	void ToJson(Json::Value& value);
 	void FromJson(Json::Value& value);
+	bool Save();
 };
 
 extern Options menuOptions;
-
-enum {
-	kOptionHotswap = 0,
-	kOptionAlignment,
-	kOptionWidescreen,
-	kOptionExtraHotkeys,
-
-	kOptionMax
-};
 
 void GetMenuOptions(GFxResult& result);
 void SetMenuOption(GFxResult& result, SInt32 index, bool value);

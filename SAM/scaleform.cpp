@@ -28,6 +28,7 @@
 #include "eyes.h"
 #include "io.h"
 #include "constants.h"
+#include "bodymorphs.h"
 
 #include "SAF/hacks.h"
 #include "SAF/util.h"
@@ -658,6 +659,30 @@ GFxFunction(IsFreeCamera, {
 	result->SetBool(GetFreeCameraState());
 });
 
+GFxRequest(GetBodyMorphs, {
+	GetBodyMorphs(result);
+});
+
+GFxRequest(SetBodyMorph, {
+	SetBodyMorph(result, args[0].GetInt(), args[1].GetInt());
+});
+
+GFxRequest(SaveBodyslidePreset, {
+	SaveBodyslidePreset(result, args[0].GetString());
+});
+
+GFxRequest(LoadBodyslidePreset, {
+	LoadBodyslidePreset(result, args[0].GetString());
+});
+
+GFxRequest(LoadSliderSet, {
+	LoadSliderSet(result, args[0].GetString());
+});
+
+GFxRequest(ResetBodyMorphs, {
+	ResetBodyMorphs(result);
+});
+
 //NiMatrix43 scaleMatrix(float val, int type) {
 //	switch (type) {
 //	case 1: return { val, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0 };
@@ -835,7 +860,13 @@ bool RegisterScaleform(GFxMovieView* view, GFxValue* value)
 	GFxRegister(SetWidget);
 	GFxRegister(UpdateTransform);
 	GFxRegister(IsFreeCamera);
-
+	GFxRegister(GetBodyMorphs);
+	GFxRegister(SetBodyMorph);
+	GFxRegister(SaveBodyslidePreset);
+	GFxRegister(LoadBodyslidePreset);
+	GFxRegister(ResetBodyMorphs);
+	GFxRegister(LoadSliderSet);
+	
 	//GFxRegister(Test);
 
 	return true;

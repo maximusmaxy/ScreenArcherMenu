@@ -17,6 +17,7 @@ xbyak/
 /tagpatch.sln
 /samcli
 /sam.bat
+/translations.bat
 /compile_commands.json
 
 ## Ignore Visual Studio temporary files, build results, and

@@ -38,6 +38,32 @@ struct Vmref {
 typedef void (*_PapyrusAddItemInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr, Vmref* vmref, UInt32 amount, bool silent);
 RelocAddr<_PapyrusAddItemInternal> PapyrusAddItemInternal(0x1402B40);
 
+typedef bool (*_VMGetStaticFunction)(VirtualMachine* vm, const char* script, const char* func, VMObjectTypeInfoPtr* typeInfo, IFunctionPtr* function);
+RelocAddr<_VMGetStaticFunction> VMGetStaticFunction(0x273D730);
+
+bool GetStaticFunction(const char* script, const char* func, IFunctionPtr* function)
+{
+	VMObjectTypeInfoPtr typeInfo;
+	return VMGetStaticFunction((*g_gameVM)->m_virtualMachine, script, func, &typeInfo, function);
+}
+
+void* GetNativeCallback(const char* script, const char* func)
+{
+	IFunctionPtr function;
+	
+	if (!GetStaticFunction(script, func, &function))
+		return nullptr;
+	
+	//gets the protected callback
+	return (void*)(((UInt64)function.get()) + 0x50);
+}
+
+BGSKeyword* GetSamKeyword()
+{
+	UInt32 formId = GetFormId(SAM_ESP, 0x803);
+	return (BGSKeyword*)LookupFormByID(formId);
+}
+
 void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GFxValue& args)
 {
 	try

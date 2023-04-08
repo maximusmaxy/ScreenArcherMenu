@@ -38,9 +38,8 @@ public:
 	class BoneDisplay {
 	public:
 		bool enabled;
-		//bool rotateEnabled;
 		std::mutex mutex;
-		//std::list<const char*> hovers;
+
 		struct {
 			double x;
 			double y;
@@ -50,14 +49,13 @@ public:
 		
 		struct NodeMarker {
 			GFxValue marker;
+			BSFixedString parent;
 			NiAVObject* node;
-			BSGFxShaderFXTarget* target;
 			bool visible;
 			bool enabled;
 
-			NodeMarker() : node(nullptr), target(nullptr), visible(true), enabled(true) {}
-			NodeMarker(NiAVObject* node) : node(node), target(nullptr), visible(true), enabled(true) {}
-			~NodeMarker() { if (target) delete target; };
+			NodeMarker() : node(nullptr), visible(true), enabled(true) {}
+			NodeMarker(NiAVObject* node, BSFixedString name) : node(node), parent(name), visible(true), enabled(true) {}
 		};
 
 		std::vector<NodeMarker> nodes;
@@ -69,60 +67,14 @@ public:
 			GFxValue marker;
 			NodeMarker* start;
 			NodeMarker* end;
-			BSGFxShaderFXTarget* target;
 
-			BoneMarker() : start(nullptr), end(nullptr), target(nullptr) {}
-			BoneMarker(NodeMarker* start, NodeMarker* end) : start(start), end(end), target(nullptr) {}
-			~BoneMarker() { if (target) delete target; };
+			BoneMarker() : start(nullptr), end(nullptr) {}
+			BoneMarker(NodeMarker* start, NodeMarker* end) : start(start), end(end) {}
 		};
 
 		std::vector<BoneMarker> bones;
-		//BoneMarker* selectedBone;
 
-		//struct AxisMarker {
-		//	GFxValue marker;
-		//	NiTransform transform;
-		//	BSGFxShaderFXTarget* target;
-
-		//	AxisMarker() : target(nullptr) {}
-		//	AxisMarker(NiTransform& transform) : transform(transform), target(nullptr) {}
-		//	~AxisMarker() { if (target) delete target; };
-		//};
-
-		//std::vector<AxisMarker> axes;
-
-		//struct RotateTool {
-		//	GFxValue tool;
-		//	GFxValue axis[3];
-		//	BSGFxShaderFXTarget* targets[3];
-
-		//	RotateTool() :targets() {}
-		//	~RotateTool() { for (auto& target : targets) { if (target) delete target; } }
-		//};
-
-		//std::unique_ptr<RotateTool> rotateTool;
-
-		//struct RotateMarker {
-		//	GFxValue marker;
-		//	NiTransform transform;
-		//	BSGFxShaderFXTarget* target;
-
-		//	RotateMarker() : target(nullptr) {}
-		//	RotateMarker(NiTransform& transform) : transform(transform), target(nullptr) {}
-		//	~RotateMarker() { if (target) delete target; };
-		//};
-
-		//std::vector<RotateMarker> rotates;
-
-		struct RotateMarker {
-			GFxValue marker;
-			BSGFxShaderFXTarget* target;
-
-			RotateMarker() : target(nullptr) {}
-			~RotateMarker() { if (target) delete target; }
-		};
-
-		std::unique_ptr<RotateMarker> rotateMarker;
+		std::unique_ptr<GFxValue> rotateMarker;
 
 		void Reserve(UInt32 size) {
 			nodes.reserve(size);
@@ -137,9 +89,7 @@ public:
 
 		BoneDisplay() : 
 			enabled(false),
-			//rotateEnabled(false),
 			selectedNode(nullptr),
-			//selectedBone(nullptr),
 			rootMarker(nullptr),
 			actor(nullptr) 
 		{}
@@ -149,17 +99,13 @@ public:
 	
 	BoneDisplay boneDisplay;
 
-	BoneDisplay::NodeMarker* PushNodeMarker(NiAVObject* node);
+	void PushNodeMarker(NiAVObject* node, BSFixedString name);
 	void PushBoneMarker(BoneDisplay::NodeMarker* start, BoneDisplay::NodeMarker* end);
-	//void PushAxisMarker(NiColor& color, NiTransform& transform);
-	//void PushRotateMarker(SInt32 axis, NiColor& color, NiTransform& transform);
-	void VisitNodes(SAF::BSFixedStringSet& set, NiAVObject* parent, BoneDisplay::NodeMarker* start);
+	void VisitNodes(SAF::BSFixedStringSet& set, SAF::BSFixedStringSet& found, NiAVObject* parent, BSFixedString name);
+	void AddBones();
 
 	void EnableBoneDisplay(std::shared_ptr<SAF::ActorAdjustments> adjustments);
 	void DisableBoneDisplay();
-
-	//void EnableAxisDisplay();
-	//void DisableAxisDisplay();
 
 	void EnableRotateDisplay();
 	void DisableRotateDisplay();
@@ -169,17 +115,12 @@ public:
 
 	bool SelectNode(const char* nodeName);
 	void UnselectNode();
-
-	//void UpdateDebug();
-	//void DrawDebug(SInt32 i, const char* text);
 };
 
 IMenu* CreateScreenArcherMenu();
 void SetBoneDisplay(GFxResult& result, bool enabled);
 void SelectNodeMarker(GFxResult& result, const char* name, bool update);
 void UnselectNodeMarker(GFxResult& result);
-//void OverNodeMarker(GFxResult& result, const char* name);
-//void OutNodeMarker(GFxResult& result, const char* name);
 void UpdateBoneFilter();
 NiPoint3 GetCameraPivot();
 
@@ -190,7 +131,6 @@ public:
 	UInt32 race;
 	UInt64 key;
 
-	//virtual TESObjectREFR* Refr();
 	void Update(TESObjectREFR* refr);
 	void Clear();
 };
@@ -264,9 +204,6 @@ public:
 extern SamManager samManager;
 
 TESObjectREFR* GetRefr();
-
-//void RegisterSam();
-//void StartSamQuest();
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
 void MenuAlwaysOn(BSFixedString menuStr, bool enabled);

@@ -57,7 +57,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\common\x64_vc11;$(SolutionDir)x64\Debug;$(SolutionDir);$(SolutionDir)..;$(SolutionDir)f4se;$(SolutionDir)f4se\x64\Debug;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\common\x64_vc11;$(SolutionDir)x64\Debug;$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SolutionDir)f4se;$(SolutionDir)f4se\x64\Debug;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -113,6 +113,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bodymorphs.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="companion.cpp" />
     <ClCompile Include="compatibility.cpp" />
@@ -137,10 +138,12 @@
     <ClCompile Include="sam.cpp" />
     <ClCompile Include="scaleform.cpp" />
     <ClCompile Include="scripts.cpp" />
+    <ClCompile Include="smartpointer.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
     <ClCompile Include="types.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bodymorphs.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="companion.h" />
     <ClInclude Include="compatibility.h" />
@@ -165,6 +168,7 @@
     <ClInclude Include="hacks.h" />
     <ClInclude Include="scaleform.h" />
     <ClInclude Include="scripts.h" />
+    <ClInclude Include="smartpointer.h" />
     <ClInclude Include="strnatcmp.h" />
     <ClInclude Include="types.h" />
   </ItemGroup>

@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-NonActorRefr selectedNonActor;
+NonActorRefr selectedNonActor{ nullptr };
 SInt32 positioningStep = 100;
 
 //typedef UInt32 (*_UpdateTranslationInternal)(UInt64 unk, UInt32 flags, TESObjectREFR* refr, TranslationValue value);
