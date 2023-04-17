@@ -41,15 +41,6 @@ SAF::SafMessagingInterface* saf;
 SelectedRefr selected;
 SamManager samManager;
 
-typedef void(*_BSGFxShaderFXTargetSetUseAlphaForDropShadow)(BSGFxShaderFXTarget* target, bool enabled);
-RelocAddr<_BSGFxShaderFXTargetSetUseAlphaForDropShadow> BSGFxShaderFXTargetSetUseAlphaForDropShadow(0x20F1E70);
-
-//typedef void(*_BSGFxShaderFXTargetSetBackgroundEnabled)(BSGFxShaderFXTarget* target, bool enabled);
-//RelocAddr<_BSGFxShaderFXTargetSetBackgroundEnabled> BSGFxShaderFXTargetSetBackgroundEnabled(0x20F1D10);
-
-//typedef void(*_EnableShadedBackgroundColor)(BSGFxShaderFXTarget* target, NiColor* color, float brightness);
-//RelocAddr<_EnableShadedBackgroundColor> EnableShadedBackgroundColor(0x20F1C90);
-
 ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 {
 	//looksmenu = 0x8058404
@@ -61,9 +52,12 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 		IMenu::kFlag_UpdateUsesCursor |
 		IMenu::kFlag_CustomRendering |
 		IMenu::kFlag_AssignCursorToRenderer |
-		IMenu::kFlag_HasButtonBar | 
+		//IMenu::kFlag_HasButtonBar | 
 		//IMenu::kFlag_IsTopButtonBar |
 		IMenu::kFlag_UsesMovementToDirection;
+
+	depth = 6;
+	context = 0x22;
 
 	if ((*g_inputDeviceMgr)->IsGamepadEnabled())
 		flags &= ~IMenu::kFlag_UsesCursor;
@@ -71,7 +65,10 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 	UInt32 movieFlags = 3;
 	UInt32 extendedFlags = 3;
 
-	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, SAM_MENU_NAME, SAM_MENU_ROOT, movieFlags))
+	BSFixedString samMenuName(SAM_MENU_NAME);
+	BSFixedString samMenuRoot(SAM_MENU_ROOT);
+
+	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, samMenuName.c_str(), samMenuRoot.c_str(), movieFlags))
 	{
 		stage.SetMember("menuFlags", &GFxValue(flags));
 		stage.SetMember("movieFlags", &GFxValue(movieFlags));
@@ -80,12 +77,11 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 		CreateBaseShaderTarget(filterHolder, stage);
 		filterHolder->SetFilterColor(false);
 		shaderFXObjects.Push(filterHolder);
+		(*g_colorUpdateDispatcher)->eventDispatcher.AddEventSink(filterHolder);
 	}
-}
-
-ScreenArcherMenu::~ScreenArcherMenu() 
-{
-
+	else {
+		_DMESSAGE("Failed to open SAM menu");
+	}
 }
 
 void ScreenArcherMenu::RegisterFunctions()

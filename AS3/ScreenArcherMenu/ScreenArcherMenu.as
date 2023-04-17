@@ -31,25 +31,6 @@
 		public var notification:MovieClip;
 		public var bounds:MovieClip;
 		
-//		public var debug1:MovieClip;
-//		public var testMarker1:NodeMarker;
-//		public var testMarker2:NodeMarker;
-//		public var boneMarker1:MovieClip;
-//		public var axisMarker1:MovieClip;
-//		public var rotateTool:RotateTool;
-//		public var rotateAxis1:RotateMarker;
-//		public var rotateAxis2:RotateMarker;
-//		public var rotateAxis3:RotateMarker;
-//		public var rotateMarkers:RotateMarkerGroup;
-		
-//		public var testScrollbar1:Option_Scrollbar;
-//		public var testScrollbar2:Option_Scrollbar;
-//		public var testScrollbar3:Option_Scrollbar;
-//		public var testScrollbar4:Option_Scrollbar;
-//		public var testScrollbar5:Option_Scrollbar;
-//		public var testScrollbar6:Option_Scrollbar;
-//		public var testScrollbar7:Option_Scrollbar;
-		
 		public var notificationMessage = "";
 		public var titleName:String = "";
 		public var rootMenu:String;
@@ -132,139 +113,6 @@
 //			}
 			
 			UpdateAlignment();
-
-			//this.boneMarker1.setPosAndAngle(this.testMarker1, this.testMarker2);
-			
-	  		//DebugRotateTool();
-//			testScrollbar1.visible = false;
-//			testScrollbar2.visible = false;
-//			testScrollbar3.visible = false;
-//			testScrollbar4.visible = false;
-//			testScrollbar5.visible = false;
-//			testScrollbar6.visible = false;
-//			testScrollbar7.visible = false;
-//			rotateTool.visible = false;
-//			rotateAxis1.visible = false;
-//			rotateAxis2.visible = false;
-//			rotateAxis3.visible = false;
-
-//			var ss:Function = function(s:Option_Scrollbar) {
-//				s.minimum = 0.0;
-//				s.maximum = 2.0;
-//				s.position = 1.0;
-//			};
-//			
-//			ss(testScrollbar1);
-//			ss(testScrollbar2);
-//			ss(testScrollbar3);
-//			testScrollbar1.addEventListener(Option_Scrollbar.VALUE_CHANGE, function(e:Event) {
-//				sam.Test(testScrollbar1.value, 1);
-//			});
-//			testScrollbar2.addEventListener(Option_Scrollbar.VALUE_CHANGE, function(e:Event) {
-//				sam.Test(testScrollbar2.value, 2);
-//			});
-//			testScrollbar3.addEventListener(Option_Scrollbar.VALUE_CHANGE, function(e:Event) {
-//				sam.Test(testScrollbar3.value, 3);
-//			});
-			
-//			testMarker1.init("Neck");
-//			testMarker1.visible = true;
-//			testMarker2.init("Head");
-//			testMarker2.visible = true;
-//			nodeMarkers.push(testMarker1);
-//			nodeMarkers.push(testMarker2);
-		}
-		
-		internal function DebugRotateTool()
-		{
-//			var xaxis:RotateToolAxis = new RotateToolAxis();
-//			var yaxis:RotateToolAxis = new RotateToolAxis();
-//			var zaxis:RotateToolAxis = new RotateToolAxis();
-//			this.rotateTool.InitAxes(xaxis, yaxis, zaxis);
-			
-			this.rotateTool.addEventListener(MouseEvent.CLICK, function(e:MouseEvent) {
-				
-			});
-			
-			var ss:Function = function(s:Option_Scrollbar) {
-				s.minimum = 0.0;
-				s.maximum = 2.0;
-				s.position = 1.0;
-			};
-			
-			ss(testScrollbar1);
-			ss(testScrollbar2);
-			ss(testScrollbar3);
-			ss(testScrollbar4);
-			ss(testScrollbar5);
-			ss(testScrollbar6);
-			ss(testScrollbar7);
-			
-			var scrollValueChange:Function = function(e:Event) {
-				var xrot:Number = (testScrollbar1.value * Math.PI) - Math.PI;
-				var yrot:Number = (testScrollbar2.value * Math.PI) - Math.PI;
-				var zrot:Number = (testScrollbar3.value * Math.PI) - Math.PI;
-				
-				var xpos:Number = (testScrollbar4.value - 1) * 50;
-				var ypos:Number = (testScrollbar5.value - 1) * 50;
-				var zpos:Number = (testScrollbar6.value - 1) * 50;
-
-//				rotateTool.transform.matrix3D.identity();
-//				rotateTool.appendPos(xpos, ypos, zpos);
-//				rotateTool.appendEulerXYZ(xrot, yrot, zrot);
-//				
-//				var scale:Number = testScrollbar7.value;
-//				if (scale == 0) scale = 0.001;
-//				rotateTool.transform.matrix3D.prependScale(scale, scale, scale);
-				
-//				var vec:Vector.<Number> = rotateTool.transform.matrix3D.rawData;
-//				
-//				var shape:RotateMarker = rotateAxis;//.getChildAt(0);
-//				shape.setTo(vec[0], vec[1], vec[4], vec[5], vec[12], vec[13]);
-
-				var m:Matrix3D = new Matrix3D();
-				m.prependTranslation(xpos, ypos, zpos);
-				m.prepend(Util.getAxisRotation(Util.X_AXIS, xrot));
-				m.prepend(Util.getAxisRotation(Util.Y_AXIS, yrot));
-				m.prepend(Util.getAxisRotation(Util.Z_AXIS, zrot));
-
-				//var m:Matrix3D = rotateTool.transform.matrix3D;
-				//m.prepend(new Matrix3D(new <Number>[1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1]));
-
-				var m1:Matrix3D = m.clone();
-				m1.prepend(new Matrix3D(new <Number>[0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 0, 1]));
-
-				var m2:Matrix3D = m.clone();
-				
-				var m3:Matrix3D = m.clone();
-				m3.prepend(new Matrix3D(new <Number>[1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1]));
-				
-				var setFromMatrix:Function = function(r:RotateMarker, m:Matrix3D) {
-					var v:Vector.<Number> = m.rawData;
-					if (v[0] == 0) v[0] = 0.001;
-					if (v[1] == 0) v[1] = 0.001;
-					if (v[4] == 0) v[4] = 0.001;
-					if (v[5] == 0) v[5] = 0.001;
-					r.transform.matrix = new Matrix(v[0], v[1], v[4], v[5], v[12], v[13]);
-				};
-				
-				setFromMatrix(rotateAxis1, m1);
-				setFromMatrix(rotateAxis2, m2);
-				setFromMatrix(rotateAxis3, m3);
-//				
-//				rotateAxis1.visible = false;
-//				rotateAxis2.visible = false
-//				rotateAxis3.visible = false;
-				rotateTool.visible = false;
-			};
-			
-			testScrollbar1.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
-			testScrollbar2.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
-			testScrollbar3.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
-			testScrollbar4.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
-			testScrollbar5.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
-			testScrollbar6.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
-			testScrollbar7.addEventListener(Option_Scrollbar.VALUE_CHANGE, scrollValueChange);
 		}
 		
 		internal function InitState():void
@@ -2474,14 +2322,6 @@
 			return Data.resultSuccess;
 		}
 		
-//		public function InitAddItem():GFxResult
-//		{
-//			if (!Data.locals.hasOwnProperty("addItemEquip"))
-//				Data.locals.addItemEquip = false;
-//				
-//			return Data.resultSuccess;
-//		}
-		
 		public function OpenEntryIfEmpty():GFxResult
 		{
 			if (Data.menuOptions.length == 0) {
@@ -2594,22 +2434,6 @@
 			this.sliderList.visible = true;
 			return Data.resultSuccess;
 		}
-		
-//		public function EnableBoneDisplay()
-//		{
-//			this.boneDisplay = new Sprite();
-//			this.boneDisplay.x = -646.85;
-//			this.boneDisplay.y = -360.9;
-//			this.boneDisplay.width = 1279.6;
-//			this.boneDisplay.height = 719.6;
-//			this.addChild(this.boneDisplay);
-//		}
-//		
-//		public function DisableBoneDisplay()
-//		{
-//			this.removeChild(this.boneDisplay);
-//			this.boneDisplay = null;
-//		}
 		
 		public function CanClose():Boolean
 		{

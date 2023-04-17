@@ -27,13 +27,13 @@ class ScreenArcherMenu : public GameMenuBase
 {
 public:
 	ScreenArcherMenu();
-	virtual ~ScreenArcherMenu();
+	//virtual ~ScreenArcherMenu() override final;
 
 	virtual void AdvanceMovie(float unk0, void* unk1) override final;
 	virtual void RegisterFunctions() override final;
 	virtual void Invoke(Args* args) override final;
 
-	DEFINE_STATIC_HEAP(ScaleformHeap_Allocate, ScaleformHeap_Free);
+	//DEFINE_STATIC_HEAP(ScaleformHeap_Allocate, ScaleformHeap_Free);
 
 	class BoneDisplay {
 	public:

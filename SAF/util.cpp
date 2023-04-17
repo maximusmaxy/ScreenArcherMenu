@@ -163,4 +163,3 @@ bool HasInsensitiveSubstring(const char* str, const char* substr)
 
 	return false;
 }
-
