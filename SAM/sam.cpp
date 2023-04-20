@@ -65,10 +65,7 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 	UInt32 movieFlags = 3;
 	UInt32 extendedFlags = 3;
 
-	BSFixedString samMenuName(SAM_MENU_NAME);
-	BSFixedString samMenuRoot(SAM_MENU_ROOT);
-
-	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, samMenuName.c_str(), samMenuRoot.c_str(), movieFlags))
+	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, SAM_MENU_NAME, SAM_MENU_ROOT, movieFlags))
 	{
 		stage.SetMember("menuFlags", &GFxValue(flags));
 		stage.SetMember("movieFlags", &GFxValue(movieFlags));
@@ -114,8 +111,8 @@ void ScreenArcherMenu::Invoke(Args* args)
 				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
 			}
 		}
+		break;
 	}
-	
 	case 2:
 	{
 		if (args->numArgs >= 1)
@@ -126,10 +123,8 @@ void ScreenArcherMenu::Invoke(Args* args)
 				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
 			}
 		}
-	}
-	break;
-	default:
 		break;
+	}
 	}
 }
 
