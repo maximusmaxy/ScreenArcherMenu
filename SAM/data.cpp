@@ -16,7 +16,8 @@ enum {
 	kJsonMenuFolder,
 	kJsonMenuFolderCheckbox,
 	kJsonMenuAdjustment,
-	kJsonMenuGlobal
+	kJsonMenuGlobal,
+	kJsonMenuRemoveable,
 };
 
 SAF::InsensitiveUInt32Map jsonMenuTypeMap = {
@@ -28,7 +29,8 @@ SAF::InsensitiveUInt32Map jsonMenuTypeMap = {
 	{"folder", kJsonMenuFolder},
 	{"foldercheckbox", kJsonMenuFolderCheckbox},
 	{"adjustment", kJsonMenuAdjustment},
-	{"global", kJsonMenuGlobal}
+	{"global", kJsonMenuGlobal},
+	{"removeable", kJsonMenuRemoveable},
 };
 
 enum {
@@ -247,6 +249,12 @@ bool JsonMenuValidator::GetType(SAF::InsensitiveUInt32Map& map, Json::Value& val
 bool JsonMenuValidator::GetType(SAF::InsensitiveUInt32Map& map, Json::Value& value, const char* key, const char* error, int* result)
 {
 	Json::Value typeValue = value.get(key, "");
+
+	if (typeValue.isInt()) {
+		*result = typeValue.asInt();
+		return true;
+	}
+
 	auto it = map.find(typeValue.asCString());
 
 	if (it != map.end()) {
@@ -794,6 +802,7 @@ void JsonMenuValidator::ValidateMenu()
 	case kJsonMenuFolderCheckbox: ValidateFolderMenu(*menuValue); break;
 	case kJsonMenuAdjustment: ValidateAdjustmentMenu(*menuValue); break;
 	case kJsonMenuGlobal: ValidateGlobalMenu(*menuValue); break;
+	case kJsonMenuRemoveable: ValidateListMenu(*menuValue); break;
 	}
 
 	//Defaults
@@ -851,7 +860,7 @@ Json::Value GFxToJson(GFxValue* value)
 	case GFxValue::kType_Bool:
 		return Json::Value(value->GetBool());
 	case GFxValue::kType_Int:
-		return Json::Value(value->GetInt());
+		return Json::Value((int)value->GetInt());
 	case GFxValue::kType_UInt:
 	{
 		UInt64 uint = value->GetUInt();

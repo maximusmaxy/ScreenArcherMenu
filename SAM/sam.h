@@ -203,6 +203,12 @@ public:
 
 extern SamManager samManager;
 
+struct GFxFunctions {
+	std::vector<std::string> names;
+	std::vector<std::function<void(GFxFunctionHandler::Args*)>> funcs;
+};
+extern GFxFunctions samFunctions;
+
 TESObjectREFR* GetRefr();
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);

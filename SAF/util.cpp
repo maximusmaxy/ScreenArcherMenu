@@ -141,25 +141,3 @@ void GetLoweredCString(char* buffer, const char* str)
 	}
 	*buffer = 0;
 }
-
-//case insensitive strstr, substr has been premptively tolowered
-bool HasInsensitiveSubstring(const char* str, const char* substr)
-{
-	if (!str)
-		return false;
-
-	const char* c = substr;
-
-	while (*str != 0) {
-		if (tolower(*str) == *c) {
-			c++;
-			if (*c == 0)
-				return true;
-		}
-		else
-			c = substr;
-		str++;
-	}
-
-	return false;
-}

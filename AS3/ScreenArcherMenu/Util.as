@@ -15,7 +15,7 @@
 
 		public static function playSound(sound:String) {
 			try {
-				Data.sam.SamPlaySound(sound);
+				Data.sam.PlaySound(sound);
 			} catch (e:Error) {}
 		}
 		

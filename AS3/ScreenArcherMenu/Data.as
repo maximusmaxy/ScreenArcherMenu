@@ -13,6 +13,9 @@
 		public static var menuValues:Array = [];
 		public static var menuSize:int = 0;
 		
+		public static var isFiltered:Boolean = false;
+		public static var filterIndexes: Array = [];
+		
 		public static var menuFolder:Array = [];
 		public static var folderStack:Array = [];
 		
@@ -103,6 +106,7 @@
 		public static const MENU_FOLDERCHECKBOX:int = 7;
 		public static const MENU_ADJUSTMENT:int = 8;
 		public static const MENU_GLOBAL:int = 9;
+		public static const MENU_REMOVEABLE:int = 10;
 		
 		public static const FUNC_SAM:int = 1;
 		public static const FUNC_LOCAL:int = 2;
@@ -131,6 +135,7 @@
 		public static const ITEM_TOUCH:int = 4;
 		public static const ITEM_FOLDER:int = 5;
 		public static const ITEM_ADJUSTMENT:int = 6;
+		public static const ITEM_REMOVEABLE:int = 7;
 		
 		public static const VALUE_NONE:int = 1
 		public static const VALUE_INT:int = 2;
@@ -190,6 +195,14 @@
 		public static var popFailFolder:GFxResult = new GFxResult(RESULT_FOLDER, []);
 		
 		public static function getSuccess():GFxResult { return resultSuccess; }
+		
+		public static function getMenuSize():int
+		{
+			if (isFiltered)
+				return filterIndexes.length;
+			else
+				return menuSize;
+		}
 
 		public static function getMenu(name:String, pop:Boolean = false):GFxResult
 		{
@@ -216,6 +229,8 @@
 			menuName = name;
 			menuData = data;
 			menuType = data.type;
+			isFiltered = false;
+			filterIndexes.length = 0;
 			
 			var i:int;
 
@@ -238,6 +253,7 @@
 					}
 					break;
 				case MENU_LIST:
+				case MENU_REMOVEABLE:
 					if (data.list) {
 						setMenuSize(data.list.length);
 						for (i = 0; i < menuSize; i++) {
@@ -360,6 +376,7 @@
 
 		public static function getType(index:int):int
 		{
+			index = getIndex(index);
 			switch (menuType) {
 				case MENU_MAIN: return ITEM_LIST;
 				case MENU_MIXED: return menuData.items[index].type;
@@ -367,6 +384,7 @@
 				case MENU_LIST: return ITEM_LIST;
 				case MENU_SLIDER: return ITEM_SLIDER;
 				case MENU_ADJUSTMENT: return ITEM_ADJUSTMENT;
+				case MENU_REMOVEABLE: return ITEM_REMOVEABLE;
 				case MENU_FOLDER: return (menuFolder[index].folder ? ITEM_FOLDER : ITEM_LIST);
 				case MENU_FOLDERCHECKBOX: 
 				{
@@ -381,8 +399,14 @@
 			return 0;
 		}
 		
+		public static function getIndex(index:int):int
+		{
+			return isFiltered ? filterIndexes[index] : index;
+		}
+		
 		public static function getName(index:int):String
 		{
+			index = getIndex(index);
 			return menuOptions[index];
 //			switch (menuType) {
 //				case MENU_MAIN: return menuData.names[index];
@@ -393,31 +417,37 @@
 		
 		public static function getValue(index:int):Object
 		{
+			index = getIndex(index);
 			return menuValues[index];
 		}
 		
 		public static function getInt(index:int):int
 		{
+			index = getIndex(index);
 			return menuValues[index];
 		}
 		
 		public static function getFloat(index:int):Number
 		{
+			index = getIndex(index);
 			return menuValues[index];
 		}
 		
 		public static function getString(index:int):String
 		{
+			index = getIndex(index);
 			return menuValues[index];
 		}
 		
 		public static function getBool(index:int):Boolean
 		{
+			index = getIndex(index);
 			return menuValues[index];
 		}
 		
 		public static function getCheckbox(index:int):Boolean
 		{
+			index = getIndex(index);
 			if (menuType == MENU_FOLDERCHECKBOX) {
 				return menuFolder[index].checked;
 			} else {
@@ -954,6 +984,18 @@
 					"var": "boneName"
 				}
 			};
+			
+			case "SamPoses": return {
+				"type": MENU_REMOVEABLE,
+				"get": {
+					"type": FUNC_SAM,
+					"name": "GetTongueBones"
+				},
+				"set": {
+					"type": FUNC_SAM,
+					"name": "BoneEdit"
+				}
+			};
 						
 			}
 			
@@ -1451,6 +1493,18 @@
 				trace("Failed to toggle lights visibility");
 				return true;
 			}
+		}
+		
+		public static function updateFilter(filter:Array)
+		{
+			isFiltered = true;
+			filterIndexes = filter;
+		}
+		
+		public static function removeFilter()
+		{
+			isFiltered = false;
+			filterIndexes.length = 0;
 		}
 	}
 }

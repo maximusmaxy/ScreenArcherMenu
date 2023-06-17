@@ -1836,7 +1836,10 @@ bool WriteQuestFragment(const char* path, std::string& name)
 
 	//string table
 	Write<UInt16>(stream, 0x1A);
-	WriteBytes(stream, "Fragments:Quests:QF" + name + "Quest");
+	std::string str = "Fragments:Quests:QF";
+	str += name;
+	str += "Quest";
+	WriteBytes(stream, str.c_str());
 	WriteBytes(stream, "Fragment_Stage_0080_Item_00");
 	WriteBytes(stream, "Fragment_Stage_0090_Item_00");
 	WriteBytes(stream, "default");
@@ -1846,9 +1849,14 @@ bool WriteQuestFragment(const char* path, std::string& name)
 	WriteBytes(stream, "collapsedonref");
 	WriteBytes(stream, "hidden");
 	WriteBytes(stream, "Quest");
-	WriteBytes(stream, "::Alias_" + name + "_var");
+	str.assign("::Alias_");
+	str += name;
+	str += "_var";
+	WriteBytes(stream, str.c_str());
 	WriteBytes(stream, "referencealias");
-	WriteBytes(stream, "Alias_" + name);
+	str.assign("Alias_");
+	str += name;
+	WriteBytes(stream, str.c_str());
 	WriteBytes(stream, "None");
 	WriteBytes(stream, "::temp0");
 	WriteBytes(stream, "followersscript");
@@ -1883,7 +1891,7 @@ bool WriteQuestFragment(const char* path, std::string& name)
 //	return true;
 //}
 
-bool WriteScriptFragments(std::string& folder, std::string& name) {
+bool WriteScriptFragments(const std::string& folder, std::string& name) {
 	std::string questFragment = folder + "\\Data\\Scripts\\Fragments\\Quests\\QF" + name + "Quest.pex";
 	
 	if (!WriteQuestFragment(questFragment.c_str(), name))
@@ -1923,11 +1931,16 @@ void ExportCompanion(GFxResult& result) {
 	companionData.scale = ((UInt16)actor->unk104) * 0.01;
 
 	//TODO texture set can either be a fo4 material or skyrim texture set, figure out how to determine which one it is and push to this vector
-	companionData.textureSets.push_back(TextureSet("TextureBody" + companionData.name, Companion::textureBody));
-	companionData.textureSets.push_back(TextureSet("TextureHands" + companionData.name, Companion::textureHands));
-	companionData.textureSets.push_back(TextureSet("TextureHead" + companionData.name, Companion::textureHead));
-	companionData.textureSets.push_back(TextureSet("TextureHeadRear" + companionData.name, Companion::textureHeadRear));
-	companionData.textureSets.push_back(TextureSet("TextureEyes" + companionData.name, Companion::textureEyes));
+	std::string textureName = "TextureBody" + companionData.name;
+	companionData.textureSets.push_back(TextureSet(textureName, Companion::textureBody));
+	textureName = "TextureHands" + companionData.name;
+	companionData.textureSets.push_back(TextureSet(textureName, Companion::textureHands));
+	textureName = "TextureHead" + companionData.name;
+	companionData.textureSets.push_back(TextureSet(textureName, Companion::textureHead));
+	textureName = "TextureHeadRear" + companionData.name;
+	companionData.textureSets.push_back(TextureSet(textureName, Companion::textureHeadRear));
+	textureName = "TextureEyes" + companionData.name;
+	companionData.textureSets.push_back(TextureSet(textureName, Companion::textureEyes));
 
 	std::filesystem::path folder(COMPANION_PATH);
 	folder.append(companionData.name);

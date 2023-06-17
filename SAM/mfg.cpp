@@ -296,7 +296,7 @@ bool LoadMfgPath(const char* path) {
 	//build the tongue transform map
 	SAF::TransformMap transformMap;
 
-	SAF::ActorAdjustmentsPtr adjustments;
+	SAF::ActorAdjustmentsPtr adjustments = nullptr;
 	if (GetActorAdjustments(&adjustments)) {
 		auto tongueMenu = FindFirstTongueMenu(adjustments);
 		if (tongueMenu) {
@@ -314,7 +314,8 @@ bool LoadMfgPath(const char* path) {
 		}
 	}
 
-	saf->LoadTongueAdjustment(adjustments, &transformMap);
+	if (adjustments)
+		saf->LoadTongueAdjustment(adjustments, &transformMap);
 
 	if (blinkHack && GetBlinkState() != kHackEnabled)
 		SetBlinkState(true);
@@ -345,7 +346,7 @@ UInt32 GetOrCreateTongueHandle(SAF::ActorAdjustmentsPtr adjustments) {
 	UInt32 tongueHandle = adjustments->GetHandleByType(SAF::kAdjustmentTypeTongue);
 
 	if (!tongueHandle) {
-		UInt32 tongueHandle = saf->CreateAdjustment(adjustments, "Face Morphs Tongue", SAM_ESP);
+		tongueHandle = saf->CreateAdjustment(adjustments, "Face Morphs Tongue", SAM_ESP);
 
 		auto adjustment = adjustments->GetAdjustment(tongueHandle);
 		if (!adjustment)
@@ -397,7 +398,8 @@ void SetFaceMorphCategory(GFxResult& result, SInt32 index, UInt32 value)
 		if (!tongueHandle)
 			return result.SetError("Failed to create tongue adjustment");
 
-		samManager.SetLocal("adjustmentHandle", &GFxValue(tongueHandle));
+		GFxValue tongeHandleValue(tongueHandle);
+		samManager.SetLocal("adjustmentHandle", &tongeHandleValue);
 		samManager.PushMenu("TongueBones");
 	}
 }
@@ -471,6 +473,8 @@ void GetMorphsTongueNodes(GFxResult& result)
 //
 //	UInt32 tongueHandle = GetOrCreateTongueHandle(adjustments);
 //
-//	result->PushBack(&GFxValue(nodeKey.name));
-//	result->PushBack(&GFxValue(tongueHandle));
+//  GFxValue nodeKeyName(nodeKey.name);
+//  GFxValue tongueHandleValue(tongueHandle);
+//	result->PushBack(&nodeKeyName);
+//	result->PushBack(&tongueHandleValue);
 //}

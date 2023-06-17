@@ -40,6 +40,7 @@
 SAF::SafMessagingInterface* saf;
 SelectedRefr selected;
 SamManager samManager;
+GFxFunctions samFunctions;
 
 ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 {
@@ -67,9 +68,12 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 
 	if (CALL_MEMBER_FN((*g_scaleformManager), LoadMovie)(this, movie, SAM_MENU_NAME, SAM_MENU_ROOT, movieFlags))
 	{
-		stage.SetMember("menuFlags", &GFxValue(flags));
-		stage.SetMember("movieFlags", &GFxValue(movieFlags));
-		stage.SetMember("extendedFlags", &GFxValue(extendedFlags));
+		GFxValue flagsValue(flags);
+		GFxValue movieFlagsValue(movieFlags);
+		GFxValue extendedFlagsValue(extendedFlags);
+		stage.SetMember("menuFlags", &flagsValue);
+		stage.SetMember("movieFlags", &movieFlagsValue);
+		stage.SetMember("extendedFlags", &extendedFlagsValue);
 
 		CreateBaseShaderTarget(filterHolder, stage);
 		filterHolder->SetFilterColor(false);
@@ -83,49 +87,16 @@ ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 
 void ScreenArcherMenu::RegisterFunctions()
 {
-	RegisterNativeFunction("PlaySound", 0);
-	RegisterNativeFunction("OpenMenu", 1);
-	RegisterNativeFunction("CloseMenu", 2);
+	auto it = samFunctions.names.begin();
+	int idx = 0;
+	for (; it != samFunctions.names.end(); ++it, ++idx) {
+		RegisterNativeFunction(it->c_str(), idx);
+	}
 }
 
 void ScreenArcherMenu::Invoke(Args* args)
 {
-	switch (args->optionID)
-	{
-	case 0:
-	{
-		if (args->numArgs >= 1)
-		{
-			if (args->args[0].IsString())
-				PlayUISound(args->args[0].GetString());
-		}
-		break;
-	}
-	case 1:
-	{
-		if (args->numArgs >= 1)
-		{
-			if (args->args[0].IsString())
-			{
-				BSFixedString menuName(args->args[0].GetString());
-				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Open);
-			}
-		}
-		break;
-	}
-	case 2:
-	{
-		if (args->numArgs >= 1)
-		{
-			if (args->args[0].IsString())
-			{
-				BSFixedString menuName(args->args[0].GetString());
-				CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuName, kMessage_Close);
-			}
-		}
-		break;
-	}
-	}
+	samFunctions.funcs.at(args->optionID)(args);
 }
 
 NiColor GetNiColor(float r, float g, float b) {
@@ -154,7 +125,8 @@ void SetShaderColor(BSGFxShaderFXTarget* target, float r, float g, float b) {
 
 void ScreenArcherMenu::PushNodeMarker(NiAVObject* node, BSFixedString name) {
 	auto& emplaced = boneDisplay.nodes.emplace_back(BoneDisplay::NodeMarker(node, name));
-	movie->movieRoot->CreateObject(&emplaced.marker, "NodeMarker", &GFxValue(node->m_name.c_str()), 1);
+	GFxValue nodeName(node->m_name.c_str());
+	movie->movieRoot->CreateObject(&emplaced.marker, "NodeMarker", &nodeName, 1);
 	movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, &emplaced.marker, 1);
 	movie->movieRoot->Invoke("root1.Menu_mc.AddNodeMarker", nullptr, &emplaced.marker, 1);
 }
@@ -210,7 +182,7 @@ void ScreenArcherMenu::EnableBoneDisplay(SAF::ActorAdjustmentsPtr actorAdjustmen
 {
 	std::lock_guard lock(boneDisplay.mutex);
 
-	if (boneDisplay.enabled)
+	if (boneDisplay.enabled || !menuOptions.boneoverlay)
 		return;
 
 	boneDisplay.actor = actorAdjustments;
@@ -302,7 +274,7 @@ void ScreenArcherMenu::DisableBoneDisplay()
 }
 
 void ScreenArcherMenu::EnableRotateDisplay() {
-	if (!boneDisplay.rotateMarker) {
+	if (!boneDisplay.rotateMarker && menuOptions.posinggizmo) {
 		boneDisplay.rotateMarker = std::make_unique<GFxValue>();
 		movie->movieRoot->CreateObject(boneDisplay.rotateMarker.get(), "RotateTool", nullptr, 0);
 		movie->movieRoot->Invoke("root1.Menu_mc.addChild", nullptr, boneDisplay.rotateMarker.get(), 1);
@@ -374,7 +346,8 @@ void ScreenArcherMenu::BoneDisplay::Update()
 		WorldToScreen_Internal(&it.node->m_worldTransform.pos, &outPos);
 
 		it.visible = it.enabled && !rotateVisible && (outPos.z >= 0.0);
-		it.marker.SetMember("visible", &GFxValue(it.visible));
+		GFxValue isVisible(it.visible);
+		it.marker.SetMember("visible", &isVisible);
 
 		if (it.visible) {
 			GFxValue::DisplayInfo displayInfo;
@@ -396,7 +369,8 @@ void ScreenArcherMenu::BoneDisplay::Update()
 			SetRotatedDisplayInfo(it.marker, startInfo._x, endInfo._x, startInfo._y, endInfo._y);
 		}
 
-		it.marker.SetMember("visible", &GFxValue(boneVisible));
+		GFxValue boneVisibleValue(boneVisible);
+		it.marker.SetMember("visible", &boneVisibleValue);
 	}
 
 	if (rotateVisible) {
@@ -409,7 +383,8 @@ void ScreenArcherMenu::BoneDisplay::Update()
 				visible = false;
 		}
 
-		rotateMarker->SetMember("visible", &GFxValue(visible));
+		GFxValue isVisible(visible);
+		rotateMarker->SetMember("visible", &isVisible);
 
 		if (visible) {
 			GFxValue::DisplayInfo info;
@@ -598,7 +573,8 @@ void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visibl
 	if (!root)
 		return;
 
-	if (!root->SetVariable(visiblePath, &GFxValue(visible)))
+	GFxValue isVisible(visible);
+	if (!root->SetVariable(visiblePath, &isVisible))
 		_Log("Failed to set visibility of menu: ", menuName.c_str());
 }
 
@@ -607,7 +583,8 @@ IMenuWrapper SamManager::StoreMenu() {
 
 	BSReadLocker tableLock(g_menuTableLock);
 
-	auto tableItem = (*g_ui)->menuTable.Find(&BSFixedString(SAM_MENU_NAME));
+	BSFixedString samMenuName(SAM_MENU_NAME);
+	auto tableItem = (*g_ui)->menuTable.Find(&samMenuName);
 	if (!tableItem)
 		return IMenuWrapper();
 
@@ -696,8 +673,8 @@ void SamManager::CloseMenu()
 {
 	auto wrapped = GetWrapped();
 	if (wrapped.IsOpen()) {
-		//storedName = MAIN_MENU_NAME;
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(BSFixedString(SAM_MENU_NAME), kMessage_Close);
+		BSFixedString samMenuName(SAM_MENU_NAME);
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
 	}
 }
 
@@ -775,7 +752,8 @@ void SamManager::ForceQuit()
 		return;
 
 	root->Invoke("root1.Menu_mc.CleanUp", nullptr, nullptr, 0);
-	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(BSFixedString(SAM_MENU_NAME), kMessage_Close);
+	BSFixedString samMenuName(SAM_MENU_NAME);
+	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
 }
 
 void SamManager::PushMenu(const char* name)
@@ -809,7 +787,8 @@ void SamManager::PopMenuTo(const char* name)
 		return;
 
 	GFxValue ret;
-	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &GFxValue(name), 1);
+	GFxValue args(name);
+	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &args, 1);
 }
 
 void SamManager::RefreshMenu()
@@ -1002,7 +981,8 @@ void SamManager::SetVisible(bool isVisible)
 	if (!root)
 		return;
 
-	root->SetVariable("root1.Menu_mc.visible", &GFxValue(isVisible));
+	GFxValue value(isVisible);
+	root->SetVariable("root1.Menu_mc.visible", &value);
 }
 
 void MenuAlwaysOn(BSFixedString menuStr, bool enabled) {
@@ -1093,14 +1073,17 @@ void GetMenuTarget(GFxValue& data) {
 			name = selectedNonActor.refr->GetFullName();
 		}
 		if (name && *name) {
-			data.SetMember("title", &GFxValue(name));
+			GFxValue value(name);
+			data.SetMember("title", &value);
 		}
 		else {
-			data.SetMember("title", &GFxValue(" "));
+			GFxValue value(" ");
+			data.SetMember("title", &value);
 		}
 	}
 	else {
-		data.SetMember("title", &GFxValue("No Target"));
+		GFxValue value("No Target");
+		data.SetMember("title", &value);
 	}
 }
 
@@ -1124,7 +1107,8 @@ bool SamManager::OnMenuOpen() {
 	GFxValue data;
 	root->CreateObject(&data);
 
-	data.SetMember("menuName", &GFxValue(storedName.c_str()));
+	GFxValue storedNameValue(storedName.c_str());
+	data.SetMember("menuName", &storedNameValue);
 
 	GetMenuTarget(data);
 
@@ -1149,7 +1133,8 @@ bool SamManager::OnMenuOpen() {
 	}
 
 	root->Invoke("root1.Menu_mc.MenuOpened", nullptr, &data, 1);
-	root->SetVariable("root1.Menu_mc.visible", &GFxValue(true));
+	GFxValue isMenuVisible(true);
+	root->SetVariable("root1.Menu_mc.visible", &isMenuVisible);
 
 	return true;
 }

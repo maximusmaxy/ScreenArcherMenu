@@ -9,9 +9,9 @@ namespace SAF {
 		AdjustmentPtr(*GetAdjustment)(UInt32 formId, UInt32 handle);
 		ActorAdjustmentsPtr(*GetActorAdjustments)(UInt32 formId);
 
-		void (*SetTransform)(AdjustmentPtr adjustment, const NodeKey& nodeKey, NiTransform& transform);
-		void (*NegateTransform)(ActorAdjustmentsPtr, AdjustmentPtr, NodeKey& nodeKey);
-		void (*RotateTransformXYZ)(ActorAdjustmentsPtr, AdjustmentPtr, NodeKey& nodeKey, UInt32 type, float scalar);
+		void (*SetTransform)(AdjustmentPtr adjustment, const NodeKey& nodeKey, const NiTransform& transform);
+		void (*NegateTransform)(ActorAdjustmentsPtr, AdjustmentPtr, const NodeKey& nodeKey);
+		void (*RotateTransformXYZ)(ActorAdjustmentsPtr, AdjustmentPtr, const NodeKey& nodeKey, UInt32 type, float scalar);
 
 		UInt32 (*CreateAdjustment)(ActorAdjustmentsPtr, const char* name, const char* mod);
 		UInt32 (*SaveAdjustment)(ActorAdjustmentsPtr, UInt32 handle, const char* filename);

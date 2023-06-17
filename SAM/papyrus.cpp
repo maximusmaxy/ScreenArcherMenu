@@ -89,7 +89,10 @@ void CallPapyrusForm(GFxResult& result, const char* id, const char* function, GF
 			}
 		}
 	}
-	catch (...) {}
+	catch (std::exception& e) 
+	{
+		_DMESSAGE(e.what());
+	}
 
 	return result.SetError(PAPYRUS_FUNCTION_ERROR);
 }

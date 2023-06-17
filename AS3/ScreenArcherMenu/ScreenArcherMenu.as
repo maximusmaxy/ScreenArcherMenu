@@ -11,10 +11,6 @@
 	import scaleform.gfx.*;
 	import utils.Debug;
 	import flash.utils.*;
-	import scaleform.clik.events.SliderEvent;
-	import scaleform.clik.constants.InputValue;
-	import scaleform.clik.events.InputEvent;
-	import scaleform.clik.ui.InputDetails;
 	import utils.Translator;
 
 	public class ScreenArcherMenu extends Shared.IMenu
@@ -68,6 +64,7 @@
 		public var ctrlHold:Boolean = false;
 		
 		public var isOpen:Boolean = false;
+		public var isSearching:Boolean = false;
 		
 		public var overNode:NodeMarker = null;
 		public var selectedNode:NodeMarker = null;
@@ -84,7 +81,7 @@
 			super();
 			//trace("SAM Constructed");
 			
-			Util.debug = false;
+			Util.debug = true;
 			widescreen = false;
 			isOpen = true;
 			
@@ -106,11 +103,13 @@
 			InitState();
 			InitEvents();
 
-//			if (Util.debug) {
-//				Data.menuName = "Main";
-//				rootMenu = "Main";
-//				PushMenu(NAME_MAIN);
-//			}
+			if (Util.debug) {
+				Data.menuName = "Main";
+				rootMenu = "Main";
+				PushMenu(NAME_MAIN);
+				stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+				stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+			}
 			
 			UpdateAlignment();
 		}
@@ -127,8 +126,10 @@
 		
 		internal function InitEvents():void
 		{
-			this.bounds.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown);
-			this.bounds.addEventListener(MouseEvent.MOUSE_WHEEL, OnMouseWheel);
+			if (!Util.debug) {
+				this.bounds.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown);
+				this.bounds.addEventListener(MouseEvent.MOUSE_WHEEL, OnMouseWheel);
+			}
 		}
 		
 		internal function InitFunctions():void
@@ -371,8 +372,11 @@
 		public function MenuOpened(data:Object)
 		{
 			//trace("Menu Opened");
+			if (!this.BGSCodeObj) {
+				this.ShowNotification("Failed to load code object");
+			}
 			
-			this.sam = root.f4se.plugins.ScreenArcherMenu;
+			this.sam = this.BGSCodeObj;
 			Data.load(data, this.sam, this.f4seObj, stage);
 			
 			if (data.global) {
@@ -466,15 +470,15 @@
 //			}
 //		}
 		
-//		public function onKeyDown(event:KeyboardEvent) 
-//		{
-//			processKeyDown(event.keyCode);
-//		}
-//		
-//		public function onKeyUp(event:KeyboardEvent)
-//		{
-//			processKeyUp(event.keyCode);
-//		}
+		public function onKeyDown(event:KeyboardEvent) 
+		{
+			ProcessKeyDown(event.keyCode);
+		}
+		
+		public function onKeyUp(event:KeyboardEvent)
+		{
+			ProcessKeyUp(event.keyCode);
+		}
 
 		public function ProcessKeyDown(keyCode:uint)
 		{
@@ -493,9 +497,13 @@
 			
 			if (hold)
 				return;
+			
+			if (ShouldBlockHotkeys(keyCode))
+				return;
 
 			switch (keyCode)
 			{
+				case 8://Backspace
 				case 9://Tab
 				case 277://Pad B
 					if (buttonHintBack.ButtonVisible) {
@@ -549,7 +557,11 @@
 //				case 162://left ctrl
 //				case 163://right ctrl
 //					ctrlHold = true;
-//					return;
+//					return
+				case 111://Numpad slash
+				case 191://Forward slash
+					StartSearchInput();
+					return;
 					
 				case 256://Mouse1
 				case 257://Mouse2
@@ -694,6 +706,27 @@
 			}
 			
 			DisableHold(keyCode);
+		}
+		
+		public function ShouldBlockHotkeys(keyCode:uint):Boolean {
+			if (!isSearching)
+				return false;
+			
+			 //Between A-Z
+			if (keyCode >= 65 && keyCode <= 90)
+				return true;
+				
+			switch(keyCode) {
+				case 8://backspace
+					return true;
+				case 27://escape
+				case 111://numpad forwardslash
+				case 191://forwardslash
+					StopSearchInput();
+					return true;
+			}
+
+			return false;
 		}
 		
 		public function ShowNotification(msg:String, store:Boolean = false)
@@ -1166,6 +1199,7 @@
 			
 			stateStack.length = index + 1;
 			StopTextInput();
+			StopSearchInput();
 
 			PopMenu();
 		}
@@ -1182,6 +1216,7 @@
 			Data.folderStack.length = 0;
 
 			StopTextInput();
+			StopSearchInput();
 			ClearWidgets();
 			
 			sliderList.visible = true;
@@ -1247,6 +1282,7 @@
 				case Data.MENU_ADJUSTMENT:
 					return CallDataFunction(menu.get);
 				case Data.MENU_LIST:
+				case Data.MENU_REMOVEABLE:
 					//optional
 					if (menu.get) {
 						return CallDataFunction(menu.get);
@@ -1383,6 +1419,7 @@
 						return Data.menuData.items[args[0]].func;
 					break;
 				case Data.MENU_LIST:
+				case Data.MENU_REMOVEABLE:
 					if (Data.menuData.list)
 						if (Data.menuData.list[args[0]].func)
 							return Data.menuData.list[args[0]].func;
@@ -1404,10 +1441,12 @@
 		public function SelectList(i:int) 
 		{
 			//trace("Select List", i);
+			i = Data.getIndex(i);
 			switch (Data.menuType) {
 				case Data.MENU_LIST:
 				case Data.MENU_MIXED:
 				case Data.MENU_ADJUSTMENT:
+				case Data.MENU_REMOVEABLE:
 					CallSet(i, Data.menuValues[i]);
 					break;
 				case Data.MENU_MAIN:
@@ -1425,6 +1464,7 @@
 		public function SelectInt(i:int, value:int)
 		{
 			//trace("Select Int", i, value);
+			i = Data.getIndex(i);
 			Data.menuValues[i] = value;
 			CallSet(i, value);
 		}
@@ -1433,6 +1473,7 @@
 		{
 			//trace("Select Float", i, value);
 			var type:int = Data.getType(i);
+			i = Data.getIndex(i);
 			if (type != Data.ITEM_TOUCH) {
 				Data.menuValues[i] = value;
 			}
@@ -1442,6 +1483,7 @@
 		public function SelectCheckbox(i:int, checked:Boolean = false)
 		{
 			//trace("Select Checkbox", i, checked);
+			i = Data.getIndex(i);
 			switch (Data.menuType) 
 			{
 				case Data.MENU_CHECKBOX:
@@ -1466,12 +1508,16 @@
 						CallDataFunction(Data.menuData.adjustment.edit, [i, Data.menuValues[i]]);
 					}
 					break;
+				case Data.MENU_REMOVEABLE:
+					CallDataFunction(Data.menuData.remove, [i]);
+					break;
 			}
 		}
 		
 		public function SelectCheckbox2(i:int, checked:Boolean = false)
 		{
 			//trace("Select Checkbox2", i, checked);
+			i = Data.getIndex(i);
 			if (Data.locals.adjustmentOrder) {
 				CallDataFunction(Data.menuData.adjustment.up, [i]);
 			} else {
@@ -1791,6 +1837,7 @@
 		public function ClearEntry():void
 		{
 			StopTextInput();
+			StopSearchInput();
 			Data.entryData = null;
 			UpdateMenus();
 		}
@@ -1835,6 +1882,73 @@
 				if (!Data.extraHotkeys)
 					AllowTextInput(false);
 			}
+		}
+		
+		internal function StartSearchInput()
+		{
+			if (Data.menuType == Data.MENU_MIXED)
+				return;
+			
+			if (!isSearching) {
+				//if extra hotkeys are enabled, disable text input to prevent the hotkey from being entered in the field
+				if (Data.extraHotkeys)
+					AllowTextInput(false);
+					
+				sliderList.title.text = "";
+				sliderList.title.type = TextFieldType.INPUT;
+				sliderList.title.selectable = true;
+				sliderList.title.maxChars = 100;
+				stage.focus = sliderList.title;
+				sliderList.title.setSelection(0, filenameInput.Input_tf.text.length);
+				AllowTextInput(true);
+				sliderList.title.addEventListener(Event.CHANGE, OnSearch);
+				isSearching = true;
+			}
+		}
+		
+		internal function StopSearchInput()
+		{
+			if (isSearching) {
+				sliderList.title.text = titleName;
+				sliderList.title.type = TextFieldType.DYNAMIC;
+				sliderList.title.setSelection(0,0);
+				sliderList.title.selectable = false;
+				//filenameInput.Input_tf.maxChars = 0;
+				stage.focus = sliderList;
+				
+				sliderList.title.removeEventListener(Event.CHANGE, OnSearch);
+				isSearching = false;
+				Data.removeFilter();
+				
+				//if extra hotkeys are disable, disable the text input too
+				if (!Data.extraHotkeys)
+					AllowTextInput(false);
+			}
+		}
+		
+		public function OnSearch(e:Event) {
+			var filtered:Array = FilterTest(Data.menuOptions, sliderList.title.text);
+			//var filtered:Array = this.sam.FilterMenu(Data.menuOptions, sliderList.title.text);
+			Data.updateFilter(filtered);
+			sliderList.updateState(0);
+			sliderList.update();
+		}
+		
+		public function FilterTest(options:Array, filter:String) {
+			var result:Array = [];
+			
+			if (filter.charAt(0) == '/')
+				filter = filter.substr(1);
+				
+			filter = filter.toLowerCase();
+				
+			for (var i:int = 0; i < options.length; i++) {
+				var str:String = options[i];
+				if (str.toLowerCase().indexOf(filter) >= 0) {
+					result.push(i);
+				}
+			}
+			return result;
 		}
 		
 		public function GetButton(type:int):BSButtonHintData
@@ -1957,7 +2071,7 @@
 		public function Close()
 		{
 			try {
-				this.sam.SamCloseMenu("ScreenArcherMenu");
+				this.sam.CloseMenu("ScreenArcherMenu");
 			}
 			catch (e:Error)
 			{
@@ -2126,6 +2240,7 @@
 		
 		public function UpdateTitle()
 		{
+			StopSearchInput();
 			if (Data.latentTitle.success) {
 				sliderList.title.text = Data.latentTitle.result.result;
 				Data.latentTitle.Clear();

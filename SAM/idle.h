@@ -38,6 +38,7 @@ struct IdleData
 extern std::unordered_map<UInt32, IdleData> raceIdleData;
 
 IdleData* GetIdleData(UInt32 raceId);
+IdleData* GetIdleData(TESObjectREFR* refr);
 
 void PlayIdleAnimation(UInt32 formId);
 void ResetIdleAnimation();
@@ -50,5 +51,6 @@ const char* GetCurrentIdleName();
 
 void GetIdleFavorites(GFxResult& result);
 void AppendIdleFavorite(GFxResult& result);
+void RemoveIdleFavorite(GFxResult& result, SInt32 index);
 void PlayIdleFavorite(GFxResult& result, const char* idleName);
 bool LoadIdleFavorites();

@@ -19,19 +19,27 @@
 #include "camera.h"
 #include "positioning.h"
 #include "strnatcmp.h"
-
-#include "BS_thread_pool.hpp"
+#include "forms.h"
 
 #include <thread>
 #include <fstream>
 #include <filesystem>
 #include <array>
+#include <ranges>
+#include <algorithm>
+#include <execution>
+#include <chrono>
 
-#define SEARCH_SIZE 9
-FormSearchResult substringSearchResult;
-NaturalSortedSet storedItemMods;
+FormSearchResult itemSearchResult;
+FormSearchResult staticSearchResult;
+std::vector<std::string> storedItemMods;
+std::vector<std::string> storedStaticMods;
 std::string lastSelectedMod;
-bool availableModGroups[SEARCH_SIZE];
+
+#define ITEMS_SIZE 9
+#define STATICS_SIZE 8
+bool availableModGroups[ITEMS_SIZE];
+bool availableStaticsGroups[STATICS_SIZE];
 
 const char* modGroupNames[] = {
 	"Armor",
@@ -45,6 +53,17 @@ const char* modGroupNames[] = {
 	"Misc"
 };
 
+const char* staticGroupNames[] = {
+	"Door",
+	"Flora",
+	"Furniture",
+	"Light",
+	"Moveable Static",
+	"NPC",
+	"Static Collection",
+	"Static"
+};
+
 //std::unordered_map<UInt32, std::string> itemGroupMap {
 //	{'OMRA', "Armour"},
 //	{'OMMA', "Ammo"},
@@ -56,94 +75,71 @@ const char* modGroupNames[] = {
 //	{'HCLA', "Chems"},
 //	{'CSIM', "Misc"}
 
-void FormSearchResult::Push(const char* name, UInt32 formId) 
-{
-	std::lock_guard lock(mutex);
-	list.push_back(std::make_pair(name, formId));
-}
+//int GetThreadCount() {
+//	int threads = std::thread::hardware_concurrency();
+//	if (threads > 1)
+//		threads -= 2;
+//
+//	return threads;
+//}
+//
+//void GetFormArraysAndSize(tArray<TESForm*>** formArrays, UInt32* size)
+//{
+//	formArrays[0] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrARMO);
+//	formArrays[1] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrWEAP);
+//	formArrays[2] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrALCH);
+//	formArrays[3] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrAMMO);
+//	formArrays[4] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrBOOK);
+//	formArrays[5] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrNOTE);
+//	formArrays[6] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrKEYM);
+//	formArrays[7] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrOMOD);
+//	formArrays[8] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrMISC);
+//
+//	*size = 0;
+//	for (auto it = formArrays; it != formArrays + SEARCH_SIZE; ++it) {
+//		*size += (*it)->count;
+//	}
+//}
 
-void FormSearchResult::Sort() 
-{
-	struct {
-		bool operator() (std::pair<const char*,UInt32>& a, std::pair<const char*, UInt32>& b) const {
-			return strnatcasecmp(a.first, b.first) < 0;
-		}
-	}
-	sorter;
-	
-	std::sort(list.begin(), list.end(), sorter);
-}
-
-void FormSearchResult::Clear()
-{
-	list.clear();
-}
-
-int GetThreadCount() {
-	int threads = std::thread::hardware_concurrency();
-	if (threads > 1)
-		threads -= 2;
-
-	return threads;
-}
-
-void GetFormArraysAndSize(tArray<TESForm*>** formArrays, UInt32* size)
-{
-	formArrays[0] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrARMO);
-	formArrays[1] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrWEAP);
-	formArrays[2] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrALCH);
-	formArrays[3] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrAMMO);
-	formArrays[4] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrBOOK);
-	formArrays[5] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrNOTE);
-	formArrays[6] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrKEYM);
-	formArrays[7] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrOMOD);
-	formArrays[8] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrMISC);
-
-	*size = 0;
-	for (auto it = formArrays; it != formArrays + SEARCH_SIZE; ++it) {
-		*size += (*it)->count;
-	}
-}
-
-//Gets the slice of the current form array to iterate through and sets the current position to the next array
-bool GetFormStartAndEnd(tArray<TESForm*>** dataArrays, UInt32* current, UInt32 endIndex, TESForm*** start, TESForm*** end)
-{
-	UInt32 size = 0;
-	UInt32 newSize;
-
-	for (auto it = dataArrays; it != dataArrays + SEARCH_SIZE; ++it) {
-		newSize = size + (*it)->count;
-		if (*current < newSize) {
-			*start = (*it)->entries + (*current - size);
-			*end = (*it)->entries + min((*it)->count, endIndex - size);
-			*current = newSize;
-			return true;
-		}
-		size = newSize;
-	}
-
-	return false;
-}
-
-bool GetFormStartAndEndWithIndex(tArray<TESForm*>** dataArrays, UInt32* current, UInt32 endIndex, TESForm*** start, TESForm*** end, int* index)
-{
-	UInt32 size = 0;
-	UInt32 newSize;
-
-	for (int i = 0; i < SEARCH_SIZE; ++i) {
-		newSize = size + dataArrays[i]->count;
-		if (*current < newSize) {
-			*start = dataArrays[i]->entries + (*current - size);
-			*end = dataArrays[i]->entries + min(dataArrays[i]->count, endIndex - size);
-			*current = newSize;
-			*index = i;
-			return true;
-		}
-		size = newSize;
-	}
-
-	return false;
-}
+////Gets the slice of the current form array to iterate through and sets the current position to the next array
+//bool GetFormStartAndEnd(tArray<TESForm*>** dataArrays, UInt32* current, UInt32 endIndex, TESForm*** start, TESForm*** end)
+//{
+//	UInt32 size = 0;
+//	UInt32 newSize;
+//
+//	for (auto it = dataArrays; it != dataArrays + SEARCH_SIZE; ++it) {
+//		newSize = size + (*it)->count;
+//		if (*current < newSize) {
+//			*start = (*it)->entries + (*current - size);
+//			*end = (*it)->entries + min((*it)->count, endIndex - size);
+//			*current = newSize;
+//			return true;
+//		}
+//		size = newSize;
+//	}
+//
+//	return false;
+//}
+//
+//bool GetFormStartAndEndWithIndex(tArray<TESForm*>** dataArrays, UInt32* current, UInt32 endIndex, TESForm*** start, TESForm*** end, int* index)
+//{
+//	UInt32 size = 0;
+//	UInt32 newSize;
+//
+//	for (int i = 0; i < SEARCH_SIZE; ++i) {
+//		newSize = size + dataArrays[i]->count;
+//		if (*current < newSize) {
+//			*start = dataArrays[i]->entries + (*current - size);
+//			*end = dataArrays[i]->entries + min(dataArrays[i]->count, endIndex - size);
+//			*current = newSize;
+//			*index = i;
+//			return true;
+//		}
+//		size = newSize;
+//	}
+//
+//	return false;
+//}
 
 typedef bool (*_OpenActorContainerInternal)(TESObjectREFR* refr, UInt32 unk2, bool unk3);
 RelocAddr<_OpenActorContainerInternal> OpenActorContainerInternal(0x1264F40);
@@ -155,102 +151,37 @@ void OpenActorContainer(GFxResult& result) {
 	OpenActorContainerInternal(selected.refr, 3, false);
 }
 
-//void GetModsFromModList(tArray<ModInfo*>& modlist, NaturalSortedCStringSet& mods) 
-//{
-//	for (auto it = modlist.entries; it < modlist.entries + modlist.count; ++it) {
-//		mods.insert((*it)->name);
-//	}
-//}
+FormsSpan GetItemsSpans() {
+	return {
+		MakeFormsSpan((*g_dataHandler)->arrARMO),
+		MakeFormsSpan((*g_dataHandler)->arrWEAP),
+		MakeFormsSpan((*g_dataHandler)->arrALCH),
+		MakeFormsSpan((*g_dataHandler)->arrAMMO),
+		MakeFormsSpan((*g_dataHandler)->arrBOOK),
+		MakeFormsSpan((*g_dataHandler)->arrNOTE),
+		MakeFormsSpan((*g_dataHandler)->arrKEYM),
+		MakeFormsSpan((*g_dataHandler)->arrOMOD),
+		MakeFormsSpan((*g_dataHandler)->arrMISC),
+	};
+}
 
-//void GetItemMods(GFxResult& result) {
-//	NaturalSortedCStringSet mods;
-//	GetModsFromModList((*g_dataHandler)->modList.loadedMods, mods);
-//	GetModsFromModList((*g_dataHandler)->modList.lightMods, mods);
-//
-//	result.CreateNames();
-//
-//	for (auto& mod : mods) {
-//		result.PushName(mod);
-//	}
-//}
-
-void SearchForItemMods(NaturalSortedSet& itemMods) 
-{
-	//creating two fixed length boolean vectors to store mods with items
-	int last = 0;
-	auto end = (*g_dataHandler)->modList.loadedMods.entries + (*g_dataHandler)->modList.loadedMods.count;
-	for (auto it = (*g_dataHandler)->modList.loadedMods.entries; it < end; ++it) {
-		if ((*it)->modIndex > last)
-			last = (*it)->modIndex;
-	}
-	std::vector<bool> esp(last + 1, false);
-
-	last = 0;
-	end = (*g_dataHandler)->modList.lightMods.entries + (*g_dataHandler)->modList.lightMods.count;
-	for (auto it = (*g_dataHandler)->modList.lightMods.entries; it < end; ++it) {
-		if ((*it)->lightIndex > last)
-			last = (*it)->lightIndex;
-	}
-	std::vector<bool> esl(last + 1, false);
-
-	tArray<TESForm*>* formArrays[SEARCH_SIZE];
-	UInt32 size;
-	GetFormArraysAndSize(formArrays, &size);
-
-	BS::thread_pool pool(GetThreadCount());
-
-	//the full form loop is the intensive part of the operation so we do the minimal amount of work which is just checking availability
-	pool.parallelize_loop(size, [&formArrays, &esp, &esl](const UInt32 startIndex, const UInt32 endIndex)
-	{
-		TESForm** formStart;
-		TESForm** formEnd;
-		UInt32 current = startIndex;
-
-		auto espIt = esp.begin();
-		auto eslIt = esl.begin();
-		UInt32 formId;
-
-		while (current < endIndex) {
-			if (!GetFormStartAndEnd(formArrays, &current, endIndex, &formStart, &formEnd))
-				break;
-
-			while (formStart != formEnd) {
-				if (*formStart) {
-					formId = (*formStart)->formID;
-					if ((formId & 0xFE000000) == 0xFE000000) {
-						*(eslIt + ((formId >> 12) & 0xFFF)) = true;
-					}
-					else {
-						*(espIt + (formId >> 24)) = true;
-					}
-				}
-
-				++formStart;
-			}
-		}
-	}).wait();
-
-	//Collect the names of available mods
-	end = (*g_dataHandler)->modList.loadedMods.entries + (*g_dataHandler)->modList.loadedMods.count;
-	for (auto it = (*g_dataHandler)->modList.loadedMods.entries; it < end; ++it) {
-		if (esp[(*it)->modIndex])
-			itemMods.insert((*it)->name);
-	}
-
-	end = (*g_dataHandler)->modList.lightMods.entries + (*g_dataHandler)->modList.lightMods.count;
-	for (auto it = (*g_dataHandler)->modList.lightMods.entries; it < end; ++it) {
-		if (esl[(*it)->lightIndex])
-			itemMods.insert((*it)->name);
-	}
+FormsSpan GetStaticsSpans() {
+	return {
+		MakeFormsSpan((*g_dataHandler)->arrDOOR),
+		MakeFormsSpan((*g_dataHandler)->arrFLOR),
+		MakeFormsSpan((*g_dataHandler)->arrFURN),
+		MakeFormsSpan((*g_dataHandler)->arrLIGH),
+		MakeFormsSpan((*g_dataHandler)->arrMSTT),
+		MakeFormsSpan((*g_dataHandler)->arrNPC_),
+		MakeFormsSpan((*g_dataHandler)->arrSCOL),
+		MakeFormsSpan((*g_dataHandler)->arrSTAT),
+	};
 }
 
 void GetItemMods(GFxResult& result) 
 {
 	if (storedItemMods.empty())
-		SearchForItemMods(storedItemMods);
-
-	//if (itemModsSearchResult.list.empty())
-	//	return result.SetError("No mods with addable items found");
+		SearchFormsSpanForMods(GetItemsSpans(), storedItemMods);
 
 	result.CreateNames();
 
@@ -271,41 +202,21 @@ void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
 	}
 }
 
-void SearchForItemGroups(const ModInfo* modInfo)
+void SearchForAvailableGroups(const ModInfo* modInfo, const FormsSpan& spans, bool* availableGroups, size_t len)
 {
-	memset(availableModGroups, false, sizeof(availableModGroups));
+	memset(availableGroups, false, sizeof(availableGroups));
 
 	UInt32 modIndex;
 	UInt32 mask;
 	GetModIndexAndMask(modInfo, &modIndex, &mask);
 
-	tArray<TESForm*>* formArrays[SEARCH_SIZE];
-	UInt32 size;
-	GetFormArraysAndSize(formArrays, &size);
-
-	BS::thread_pool pool(GetThreadCount());
-
-	pool.parallelize_loop(size, [&formArrays, &modIndex, &mask](const UInt32 startIndex, const UInt32 endIndex)
-	{
-		TESForm** formStart;
-		TESForm** formEnd;
-		UInt32 current = startIndex;
-		int arrayIndex;
-
-		while (current < endIndex) {
-			if (!GetFormStartAndEndWithIndex(formArrays, &current, endIndex, &formStart, &formEnd, &arrayIndex))
-				break;
-
-			while (formStart != formEnd) {
-				if (*formStart && (((*formStart)->formID & mask) == modIndex)) {
-					availableModGroups[arrayIndex] = true;
-					break;
-				}	
-
-				++formStart;
-			}
-		}
-	}).wait();
+	for (int arrIndex = 0; arrIndex < len; ++arrIndex) {
+		std::for_each(std::execution::par, spans[arrIndex].begin(), spans[arrIndex].end(),
+			[&arrIndex, &modIndex, &mask, &availableGroups](TESForm* form) {
+			if (form && ((form->formID & mask) == modIndex))
+				availableGroups[arrIndex] = true;
+		});
+	}
 }
 
 void GetItemGroups(GFxResult& result, const char* modName)
@@ -315,15 +226,15 @@ void GetItemGroups(GFxResult& result, const char* modName)
 		return result.SetError("Mod info was not found");
 
 	//if mod has changed
-	if (_stricmp(modName, lastSelectedMod.c_str())) 
+	if (_stricmp(modName, lastSelectedMod.c_str()))
 	{
-		SearchForItemGroups(modInfo);
+		SearchForAvailableGroups(modInfo, GetItemsSpans(), availableModGroups, ITEMS_SIZE);
 		lastSelectedMod = modName;
 	}
 
 	result.CreateMenuItems();
 
-	for (int i = 0; i < SEARCH_SIZE; ++i) {
+	for (int i = 0; i < ITEMS_SIZE; ++i) {
 		if (availableModGroups[i])
 			result.PushItem(modGroupNames[i], i);
 	}
@@ -335,17 +246,17 @@ void GetItemList(GFxResult& result, const char* modName, SInt32 groupIndex)
 	if (!modInfo)
 		return result.SetError("Mod info was not found");
 
-	tArray<TESForm*>* formArray;
+	std::span<TESForm*> formSpan;
 	switch (groupIndex) {
-	case 0: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrARMO); break;
-	case 1: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrWEAP); break;
-	case 2: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrALCH); break;
-	case 3: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrAMMO); break;
-	case 4: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrBOOK); break;
-	case 5: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrNOTE); break;
-	case 6: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrKEYM); break;
-	case 7: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrOMOD); break;
-	case 8: formArray = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrMISC); break;
+	case 0: formSpan = MakeFormsSpan((*g_dataHandler)->arrARMO); break;
+	case 1: formSpan = MakeFormsSpan((*g_dataHandler)->arrWEAP); break;
+	case 2: formSpan = MakeFormsSpan((*g_dataHandler)->arrALCH); break;
+	case 3: formSpan = MakeFormsSpan((*g_dataHandler)->arrAMMO); break;
+	case 4: formSpan = MakeFormsSpan((*g_dataHandler)->arrBOOK); break;
+	case 5: formSpan = MakeFormsSpan((*g_dataHandler)->arrNOTE); break;
+	case 6: formSpan = MakeFormsSpan((*g_dataHandler)->arrKEYM); break;
+	case 7: formSpan = MakeFormsSpan((*g_dataHandler)->arrOMOD); break;
+	case 8: formSpan = MakeFormsSpan((*g_dataHandler)->arrMISC); break;
 	default: return result.SetError("Group index was out of range");
 	}
 
@@ -354,27 +265,18 @@ void GetItemList(GFxResult& result, const char* modName, SInt32 groupIndex)
 	GetModIndexAndMask(modInfo, &modIndex, &mask);
 
 	FormSearchResult searchResult;
-
-	BS::thread_pool pool(GetThreadCount());
-
-	pool.parallelize_loop(formArray->count, [&formArray, &searchResult, &modIndex, &mask](const UInt32 startIndex, const UInt32 endIndex)
-	{
-		TESForm** formStart = formArray->entries + startIndex;
-		TESForm** formEnd = formArray->entries + endIndex;
-
-		while (formStart != formEnd) {
-			if (*formStart && (((*formStart)->formID & mask) == modIndex))
-				searchResult.Push((*formStart)->GetFullName(), (*formStart)->formID);
-
-			formStart++;
+	std::mutex mutex;
+	std::for_each(std::execution::par, formSpan.begin(), formSpan.end(), [&](TESForm* form) {
+		if (form && ((form->formID & mask) == modIndex)) {
+			std::lock_guard lock(mutex);
+			searchResult.emplace_back(form->GetFullName(), form->formID);
 		}
-	}).wait();
+	});
 
-	searchResult.Sort();
+	SortSearchResult(searchResult);
 
 	result.CreateMenuItems();
-	
-	for (auto& kvp : searchResult.list) {
+	for (auto& kvp : searchResult) {
 		if (kvp.first && *kvp.first)
 			result.PushItem(kvp.first, kvp.second);
 	}
@@ -435,16 +337,16 @@ RelocPtr<UInt64> actorEquipManagerInstance(0x59D75C8);
 
 void EquipItemFromForm(TESObjectREFR* refr, TESForm* form)
 {
-	BGSObjectInstance instance { form, nullptr };
+	BGSObjectInstance instance{ form, nullptr };
 
 	ActorEquipManagerEquipObject(*actorEquipManagerInstance, refr, &instance, 0, 1, nullptr, false, true, true, true, false);
 }
 
-typedef bool (*_ActorEquipManagerUnequipObject)(UInt64 manager, TESObjectREFR* actor, BGSObjectInstance* instance, 
+typedef bool (*_ActorEquipManagerUnequipObject)(UInt64 manager, TESObjectREFR* actor, BGSObjectInstance* instance,
 	UInt32 unk, BGSEquipSlot* slot, int unk2, bool b1, bool b2, bool b3, bool b4, UInt64 unk3);
 RelocAddr<_ActorEquipManagerUnequipObject> ActorEquipManagerUnequipObject(0xE1C0B0);
 
-void UnequipItemFromForm(TESObjectREFR* refr, TESForm* form) 
+void UnequipItemFromForm(TESObjectREFR* refr, TESForm* form)
 {
 	BGSObjectInstance instance{ form, nullptr };
 
@@ -487,7 +389,7 @@ void AddItem(GFxResult& result, UInt32 formId, bool equip) {
 
 	//Equip item
 	else {
-		
+
 		//Return error on game paused
 		//if (GetGamePaused())
 		//	return result.SetError("Cannot equip/unequip while the game is paused");
@@ -510,50 +412,13 @@ void AddItem(GFxResult& result, UInt32 formId, bool equip) {
 void GetLastSearchResult(GFxResult& result) {
 	result.CreateMenuItems();
 
-	for (auto& kvp : substringSearchResult.list) {
+	for (auto& kvp : itemSearchResult) {
 		if (kvp.first && *kvp.first)
 			result.PushItem(kvp.first, kvp.second);
 	}
 }
 
-void SearchFormsForSubstring(FormSearchResult& searchResult, const char* search) {
-
-	char lowered[MAX_PATH];
-	GetLoweredCString(lowered, search);
-
-	tArray<TESForm*>* formArrays[SEARCH_SIZE];
-	UInt32 size;
-	GetFormArraysAndSize(formArrays, &size);
-
-	BS::thread_pool pool(GetThreadCount());
-
-	//BS::timer timer;
-	//timer.start();
-
-	pool.parallelize_loop(size, [&formArrays, &lowered, &searchResult](const UInt32 startIndex, const UInt32 endIndex)
-	{
-		TESForm** start;
-		TESForm** end;
-		UInt32 current = startIndex;
-		while (current < endIndex) {
-			if (!GetFormStartAndEnd(formArrays, &current, endIndex, &start, &end))
-				break;
-
-			while (start != end) {
-				if (*start && HasInsensitiveSubstring((*start)->GetFullName(), lowered))
-					searchResult.Push((*start)->GetFullName(), (*start)->formID);
-				++start;
-			}
-		}
-	}).wait();
-
-	//timer.stop();
-	//_Log("Substring search operation completed in ms: ", timer.ms());
-
-	searchResult.Sort();
-}
-
-void SearchItems(GFxResult& result, const char* search) 
+void SearchItems(GFxResult& result, const char* search)
 {
 	if (!search || !*search)
 		return result.SetError("No search term found");
@@ -566,11 +431,11 @@ void SearchItems(GFxResult& result, const char* search)
 	if (len >= MAX_PATH - 1)
 		return result.SetError("Search term is too big! 0_0");
 
-	substringSearchResult.Clear();
+	itemSearchResult.clear();
 
-	SearchFormsForSubstring(substringSearchResult, search);
-	
-	if (substringSearchResult.list.empty())
+	SearchFormsForSubstring(itemSearchResult, GetItemsSpans(), search);
+
+	if (itemSearchResult.empty())
 		return result.SetError("Search returned no results");
 }
 
@@ -637,32 +502,28 @@ void GetMatSwaps(GFxResult& result, UInt32 formId) {
 		return result.SetError("Could not find form id");
 
 	FormSearchResult searchResult;
-	auto& omods = (*g_dataHandler)->arrOMOD;
+	std::mutex mutex;
+	auto omods = std::span((*g_dataHandler)->arrOMOD.entries, (*g_dataHandler)->arrOMOD.count);
 	auto item = GetEquippedFromForm(selected.refr, formId);
 	if (!item)
 		return result.SetError("Could not find equipped item");
-
 	auto extraData = item->stack->extraData;
 
-	BS::thread_pool pool(GetThreadCount());
-
-	pool.parallelize_loop(omods.count, [&](const UInt32 startIndex, const UInt32 endIndex)
-	{
-		auto omodEnd = omods.entries + endIndex;
-		for (auto omodIt = omods.entries + startIndex; omodIt != omodEnd; ++omodIt) {
-			if (*omodIt && (*omodIt)->targetType == BGSMod::Attachment::Mod::kTargetType_Armor && CanBeUsedOnForm(*omodIt, form, extraData)) {
-				auto containerData = GetModContainerMatSwapData(*omodIt);
-				if (containerData)
-					searchResult.Push((*omodIt)->GetFullName(), (*omodIt)->formID);
-			}
+	std::for_each(std::execution::par, omods.begin(), omods.end(), [&](BGSMod::Attachment::Mod* mod) {
+		if (mod && mod->targetType == BGSMod::Attachment::Mod::kTargetType_Armor && CanBeUsedOnForm(mod, form, extraData)) {
+			auto containerData = GetModContainerMatSwapData(mod);
+			if (containerData) {
+				std::lock_guard lock(mutex);
+				searchResult.emplace_back(mod->GetFullName(), mod->formID);
+			}	
 		}
-	}).wait();
+	});
 
-	searchResult.Sort();
+	SortSearchResult(searchResult);
 
 	result.CreateMenuItems();
 
-	for (auto& kvp : searchResult.list) {
+	for (auto& kvp : searchResult) {
 		if (kvp.first && *kvp.first)
 			result.PushItem(kvp.first, kvp.second);
 	}
@@ -696,7 +557,7 @@ RelocAddr<UInt64> standardObjectCompareCallback(0x42F280);
 typedef void(*_PostModifyInventoryItem)(TESObjectREFR* refr, TESForm* form, bool unk1);
 RelocAddr<_PostModifyInventoryItem> PostModifyInventoryItem(0x1403730);
 
-typedef UInt32 (*_GetInventoryObjectCount)(TESObjectREFR* refr, TESForm* form);
+typedef UInt32(*_GetInventoryObjectCount)(TESObjectREFR* refr, TESForm* form);
 RelocAddr<_GetInventoryObjectCount> GetInventoryObjectCount(0x3FB480);
 
 typedef void (*_RemoveNonRefrItem)(TESObjectREFR* refr, TESForm* form, UInt64 count, bool silent, UInt64 unk1, UInt64 unk2, UInt32 handle, VirtualMachine* vm);
@@ -709,7 +570,7 @@ void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 equipId) {
 	TESForm* equipForm = LookupFormByID(equipId);
 	if (!equipForm)
 		return result.SetError("Could not find equipment id");
-	
+
 	TESForm* modForm = LookupFormByID(modId);
 	if (!modForm)
 		return result.SetError("Could not find mod id");
@@ -727,9 +588,9 @@ void ApplyMatSwap(GFxResult& result, UInt32 modId, UInt32 equipId) {
 		EquipItemFromForm(selected.refr, equipForm);
 	}
 
-	CheckStackIdFunctor comparer{ 
-		checkStackIdFunctorVftable, 
-		0 
+	CheckStackIdFunctor comparer{
+		checkStackIdFunctorVftable,
+		0
 	};
 
 	UInt64 out = 1;
@@ -764,7 +625,7 @@ void GetEquipment(GFxResult& result) {
 
 	for (int i = 0; i < ActorEquipData::kMaxSlots; ++i) {
 		//ignore pipboy
-		if (actor->equipData->slots[i].item && i != 31) { 
+		if (actor->equipData->slots[i].item && i != 31) {
 			const char* name = actor->equipData->slots[i].item->GetFullName();
 			if (name && *name) {
 				map.emplace(name, actor->equipData->slots[i].item->formID);
@@ -833,12 +694,119 @@ void RemoveAllEquipment(GFxResult& result) {
 	}
 }
 
-typedef UInt32(*_ShowLooksMenuInternal)(TESObjectREFR* refr, UInt32 unk1, TESObjectREFR* unk2, TESObjectREFR* unk3, TESObjectREFR* unk4);
-RelocAddr<_ShowLooksMenuInternal> ShowLooksMenuInternal(0x0B42C40);
+void GetStaticMods(GFxResult& result) {
+	if (storedItemMods.empty())
+		SearchFormsSpanForMods(GetStaticsSpans(), storedStaticMods);
 
-void ShowLooksMenu(GFxResult& result) {
+	result.CreateNames();
+
+	for (auto& mod : storedItemMods) {
+		result.PushName(mod.c_str());
+	}
+}
+
+void GetStaticGroups(GFxResult& result, const char* modName)
+{
+	const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(modName);
+	if (!modInfo)
+		return result.SetError("Mod info was not found");
+
+	//if mod has changed
+	if (_stricmp(modName, lastSelectedMod.c_str()))
+	{
+		SearchForAvailableGroups(modInfo, GetStaticsSpans(), availableStaticsGroups, STATICS_SIZE);
+		lastSelectedMod = modName;
+	}
+
+	result.CreateMenuItems();
+
+	for (int i = 0; i < STATICS_SIZE; ++i) {
+		if (availableStaticsGroups[i])
+			result.PushItem(staticGroupNames[i], i);
+	}
+}
+
+void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex)
+{
+	const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(modName);
+	if (!modInfo)
+		return result.SetError("Mod info was not found");
+
+	std::span<TESForm*> formSpan;
+	switch (groupIndex) {
+	case 0: formSpan = MakeFormsSpan((*g_dataHandler)->arrDOOR); break;
+	case 1: formSpan = MakeFormsSpan((*g_dataHandler)->arrFLOR); break;
+	case 2: formSpan = MakeFormsSpan((*g_dataHandler)->arrFURN); break;
+	case 3: formSpan = MakeFormsSpan((*g_dataHandler)->arrLIGH); break;
+	case 4: formSpan = MakeFormsSpan((*g_dataHandler)->arrMSTT); break;
+	case 5: formSpan = MakeFormsSpan((*g_dataHandler)->arrNPC_); break;
+	case 6: formSpan = MakeFormsSpan((*g_dataHandler)->arrSCOL); break;
+	case 7: formSpan = MakeFormsSpan((*g_dataHandler)->arrSTAT); break;
+	default: return result.SetError("Group index was out of range");
+	}
+
+	UInt32 modIndex;
+	UInt32 mask;
+	GetModIndexAndMask(modInfo, &modIndex, &mask);
+
+	FormSearchResult searchResult;
+	std::mutex mutex;
+	std::for_each(std::execution::par, formSpan.begin(), formSpan.end(), [&](TESForm* form) {
+		if (form && ((form->formID & mask) == modIndex)) {
+			std::lock_guard lock(mutex);
+			searchResult.emplace_back(form->GetFullName(), form->formID);
+		}
+	});
+
+	SortSearchResult(searchResult);
+
+	result.CreateMenuItems();
+	for (auto& kvp : searchResult) {
+		if (kvp.first && *kvp.first)
+			result.PushItem(kvp.first, kvp.second);
+	}
+}
+
+void GetLastSearchResultStatic(GFxResult& result) {
+	result.CreateMenuItems();
+
+	for (auto& kvp : staticSearchResult) {
+		if (kvp.first && *kvp.first)
+			result.PushItem(kvp.first, kvp.second);
+	}
+}
+
+void SearchStatics(GFxResult& result, const char* search) {
+	if (!search || !*search)
+		return result.SetError("No search term found");
+
+	int len = strlen(search);
+
+	if (len < 2)
+		return result.SetError("Search term must be longer than 1 character");
+
+	if (len >= MAX_PATH - 1)
+		return result.SetError("Search term is too big! 0_0");
+
+	staticSearchResult.clear();
+
+	SearchFormsForSubstring(staticSearchResult, GetStaticsSpans(), search);
+
+	if (staticSearchResult.empty())
+		return result.SetError("Search returned no results");
+}
+
+typedef UInt32(*_PlaceAtMeInternal)(TESObjectREFR** result, TESObjectREFR* target, TESForm* form, int, int, int, char, bool);
+RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal(0x5121D0);
+
+void PlaceAtSelected(GFxResult& result, UInt32 formId) {
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
 
-	ShowLooksMenuInternal(selected.refr, 0, nullptr, nullptr, nullptr);
+	auto form = LookupFormByID(formId);
+	if (!form)
+		return;
+
+	TESObjectREFR* out = nullptr;
+	PlaceAtMeInternal(&out, selected.refr, form, 1, 0, 0, 1, false);
 }

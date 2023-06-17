@@ -101,19 +101,22 @@ void ConsolePrintConcat(const char* st1, const char* st2) {
 
 std::string FindPathInSubfolder(const char* folder, const char* stem, const char* ext)
 {
-	std::stringstream ss;
+	std::wstringstream ss;
 	ss << stem;
 	ss << ext;
-
-	std::string filename = ss.str();
+	const std::wstring filename = ss.str();
 
 	for (auto& it : std::filesystem::recursive_directory_iterator(folder)) {
-		if (!it.is_directory() && !_stricmp(it.path().filename().string().c_str(), filename.c_str())) {
-			return it.path().string();
+		if (!it.is_directory()) {
+			const auto& native = it.path().native();
+			static const std::wstring slashes(L"\\/");
+			const size_t pos = native.find_last_of(slashes);
+			if (pos != std::wstring::npos && !_wcsicmp(native.c_str() + pos + 1, filename.c_str()))
+				return std::filesystem::path(native).string();
 		}
 	}
 
-	return std::string();
+	return {};
 }
 
 bool LoadSamFile(const char* filename)
@@ -175,6 +178,7 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 		case kConsolePairLights: success = LoadLightsPath(path.c_str()); break;
 		case kConsolePairFaceMorphs: success = LoadMfgPath(path.c_str()); break;
 		case kConsolePairCamera: success = LoadCameraPath(path.c_str()); break;
+		default: return false;
 		}
 	}
 
@@ -188,6 +192,7 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 	case kConsolePairLights: error = "Could not find lights: "; break;
 	case kConsolePairFaceMorphs: error = "Could not find morphs: "; break;
 	case kConsolePairCamera: error = "Could not find camera state: "; break;
+	default: return false;
 	}
 
 	ConsolePrintConcat(error, filename);

@@ -1,9 +1,10 @@
 #include "positioning.h"
 
+#include "f4se/NiNodes.h"
 #include "SAF/conversions.h"
 #include "SAF/util.h"
-
 #include "constants.h"
+#include "camera.h"
 
 #include <math.h>
 
@@ -227,6 +228,28 @@ void UpdateRefrTranslation(UInt32 flags, char axis, float& prop, float mod)
 	prop = value;
 }
 
+bool UpdateRefrTranslationRelative(NiPoint3& pos, float mod, bool perpendicular)
+{
+	auto camera = GetCameraNode();
+	if (!camera)
+		return false;
+
+	float cx, cy, cz;
+	NiMatrix3ToEulerAnglesZXY(&camera->m_worldTransform.rot, &cx, &cy, &cz);
+
+	const float angle = cz + (perpendicular ? SAF::HALF_PI : 0);
+	const auto px = std::sin(angle) * mod + pos.x;
+	const auto py = std::cos(angle) * mod + pos.y;
+	const auto newPos = NiPoint3{ px, py, pos.z };
+
+	SetRefrTranslation(0x1007, 0x58, newPos.x);
+	SetRefrTranslation(0x1007, 0x59, newPos.y);
+	SetRefrTranslation(0x1007, 0x6A, newPos.z);
+	pos = newPos;
+
+	return true;
+}
+
 void SetRefrScale(double value)
 {
 	TranslationParam p1;
@@ -255,10 +278,12 @@ void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool has
 
 	switch (type) {
 	case kAdjustPositionX:
-		UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, dif);
+		if (!UpdateRefrTranslationRelative(selectedNonActor.refr->pos, dif, true))
+			UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, dif);
 		break;
 	case kAdjustPositionY:
-		UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, dif);
+		if (!UpdateRefrTranslationRelative(selectedNonActor.refr->pos, dif, false))
+			UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, dif);
 		break;
 	case kAdjustPositionZ:
 		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, dif);
@@ -390,4 +415,11 @@ void GetPositioning(GFxResult& result) {
 	result.PushValue(rot.z);
 
 	result.PushValue(((UInt16)selectedNonActor.refr->unk104) * 0.01);
+
+	result.PushValue(0);
+	result.PushValue(0);
+	result.PushValue(0);
+
+	result.PushValue(GetGamePaused());
+	result.PushValue(GetWorldCollision());
 }

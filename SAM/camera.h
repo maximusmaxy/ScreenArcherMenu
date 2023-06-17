@@ -30,6 +30,8 @@ struct CameraSaveState
 	float fov;
 };
 
+NiNode* GetCameraNode();
+TESCameraState* GetCurrentCameraState();
 FreeCameraState* GetFreeCameraState();
 
 void GetCamera(GFxResult& result);
@@ -45,6 +47,11 @@ void LoadCameraGFx(GFxResult& result, const char* path);
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version);
 void RevertCamera();
+
+typedef void(*_NiMatrix3FromEulerAnglesZXY)(NiMatrix43* matrix, float x, float y, float z);
+extern RelocAddr<_NiMatrix3FromEulerAnglesZXY> NiMatrix3FromEulerAnglesZXY;
+typedef void(*_NiMatrix3ToEulerAnglesZXY)(NiMatrix43* matrix, float* x, float* y, float* z);
+extern RelocAddr<_NiMatrix3ToEulerAnglesZXY> NiMatrix3ToEulerAnglesZXY;
 
 NiTransform GetCameraTransform(FreeCameraState* state);
 void SetCameraTransform(FreeCameraState* state, NiTransform& transform);

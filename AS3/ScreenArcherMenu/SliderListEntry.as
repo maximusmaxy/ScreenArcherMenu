@@ -45,6 +45,9 @@
 			
 			value.addEventListener(MouseEvent.CLICK, onValueClick);
 			value.addEventListener(Event.CHANGE, onValueInput);
+			
+			checkbox.index = 0;
+			checkbox2.index = 1;
 		}
 		
 		public function initFunctions(funcs:EntryFunctions)
@@ -68,14 +71,9 @@
 				switch (this.type)
 				{
 					case Data.ITEM_LIST: 
-						functions.list(id);
-						Util.playOk();
-						break;
 					case Data.ITEM_ADJUSTMENT:
-						functions.list(id);
-						Util.playOk();
-						break;
 					case Data.ITEM_FOLDER:
+					case Data.ITEM_REMOVEABLE:
 						functions.list(id); 
 						Util.playOk();
 						break;
@@ -195,6 +193,7 @@
 				case Data.ITEM_LIST:
 				case Data.ITEM_ADJUSTMENT:
 				case Data.ITEM_FOLDER:
+				case Data.ITEM_REMOVEABLE:
 					return;
 				case Data.ITEM_TOUCH:
 					if (!value.visible) return;
@@ -257,6 +256,7 @@
 				case Data.ITEM_ADJUSTMENT: updateAdjustment(); break;
 				case Data.ITEM_TOUCH: updateTouch(); break;
 				case Data.ITEM_FOLDER: updateFolder(); break;
+				case Data.ITEM_REMOVEABLE: updateRemoveable(); break;
 				default: disable();
 			}
 		}
@@ -384,6 +384,18 @@
 			checkbox.setCheck(selected);
 			checkbox2.disable();
 			Util.setRect(background, -2, -3.25, 290, 32);
+			this.valueType = Data.NONE;
+		}
+		
+		public function updateRemoveable()
+		{
+			setSelectable(true);
+			setText(0, 0, 236, Data.getName(this.id));
+			slider.visible = false;
+			value.visible = false;
+			checkbox.init(256, this.id, Data.CHECKBOX_RECYCLE, true);
+			checkbox2.disable();
+			Util.setRect(background, -2, -3.25, 254, 32);
 			this.valueType = Data.NONE;
 		}
 		

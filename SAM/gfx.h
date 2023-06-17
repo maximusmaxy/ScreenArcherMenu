@@ -59,18 +59,21 @@ public:
 	
 	template <class T>
 	void PushValue(T var) {
+		GFxValue varValue(var);
 		if (type == kGFxResultItems) {
-			itemParams[1].PushBack(&GFxValue(var));
+			itemParams[1].PushBack(&varValue);
 		}
 		else {
-			params[1].PushBack(&GFxValue(var));
+			params[1].PushBack(&varValue);
 		}
 	}
 
 	template <class T>
 	void PushItem(const char* name, T var) {
-		itemParams[0].PushBack(&GFxValue(name));
-		itemParams[1].PushBack(&GFxValue(var));
+		GFxValue nameValue(name);
+		GFxValue varValue(var);
+		itemParams[0].PushBack(&nameValue);
+		itemParams[1].PushBack(&varValue);
 	}
 
 	void PushName(const char* name);

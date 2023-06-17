@@ -50,7 +50,7 @@ namespace SAF {
 		return Quat{ 1, 0, 0, 0 };
 	}
 
-	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt) {
+	NiPoint3 RotateMatrix(const NiMatrix43& m, const NiPoint3& pt) {
 		return NiPoint3(
 			m.data[0][0] * pt.x + m.data[1][0] * pt.y + m.data[2][0] * pt.z,
 			m.data[0][1] * pt.x + m.data[1][1] * pt.y + m.data[2][1] * pt.z,
@@ -58,7 +58,7 @@ namespace SAF {
 		);
 	}
 
-	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs)
+	NiMatrix43 MultiplyNiMatrix(const NiMatrix43& lhs, const NiMatrix43& rhs)
 	{
 		NiMatrix43 tmp;
 		tmp.data[0][0] =
@@ -100,7 +100,7 @@ namespace SAF {
 		return tmp;
 	}
 
-	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs) {
+	NiTransform MultiplyNiTransform(const NiTransform& lhs, const NiTransform& rhs) {
 		NiTransform res;
 		res.scale = lhs.scale * rhs.scale;
 		res.rot = MultiplyNiMatrix(lhs.rot, rhs.rot);
@@ -108,7 +108,7 @@ namespace SAF {
 		return res;
 	}
 
-	NiTransform InvertNiTransform(NiTransform& t) {
+	NiTransform InvertNiTransform(const NiTransform& t) {
 		NiTransform res;
 		res.scale = t.scale == 0 ? 1.0f : 1.0f / t.scale;
 		res.rot = t.rot.Transpose();
@@ -116,7 +116,7 @@ namespace SAF {
 		return res;
 	}
 
-	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dst) {
+	NiTransform NegateNiTransform(const NiTransform& src, const NiTransform& dst) {
 		NiTransform res;
 
 		float srcScale = src.scale == 0 ? 1.0f : src.scale;
@@ -131,7 +131,7 @@ namespace SAF {
 	}
 
 	//Need this for support of older versions
-	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dst) {
+	NiTransform NegateNiTransformTransposed(const NiTransform& src, const  NiTransform& dst) {
 		NiTransform res;
 
 		float srcScale = src.scale == 0 ? 1.0f : src.scale;
@@ -146,7 +146,7 @@ namespace SAF {
 	}
 
 	//Is almost equal to the identity transform
-	bool TransformIsDefault(NiTransform &t) {
+	bool TransformIsDefault(const NiTransform &t) {
 		return (FloatEqual(t.pos.x, 0.0f) &&
 			FloatEqual(t.pos.y, 0.0f) &&
 			FloatEqual(t.pos.z, 0.0f) &&
@@ -157,7 +157,7 @@ namespace SAF {
 	}
 
 	//Is almost equal to another transform
-	bool TransformEqual(NiTransform& lhs, NiTransform& rhs)
+	bool TransformEqual(const NiTransform& lhs, const NiTransform& rhs)
 	{
 		return (FloatEqual(lhs.pos.x, rhs.pos.x) &&
 			FloatEqual(lhs.pos.y, rhs.pos.y) &&
@@ -389,7 +389,7 @@ namespace SAF {
 		matrix = matrix * rot;
 	}
 
-	NiPoint3 GetMatrixAxis(NiMatrix43& matrix, int type) 
+	NiPoint3 GetMatrixAxis(const NiMatrix43& matrix, int type)
 	{
 		switch (type) {
 		case kAxisX: return NiPoint3(matrix.data[0][0], matrix.data[1][0], matrix.data[2][0]);
@@ -439,7 +439,7 @@ namespace SAF {
 	}
 
 	//Need this for legacy support
-	void MatrixToEulerYPRTransposed(NiMatrix43& matrix, float& x, float& y, float& z) {
+	void MatrixToEulerYPRTransposed(const NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[0][2] < 1.0) {
 			if (matrix.data[0][2] > -1.0) {
 				x = atan2(-matrix.data[1][2], matrix.data[2][2]);
@@ -459,7 +459,7 @@ namespace SAF {
 		}
 	}
 
-	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z) {
+	void MatrixToEulerYPR(const NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[2][0] < 1.0) {
 			if (matrix.data[2][0] > -1.0) {
 				x = atan2(-matrix.data[2][1], matrix.data[2][2]);
@@ -498,7 +498,7 @@ namespace SAF {
 		matrix.data[2][2] = cosY * cosZ;
 	}
 
-	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z) {
+	void MatrixToEulerRPY(const NiMatrix43& matrix, float& x, float& y, float& z) {
 		if (matrix.data[2][0] < 1.0) {
 			if (matrix.data[2][0] > -1.0) {
 				x = atan2(matrix.data[1][0], matrix.data[0][0]);
@@ -522,7 +522,7 @@ namespace SAF {
 		MatrixFromEulerYPRTransposed(matrix, x * -DEGREE_TO_RADIAN, y * -DEGREE_TO_RADIAN, z * -DEGREE_TO_RADIAN);
 	}
 
-	void MatrixToDegree(NiMatrix43& matrix, float& x, float& y, float& z) {
+	void MatrixToDegree(const NiMatrix43& matrix, float& x, float& y, float& z) {
 		MatrixToEulerYPRTransposed(matrix, x, y, z);
 		x *= -RADIAN_TO_DEGREE;
 		y *= -RADIAN_TO_DEGREE;
@@ -533,14 +533,14 @@ namespace SAF {
 		MatrixFromEulerYPR(matrix, x * DEGREE_TO_RADIAN, y * DEGREE_TO_RADIAN, z * DEGREE_TO_RADIAN);
 	}
 
-	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z) {
+	void MatrixToPose(const NiMatrix43& matrix, float& x, float& y, float& z) {
 		MatrixToEulerYPR(matrix, x, y, z);
 		x *= RADIAN_TO_DEGREE;
 		y *= RADIAN_TO_DEGREE;
 		z *= RADIAN_TO_DEGREE;
 	}
 
-	NiPoint3 YPRToRPY(NiPoint3& rot)
+	NiPoint3 YPRToRPY(const NiPoint3& rot)
 	{
 		NiMatrix43 matrix;
 		MatrixFromEulerYPRTransposed(matrix, -rot.x, -rot.y, -rot.z);
@@ -551,7 +551,7 @@ namespace SAF {
 		return newRot;
 	}
 
-	NiPoint3 RPYToYPR(NiPoint3& rot)
+	NiPoint3 RPYToYPR(const NiPoint3& rot)
 	{
 		NiMatrix43 matrix;
 		MatrixFromEulerRPY(matrix, rot.x, rot.y, rot.z);
@@ -565,7 +565,7 @@ namespace SAF {
 		return newRot;
 	}
 
-	NiMatrix43 NiMatrix43Invert(NiMatrix43& matrix) {
+	NiMatrix43 NiMatrix43Invert(const NiMatrix43& matrix) {
 		NiMatrix43 i;
 
 		i.data[0][0] = matrix.data[1][1] * matrix.data[2][2] - matrix.data[1][2] * matrix.data[2][1];
@@ -591,7 +591,7 @@ namespace SAF {
 		return i;
 	}
 
-	NiMatrix43 NiFromQuat(Quat& q)
+	NiMatrix43 NiFromQuat(const Quat& q)
 	{
 		float fTx = ((float)2.0) * q[1];
 		float fTy = ((float)2.0) * q[2];
@@ -621,7 +621,7 @@ namespace SAF {
 		return m;
 	}
 
-	Quat NiToQuat(NiMatrix43& m)
+	Quat NiToQuat(const NiMatrix43& m)
 	{
 		Quat q;
 
@@ -742,7 +742,7 @@ namespace SAF {
 		return result;
 	}
 
-	Quat QuatFromAxisAngle(NiPoint3 axis, float angle)
+	Quat QuatFromAxisAngle(const NiPoint3 axis, float angle)
 	{
 		Quat result;
 		//NormalizeVector(axis); already normalized
@@ -756,7 +756,7 @@ namespace SAF {
 		return result;
 	}
 
-	NiTransform SlerpNiTransform(NiTransform& transform, float scalar) {
+	NiTransform SlerpNiTransform(const NiTransform& transform, float scalar) {
 		if (scalar == 1.0f)
 			return transform;
 		else if (scalar == 0.0f)
@@ -778,7 +778,7 @@ namespace SAF {
 	}
 
 	//Conversion to outfit studio rotation vector https://github.com/ousnius/nifly/blob/main/src/Object3d.cpp#L46
-	Vector3 MatrixToOutfitStudioVector(NiMatrix43& m)
+	Vector3 MatrixToOutfitStudioVector(const NiMatrix43& m)
 	{
 		double cosang = (m.data[0][0] + m.data[1][1] + m.data[2][2] - 1) * 0.5;
 

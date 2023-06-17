@@ -208,8 +208,8 @@ namespace SAF {
 		NiTransform* GetScaledTransform(const NodeKey& key);
 		NiTransform GetScaledTransformOrDefault(const NodeKey& key);
 
-		void SetTransform(const NodeKey& name, NiTransform& transform);
-		void SetPoseTransform(BSFixedString name, NiTransform& transform);
+		void SetTransform(const NodeKey& name, const NiTransform& transform);
+		void SetPoseTransform(BSFixedString name, const NiTransform& transform);
 		bool HasTransform(const NodeKey& name);
 		void ResetTransform(const NodeKey& name);
 
@@ -277,6 +277,7 @@ namespace SAF {
 
 		AdjustmentPtr CreateAdjustment(const char* name);
 		UInt32 CreateAdjustment(const char* name, const char* espName);
+		AdjustmentPtr CreateFromAdjustment(AdjustmentPtr adjustment);
 		AdjustmentPtr GetAdjustment(UInt32 handle);
 		AdjustmentPtr GetListAdjustment(UInt32 index);
 		void RemoveAdjustment(UInt32 handle);
@@ -321,10 +322,10 @@ namespace SAF {
 		bool RemoveMod(BSFixedString espName);
 
 		bool HasNode(BSFixedString name);
-		bool IsNodeOffset(NodeKey& nodeKey);
-		void NegateTransform(AdjustmentPtr adjustment, NodeKey& name);
+		bool IsNodeOffset(const NodeKey& nodeKey);
+		void NegateTransform(AdjustmentPtr adjustment, const NodeKey& name);
 		void OverrideTransform(AdjustmentPtr adjustment, const NodeKey& name, NiTransform& transform);
-		void RotateTransformXYZ(AdjustmentPtr adjustment, NodeKey& name, UInt32 type, float scalar);
+		void RotateTransformXYZ(AdjustmentPtr adjustment, const NodeKey& name, UInt32 type, float scalar);
 
 		void LoadRaceAdjustment(const char* name, bool clear, bool enable);
 		void RemoveAdjustmentsByType(UInt32 type, bool checkRace);

@@ -1,6 +1,7 @@
 #include "gfx.h"
 
 #include "data.h"
+#include "saf/util.h"
 
 //if root is managed, automatically finalize result value on destruction
 GFxResult::~GFxResult() {
@@ -103,11 +104,13 @@ void GFxResult::SetManagedString(GFxMovieRoot* _root, const char* name) {
 }
 
 void GFxResult::PushName(const char* name) {
+	GFxValue nameValue(name);
 	if (type == kGFxResultItems) {
-		itemParams[0].PushBack(&GFxValue(name));
+		
+		itemParams[0].PushBack(&nameValue);
 	}
 	else {
-		params[1].PushBack(&GFxValue(name));
+		params[1].PushBack(&nameValue);
 	}
 }
 
@@ -116,9 +119,12 @@ void GFxResult::PushFolder(const char* name, const char* path)
 	GFxValue folder;
 	root->CreateObject(&folder);
 
-	folder.SetMember("name", &GFxValue(name));
-	folder.SetMember("path", &GFxValue(path));
-	folder.SetMember("folder", &GFxValue(true));
+	GFxValue nameValue(name);
+	GFxValue pathValue(path);
+	GFxValue folderValue(true);
+	folder.SetMember("name", &nameValue);
+	folder.SetMember("path", &pathValue);
+	folder.SetMember("folder", &folderValue);
 
 	params[1].PushBack(&folder);
 }
@@ -128,9 +134,12 @@ void GFxResult::PushFile(const char* name, const char* path)
 	GFxValue file;
 	root->CreateObject(&file);
 
-	file.SetMember("name", &GFxValue(name));
-	file.SetMember("path", &GFxValue(path));
-	file.SetMember("folder", &GFxValue(false));
+	GFxValue nameValue(name);
+	GFxValue pathValue(path);
+	GFxValue folderValue(false);
+	file.SetMember("name", &nameValue);
+	file.SetMember("path", &pathValue);
+	file.SetMember("folder", &folderValue);
 	
 	params[1].PushBack(&file);
 }
@@ -140,10 +149,14 @@ void GFxResult::PushFileCheckbox(const char* name, const char* path, bool checke
 	GFxValue file;
 	root->CreateObject(&file);
 
-	file.SetMember("name", &GFxValue(name));
-	file.SetMember("path", &GFxValue(path));
-	file.SetMember("folder", &GFxValue(false));
-	file.SetMember("checked", &GFxValue(checked));
+	GFxValue nameValue(name);
+	GFxValue pathValue(path);
+	GFxValue folderValue(false);
+	GFxValue checkedValue(checked);
+	file.SetMember("name", &nameValue);
+	file.SetMember("path", &pathValue);
+	file.SetMember("folder", &folderValue);
+	file.SetMember("checked", &checkedValue);
 
 	params[1].PushBack(&file);
 }

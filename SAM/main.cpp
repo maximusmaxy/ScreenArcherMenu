@@ -6,6 +6,7 @@
 #include "scaleform.h"
 #include "papyrus.h"
 #include "messaging.h"
+#include "functions.h"
 
 #include "f4se_common/f4se_version.h"
 
@@ -71,8 +72,10 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 
 bool F4SEPlugin_Load(const F4SEInterface* f4se)
 {
+	//if (samMessaging.scaleform)
+	//	samMessaging.scaleform->Register(SAM_MENU_NAME, RegisterScaleform);
 	if (samMessaging.scaleform)
-		samMessaging.scaleform->Register(SAM_MENU_NAME, RegisterScaleform);
+		BuildSamFunctions(samFunctions);
 
 	if (samMessaging.messaging)
 		samMessaging.messaging->RegisterListener(samMessaging.pluginHandle, "F4SE", F4SEMessageHandler);

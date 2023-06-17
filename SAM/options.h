@@ -14,6 +14,8 @@ public:
 	bool alignment;
 	bool widescreen;
 	bool extrahotkeys;
+	bool boneoverlay;
+	bool posinggizmo;
 	std::string sliderSet;
 	NaturalSortedSet sliderGroups;
 

@@ -232,8 +232,9 @@ bool LoadJsonMenu(const char* path)
 	try {
 		validator.ValidateMenu();
 	}
-	catch (...) {
+	catch (std::exception& e) {
 		_Log("Error while trying to validate json menu: ", stem.c_str());
+		_DMESSAGE(e.what());
 	}
 
 	if (validator.hasError) {
@@ -275,8 +276,9 @@ bool OverrideJsonMenu(const char* path)
 	try {
 		MergeJsons(overrider, overridedMenu);
 	}
-	catch (...) {
+	catch (std::exception& e) {
 		_Log("Error while trying to merge override menu: ", stem.c_str());
+		_DMESSAGE(e.what());
 
 		//return to stored menu
 		*overridedMenu = storedMenu;
@@ -290,8 +292,10 @@ bool OverrideJsonMenu(const char* path)
 	try {
 		validator.ValidateMenu();
 	}
-	catch (...) {
+	catch (std::exception& e) {
+
 		_Log("Error while trying to validate override menu: ", stem.c_str());
+		_DMESSAGE(e.what());
 
 		//return to stored menu
 		*overridedMenu = storedMenu;

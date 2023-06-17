@@ -50,36 +50,36 @@ namespace SAF {
 
 	void MatrixFromEulerYPRTransposed(NiMatrix43& matrix, float x, float y, float z);
 	void MatrixFromEulerYPR(NiMatrix43& matrix, float x, float y, float z);
-	void MatrixToEulerYPRTransposed(NiMatrix43& matrix, float& x, float& y, float& z);
-	void MatrixToEulerYPR(NiMatrix43& matrix, float& x, float& y, float& z);
+	void MatrixToEulerYPRTransposed(const NiMatrix43& matrix, float& x, float& y, float& z);
+	void MatrixToEulerYPR(const NiMatrix43& matrix, float& x, float& y, float& z);
 	void MatrixFromEulerRPY(NiMatrix43& matrix, float x, float y, float z);
-	void MatrixToEulerRPY(NiMatrix43& matrix, float& x, float& y, float& z);
+	void MatrixToEulerRPY(const NiMatrix43& matrix, float& x, float& y, float& z);
 	void MatrixFromDegree(NiMatrix43& matrix, float x, float y, float z);
-	void MatrixToDegree(NiMatrix43 & matrix, float& x, float& y, float& z);
+	void MatrixToDegree(const NiMatrix43 & matrix, float& x, float& y, float& z);
 	void MatrixFromPose(NiMatrix43& matrix, float x, float y, float z);
-	void MatrixToPose(NiMatrix43& matrix, float& x, float& y, float& z);
-	Vector3 MatrixToOutfitStudioVector(NiMatrix43& matrix);
+	void MatrixToPose(const NiMatrix43& matrix, float& x, float& y, float& z);
+	Vector3 MatrixToOutfitStudioVector(const NiMatrix43& matrix);
 
-	NiPoint3 YPRToRPY(NiPoint3& rot);
-	NiPoint3 RPYToYPR(NiPoint3& rot);
+	NiPoint3 YPRToRPY(const NiPoint3& rot);
+	NiPoint3 RPYToYPR(const NiPoint3& rot);
 
-	NiPoint3 RotateMatrix(NiMatrix43& m, NiPoint3& pt);
-	NiMatrix43 MultiplyNiMatrix(NiMatrix43& lhs, NiMatrix43& rhs);
+	NiPoint3 RotateMatrix(const NiMatrix43& m, const NiPoint3& pt);
+	NiMatrix43 MultiplyNiMatrix(const NiMatrix43& lhs, const NiMatrix43& rhs);
 
-	NiTransform MultiplyNiTransform(NiTransform& lhs, NiTransform& rhs);
-	NiTransform SlerpNiTransform(NiTransform& transform, float scalar);
-	NiTransform NegateNiTransform(NiTransform& src, NiTransform& dest);
-	NiTransform NegateNiTransformTransposed(NiTransform& src, NiTransform& dest);
-	NiTransform InvertNiTransform(NiTransform& t);
+	NiTransform MultiplyNiTransform(const NiTransform& lhs, const NiTransform& rhs);
+	NiTransform SlerpNiTransform(const NiTransform& transform, float scalar);
+	NiTransform NegateNiTransform(const NiTransform& src, const NiTransform& dest);
+	NiTransform NegateNiTransformTransposed(const NiTransform& src, const NiTransform& dest);
+	NiTransform InvertNiTransform(const NiTransform& t);
 
-	bool TransformIsDefault(NiTransform& t);
-	bool TransformEqual(NiTransform& lhs, NiTransform& rhs);
+	bool TransformIsDefault(const NiTransform& t);
+	bool TransformEqual(const NiTransform& lhs, const NiTransform& rhs);
 
 	NiMatrix43 GetXYZRotation(int type, float scalar);
 	void RotateMatrixXYZ(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixXYZ2(NiMatrix43& matrix, int type, float scalar);
 	void RotateMatrixAxis(NiMatrix43& matrix, int type, float scalar);
-	NiPoint3 GetMatrixAxis(NiMatrix43& matrix, int type);
+	NiPoint3 GetMatrixAxis(const NiMatrix43& matrix, int type);
 
 	class Quat {
 	public:

@@ -29,6 +29,9 @@
     <ClCompile Include="messaging.cpp" />
     <ClCompile Include="bodymorphs.cpp" />
     <ClCompile Include="smartpointer.cpp" />
+    <ClCompile Include="functions.cpp" />
+    <ClCompile Include="looks.cpp" />
+    <ClCompile Include="forms.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
@@ -59,6 +62,9 @@
     <ClInclude Include="messaging.h" />
     <ClInclude Include="bodymorphs.h" />
     <ClInclude Include="smartpointer.h" />
+    <ClInclude Include="functions.h" />
+    <ClInclude Include="looks.h" />
+    <ClInclude Include="forms.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

@@ -33,11 +33,11 @@ std::vector<std::string> bodyMorphNames;
 bool GetSliderSet(NaturalSortedSet& sliders, const char* path)
 {
 	try {
-		rapidxml::xml_document<> doc;
+		auto doc = std::make_unique<rapidxml::xml_document<>>();
 		rapidxml::file<> file(path);
-		doc.parse<0>(file.data());
+		doc->parse<0>(file.data());
 
-		auto setInfo = doc.first_node("SliderSetInfo");
+		auto setInfo = doc->first_node("SliderSetInfo");
 		if (!setInfo)
 			return false;
 
@@ -143,22 +143,22 @@ void SaveBodyslidePreset(GFxResult& result, const char* filename)
 	if (!bodyMorphNames.size())
 		return result.SetError("No sliders found for target actor");
 
-	rapidxml::xml_document<> doc;
-	auto declaration = doc.allocate_node(rapidxml::node_declaration);
-	declaration->append_attribute(doc.allocate_attribute("version", "1.0"));
-	declaration->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
-	doc.append_node(declaration);
-	auto presets = doc.allocate_node(rapidxml::node_element, "SliderPresets");
-	doc.append_node(presets);
-	auto preset = doc.allocate_node(rapidxml::node_element, "Preset");
+	auto doc = std::make_unique<rapidxml::xml_document<>>();
+	auto declaration = doc->allocate_node(rapidxml::node_declaration);
+	declaration->append_attribute(doc->allocate_attribute("version", "1.0"));
+	declaration->append_attribute(doc->allocate_attribute("encoding", "UTF-8"));
+	doc->append_node(declaration);
+	auto presets = doc->allocate_node(rapidxml::node_element, "SliderPresets");
+	doc->append_node(presets);
+	auto preset = doc->allocate_node(rapidxml::node_element, "Preset");
 	std::string presetName = std::filesystem::path(filename).filename().string();
-	preset->append_attribute(doc.allocate_attribute("name", presetName.c_str()));
-	preset->append_attribute(doc.allocate_attribute("set", menuOptions.sliderSet.c_str()));
+	preset->append_attribute(doc->allocate_attribute("name", presetName.c_str()));
+	preset->append_attribute(doc->allocate_attribute("set", menuOptions.sliderSet.c_str()));
 	presets->append_node(preset);
 
 	for (auto& group : menuOptions.sliderGroups) {
-		auto groupNode = doc.allocate_node(rapidxml::node_element, "Group");
-		groupNode->append_attribute(doc.allocate_attribute("name", group.c_str()));
+		auto groupNode = doc->allocate_node(rapidxml::node_element, "Group");
+		groupNode->append_attribute(doc->allocate_attribute("name", group.c_str()));
 		preset->append_node(groupNode);
 	}
 
@@ -169,10 +169,10 @@ void SaveBodyslidePreset(GFxResult& result, const char* filename)
 		SInt32 rounded = std::round(value * 100);
 
 		if (rounded) {
-			auto slider = doc.allocate_node(rapidxml::node_element, "SetSlider");
-			slider->append_attribute(doc.allocate_attribute("name", name.c_str()));
-			slider->append_attribute(doc.allocate_attribute("size", "big"));
-			slider->append_attribute(doc.allocate_attribute("value", doc.allocate_string(std::to_string(rounded).c_str())));
+			auto slider = doc->allocate_node(rapidxml::node_element, "SetSlider");
+			slider->append_attribute(doc->allocate_attribute("name", name.c_str()));
+			slider->append_attribute(doc->allocate_attribute("size", "big"));
+			slider->append_attribute(doc->allocate_attribute("value", doc->allocate_string(std::to_string(rounded).c_str())));
 			preset->append_node(slider);
 		}
 	}
@@ -181,18 +181,18 @@ void SaveBodyslidePreset(GFxResult& result, const char* filename)
 	
 	SAF::OutStreamWrapper wrapper(path.c_str());
 	if (!wrapper.fail)
-		wrapper.stream << doc;
+		wrapper.stream << *doc;
 }
 
 typedef std::vector<std::pair<std::string, SInt32>> SliderList;
 
 bool GetBodyslidePreset(SliderList& sliders, const char* path) {
 	try {
-		rapidxml::xml_document<> doc;
+		auto doc = std::make_unique< rapidxml::xml_document<>>();
 		rapidxml::file<> file(path);
-		doc.parse<0>(file.data());
+		doc->parse<0>(file.data());
 
-		auto presets = doc.first_node("SliderPresets");
+		auto presets = doc->first_node("SliderPresets");
 		if (!presets)
 			return false;
 

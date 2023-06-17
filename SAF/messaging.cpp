@@ -85,17 +85,17 @@ namespace SAF {
 		adjustments->RemoveAdjustment(handle);
 	}
 
-	void SetTransform(AdjustmentPtr adjustment, const NodeKey& nodeKey, NiTransform& transform)
+	void SetTransform(AdjustmentPtr adjustment, const NodeKey& nodeKey, const NiTransform& transform)
 	{
 		adjustment->SetTransform(nodeKey, transform);
 	}
 
-	void NegateTransform(ActorAdjustmentsPtr adjustments, AdjustmentPtr adjustment, NodeKey& nodeKey)
+	void NegateTransform(ActorAdjustmentsPtr adjustments, AdjustmentPtr adjustment, const NodeKey& nodeKey)
 	{
 		adjustments->NegateTransform(adjustment, nodeKey);
 	}
 
-	void RotateTransformXYZ(ActorAdjustmentsPtr adjustments, AdjustmentPtr adjustment, NodeKey& nodeKey, UInt32 type, float scalar)
+	void RotateTransformXYZ(ActorAdjustmentsPtr adjustments, AdjustmentPtr adjustment, const NodeKey& nodeKey, UInt32 type, float scalar)
 	{
 		adjustments->RotateTransformXYZ(adjustment, nodeKey, type, scalar);
 	}

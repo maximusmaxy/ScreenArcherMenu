@@ -5,7 +5,6 @@
 	import flash.ui.*;
 	import Shared.AS3.*;
 	import flash.text.*;
-	import flash.sampler.Sample;
 	import flash.utils.*;
 	import Shared.EntryEvent;
 	import utils.Translator;
@@ -282,6 +281,20 @@
 					}
 					select();
 					break;
+				case Data.ITEM_REMOVEABLE:
+					if (selectedY != -1)
+						unselect();
+					if (inc) {
+						selectedX++;
+						if (selectedX > 1) 
+							selectedX = 0;
+					} else {
+						selectedX--;
+						if (selectedX < 0)
+							selectedX = 1;
+					}
+					select();
+					break;
 				case Data.ITEM_TOUCH:
 					entry.checkbox.forceDrag(inc);
 					break;
@@ -456,7 +469,7 @@
 			var xOffset:int;
 			var yOffset:int = 10;
 			
-			this.entrySize = Data.menuSize;
+			this.entrySize = Data.getMenuSize();
 			this.listSize = 0;
 			
 			//clamp between 0 and entry size - 1

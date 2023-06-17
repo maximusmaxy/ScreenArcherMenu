@@ -4,19 +4,6 @@
 
 #include "gfx.h"
 
-#include <mutex>
-
-class FormSearchResult {
-private:
-	std::mutex mutex;
-public:
-	std::vector<std::pair<const char*, UInt32>> list;
-
-	void Push(const char* name, UInt32 formId);
-	void Sort();
-	void Clear();
-};
-
 void OpenActorContainer(GFxResult& result);
 
 void GetItemMods(GFxResult& result);
@@ -35,4 +22,9 @@ void GetEquipment(GFxResult& result);
 void RemoveEquipment(GFxResult& result, UInt32 formId);
 void RemoveAllEquipment(GFxResult& result);
 
-void ShowLooksMenu(GFxResult& result);
+void GetStaticMods(GFxResult& result);
+void GetStaticGroups(GFxResult& result, const char* modInfoStr);
+void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex);
+void GetLastSearchResultStatic(GFxResult& result);
+void SearchStatics(GFxResult& result, const char* search);
+void PlaceAtSelected(GFxResult& result, UInt32 formId);

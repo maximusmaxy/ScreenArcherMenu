@@ -530,6 +530,44 @@ namespace SAF {
 		return handle;
 	}
 
+	UInt32 PapyrusCopyAdjustment(StaticFunctionTag*, TESObjectREFR* srcRefr, UInt32 handle, TESObjectREFR* dstRefr) 
+	{
+		auto srcActor = g_adjustmentManager.GetActorAdjustments(srcRefr);
+		if (!srcActor)
+			return 0;
+
+		auto srcAdjustment = srcActor->GetAdjustment(handle);
+		if (!srcAdjustment)
+			return 0;
+
+		auto dstActor = g_adjustmentManager.GetActorAdjustments(dstRefr);
+		if (!dstActor)
+			return 0;
+
+		auto dstAdjustment = dstActor->CreateFromAdjustment(srcAdjustment);
+		dstActor->UpdateAllAdjustments();
+		return dstAdjustment->handle;
+	};
+
+	bool PapyrusCopyAllAdjustments(StaticFunctionTag*, TESObjectREFR* srcRefr, TESObjectREFR* dstRefr)
+	{
+		auto srcActor = g_adjustmentManager.GetActorAdjustments(srcRefr);
+		if (!srcActor)
+			return false;
+
+		auto dstActor = g_adjustmentManager.GetActorAdjustments(dstRefr);
+		if (!dstActor)
+			return false;
+
+		dstActor->Clear();
+		for (auto& srcAdjustment : srcActor->list) {
+			dstActor->CreateFromAdjustment(srcAdjustment);
+		}
+		dstActor->UpdateAllAdjustments();
+
+		return true;
+	}
+
 	void PapyrusSaveAdjustment(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString filename, UInt32 handle)
 	{
 		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
@@ -678,361 +716,361 @@ namespace SAF {
 		SetForceMorphUpdate(enabled);
 	}
 
-	NiTransform GetPapyrusTransform(UInt32 handle)
-	{
-		std::lock_guard<std::mutex> lock(transformMutex);
-
-		auto it = transformMap.find(handle);
-		if (it != transformMap.end()) {
-			return it->second;
-		}
-		else {
-			auto emplaced = transformMap.emplace(handle, TransformIdentity());
-			return emplaced.first->second;
-		}
-	}
-
-	void SetPapyrusTransform(UInt32 handle, NiTransform& transform)
-	{
-		std::lock_guard<std::mutex> lock(transformMutex);
-
-		transformMap[handle] = transform;
-	}
-
-	void ErasePapyrusTransform(UInt32 handle)
-	{
-		std::lock_guard<std::mutex> lock(transformMutex);
-
-		transformMap.erase(handle);
-	}
-
-	void ErasePapyrusTransforms(std::vector<UInt32>& handles)
-	{
-		std::lock_guard<std::mutex> lock(transformMutex);
-
-		for (auto& handle : handles) {
-			transformMap.erase(handle);
-		}
-	}
-
-	UInt32 PapyrusCreateTransformHandle(StaticFunctionTag*)
-	{
-		return InterlockedIncrement(&transformHandle);
-	}
-
-	UInt32 PapyrusCreateTransformHandleLocal(StaticFunctionTag*, Transform transform)
-	{
-		UInt32 handle = InterlockedIncrement(&transformHandle);
-
-		SetPapyrusTransform(handle, TransformFromPapyrus(transform));
-
-		return handle;
-	}
-
-	void PapyrusSetTransformHandle(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
-	{
-		NiTransform transform = GetPapyrusTransform(bHandle);
-		SetPapyrusTransform(aHandle, transform);
-	}
-
-	UInt32 PapyrusCopyTransformHandle(StaticFunctionTag*, UInt32 handle)
-	{
-		NiTransform transform = GetPapyrusTransform(handle);
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-
-		SetPapyrusTransform(newHandle, transform);
-
-		return newHandle;
-	}
-
-	void PapyrusDeleteTransformHandle(StaticFunctionTag*, UInt32 handle)
-	{
-		ErasePapyrusTransform(handle);
-	}
-
-	void PapyrusRegisterTransformHandle(StaticFunctionTag*, BSFixedString espName, UInt32 handle)
-	{
-		std::lock_guard<std::mutex> lock(registerMutex);
-
-		registeredTransforms[espName].push_back(handle);
-	}
-
-	void PapyrusDeleteRegisteredTransformHandles(StaticFunctionTag*, BSFixedString espName)
-	{
-		std::lock_guard<std::mutex> lock(registerMutex);
-
-		auto it = registeredTransforms.find(espName);
-		if (it != registeredTransforms.end()) {
-			ErasePapyrusTransforms(it->second);
-			registeredTransforms.erase(it);
-		}
-	}
-
-	UInt32 PapyrusGetAdjustmentTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, BSFixedString name, bool offset)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return 0;
-
-		auto adjustment = adjustments->GetAdjustment(handle);
-		if (!adjustment)
-			return 0;
-
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, adjustment->GetTransformOrDefault(NodeKey(name, offset)));
-		return newHandle;
-	}
-
-	void PapyrusSetAdjustmentTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, UInt32 aHandle, BSFixedString name, bool offset, UInt32 tHandle)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return;
-
-		auto adjustment = adjustments->GetAdjustment(aHandle);
-		if (!adjustment)
-			return;
-
-		NodeKey nodeKey(name, offset);
-
-		NiTransform transform = GetPapyrusTransform(tHandle);
-		adjustment->SetTransform(nodeKey, transform);
-		adjustments->UpdateNode(nodeKey.name);
-	}
-
-	UInt32 PapyrusGetSkeletonTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return 0;
-
-		auto node = GetFromNodeMap(adjustments->poseMap, name);
-		if (!node)
-			return 0;
-
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, node->m_localTransform);
-		return newHandle;
-	}
-
-	UInt32 PapyrusGetBaseTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return 0;
-
-		auto transform = GetFromBaseMap(*adjustments->baseMap, name);
-		if (!transform)
-			return 0;
-
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, *transform);
-		return newHandle;
-	}
-
-	bool PapyrusCopyAdjustmentTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, UInt32 aHandle, BSFixedString name, bool offset, UInt32 tHandle)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return false;
-
-		auto adjustment = adjustments->GetAdjustment(aHandle);
-		if (!adjustment)
-			return false;
-
-		NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(name);
-		if (!nodeKey.key)
-			return false;
-
-		SetPapyrusTransform(tHandle, adjustment->GetTransformOrDefault(nodeKey));
-
-		return true;
-	}
-
-	bool PapyrusCopySkeletonTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return false;
-
-		auto node = GetFromNodeMap(adjustments->poseMap, name);
-		if (!node)
-			return false;
-
-		SetPapyrusTransform(handle, node->m_localTransform);
-
-		return true;
-	}
-
-	bool PapyrusCopyBaseTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
-	{
-		auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
-		if (!adjustments)
-			return false;
-
-		auto transform = GetFromBaseMap(*adjustments->baseMap, name);
-		if (!transform)
-			return false;
-
-		SetPapyrusTransform(handle, *transform);
-
-		return true;
-	}
-
-	Transform PapyrusGetTransformLocal(StaticFunctionTag*, UInt32 handle)
-	{
-		return TransformToPapyrus(GetPapyrusTransform(handle), "", false);
-	}
-
-	void PapyrusSetTransformLocal(StaticFunctionTag*, UInt32 handle, Transform transform)
-	{
-		SetPapyrusTransform(handle, TransformFromPapyrus(transform));
-	}
-
-	UInt32 PapyrusGetAppliedTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
-	{
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, MultiplyNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
-		return newHandle;
-	}
-
-	void PapyrusApplyTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
-	{
-		SetPapyrusTransform(aHandle, MultiplyNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
-	}
-
-	UInt32 PapyrusGetInverseTransform(StaticFunctionTag*, UInt32 handle)
-	{
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, InvertNiTransform(GetPapyrusTransform(handle)));
-		return newHandle;
-	}
-
-	void PapyrusInverseTransform(StaticFunctionTag*, UInt32 handle)
-	{
-		SetPapyrusTransform(handle, InvertNiTransform(GetPapyrusTransform(handle)));
-	}
-
-	UInt32 PapyrusGetDifferenceTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
-	{
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, NegateNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
-		return newHandle;
-	}
-
-	void PapyrusDifferenceTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
-	{
-		SetPapyrusTransform(aHandle, NegateNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
-	}
-
-	UInt32 PapyrusGetBetweenTransform(StaticFunctionTag*, UInt32 handle, float scalar)
-	{
-		UInt32 newHandle = InterlockedIncrement(&transformHandle);
-		SetPapyrusTransform(newHandle, SlerpNiTransform(GetPapyrusTransform(handle), scalar));
-		return newHandle;
-	}
-
-	void PapyrusBetweenTransform(StaticFunctionTag*, UInt32 handle, float scalar)
-	{
-		SetPapyrusTransform(handle, SlerpNiTransform(GetPapyrusTransform(handle), scalar));
-	}
-
-	VMArray<float> PapyrusGetTransformPos(StaticFunctionTag*, UInt32 handle)
-	{
-		VMArray<float> result;
-
-		NiTransform transform = GetPapyrusTransform(handle);
-		result.Push(&transform.pos.x);
-		result.Push(&transform.pos.y);
-		result.Push(&transform.pos.z);
-
-		return result;
-	}
-
-	void PapyrusSetTransformPos(StaticFunctionTag*, UInt32 handle, VMArray<float> pos)
-	{
-		NiTransform transform = GetPapyrusTransform(handle);
-
-		float result;
-		pos.Get(&result, 0);
-		transform.pos.x = result;
-
-		pos.Get(&result, 1);
-		transform.pos.x = result;
-
-		pos.Get(&result, 2);
-		transform.pos.x = result;
-
-		SetPapyrusTransform(handle, transform);
-	}
-
-	VMArray<float> PapyrusGetTransformRotation(StaticFunctionTag*, UInt32 handle)
-	{
-		VMArray<float> result;
-
-		NiTransform transform = GetPapyrusTransform(handle);
-
-		result.Push(&transform.rot.data[1][0]);
-		result.Push(&transform.rot.data[2][0]);
-		result.Push(&transform.rot.data[0][1]);
-		result.Push(&transform.rot.data[1][1]);
-		result.Push(&transform.rot.data[2][1]);
-		result.Push(&transform.rot.data[0][2]);
-		result.Push(&transform.rot.data[1][2]);
-		result.Push(&transform.rot.data[2][2]);
-
-		return result;
-	}
-
-	void PapyrusSetTransformRotation(StaticFunctionTag*, UInt32 handle, VMArray<float> rot)
-	{
-		NiTransform transform = GetPapyrusTransform(handle);
-
-		float result;
-
-		rot.Get(&result, 0);
-		transform.rot.data[0][0] = result;
-		rot.Get(&result, 1);
-		transform.rot.data[1][0] = result;
-		rot.Get(&result, 2);
-		transform.rot.data[2][0] = result;
-		rot.Get(&result, 3);
-		transform.rot.data[0][1] = result;
-		rot.Get(&result, 4);
-		transform.rot.data[1][1] = result;
-		rot.Get(&result, 5);
-		transform.rot.data[2][1] = result;
-		rot.Get(&result, 6);
-		transform.rot.data[0][2] = result;
-		rot.Get(&result, 7);
-		transform.rot.data[1][2] = result;
-		rot.Get(&result, 8);
-		transform.rot.data[2][2] = result;
-
-		SetPapyrusTransform(handle, transform);
-	}
-
-	void PapyrusRotateTransformAxis(StaticFunctionTag*, UInt32 handle, UInt32 axis, float scalar)
-	{
-		if (axis < kAxisX || axis > kAxisZ)
-			return;
-
-		NiTransform transform = GetPapyrusTransform(handle);
-		MultiplyNiMatrix(transform.rot, GetXYZRotation(axis, scalar));
-		SetPapyrusTransform(handle, transform);
-	}
-
-	float PapyrusGetTransformScale(StaticFunctionTag*, UInt32 handle)
-	{
-		return GetPapyrusTransform(handle).scale;
-	}
-
-	void PapyrusSetTransformScale(StaticFunctionTag*, UInt32 handle, float scalar)
-	{
-		NiTransform transform = GetPapyrusTransform(handle);
-		transform.scale = scalar;
-		SetPapyrusTransform(handle, transform);
-	}
+	//NiTransform GetPapyrusTransform(UInt32 handle)
+	//{
+	//	std::lock_guard<std::mutex> lock(transformMutex);
+
+	//	auto it = transformMap.find(handle);
+	//	if (it != transformMap.end()) {
+	//		return it->second;
+	//	}
+	//	else {
+	//		auto emplaced = transformMap.emplace(handle, TransformIdentity());
+	//		return emplaced.first->second;
+	//	}
+	//}
+
+	//void SetPapyrusTransform(UInt32 handle, const NiTransform& transform)
+	//{
+	//	std::lock_guard<std::mutex> lock(transformMutex);
+
+	//	transformMap[handle] = transform;
+	//}
+
+	//void ErasePapyrusTransform(UInt32 handle)
+	//{
+	//	std::lock_guard<std::mutex> lock(transformMutex);
+
+	//	transformMap.erase(handle);
+	//}
+
+	//void ErasePapyrusTransforms(std::vector<UInt32>& handles)
+	//{
+	//	std::lock_guard<std::mutex> lock(transformMutex);
+
+	//	for (auto& handle : handles) {
+	//		transformMap.erase(handle);
+	//	}
+	//}
+
+	//UInt32 PapyrusCreateTransformHandle(StaticFunctionTag*)
+	//{
+	//	return InterlockedIncrement(&transformHandle);
+	//}
+
+	//UInt32 PapyrusCreateTransformHandleLocal(StaticFunctionTag*, Transform transform)
+	//{
+	//	UInt32 handle = InterlockedIncrement(&transformHandle);
+
+	//	SetPapyrusTransform(handle, TransformFromPapyrus(transform));
+
+	//	return handle;
+	//}
+
+	//void PapyrusSetTransformHandle(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
+	//{
+	//	NiTransform transform = GetPapyrusTransform(bHandle);
+	//	SetPapyrusTransform(aHandle, transform);
+	//}
+
+	//UInt32 PapyrusCopyTransformHandle(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	NiTransform transform = GetPapyrusTransform(handle);
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+
+	//	SetPapyrusTransform(newHandle, transform);
+
+	//	return newHandle;
+	//}
+
+	//void PapyrusDeleteTransformHandle(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	ErasePapyrusTransform(handle);
+	//}
+
+	//void PapyrusRegisterTransformHandle(StaticFunctionTag*, BSFixedString espName, UInt32 handle)
+	//{
+	//	std::lock_guard<std::mutex> lock(registerMutex);
+
+	//	registeredTransforms[espName].push_back(handle);
+	//}
+
+	//void PapyrusDeleteRegisteredTransformHandles(StaticFunctionTag*, BSFixedString espName)
+	//{
+	//	std::lock_guard<std::mutex> lock(registerMutex);
+
+	//	auto it = registeredTransforms.find(espName);
+	//	if (it != registeredTransforms.end()) {
+	//		ErasePapyrusTransforms(it->second);
+	//		registeredTransforms.erase(it);
+	//	}
+	//}
+
+	//UInt32 PapyrusGetAdjustmentTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, UInt32 handle, BSFixedString name, bool offset)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return 0;
+
+	//	auto adjustment = adjustments->GetAdjustment(handle);
+	//	if (!adjustment)
+	//		return 0;
+
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, adjustment->GetTransformOrDefault(NodeKey(name, offset)));
+	//	return newHandle;
+	//}
+
+	//void PapyrusSetAdjustmentTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, UInt32 aHandle, BSFixedString name, bool offset, UInt32 tHandle)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return;
+
+	//	auto adjustment = adjustments->GetAdjustment(aHandle);
+	//	if (!adjustment)
+	//		return;
+
+	//	NodeKey nodeKey(name, offset);
+
+	//	NiTransform transform = GetPapyrusTransform(tHandle);
+	//	adjustment->SetTransform(nodeKey, transform);
+	//	adjustments->UpdateNode(nodeKey.name);
+	//}
+
+	//UInt32 PapyrusGetSkeletonTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return 0;
+
+	//	auto node = GetFromNodeMap(adjustments->poseMap, name);
+	//	if (!node)
+	//		return 0;
+
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, node->m_localTransform);
+	//	return newHandle;
+	//}
+
+	//UInt32 PapyrusGetBaseTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return 0;
+
+	//	auto transform = GetFromBaseMap(*adjustments->baseMap, name);
+	//	if (!transform)
+	//		return 0;
+
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, *transform);
+	//	return newHandle;
+	//}
+
+	//bool PapyrusCopyAdjustmentTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, UInt32 aHandle, BSFixedString name, bool offset, UInt32 tHandle)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return false;
+
+	//	auto adjustment = adjustments->GetAdjustment(aHandle);
+	//	if (!adjustment)
+	//		return false;
+
+	//	NodeKey nodeKey = g_adjustmentManager.GetNodeKeyFromString(name);
+	//	if (!nodeKey.key)
+	//		return false;
+
+	//	SetPapyrusTransform(tHandle, adjustment->GetTransformOrDefault(nodeKey));
+
+	//	return true;
+	//}
+
+	//bool PapyrusCopySkeletonTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return false;
+
+	//	auto node = GetFromNodeMap(adjustments->poseMap, name);
+	//	if (!node)
+	//		return false;
+
+	//	SetPapyrusTransform(handle, node->m_localTransform);
+
+	//	return true;
+	//}
+
+	//bool PapyrusCopyBaseTransformHandle(StaticFunctionTag*, TESObjectREFR* refr, BSFixedString name, UInt32 handle)
+	//{
+	//	auto adjustments = g_adjustmentManager.GetActorAdjustments(refr);
+	//	if (!adjustments)
+	//		return false;
+
+	//	auto transform = GetFromBaseMap(*adjustments->baseMap, name);
+	//	if (!transform)
+	//		return false;
+
+	//	SetPapyrusTransform(handle, *transform);
+
+	//	return true;
+	//}
+
+	//Transform PapyrusGetTransformLocal(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	return TransformToPapyrus(GetPapyrusTransform(handle), "", false);
+	//}
+
+	//void PapyrusSetTransformLocal(StaticFunctionTag*, UInt32 handle, Transform transform)
+	//{
+	//	SetPapyrusTransform(handle, TransformFromPapyrus(transform));
+	//}
+
+	//UInt32 PapyrusGetAppliedTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
+	//{
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, MultiplyNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
+	//	return newHandle;
+	//}
+
+	//void PapyrusApplyTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
+	//{
+	//	SetPapyrusTransform(aHandle, MultiplyNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
+	//}
+
+	//UInt32 PapyrusGetInverseTransform(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, InvertNiTransform(GetPapyrusTransform(handle)));
+	//	return newHandle;
+	//}
+
+	//void PapyrusInverseTransform(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	SetPapyrusTransform(handle, InvertNiTransform(GetPapyrusTransform(handle)));
+	//}
+
+	//UInt32 PapyrusGetDifferenceTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
+	//{
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, NegateNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
+	//	return newHandle;
+	//}
+
+	//void PapyrusDifferenceTransform(StaticFunctionTag*, UInt32 aHandle, UInt32 bHandle)
+	//{
+	//	SetPapyrusTransform(aHandle, NegateNiTransform(GetPapyrusTransform(aHandle), GetPapyrusTransform(bHandle)));
+	//}
+
+	//UInt32 PapyrusGetBetweenTransform(StaticFunctionTag*, UInt32 handle, float scalar)
+	//{
+	//	UInt32 newHandle = InterlockedIncrement(&transformHandle);
+	//	SetPapyrusTransform(newHandle, SlerpNiTransform(GetPapyrusTransform(handle), scalar));
+	//	return newHandle;
+	//}
+
+	//void PapyrusBetweenTransform(StaticFunctionTag*, UInt32 handle, float scalar)
+	//{
+	//	SetPapyrusTransform(handle, SlerpNiTransform(GetPapyrusTransform(handle), scalar));
+	//}
+
+	//VMArray<float> PapyrusGetTransformPos(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	VMArray<float> result;
+
+	//	NiTransform transform = GetPapyrusTransform(handle);
+	//	result.Push(&transform.pos.x);
+	//	result.Push(&transform.pos.y);
+	//	result.Push(&transform.pos.z);
+
+	//	return result;
+	//}
+
+	//void PapyrusSetTransformPos(StaticFunctionTag*, UInt32 handle, VMArray<float> pos)
+	//{
+	//	NiTransform transform = GetPapyrusTransform(handle);
+
+	//	float result;
+	//	pos.Get(&result, 0);
+	//	transform.pos.x = result;
+
+	//	pos.Get(&result, 1);
+	//	transform.pos.x = result;
+
+	//	pos.Get(&result, 2);
+	//	transform.pos.x = result;
+
+	//	SetPapyrusTransform(handle, transform);
+	//}
+
+	//VMArray<float> PapyrusGetTransformRotation(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	VMArray<float> result;
+
+	//	NiTransform transform = GetPapyrusTransform(handle);
+
+	//	result.Push(&transform.rot.data[1][0]);
+	//	result.Push(&transform.rot.data[2][0]);
+	//	result.Push(&transform.rot.data[0][1]);
+	//	result.Push(&transform.rot.data[1][1]);
+	//	result.Push(&transform.rot.data[2][1]);
+	//	result.Push(&transform.rot.data[0][2]);
+	//	result.Push(&transform.rot.data[1][2]);
+	//	result.Push(&transform.rot.data[2][2]);
+
+	//	return result;
+	//}
+
+	//void PapyrusSetTransformRotation(StaticFunctionTag*, UInt32 handle, VMArray<float> rot)
+	//{
+	//	NiTransform transform = GetPapyrusTransform(handle);
+
+	//	float result;
+
+	//	rot.Get(&result, 0);
+	//	transform.rot.data[0][0] = result;
+	//	rot.Get(&result, 1);
+	//	transform.rot.data[1][0] = result;
+	//	rot.Get(&result, 2);
+	//	transform.rot.data[2][0] = result;
+	//	rot.Get(&result, 3);
+	//	transform.rot.data[0][1] = result;
+	//	rot.Get(&result, 4);
+	//	transform.rot.data[1][1] = result;
+	//	rot.Get(&result, 5);
+	//	transform.rot.data[2][1] = result;
+	//	rot.Get(&result, 6);
+	//	transform.rot.data[0][2] = result;
+	//	rot.Get(&result, 7);
+	//	transform.rot.data[1][2] = result;
+	//	rot.Get(&result, 8);
+	//	transform.rot.data[2][2] = result;
+
+	//	SetPapyrusTransform(handle, transform);
+	//}
+
+	//void PapyrusRotateTransformAxis(StaticFunctionTag*, UInt32 handle, UInt32 axis, float scalar)
+	//{
+	//	if (axis < kAxisX || axis > kAxisZ)
+	//		return;
+
+	//	NiTransform transform = GetPapyrusTransform(handle);
+	//	MultiplyNiMatrix(transform.rot, GetXYZRotation(axis, scalar));
+	//	SetPapyrusTransform(handle, transform);
+	//}
+
+	//float PapyrusGetTransformScale(StaticFunctionTag*, UInt32 handle)
+	//{
+	//	return GetPapyrusTransform(handle).scale;
+	//}
+
+	//void PapyrusSetTransformScale(StaticFunctionTag*, UInt32 handle, float scalar)
+	//{
+	//	NiTransform transform = GetPapyrusTransform(handle);
+	//	transform.scale = scalar;
+	//	SetPapyrusTransform(handle, transform);
+	//}
 
 	bool RegisterPapyrus(VirtualMachine* vm)
 	{
@@ -1074,6 +1112,8 @@ namespace SAF {
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString, UInt32>("SaveAdjustment", "SAF", PapyrusSaveAdjustment, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("CacheAdjustment", "SAF", PapyrusCacheAdjustment, vm));
 		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, UInt32, TESObjectREFR*, BSFixedString, BSFixedString>("LoadCachedAdjustment", "SAF", PapyrusLoadCachedAdjustment, vm));
+		vm->RegisterFunction(new NativeFunction3 <StaticFunctionTag, UInt32, TESObjectREFR*, UInt32, TESObjectREFR*>("CopyAdjustment", "SAF", PapyrusCopyAdjustment, vm));
+		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, bool, TESObjectREFR*, TESObjectREFR*>("CopyAllAdjustments", "SAF", PapyrusCopyAllAdjustments, vm));
 
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("LoadPose", "SAF", PapyrusLoadPose, vm));
 		vm->RegisterFunction(new NativeFunction2 <StaticFunctionTag, void, TESObjectREFR*, BSFixedString>("SavePose", "SAF", PapyrusSavePose, vm));

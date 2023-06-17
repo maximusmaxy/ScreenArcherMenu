@@ -21,7 +21,7 @@ void PapyrusAttachModToInventoryItem(TESObjectREFR* refr, TESForm* form, TESForm
 template <class T>
 struct VMObjectTypeInfoRefCount
 {
-	static void Acquire(T* a_ptr) { InterlockedIncrement(&a_ptr->m_refCount) }
+	static void Acquire(T* a_ptr) { InterlockedIncrement(&a_ptr->m_refCount); }
 	static void Release(T* a_ptr)
 	{
 		if (InterlockedDecrement(&a_ptr->m_refCount) == 0)
@@ -33,7 +33,7 @@ typedef BSTSmartPointer<VMObjectTypeInfo, VMObjectTypeInfoRefCount> VMObjectType
 template <class T>
 struct IFunctionRefCount
 {
-	static void Acquire(T* a_ptr) { InterlockedIncrement(&a_ptr->refCount) }
+	static void Acquire(T* a_ptr) { InterlockedIncrement(&a_ptr->refCount); }
 	static void Release(T* a_ptr)
 	{
 		if (InterlockedDecrement(&a_ptr->refCount) == 0)

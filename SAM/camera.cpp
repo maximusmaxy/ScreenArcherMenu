@@ -19,6 +19,24 @@ RelocPtr<float> cameraFOV(0x05AC8D28);
 
 CameraSaveState cameraSaveStates[CAM_SAVE_STATE_SLOTS];
 
+NiNode* GetCameraNode()
+{
+	PlayerCamera* camera = *g_playerCamera;
+	if (!camera)
+		return nullptr;
+
+	return camera->cameraNode;
+}
+
+TESCameraState* GetCurrentCameraState()
+{
+	PlayerCamera* camera = *g_playerCamera;
+	if (!camera)
+		return nullptr;
+
+	return camera->cameraState;
+}
+
 FreeCameraState* GetFreeCameraState()
 {
 	PlayerCamera* camera = *g_playerCamera;
@@ -335,8 +353,8 @@ void RevertCamera()
 	}
 }
 
-typedef void(*_NiMatrix3FromEulerAnglesZXY)(NiMatrix43* matrix, float x, float y, float z);
 RelocAddr<_NiMatrix3FromEulerAnglesZXY> NiMatrix3FromEulerAnglesZXY(0x1B92840);
+RelocAddr<_NiMatrix3ToEulerAnglesZXY> NiMatrix3ToEulerAnglesZXY(0x1B926F0);
 
 NiTransform GetCameraTransform(FreeCameraState* state) 
 {
@@ -351,12 +369,6 @@ NiTransform GetCameraTransform(FreeCameraState* state)
 
 	return result;
 }
-
-typedef void(*_NiMatrix3ToEulerAnglesZXY)(NiMatrix43* matrix, float* x, float* y, float* z);
-RelocAddr<_NiMatrix3ToEulerAnglesZXY> NiMatrix3ToEulerAnglesZXY(0x1B926F0);
-
-typedef void(*_NiMatrix3ToEulerAnglesXZY)(NiMatrix43* matrix, float* x, float* y, float* z);
-RelocAddr<_NiMatrix3ToEulerAnglesXZY> NiMatrix3ToEulerAnglesXZY(0x1B907B0);
 
 void SetCameraTransform(FreeCameraState* state, NiTransform& transform) 
 {

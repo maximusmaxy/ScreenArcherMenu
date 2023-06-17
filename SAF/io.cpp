@@ -267,8 +267,9 @@ namespace SAF {
 				}
 			}
 		}
-		catch (...) {
+		catch (std::exception& e) {
 			_Log("Failed to read ", path);
+			_DMESSAGE(e.what());
 			return false;
 		}
 
@@ -353,8 +354,9 @@ namespace SAF {
 				}
 			}
 		}
-		catch (...) {
+		catch (std::exception& e) {
 			_Log("Failed to read ", path.c_str());
+			_DMESSAGE(e.what());
 			return false;
 		}
 
@@ -701,46 +703,48 @@ namespace SAF {
 			return false;
 		}
 
-		std::string name = std::filesystem::path(path).filename().string();
+		std::string name = std::filesystem::path(path).stem().string();
 
-		xml_document<> doc;
-		xml_node<>* declaration = doc.allocate_node(node_declaration);
-		declaration->append_attribute(doc.allocate_attribute("version", "1.0"));
-		declaration->append_attribute(doc.allocate_attribute("encoding", "UTF-8"));
-		doc.append_node(declaration);
-		xml_node<>* poseData = doc.allocate_node(node_element, "PoseData");
-		doc.append_node(poseData);
-		xml_node<>* pose = doc.allocate_node(node_element, "Pose");
-		pose->append_attribute(doc.allocate_attribute("name", name.c_str()));
+		auto doc = std::make_unique<xml_document<>>();
+
+		xml_node<>* declaration = doc->allocate_node(node_declaration);
+		declaration->append_attribute(doc->allocate_attribute("version", "1.0"));
+		declaration->append_attribute(doc->allocate_attribute("encoding", "UTF-8"));
+		doc->append_node(declaration);
+		xml_node<>* poseData = doc->allocate_node(node_element, "PoseData");
+		doc->append_node(poseData);
+		xml_node<>* pose = doc->allocate_node(node_element, "Pose");
+		pose->append_attribute(doc->allocate_attribute("name", name.c_str()));
 		poseData->append_node(pose);
 
 		for (auto& node : *poseMap) {
-			xml_node<>* bone = doc.allocate_node(node_element, "Bone");
-			bone->append_attribute(doc.allocate_attribute("name", doc.allocate_string(g_adjustmentManager.GetNodeKeyName(node.first).c_str())));
+			xml_node<>* bone = doc->allocate_node(node_element, "Bone");
+			bone->append_attribute(doc->allocate_attribute("name", doc->allocate_string(g_adjustmentManager.GetNodeKeyName(node.first).c_str())));
 
 			Vector3 rot = MatrixToOutfitStudioVector(node.second.rot);
-			bone->append_attribute(doc.allocate_attribute("rotX", doc.allocate_string(std::to_string(-rot.x).c_str())));
-			bone->append_attribute(doc.allocate_attribute("rotY", doc.allocate_string(std::to_string(-rot.y).c_str())));
-			bone->append_attribute(doc.allocate_attribute("rotZ", doc.allocate_string(std::to_string(-rot.z).c_str())));
+			bone->append_attribute(doc->allocate_attribute("rotX", doc->allocate_string(std::to_string(-rot.x).c_str())));
+			bone->append_attribute(doc->allocate_attribute("rotY", doc->allocate_string(std::to_string(-rot.y).c_str())));
+			bone->append_attribute(doc->allocate_attribute("rotZ", doc->allocate_string(std::to_string(-rot.z).c_str())));
 
-			bone->append_attribute(doc.allocate_attribute("transX", doc.allocate_string(std::to_string(node.second.pos.x).c_str())));
-			bone->append_attribute(doc.allocate_attribute("transY", doc.allocate_string(std::to_string(node.second.pos.y).c_str())));
-			bone->append_attribute(doc.allocate_attribute("transZ", doc.allocate_string(std::to_string(node.second.pos.z).c_str())));
+			bone->append_attribute(doc->allocate_attribute("transX", doc->allocate_string(std::to_string(node.second.pos.x).c_str())));
+			bone->append_attribute(doc->allocate_attribute("transY", doc->allocate_string(std::to_string(node.second.pos.y).c_str())));
+			bone->append_attribute(doc->allocate_attribute("transZ", doc->allocate_string(std::to_string(node.second.pos.z).c_str())));
 
-			bone->append_attribute(doc.allocate_attribute("scale", doc.allocate_string(std::to_string(node.second.scale).c_str())));
+			bone->append_attribute(doc->allocate_attribute("scale", doc->allocate_string(std::to_string(node.second.scale).c_str())));
 
 			pose->append_node(bone);
 		}
 
 		std::string out;
-		print(std::back_inserter(out), doc, 0);
+		print(std::back_inserter(out), *doc, 0);
 
 		try {
 			file.WriteBuf(out.c_str(), out.size() - 1);
 			file.Close();
 		}
-		catch (...) {
+		catch (std::exception& e) {
 			_Log("Failed to write to outfit studio xml: ", path);
+			_DMESSAGE(e.what());
 			return false;
 		}
 

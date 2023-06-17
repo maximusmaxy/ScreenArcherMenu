@@ -17,6 +17,7 @@
 		public var type:int;
 		public var dragState:int = 0;
 		public var selectable:Boolean = false;
+		public var index;
 		
 		public var increment:Number = 0.0;
 		public var mod:Number = 1.0;
@@ -95,12 +96,12 @@
 				case Data.CHECKBOX_DOWN:
 				case Data.CHECKBOX_SETTINGS:
 				case Data.CHECKBOX_FOLDER:
-					functions.checkbox(id);
-					Util.playOk();
-					break;
 				case Data.CHECKBOX_RECYCLE:
 				case Data.CHECKBOX_UP:
-					functions.checkbox2(id);
+					if (index == 0)
+						functions.checkbox(id);
+					else
+						functions.checkbox2(id);
 					Util.playOk();
 					break;
 				case Data.CHECKBOX_CHECK:

@@ -171,7 +171,8 @@ void SaveAdjustmentFile(GFxResult& result, const char* filename, int handle) {
 		return result.SetError("Failed to save adjustment");
 
 	adjustments->UpdateAllAdjustments();
-	samManager.SetLocal("adjustmentName", &GFxValue(filename));
+	GFxValue filenameValue(filename);
+	samManager.SetLocal("adjustmentName", &filenameValue);
 }
 
 bool LoadAdjustmentFile(const char* filename) 
@@ -303,7 +304,8 @@ void SetAdjustmentName(GFxResult& result, UInt32 handle, const char* name)
 		return result.SetError(ADJUSTMENT_MISSING_ERROR);
 
 	saf->RenameAdjustment(adjustment, name);
-	samManager.SetLocal("adjustmentName", &GFxValue(adjustment->name.c_str()));
+	GFxValue adjustmentNameValue(adjustment->name.c_str());
+	samManager.SetLocal("adjustmentName", &adjustmentNameValue);
 }
 
 void SetLocalAdjustmentName(UInt32 handle)
@@ -312,7 +314,8 @@ void SetLocalAdjustmentName(UInt32 handle)
 	if (!GetAdjustment(handle, &adjustment))
 		return;
 
-	samManager.SetLocal("adjustmentName", &GFxValue(adjustment->name.c_str()));
+	GFxValue adjustmentNameValue(adjustment->name.c_str());
+	samManager.SetLocal("adjustmentName", &adjustmentNameValue);
 }
 
 void MergeAdjustment(GFxResult& result, UInt32 adjustmentHandle)
@@ -913,7 +916,6 @@ void EndBoneEdit(UInt32 handle, const char* key)
 	NiTransform dst = adjustment->GetTransformOrDefault(nodeKey);
 	if (SAF::TransformEqual(boneEdits->stored.src, dst))
 		return;
-
 
 	boneEdits->index++;
 	boneEdits->actions.resize(boneEdits->index);

@@ -159,7 +159,7 @@ namespace SAF {
 		return found != map.end() ? found->second : TransformIdentity();
 	}
 
-	void Adjustment::SetTransform(const NodeKey& key, NiTransform& transform)
+	void Adjustment::SetTransform(const NodeKey& key, const NiTransform& transform)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
@@ -167,7 +167,7 @@ namespace SAF {
 		scaled[key] = SlerpNiTransform(transform, scale);
 	}
 
-	void Adjustment::SetPoseTransform(BSFixedString name, NiTransform& transform)
+	void Adjustment::SetPoseTransform(BSFixedString name, const NiTransform& transform)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
@@ -650,6 +650,18 @@ namespace SAF {
 		adjustment->type = kAdjustmentTypeDefault;
 		adjustment->updated = false;
 		return adjustment;
+	}
+
+	AdjustmentPtr ActorAdjustments::CreateFromAdjustment(AdjustmentPtr src)
+	{
+		auto dst = CreateAdjustment(src->name.c_str());
+		dst->file = std::string(src->file);
+		dst->mod = std::string(src->mod);
+		dst->type = src->type;
+		dst->scale = src->scale;
+		dst->updated = src->updated;
+		dst->CopyMap(src->GetMap(), &nodeSets->all);
+		return dst;
 	}
 
 	UInt32 ActorAdjustments::CreateAdjustment(const char* name, const char* modName)
@@ -1243,7 +1255,7 @@ namespace SAF {
 	}
 
 	//Checks the base map for node, if not found it's an offset only node
-	bool ActorAdjustments::IsNodeOffset(NodeKey& nodeKey)
+	bool ActorAdjustments::IsNodeOffset(const NodeKey& nodeKey)
 	{
 		std::shared_lock<std::shared_mutex> lock(mutex);
 
@@ -1255,7 +1267,7 @@ namespace SAF {
 	}
 
 	//Sets the override node such that it negates the base node back to the a-pose position
-	void ActorAdjustments::NegateTransform(AdjustmentPtr adjustment, NodeKey& key)
+	void ActorAdjustments::NegateTransform(AdjustmentPtr adjustment, const NodeKey& key)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 		
@@ -1312,7 +1324,7 @@ namespace SAF {
 		adjustment->updated = true;
 	}
 
-	void ActorAdjustments::RotateTransformXYZ(AdjustmentPtr adjustment, NodeKey& key, UInt32 type, float scalar)
+	void ActorAdjustments::RotateTransformXYZ(AdjustmentPtr adjustment, const NodeKey& key, UInt32 type, float scalar)
 	{
 		std::lock_guard<std::shared_mutex> lock(mutex);
 
@@ -1929,7 +1941,6 @@ namespace SAF {
 
 			auto it = actorAdjustmentCache.find(0x14); //player ref
 			if (it != actorAdjustmentCache.end()) {
-
 				return CopyActor(it->second, adjustments);
 			}
 		}
@@ -1962,15 +1973,8 @@ namespace SAF {
 			return false;
 
 		for (auto& src : srcActor->list) {
-			auto dst = dstActor->CreateAdjustment(src->name.c_str());
-			dst->file = std::string(src->file);
-			dst->mod = std::string(src->mod);
-			dst->type = src->type;
-			dst->scale = src->scale;
-			dst->updated = src->updated;
-			dst->CopyMap(src->GetMap(), &dstActor->nodeSets->all);
+			dstActor->CreateFromAdjustment(src);
 		}
-
 		dstActor->UpdateAllAdjustments();
 
 		return true;
@@ -2345,15 +2349,17 @@ namespace SAF {
 		}
 	}
 
-
 	void AdjustmentManager::LoadTongueAdjustment(ActorAdjustmentsPtr adjustments, TransformMap* transforms)
 	{
 		std::lock_guard<std::shared_mutex> lock(actorMutex);
 
+		if (!adjustments)
+			return;
+
 		UInt32 tongueHandle = adjustments->GetHandleByType(kAdjustmentTypeTongue);
 
 		//clear if no transforms
-		if (!transforms) {
+		if (!transforms || transforms->empty()) {
 			if (tongueHandle) {
 				adjustments->RemoveAdjustment(tongueHandle);
 				adjustments->UpdateAllAdjustments();
@@ -2402,7 +2408,8 @@ namespace SAF {
 
 		ForEachActorAdjustments([&](ActorAdjustmentsPtr adjustments) {
 			bool removed = adjustments->RemoveMod(modName);
-			if (removed) adjustments->UpdateAllAdjustments();
+			if (removed) 
+				adjustments->UpdateAllAdjustments();
 		});
 	}
 
