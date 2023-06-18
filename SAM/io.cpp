@@ -500,14 +500,3 @@ void GetFolder(GFxResult& result, const char* path, const char* ext) {
 		result.PushFile(file.first.c_str(), file.second.c_str());
 	}
 }
-
-void GetPathStem(GFxResult& result, const char* path)
-{
-	result.SetManagedString(result.root, std::filesystem::path(path).stem().string().c_str());
-}
-
-void GetPathRelative(GFxResult& result, const char* root, const char* ext, const char* path)
-{
-	std::string relative = GetRelativePath(strlen(root), strlen(ext), path);
-	result.SetManagedString(result.root, relative.c_str());
-}

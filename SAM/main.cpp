@@ -72,11 +72,6 @@ bool F4SEPlugin_Query(const F4SEInterface* f4se, PluginInfo* info)
 
 bool F4SEPlugin_Load(const F4SEInterface* f4se)
 {
-	//if (samMessaging.scaleform)
-	//	samMessaging.scaleform->Register(SAM_MENU_NAME, RegisterScaleform);
-	if (samMessaging.scaleform)
-		BuildSamFunctions(samFunctions);
-
 	if (samMessaging.messaging)
 		samMessaging.messaging->RegisterListener(samMessaging.pluginHandle, "F4SE", F4SEMessageHandler);
 

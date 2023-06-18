@@ -28,11 +28,11 @@
 #include "camera.h"
 #include "lights.h"
 #include "papyrus.h"
-#include "scripts.h"
 #include "input.h"
 #include "gfx.h"
 #include "io.h"
 #include "data.h"
+#include "functions.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -40,7 +40,6 @@
 SAF::SafMessagingInterface* saf;
 SelectedRefr selected;
 SamManager samManager;
-GFxFunctions samFunctions;
 
 ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 {
@@ -96,7 +95,7 @@ void ScreenArcherMenu::RegisterFunctions()
 
 void ScreenArcherMenu::Invoke(Args* args)
 {
-	samFunctions.funcs.at(args->optionID)(args);
+	samFunctions.funcs.at(args->optionID).Call(args);
 }
 
 NiColor GetNiColor(float r, float g, float b) {

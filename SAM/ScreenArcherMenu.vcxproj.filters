@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="scaleform.cpp" />
-    <ClCompile Include="scripts.cpp" />
     <ClCompile Include="hacks.cpp" />
     <ClCompile Include="sam.cpp" />
     <ClCompile Include="papyrus.cpp" />
@@ -32,10 +31,10 @@
     <ClCompile Include="functions.cpp" />
     <ClCompile Include="looks.cpp" />
     <ClCompile Include="forms.cpp" />
+    <ClCompile Include="coc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scaleform.h" />
-    <ClInclude Include="scripts.h" />
     <ClInclude Include="hacks.h" />
     <ClInclude Include="sam.h" />
     <ClInclude Include="papyrus.h" />
@@ -65,6 +64,7 @@
     <ClInclude Include="functions.h" />
     <ClInclude Include="looks.h" />
     <ClInclude Include="forms.h" />
+    <ClInclude Include="coc.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />

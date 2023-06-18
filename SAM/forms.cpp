@@ -17,6 +17,31 @@ void SortSearchResult(FormSearchResult& result) {
 	});
 }
 
+void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
+{
+	if (modInfo->IsLight()) {
+		*modIndex = (0xFE000000 | (modInfo->lightIndex << 12));
+		*mask = 0xFFFFF000;
+	}
+	else {
+		*modIndex = modInfo->modIndex << 24;
+		*mask = 0xFF000000;
+	}
+}
+
+void AddFormattedModsToResult(GFxResult& result, const std::vector<const char*>& searchResult) {
+	for (auto& mod : searchResult) {
+		auto ext = strrchr(mod, '.');
+		if (ext) {
+			std::string str(mod, ext - mod);
+			result.PushItem(str.c_str(), mod);
+		}
+		else {
+			result.PushItem(mod, mod);
+		}
+	}
+}
+
 void GetModVectors(std::vector<bool>& esp, std::vector<bool>& esl)
 {
 	//creating two fixed length boolean vectors to store mods with items
@@ -37,7 +62,7 @@ void GetModVectors(std::vector<bool>& esp, std::vector<bool>& esl)
 	esl.resize(last + 1, false);
 }
 
-void AddModVectorsToList(std::vector<bool>& esp, std::vector<bool>& esl, std::vector<std::string>& result)
+void AddModVectorsToList(std::vector<bool>& esp, std::vector<bool>& esl, std::vector<const char*>& result)
 {
 	//Collect the names of available mods
 	auto end = (*g_dataHandler)->modList.loadedMods.entries + (*g_dataHandler)->modList.loadedMods.count;
@@ -53,7 +78,7 @@ void AddModVectorsToList(std::vector<bool>& esp, std::vector<bool>& esl, std::ve
 	}
 
 	std::sort(result.begin(), result.end(), [](auto& lhs, auto& rhs) {
-		return strnatcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+		return strnatcasecmp(lhs, rhs) < 0;
 	});
 }
 
@@ -93,7 +118,7 @@ void AddModVectorsToListNoMasters(std::vector<bool>& esp, std::vector<bool>& esl
 	});
 }
 
-void SearchFormsSpanForMods(const FormsSpan& span, std::vector<std::string>& result) {
+void SearchFormsSpanForMods(const FormsSpan& span, std::vector<const char*>& result) {
 	std::vector<bool> esp;
 	std::vector<bool> esl;
 	GetModVectors(esp, esl);
@@ -116,7 +141,7 @@ void SearchFormsSpanForMods(const FormsSpan& span, std::vector<std::string>& res
 	AddModVectorsToList(esp, esl, result);
 }
 
-void SearchSpanForMods(const std::span<TESForm*>& span, std::vector<std::string>& result) {
+void SearchSpanForMods(const std::span<TESForm*>& span, std::vector<const char*>& result) {
 	std::vector<bool> esp;
 	std::vector<bool> esl;
 	GetModVectors(esp, esl);

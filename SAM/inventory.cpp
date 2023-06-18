@@ -32,8 +32,8 @@
 
 FormSearchResult itemSearchResult;
 FormSearchResult staticSearchResult;
-std::vector<std::string> storedItemMods;
-std::vector<std::string> storedStaticMods;
+std::vector<const char*> storedItemMods;
+std::vector<const char*> storedStaticMods;
 std::string lastSelectedMod;
 
 #define ITEMS_SIZE 9
@@ -63,83 +63,6 @@ const char* staticGroupNames[] = {
 	"Static Collection",
 	"Static"
 };
-
-//std::unordered_map<UInt32, std::string> itemGroupMap {
-//	{'OMRA', "Armour"},
-//	{'OMMA', "Ammo"},
-//	{'PAEW', "Weapon"},
-//	{'KOOB', "Book"},
-//	{'ENOT', "Note"},
-//	{'DOMO', "Mod"},
-//	{'MYEK', "Key"},
-//	{'HCLA', "Chems"},
-//	{'CSIM', "Misc"}
-
-//int GetThreadCount() {
-//	int threads = std::thread::hardware_concurrency();
-//	if (threads > 1)
-//		threads -= 2;
-//
-//	return threads;
-//}
-//
-//void GetFormArraysAndSize(tArray<TESForm*>** formArrays, UInt32* size)
-//{
-//	formArrays[0] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrARMO);
-//	formArrays[1] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrWEAP);
-//	formArrays[2] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrALCH);
-//	formArrays[3] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrAMMO);
-//	formArrays[4] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrBOOK);
-//	formArrays[5] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrNOTE);
-//	formArrays[6] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrKEYM);
-//	formArrays[7] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrOMOD);
-//	formArrays[8] = reinterpret_cast<tArray<TESForm*>*>(&(*g_dataHandler)->arrMISC);
-//
-//	*size = 0;
-//	for (auto it = formArrays; it != formArrays + SEARCH_SIZE; ++it) {
-//		*size += (*it)->count;
-//	}
-//}
-
-////Gets the slice of the current form array to iterate through and sets the current position to the next array
-//bool GetFormStartAndEnd(tArray<TESForm*>** dataArrays, UInt32* current, UInt32 endIndex, TESForm*** start, TESForm*** end)
-//{
-//	UInt32 size = 0;
-//	UInt32 newSize;
-//
-//	for (auto it = dataArrays; it != dataArrays + SEARCH_SIZE; ++it) {
-//		newSize = size + (*it)->count;
-//		if (*current < newSize) {
-//			*start = (*it)->entries + (*current - size);
-//			*end = (*it)->entries + min((*it)->count, endIndex - size);
-//			*current = newSize;
-//			return true;
-//		}
-//		size = newSize;
-//	}
-//
-//	return false;
-//}
-//
-//bool GetFormStartAndEndWithIndex(tArray<TESForm*>** dataArrays, UInt32* current, UInt32 endIndex, TESForm*** start, TESForm*** end, int* index)
-//{
-//	UInt32 size = 0;
-//	UInt32 newSize;
-//
-//	for (int i = 0; i < SEARCH_SIZE; ++i) {
-//		newSize = size + dataArrays[i]->count;
-//		if (*current < newSize) {
-//			*start = dataArrays[i]->entries + (*current - size);
-//			*end = dataArrays[i]->entries + min(dataArrays[i]->count, endIndex - size);
-//			*current = newSize;
-//			*index = i;
-//			return true;
-//		}
-//		size = newSize;
-//	}
-//
-//	return false;
-//}
 
 typedef bool (*_OpenActorContainerInternal)(TESObjectREFR* refr, UInt32 unk2, bool unk3);
 RelocAddr<_OpenActorContainerInternal> OpenActorContainerInternal(0x1264F40);
@@ -186,19 +109,7 @@ void GetItemMods(GFxResult& result)
 	result.CreateNames();
 
 	for (auto& mod : storedItemMods) {
-		result.PushName(mod.c_str());
-	}
-}
-
-void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
-{
-	if (modInfo->IsLight()) {
-		*modIndex = (0xFE000000 | (modInfo->lightIndex << 12));
-		*mask = 0xFFFFF000;
-	}
-	else {
-		*modIndex = modInfo->modIndex << 24;
-		*mask = 0xFF000000;
+		result.PushName(mod);
 	}
 }
 
@@ -701,7 +612,7 @@ void GetStaticMods(GFxResult& result) {
 	result.CreateNames();
 
 	for (auto& mod : storedItemMods) {
-		result.PushName(mod.c_str());
+		result.PushName(mod);
 	}
 }
 

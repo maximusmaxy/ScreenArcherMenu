@@ -445,36 +445,3 @@ void GetMorphsTongueNodes(GFxResult& result)
 		}
 	}
 }
-
-//need to get or create the new tongue adjustment and pass back the menu info to get the correct node
-//void GetMorphsTongueGFx(GFxMovieRoot* root, GFxValue* result, UInt32 categoryIndex, UInt32 tongueIndex)
-//{
-//	root->CreateArray(result);
-//
-//	if (!selected.refr)
-//		return;
-//
-//	auto adjustments = safDispatcher.GetActorAdjustments(selected.refr->formID);
-//	if (!adjustments)
-//		return;
-//
-//	//TODO: We're just taking the first available for now
-//	auto tongueMenu = FindFirstTongueMenu(adjustments);
-//
-//	//if (categoryIndex < 0 || categoryIndex >= tongueMenuCache.size())
-//	//	return;
-//
-//	//auto& category = tongueMenuCache[categoryIndex].second;
-//
-//	if (tongueIndex < 0 || tongueIndex >= tongueMenu->size())
-//		return;
-//
-//	SAF::NodeKey nodeKey((*tongueMenu)[tongueIndex].first.c_str(), false);
-//
-//	UInt32 tongueHandle = GetOrCreateTongueHandle(adjustments);
-//
-//  GFxValue nodeKeyName(nodeKey.name);
-//  GFxValue tongueHandleValue(tongueHandle);
-//	result->PushBack(&nodeKeyName);
-//	result->PushBack(&tongueHandleValue);
-//}

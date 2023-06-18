@@ -24,7 +24,3 @@ void SetHack(SInt32 index, bool enabled)
 	case kHackEyeCoords: SetDisableEyecoordUpdate(enabled);
 	}
 }
-
-//RelocPtr<UInt8> cursorFlags(0x126ABA8);
-//Always on 0x02
-//Default 0x00

@@ -116,6 +116,7 @@
   <ItemGroup>
     <ClCompile Include="bodymorphs.cpp" />
     <ClCompile Include="camera.cpp" />
+    <ClCompile Include="coc.cpp" />
     <ClCompile Include="companion.cpp" />
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="console.cpp" />
@@ -141,7 +142,6 @@
     <ClCompile Include="positioning.cpp" />
     <ClCompile Include="sam.cpp" />
     <ClCompile Include="scaleform.cpp" />
-    <ClCompile Include="scripts.cpp" />
     <ClCompile Include="smartpointer.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
     <ClCompile Include="types.cpp" />
@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="bodymorphs.h" />
     <ClInclude Include="camera.h" />
+    <ClInclude Include="coc.h" />
     <ClInclude Include="companion.h" />
     <ClInclude Include="compatibility.h" />
     <ClInclude Include="console.h" />
@@ -174,7 +175,6 @@
     <ClInclude Include="sam.h" />
     <ClInclude Include="hacks.h" />
     <ClInclude Include="scaleform.h" />
-    <ClInclude Include="scripts.h" />
     <ClInclude Include="smartpointer.h" />
     <ClInclude Include="strnatcmp.h" />
     <ClInclude Include="types.h" />

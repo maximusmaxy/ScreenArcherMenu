@@ -318,6 +318,8 @@ void GetIdleMenu(GFxResult& result, SInt32 selectedCategory)
 		return result.SetError("Play idle menu not found");
 
 	const ModInfo* mod = (*g_dataHandler)->LookupModByName(idleModCategories[selectedCategory]);
+	if (!mod)
+		return result.SetError("Could not find mod");
 
 	std::vector<std::pair<const char*, UInt32>> searchResult;
 	FindIdleForms(mod, idleData, searchResult);

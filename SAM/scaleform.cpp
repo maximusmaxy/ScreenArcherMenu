@@ -1,8 +1,10 @@
 #include "scaleform.h"
 
+#include "f4se/GameMenus.h"
 #include "f4se/NiTextures.h"
 #include "f4se/ScaleformLoader.h"
 #include "f4se/ScaleformTranslator.h"
+#include "f4se_common/Relocation.h"
 #include "SAF/util.h"
 
 RelocPtr<BSScaleformManager> scaleformManager(0x58DE410);
@@ -48,4 +50,26 @@ void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char*
 			}
 		}
 	}
+}
+
+typedef void(*_ToggleMenusInternal)();
+RelocAddr<_ToggleMenusInternal> ToggleMenusInternal(0x517FF0);
+
+typedef void(*_SetMenusDisabledInternal)(bool hidden);
+RelocAddr<_SetMenusDisabledInternal> SetMenusDisabledInternal(0xAE5BB0);
+
+#define uiVisible (reinterpret_cast<bool*>(g_ui.GetUIntPtr()) + 0x248)
+
+bool GetMenusHidden() {
+	return !(*uiVisible);
+}
+
+void SetMenusHidden(bool hidden) {
+	if (hidden != GetMenusHidden())
+		ToggleMenusInternal();
+}
+
+bool ToggleMenusHidden() {
+	ToggleMenusInternal();
+	return GetMenusHidden();
 }
