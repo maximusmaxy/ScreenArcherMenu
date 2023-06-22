@@ -47,6 +47,7 @@ void GetIdleMenuCategories(GFxResult& result);
 void GetIdleMenu(GFxResult& result, SInt32 selectedCategory);
 void SetIdleMod(GFxResult& result, SInt32 selectedCategory);
 
+TESIdleForm* GetCurrentIdleForm();
 const char* GetCurrentIdleName();
 
 void GetIdleFavorites(GFxResult& result);

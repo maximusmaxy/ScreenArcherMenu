@@ -22,6 +22,7 @@ using namespace Serialization;
 #include "papyrus.h"
 #include "positioning.h"
 #include "io.h"
+#include "forms.h"
 
 #include "SAF/util.h"
 #include "SAF/conversions.h"
@@ -29,14 +30,6 @@ using namespace Serialization;
 using namespace SAF;
 
 LightManager lightManager;
-std::unordered_map<UInt32, const char*> lightModMap;
-
-//out, actor, form, 1, 0, 0, false, false
-typedef UInt32* (*_PlaceAtMeInternal)(UInt64* out, TESObjectREFR* actor, TESForm* form, int unk4, int unk5, int unk6, bool unk7, bool unk8);
-RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal(0x5121D0);
-
-typedef void (*_GetREFRFromHandle)(UInt32* handle, NiPointer<TESObjectREFR>& refr);
-RelocAddr<_GetREFRFromHandle> GetREFRFromHandle(0xAC90);
 
 //false
 //typedef void (*_DisableInternal)(TESObjectREFR* refr, bool unk2);
@@ -568,7 +561,7 @@ MenuLight CreateLightFromId(UInt32 formId)
 	if (!form)
 		return light;
 
-	UInt64 out;
+	TESObjectREFR* out;
 	UInt32* handle = PlaceAtMeInternal(&out, refr, form, 1, 0, 0, false, false);
 
 	NiPointer<TESObjectREFR> lightRefr;
@@ -808,7 +801,7 @@ bool SaveLightsJson(const char* filename)
 	lightManager.ForEach([&](MenuLight* light) {
 		Json::Value lightValue;
 		lightValue["name"] = light->name;
-		lightValue["mod"] = lightModMap[GetModId(light->lightRefr->baseForm->formID)];
+		lightValue["mod"] = GetModName(light->lightRefr->baseForm->formID);
 		lightValue["id"] = UInt32ToHexString(GetBaseId(light->lightRefr->baseForm->formID));
 		WriteJsonFloat(lightValue, "distance", light->distance, buffer, "%.06f");
 		WriteJsonFloat(lightValue, "rotation", light->rotation, buffer, "%.06f");

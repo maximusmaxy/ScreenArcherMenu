@@ -1,12 +1,12 @@
 #include "coc.h"
 
 #include "f4se/GameData.h"
-#include "f4se/GameForms.h"
 #include "f4se/GameRTTI.h"
+#include "f4se/GameMenus.h"
 #include "gfx.h"
-#include "functions.h"
 #include "forms.h"
 #include "constants.h"
+#include "sam.h"
 
 #include <span>
 #include <algorithm>
@@ -14,114 +14,121 @@
 
 FormSearchResult teleportSearchResult;
 
-void SearchSpanForCellMods(std::span<TESObjectCELL*>& span, std::vector<const char*>& result) {
-	std::vector<bool> esp;
-	std::vector<bool> esl;
-	GetModVectors(esp, esl);
-	auto espIt = esp.begin();
-	auto eslIt = esl.begin();
+typedef void(*_CenterOnCellInternal)(TESObjectREFR* player, const char* edid, TESObjectCELL* cell);
+RelocAddr<_CenterOnCellInternal> CenterOnCellInternal(0xE9A990);
 
-	std::for_each(std::execution::par, span.begin(), span.end(), [&espIt, &eslIt](TESObjectCELL* form) {
-		if (form && form->GetEditorID()) {
-			const UInt32 formId = form->formID;
-			if ((formId & 0xFE000000) == 0xFE000000) {
-				*(eslIt + ((formId >> 12) & 0xFFF)) = true;
-			}
-			else {
-				*(espIt + (formId >> 24)) = true;
-			}
-		}
-	});
+bool CenterOnCell(const char* edid, TESObjectCELL* cell) {
+	if (!g_player)
+		return false;
 
-	AddModVectorsToList(esp, esl, result);
+	CenterOnCellInternal(*g_player, edid, cell);
+	return true;
 }
 
-void GetTeleportMods(GFxResult& result) {
-	auto cells = (tArray<TESObjectCELL*>*)(void*)(&((*g_dataHandler)->arrCELL));
-	std::span<TESObjectCELL*> span(cells->entries, cells->count);
+void GetCellMods(GFxResult& result) {
+	auto& cells = (*g_dataHandler)->cellList;
+	std::span<TESObjectCELL*> span(cells.m_data, cells.m_emptyRunStart);
 	std::vector<const char*> cellMods;
-	SearchSpanForCellMods(span, cellMods);
-
-	result.CreateMenuItems();
+	SearchSpanForMods(span, cellMods);
 	AddFormattedModsToResult(result, cellMods);
 }
-GFxReq getTeleportMods("GetTeleportMods", [](auto& result, auto args) {
-	GetTeleportMods(result);
-});
 
-void SearchModForCells(const ModInfo* info, FormSearchResult& result) {
-	UInt32 modIndex;
-	UInt32 modMask;
-	GetModIndexAndMask(info, &modIndex, &modMask);
-
-	auto cells = (tArray<TESObjectCELL*>*)(void*)(&((*g_dataHandler)->arrCELL));
-	std::span<TESObjectCELL*> span(cells->entries, cells->count);
-
-	std::mutex mutex;
-	std::for_each(std::execution::par, span.begin(), span.end(), [&](TESObjectCELL* form) {
-		if (form && ((form->formID & modMask) == modIndex)) {
-			auto edid = form->GetEditorID();
-			if (edid && *edid) {
-				std::lock_guard lock(mutex);
-				result.emplace_back(edid, form->formID);
-			}
-		}
-	});
-
-	SortSearchResult(result);
-}
-
-void GetTeleports(GFxResult& result, const char* mod) {
+void GetCells(GFxResult& result, const char* mod) {
 	const ModInfo* info = (*g_dataHandler)->LookupModByName(mod);
 	if (!info)
 		return result.SetError("Could not find mod");
 
+	auto& cells = (*g_dataHandler)->cellList;
+	std::span<TESObjectCELL*> span(cells.m_data, cells.m_emptyRunStart);
 	FormSearchResult searchResult;
-	SearchModForCells(info, searchResult);
+	SearchModForEdidForms(info, span, searchResult);
 
 	result.CreateMenuItems();
-	for (auto& pair : searchResult) {
+	for (auto& pair : searchResult.result) {
 		result.PushItem(pair.first, pair.second);
 	}
 }
-GFxReq getTeleports("GetTeleports", [](auto& result, auto args) {
-	GetTeleports(result, args->args[2].GetString());
-});
 
-typedef void(*_CenterOnCell)(TESObjectREFR* player, const char* edid, TESObjectCELL* cell);
-RelocAddr<_CenterOnCell> CenterOnCell(0xE9A990);
-
-void SetTeleport(GFxResult& result, UInt32 formId) {
-	if (!selected.refr)
-		return result.SetError(CONSOLE_ERROR);
-
+void SetCell(GFxResult& result, UInt32 formId) {
 	auto form = LookupFormByID(formId);
 	if (!form)
-		result.SetError("Failed to find cell form");
+		return result.SetError("Failed to find cell form");
 
 	auto cell = DYNAMIC_CAST(form, TESForm, TESObjectCELL);
 	if (!cell)
-		result.SetError("Form was not a cell");
+		return result.SetError("Form was not a cell");
 
-	CenterOnCell(selected.refr, nullptr, cell);
+	//if (!CenterOnCell(nullptr, cell))
+	//	return result.SetError("Could not find player for teleport");
+	samManager.storedCoc = cell;
+	samManager.OpenOrCloseMenu(nullptr);
 }
-GFxReq setTeleport("SetTeleport", [](auto& result, auto args) {
-	SetTeleport(result, args->args[1].GetUInt());
-});
 
-void GetLastSearchResultTeleport(GFxResult& result) {
+void GetWorldspaceMods(GFxResult& result) {
+	auto& worldspaces = (*g_dataHandler)->arrWRLD;
+	std::span<TESForm*> span(worldspaces.entries, worldspaces.count);
+	std::vector<const char*> worldspaceMods;
+	SearchSpanForMods(span, worldspaceMods);
+	AddFormattedModsToResult(result, worldspaceMods);
+}
+
+void GetWorldspacesFromMod(GFxResult& result, const char* mod) {
+	const ModInfo* info = (*g_dataHandler)->LookupModByName(mod);
+	if (!info)
+		return result.SetError("Could not find mod");
+
+	auto& worldspaces = (*g_dataHandler)->arrWRLD;
+	std::span<TESForm*> span(worldspaces.entries, worldspaces.count);
+	FormSearchResult searchResult;
+	SearchModForEdidForms(info, span, searchResult);
+
 	result.CreateMenuItems();
-
-	for (auto& kvp : teleportSearchResult) {
-		if (kvp.first && *kvp.first)
-			result.PushItem(kvp.first, kvp.second);
+	for (auto& pair : searchResult.result) {
+		result.PushItem(pair.first, pair.second);
 	}
 }
-GFxReq getLastSearchResultTeleport("GetLastSearchResultTeleport", [](auto& result, auto args) {
-	GetLastSearchResultTeleport(result);
-});
 
-void SearchTeleports(GFxResult& result, const char* search) {
+RelocAddr<const char*> aWilderness(0x2C870F0);
+
+void GetWorldspaceCells(GFxResult& result, UInt32 formId) {
+	auto form = LookupFormByID(formId);
+	if (!form)
+		return result.SetError("Failed to find worldspace form");
+
+	auto worldspace = DYNAMIC_CAST(form, TESForm, TESWorldSpace);
+	if (!worldspace)
+		return result.SetError("Form was not a worldspace");
+
+	const char* wilderness = aWilderness;
+	result.CreateMenuItems();
+
+	FormSearchResult searchResult;
+	worldspace->cells.ForEach([&searchResult, wilderness](WorldCellItem* item) {
+		if (item->cell) {
+			auto edid = item->cell->GetEditorID();
+			if (edid && *edid && edid != wilderness)
+				searchResult.Push(edid, item->cell->formID);
+		}
+		return true;
+	});
+
+	searchResult.Sort();
+
+	result.CreateMenuItems();
+	for (auto& pair : searchResult.result) {
+		result.PushItem(pair.first, pair.second);
+	}
+}
+
+void GetLastSearchResultCell(GFxResult& result) {
+	result.CreateMenuItems();
+
+	for (auto& kvp : teleportSearchResult.result) {
+		result.PushItem(kvp.first, kvp.second);
+	}
+}
+
+void SearchCells(GFxResult& result, const char* search) {
 	if (!search || !*search)
 		return result.SetError("No search term found");
 
@@ -133,12 +140,32 @@ void SearchTeleports(GFxResult& result, const char* search) {
 	if (len >= MAX_PATH - 1)
 		return result.SetError("Search term is too big! 0_0");
 
-	auto& cells = (*g_dataHandler)->arrCELL;
-	std::span<TESForm*> span(cells.entries, cells.count);
+	char lowered[MAX_PATH];
+	GetLoweredCString(lowered, search);
 
-	teleportSearchResult.clear();
-	SearchSpanForSubstring(teleportSearchResult, span, search);
+	auto& cells = (*g_dataHandler)->cellList;
+	const std::span<TESObjectCELL*> cellSpan(cells.m_data, cells.m_emptyRunStart);
 
-	if (teleportSearchResult.empty())
+	teleportSearchResult.result.clear();
+	SearchSpanForEdidSubstring<TESObjectCELL>(teleportSearchResult, cellSpan, search, false);
+	
+	auto& worldspaces = (*g_dataHandler)->arrWRLD;
+	const std::span<TESWorldSpace*> worldSpan((TESWorldSpace**)worldspaces.entries, worldspaces.count);
+	const char* wilderness = aWilderness;
+	std::for_each(std::execution::par, worldSpan.begin(), worldSpan.end(), [wilderness, lowered](TESWorldSpace* form) {
+		form->cells.ForEach([wilderness, lowered](WorldCellItem* item) {
+			if (item->cell) {
+				auto edid = item->cell->GetEditorID();
+				if (edid && *edid && edid != wilderness && HasInsensitiveSubstring(edid, lowered)) {
+					teleportSearchResult.Push(edid, item->cell->formID);
+				}
+			}
+			return true;
+		});
+	});
+
+	if (teleportSearchResult.result.empty())
 		return result.SetError("Search returned no results");
+
+	teleportSearchResult.Sort();
 }

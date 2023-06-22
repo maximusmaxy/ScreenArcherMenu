@@ -41,11 +41,11 @@ public:
 		std::mutex mutex;
 
 		struct {
-			double x;
-			double y;
-			double width;
-			double height;
-		} dimensions;
+			double x{};
+			double y{};
+			double width{};
+			double height{};
+		} dimensions{};
 		
 		struct NodeMarker {
 			GFxValue marker;
@@ -87,11 +87,11 @@ public:
 			actor = nullptr;
 		}
 
-		BoneDisplay() : 
+		BoneDisplay() :
 			enabled(false),
 			selectedNode(nullptr),
 			rootMarker(nullptr),
-			actor(nullptr) 
+			actor(nullptr)
 		{}
 
 		void Update();
@@ -126,10 +126,10 @@ NiPoint3 GetCameraPivot();
 
 class SelectedRefr {
 public:
-	TESObjectREFR* refr;
-	bool isFemale;
-	UInt32 race;
-	UInt64 key;
+	TESObjectREFR* refr{};
+	bool isFemale{};
+	UInt32 race{};
+	UInt64 key{};
 
 	void Update(TESObjectREFR* refr);
 	void Clear();
@@ -156,12 +156,11 @@ private:
 	std::mutex mutex;
 
 public:
-	TESObjectREFR* refr;
+	TESObjectREFR* refr{};
 	Json::Value data;
 	std::string storedName;
-	IMenu* storedMenu;
-
-	SamManager() : storedMenu(nullptr), refr(nullptr) {};
+	IMenu* storedMenu{};
+	TESObjectCELL* storedCoc{};
 
 	IMenuWrapper StoreMenu();
 	bool ReleaseMenu();

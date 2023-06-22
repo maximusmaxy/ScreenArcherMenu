@@ -3,11 +3,21 @@
 #include "f4se/GameMenus.h"
 #include "f4se/NiTextures.h"
 #include "f4se/ScaleformLoader.h"
-#include "f4se/ScaleformTranslator.h"
 #include "f4se_common/Relocation.h"
 #include "SAF/util.h"
 
-RelocPtr<BSScaleformManager> scaleformManager(0x58DE410);
+RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
+RelocAddr<_ScaleformRefCountImplRelease> ScaleformRefCountImplRelease(0x210EC90);
+
+TranslatorWrapper::TranslatorWrapper(GFxMovieRoot* root) {
+	auto stateBag = (GFxStateBag*)(*((UInt64*)root + 0x2) + 0x10);
+	translator = (BSScaleformTranslator*)stateBag->GetStateAddRef(GFxState::kInterface_Translator);
+}
+
+TranslatorWrapper::~TranslatorWrapper() {
+	if (translator)
+		ScaleformRefCountImplRelease(translator);
+}
 
 void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char* search, GFxValue* result)
 {
@@ -19,14 +29,24 @@ void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char*
 	if (*search == '/')
 		search++;
 
+	//if empty just grab everything
+	auto size = names->GetArraySize();
+	if (!*search) {
+		for (SInt32 i = 0; i < size; ++i) {
+			GFxValue idx(i);
+			result->PushBack(&idx);
+		}
+		return;
+	}
+
 	char searchTerm[MAX_PATH];
 	GetLoweredCString(searchTerm, search);
 
-	BSScaleformTranslator* translator = (BSScaleformTranslator*)scaleformManager->stateBag->GetStateAddRef(GFxState::kInterface_Translator);
 	std::wstring wide;
-
-	auto size = names->GetArraySize();
-	for (int i = 0; i < size; ++i) {
+	TranslatorWrapper wrapper(root);
+	const auto& translations = wrapper.translator->translations;
+	
+	for (SInt32 i = 0; i < size; ++i) {
 		GFxValue name;
 		names->GetElement(i, &name);
 		const char* nameStr = name.GetString();
@@ -37,14 +57,21 @@ void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char*
 				wide[c] = (wchar_t)nameStr[c];
 			}
 			BSFixedString wideStr(wide.c_str());
-			auto translation = translator->translations.Find(&wideStr);
-			if (HasInsensitiveSubstring(translation->translation.wc_str(), searchTerm)) {
+			auto translation = translations.Find(&wideStr);
+			if (translation) {
+				auto wideTranslation = translation->translation.wc_str();
+				if (wideTranslation && *wideTranslation && HasInsensitiveSubstring(wideTranslation, searchTerm)) {
+					GFxValue idx(i);
+					result->PushBack(&idx);
+				}
+			}
+			else if (*nameStr && HasInsensitiveSubstring(nameStr, searchTerm)) {
 				GFxValue idx(i);
 				result->PushBack(&idx);
 			}
 		}
 		else {
-			if (!*searchTerm || HasInsensitiveSubstring(nameStr, searchTerm)) {
+			if (*nameStr && HasInsensitiveSubstring(nameStr, searchTerm)) {
 				GFxValue idx(i);
 				result->PushBack(&idx);
 			}

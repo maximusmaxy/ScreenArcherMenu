@@ -81,7 +81,7 @@
 			super();
 			//trace("SAM Constructed");
 			
-			Util.debug = true;
+			Util.debug = false;
 			widescreen = false;
 			isOpen = true;
 			
@@ -130,6 +130,15 @@
 				this.bounds.addEventListener(MouseEvent.MOUSE_DOWN, OnMouseDown);
 				this.bounds.addEventListener(MouseEvent.MOUSE_WHEEL, OnMouseWheel);
 			}
+			
+			this.sliderList.title.addEventListener(MouseEvent.CLICK, function(event:MouseEvent) {
+				if (isSearching) {
+					if (stage.focus != sliderList.title)
+						sliderList.title.setSelection(sliderList.title.length, sliderList.title.length);
+				} else {
+					StartSearchInput();
+				}
+			});
 		}
 		
 		internal function InitFunctions():void
@@ -146,7 +155,7 @@
 			sliderList.initEntryFunctions(functions);
 			
 			Data.undoEditFunction = function() {
-				if (Data.editData) {
+				if (Data.editData && Data.editData.undo) {
 					var result:GFxResult = CallDataFunction(Data.editData.undo);
 					if (CheckError(result)) {
 						UpdateDataFunction(Data.editData.undo);
@@ -158,7 +167,7 @@
 			}
 			
 			Data.redoEditFunction = function() {
-				if (Data.editData) {
+				if (Data.editData && Data.editData.redo) {
 					var result:GFxResult = CallDataFunction(Data.editData.redo);
 					if (CheckError(result)) {
 						UpdateDataFunction(Data.editData.redo);
@@ -170,13 +179,13 @@
 			}
 			
 			Data.startEditFunction = function() {
-				if (Data.editData) {
+				if (Data.editData && Data.editData.start) {
 					CallDataFunction(Data.editData.start);
 				}
 			}
 			
 			Data.endEditFunction = function() {
-				if (Data.editData) {
+				if (Data.editData && Data.editData.end) {
 					CallDataFunction(Data.editData.end);
 				}
 			}
@@ -470,15 +479,15 @@
 //			}
 //		}
 		
-		public function onKeyDown(event:KeyboardEvent) 
-		{
-			ProcessKeyDown(event.keyCode);
-		}
-		
-		public function onKeyUp(event:KeyboardEvent)
-		{
-			ProcessKeyUp(event.keyCode);
-		}
+//		public function onKeyDown(event:KeyboardEvent) 
+//		{
+//			(event.keyCode);
+//		}
+//		
+//		public function onKeyUp(event:KeyboardEvent)
+//		{
+//			ProcessKeyUp(event.keyCode);
+//		}
 
 		public function ProcessKeyDown(keyCode:uint)
 		{
@@ -493,17 +502,17 @@
 			if (ctrlHold)
 				keyCode += 512;
 				
+			if (isSearching && ProcessSearch(keyCode))
+				return;
+				
 			ProcessKeyRepeat(keyCode);
 			
 			if (hold)
 				return;
-			
-			if (ShouldBlockHotkeys(keyCode))
-				return;
 
 			switch (keyCode)
 			{
-				case 8://Backspace
+				//case 8://Backspace
 				case 9://Tab
 				case 277://Pad B
 					if (buttonHintBack.ButtonVisible) {
@@ -708,22 +717,41 @@
 			DisableHold(keyCode);
 		}
 		
-		public function ShouldBlockHotkeys(keyCode:uint):Boolean {
-			if (!isSearching)
-				return false;
-			
-			 //Between A-Z
-			if (keyCode >= 65 && keyCode <= 90)
-				return true;
-				
-			switch(keyCode) {
-				case 8://backspace
+		public function ProcessSearch(keyCode:uint):Boolean {
+			if (stage.focus == sliderList.title) {
+				//Between A-Z
+				if (keyCode >= 65 && keyCode <= 90)
 					return true;
-				case 27://escape
-				case 111://numpad forwardslash
-				case 191://forwardslash
-					StopSearchInput();
-					return true;
+					
+				switch(keyCode) {
+					case 37://Left
+					case 38://Up
+					case 39://Right
+						stage.focus = sliderList;
+						return true;
+					case 40://Down
+						stage.focus = sliderList;
+						if (!sliderList.focused)
+							sliderList.processInput(SliderList.DOWN);
+						return true
+					case 13://Enter
+					case 111://numpad forwardslash
+					case 191://forwardslash
+						if (sliderList.title.text.length == 0) {
+							StopSearchInput();
+						} else {
+							stage.focus = sliderList;
+						}
+						return true;
+				}
+			} else {
+				switch(keyCode) {
+					case 111://numpad forwardslash
+					case 191://forwardslash
+						sliderList.title.setSelection(sliderList.title.length, sliderList.title.length);
+						stage.focus = sliderList.title;
+						return true;
+				}
 			}
 
 			return false;
@@ -778,6 +806,7 @@
 		{
 			//trace("Load folder", data);
 			Data.setFolder(data, result);
+			StopSearchInput();
 			
 			state = STATE_FOLDER;
 			//trace("pushing state, length", stateStack.length);
@@ -849,6 +878,7 @@
 		{
 			//trace("data push folder");
 			Data.pushFolder(path, result.result);
+			StopSearchInput();
 			
 			//trace("pushing folder", stateStack.length)
 			stateStack.push(GetState());
@@ -877,6 +907,7 @@
 
 			//trace("popping state, length", stateStack.length);
 			currentState = stateStack.pop();
+			StopSearchInput();
 			
 			sliderList.updateState(currentState.pos);
 			sliderList.update();
@@ -1245,6 +1276,7 @@
 			Data.updateMenu(name, data, get);
 			UpdateEditFunctions(data);
 			state = STATE_MAIN;
+			StopSearchInput();
 			Util.unselectText();
 
 			sliderList.updateState(currentState.pos);
@@ -1381,6 +1413,7 @@
 			//trace("Update reload");
 			Data.updateMenu(Data.menuName, Data.menuData, Data.latentGet.result);
 			Data.latentGet.Clear();
+			StopSearchInput();
 			sliderList.storeSelected();
 			sliderList.update();
 			sliderList.restoreSelected();
@@ -1509,7 +1542,13 @@
 					}
 					break;
 				case Data.MENU_REMOVEABLE:
-					CallDataFunction(Data.menuData.remove, [i]);
+					if (Data.menuData.remove) {
+						CallDataFunction(Data.menuData.remove, [i]);
+						UpdateDataFunction(Data.menuData.remove);
+					} 
+					else {
+						ShowNotification("Remove function not found", false);
+					}
 					break;
 			}
 		}
@@ -1545,7 +1584,11 @@
 					Data.locals[data["var"]] = Data.menuValues[args[0]];
 				}
 			}
-
+			
+			if (args && !data["default"]) {
+				args.length = 0;
+			}
+			
 			switch (data.type) {
 				case Data.FUNC_GLOBAL:
 					if (!data.script) {
@@ -1886,24 +1929,25 @@
 		
 		internal function StartSearchInput()
 		{
-			if (Data.menuType == Data.MENU_MIXED)
+			if (isSearching
+				|| Data.menuType == Data.MENU_MIXED
+				|| Data.menuType == Data.MENU_ADJUSTMENT)
 				return;
 			
-			if (!isSearching) {
-				//if extra hotkeys are enabled, disable text input to prevent the hotkey from being entered in the field
-				if (Data.extraHotkeys)
-					AllowTextInput(false);
-					
-				sliderList.title.text = "";
-				sliderList.title.type = TextFieldType.INPUT;
-				sliderList.title.selectable = true;
-				sliderList.title.maxChars = 100;
-				stage.focus = sliderList.title;
-				sliderList.title.setSelection(0, filenameInput.Input_tf.text.length);
-				AllowTextInput(true);
-				sliderList.title.addEventListener(Event.CHANGE, OnSearch);
-				isSearching = true;
-			}
+			//if extra hotkeys are enabled, disable text input to prevent the hotkey from being entered in the field
+			if (Data.extraHotkeys)
+				AllowTextInput(false);
+				
+			sliderList.title.text = "";
+			sliderList.title.type = TextFieldType.INPUT;
+			sliderList.title.selectable = true;
+			sliderList.title.maxChars = 100;
+			stage.focus = sliderList.title;
+			sliderList.title.setSelection(0, filenameInput.Input_tf.text.length);
+			AllowTextInput(true);
+			sliderList.title.addEventListener(Event.CHANGE, OnSearch);
+			isSearching = true;
+			OnSearch(null);
 		}
 		
 		internal function StopSearchInput()
@@ -1927,29 +1971,29 @@
 		}
 		
 		public function OnSearch(e:Event) {
-			var filtered:Array = FilterTest(Data.menuOptions, sliderList.title.text);
-			//var filtered:Array = this.sam.FilterMenu(Data.menuOptions, sliderList.title.text);
+			//var filtered:Array = FilterTest(Data.menuOptions, sliderList.title.text);
+			var filtered:Array = this.sam.FilterMenu(Data.menuOptions, sliderList.title.text);
 			Data.updateFilter(filtered);
 			sliderList.updateState(0);
 			sliderList.update();
 		}
 		
-		public function FilterTest(options:Array, filter:String) {
-			var result:Array = [];
-			
-			if (filter.charAt(0) == '/')
-				filter = filter.substr(1);
-				
-			filter = filter.toLowerCase();
-				
-			for (var i:int = 0; i < options.length; i++) {
-				var str:String = options[i];
-				if (str.toLowerCase().indexOf(filter) >= 0) {
-					result.push(i);
-				}
-			}
-			return result;
-		}
+//		public function FilterTest(options:Array, filter:String) {
+//			var result:Array = [];
+//			
+//			if (filter.charAt(0) == '/')
+//				filter = filter.substr(1);
+//				
+//			filter = filter.toLowerCase();
+//				
+//			for (var i:int = 0; i < options.length; i++) {
+//				var str:String = options[i];
+//				if (str.toLowerCase().indexOf(filter) >= 0) {
+//					result.push(i);
+//				}
+//			}
+//			return result;
+//		}
 		
 		public function GetButton(type:int):BSButtonHintData
 		{
@@ -2240,7 +2284,6 @@
 		
 		public function UpdateTitle()
 		{
-			StopSearchInput();
 			if (Data.latentTitle.success) {
 				sliderList.title.text = Data.latentTitle.result.result;
 				Data.latentTitle.Clear();
@@ -2450,7 +2493,7 @@
 		
 		public function FindEntryHotkey():Object
 		{
-			var hotkeys:Array = [
+			const hotkeys:Array = [
 				 Data.BUTTON_SAVE,
 				 Data.BUTTON_LOAD,
 				 Data.BUTTON_RESET,
@@ -2553,6 +2596,8 @@
 		public function CanClose():Boolean
 		{
 			if (filenameInput.visible)
+				return false;
+			if (stage.focus == sliderList.title)
 				return false;
 				
 //			Need to work out some kind of cancellation method on latent functions

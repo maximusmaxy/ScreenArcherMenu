@@ -98,7 +98,12 @@ namespace SAF {
 		UInt8 updateType;
 		TransformMap map;
 
-		PersistentAdjustment() : type(kAdjustmentTypeNone) {}
+		PersistentAdjustment() : 
+			type(kAdjustmentTypeNone),
+			scale(1.0f),
+			updated(false),
+			updateType(kAdjustmentUpdateNone)
+		{}
 
 		PersistentAdjustment(AdjustmentPtr adjustment, UInt32 updateType);
 
@@ -123,7 +128,7 @@ namespace SAF {
 		StringTransformMap transforms;
 		UInt32 refs;
 
-		NodeMapRef() {}
+		NodeMapRef() : refs(1) {}
 		NodeMapRef(NodeMap map) : map(map), refs(1) {}
 	};
 

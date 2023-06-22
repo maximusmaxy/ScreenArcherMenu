@@ -28,6 +28,7 @@ public:
 	void ValidateFolderMenu(Json::Value& value);
 	void ValidateAdjustmentMenu(Json::Value& value);
 	void ValidateGlobalMenu(Json::Value& value);
+	void ValidateRemoveableMenu(Json::Value& value);
 	void ValidateItem(Json::Value& value);
 	void ValidateTouch(Json::Value& value);
 	void ValidateSlider(Json::Value& value);

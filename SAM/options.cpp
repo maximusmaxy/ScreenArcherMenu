@@ -10,6 +10,7 @@ void Options::Initialize() {
 	alignment = false;
 	widescreen = false;
 	extrahotkeys = true;
+	cameracontrol = true;
 	boneoverlay = true;
 	posinggizmo = true;
 	sliderSet = "CBBE";
@@ -29,6 +30,7 @@ void Options::ToJson(Json::Value& value) {
 	value["alignment"] = alignment;
 	value["widescreen"] = widescreen;
 	value["extrahotkeys"] = extrahotkeys;
+	value["cameracontrol"] = cameracontrol;
 	value["boneoverlay"] = boneoverlay;
 	value["posinggizmo"] = posinggizmo;
 	value["sliderSet"] = sliderSet;
@@ -40,6 +42,7 @@ void Options::FromJson(Json::Value& value) {
 	alignment = value.get("alignment", false).asBool();
 	widescreen = value.get("widescreen", false).asBool();
 	extrahotkeys = value.get("extrahotkeys", true).asBool();
+	cameracontrol = value.get("cameracontrol", true).asBool();
 	boneoverlay = value.get("boneoverlay", true).asBool();
 	posinggizmo = value.get("posinggizmo", true).asBool();
 	sliderSet = value.get("sliderSet", "CBBE").asString();
@@ -68,6 +71,7 @@ void GetMenuOptions(GFxResult& result)
 	result.PushValue(menuOptions.alignment);
 	result.PushValue(menuOptions.widescreen);
 	result.PushValue(menuOptions.extrahotkeys);
+	result.PushValue(menuOptions.cameracontrol);
 	result.PushValue(menuOptions.boneoverlay);
 	result.PushValue(menuOptions.posinggizmo);
 }
@@ -77,6 +81,7 @@ enum {
 	kOptionAlignment,
 	kOptionWidescreen,
 	kOptionExtraHotkeys,
+	kOptionCameraControl,
 	kOptionBoneOverlay,
 	kOptionPosingGizmo,
 };
@@ -87,6 +92,7 @@ void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
 	case kOptionAlignment: menuOptions.alignment = value; break;
 	case kOptionWidescreen: menuOptions.widescreen = value; break;
 	case kOptionExtraHotkeys: menuOptions.extrahotkeys = value; break;
+	case kOptionCameraControl: menuOptions.cameracontrol = value; break;
 	case kOptionBoneOverlay: menuOptions.boneoverlay = value; break;
 	case kOptionPosingGizmo: menuOptions.posinggizmo = value; break;
 	default: return;

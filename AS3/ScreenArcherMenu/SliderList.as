@@ -250,7 +250,8 @@
 		public function processDirection(inc:Boolean)
 		{
 			var entry:SliderListEntry = getEntry(selectedY);
-			if (!entry) return;
+			if (!entry) 
+				return;
 			
 			switch (entry.type) {
 				case Data.ITEM_LIST:

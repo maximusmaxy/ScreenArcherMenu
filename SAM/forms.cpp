@@ -1,17 +1,33 @@
 #include "forms.h"
 
-#include "f4se/GameData.h"
-
+#include "f4se/NiNodes.h"
 #include "strnatcmp.h"
-#include "SAF/util.h"
 #include "SAF/types.h"
 
 #include <ranges>
-#include <span>
-#include <algorithm>
-#include <execution>
 
-void SortSearchResult(FormSearchResult& result) {
+RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal(0x5121D0);
+RelocAddr<_GetREFRFromHandle> GetREFRFromHandle(0xAC90);
+RelocAddr<_SetREFRLocation> SetREFRLocation(0x40C060);
+RelocAddr<_SetREFROrientation> SetREFROrientation(0x408700);
+RelocAddr<_SetREFRScale> SetREFRScale(0x3F85B0);
+RelocAddr<_SetActorPosition> SetActorPosition(0xD77690);
+
+RelocAddr<_QueueActorUpdateModel> QueueActorUpdateModel(0xD59AA0);
+RelocPtr<UInt64> taskQueueInterface(0x5AC64F0);
+
+void SetREFRTransform(TESObjectREFR* refr, const NiTransform& transform) {
+	SetREFRLocation(refr, transform.pos);
+	SetREFROrientation(refr, transform.rot);
+	SetREFRScale(refr, transform.scale);
+}
+
+void FormSearchResult::Push(const char* name, UInt32 formId) {
+	std::lock_guard lock(mutex);
+	result.push_back(std::make_pair(name, formId));
+}
+
+void FormSearchResult::Sort() {
 	std::sort(result.begin(), result.end(), [](auto& lhs, auto& rhs) {
 		return strnatcasecmp(lhs.first, rhs.first) < 0;
 	});
@@ -30,6 +46,8 @@ void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
 }
 
 void AddFormattedModsToResult(GFxResult& result, const std::vector<const char*>& searchResult) {
+	result.CreateMenuItems();
+
 	for (auto& mod : searchResult) {
 		auto ext = strrchr(mod, '.');
 		if (ext) {
@@ -45,7 +63,7 @@ void AddFormattedModsToResult(GFxResult& result, const std::vector<const char*>&
 void GetModVectors(std::vector<bool>& esp, std::vector<bool>& esl)
 {
 	//creating two fixed length boolean vectors to store mods with items
-	int last = 0;
+	size_t last = 0;
 	auto end = (*g_dataHandler)->modList.loadedMods.entries + (*g_dataHandler)->modList.loadedMods.count;
 	for (auto it = (*g_dataHandler)->modList.loadedMods.entries; it < end; ++it) {
 		if ((*it)->modIndex > last)
@@ -68,13 +86,13 @@ void AddModVectorsToList(std::vector<bool>& esp, std::vector<bool>& esl, std::ve
 	auto end = (*g_dataHandler)->modList.loadedMods.entries + (*g_dataHandler)->modList.loadedMods.count;
 	for (auto it = (*g_dataHandler)->modList.loadedMods.entries; it < end; ++it) {
 		if (esp[(*it)->modIndex])
-			result.emplace_back((*it)->name);
+			result.push_back((*it)->name);
 	}
 
 	end = (*g_dataHandler)->modList.lightMods.entries + (*g_dataHandler)->modList.lightMods.count;
 	for (auto it = (*g_dataHandler)->modList.lightMods.entries; it < end; ++it) {
 		if (esl[(*it)->lightIndex])
-			result.emplace_back((*it)->name);
+			result.push_back((*it)->name);
 	}
 
 	std::sort(result.begin(), result.end(), [](auto& lhs, auto& rhs) {
@@ -141,55 +159,52 @@ void SearchFormsSpanForMods(const FormsSpan& span, std::vector<const char*>& res
 	AddModVectorsToList(esp, esl, result);
 }
 
-void SearchSpanForMods(const std::span<TESForm*>& span, std::vector<const char*>& result) {
-	std::vector<bool> esp;
-	std::vector<bool> esl;
-	GetModVectors(esp, esl);
-	auto espIt = esp.begin();
-	auto eslIt = esl.begin();
-
-	std::for_each(std::execution::par, span.begin(), span.end(), [&espIt, &eslIt](TESForm* form) {
-		if (form) {
-			const UInt32 formId = form->formID;
-			if ((formId & 0xFE000000) == 0xFE000000) {
-				*(eslIt + ((formId >> 12) & 0xFFF)) = true;
-			}
-			else {
-				*(espIt + (formId >> 24)) = true;
-			}
-		}
-	});
-
-	AddModVectorsToList(esp, esl, result);
-}
-
 void SearchFormsForSubstring(FormSearchResult& searchResult, const FormsSpan& span, const char* search) {
 	char lowered[MAX_PATH];
 	GetLoweredCString(lowered, search);
 
-	std::mutex mutex;
 	auto range = std::ranges::join_view(span);
-	std::for_each(std::execution::par, range.begin(), range.end(), [&lowered, &searchResult, &mutex](TESForm* form) {
-		if (form && HasInsensitiveSubstring(form->GetFullName(), lowered)) {
-			std::lock_guard lock(mutex);
-			searchResult.emplace_back(form->GetFullName(), form->formID);
+	std::for_each(std::execution::par, range.begin(), range.end(), [&lowered, &searchResult](TESForm* form) {
+		if (form) {
+			auto fullname = form->GetFullName();
+			if (fullname && *fullname && HasInsensitiveSubstring(fullname, lowered)) {
+				searchResult.Push(fullname, form->formID);
+			}
 		}
 	});
 
-	SortSearchResult(searchResult);
+	searchResult.Sort();
+}
+
+void SearchFormEdidsForSubstring(FormSearchResult& searchResult, const FormsSpan& span, const char* search) {
+	char lowered[MAX_PATH];
+	GetLoweredCString(lowered, search);
+
+	auto range = std::ranges::join_view(span);
+	std::for_each(std::execution::par, range.begin(), range.end(), [&lowered, &searchResult](TESForm* form) {
+		if (form) {
+			auto edid = form->GetEditorID();
+			if (edid && *edid && HasInsensitiveSubstring(edid, lowered)) {
+				searchResult.Push(edid, form->formID);
+			}
+		}
+	});
+
+	searchResult.Sort();
 }
 
 void SearchSpanForSubstring(FormSearchResult& searchResult, const std::span<TESForm*>& span, const char* search) {
 	char lowered[MAX_PATH];
 	GetLoweredCString(lowered, search);
 
-	std::mutex mutex;
-	std::for_each(std::execution::par, span.begin(), span.end(), [&lowered, &searchResult, &mutex](TESForm* form) {
-		if (form && HasInsensitiveSubstring(form->GetFullName(), lowered)) {
-			std::lock_guard lock(mutex);
-			searchResult.emplace_back(form->GetFullName(), form->formID);
+	std::for_each(std::execution::par, span.begin(), span.end(), [&lowered, &searchResult](TESForm* form) {
+		if (form) {
+			auto fullname = form->GetFullName();
+			if (fullname && *fullname && HasInsensitiveSubstring(fullname, lowered)) {
+				searchResult.Push(fullname, form->formID);
+			}
 		}
 	});
 
-	SortSearchResult(searchResult);
+	searchResult.Sort();
 }

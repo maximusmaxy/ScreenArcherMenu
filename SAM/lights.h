@@ -16,13 +16,13 @@ public:
 	UInt32 formId;
 	TESObjectREFR* lightRefr;
 	std::string name;
-	float distance;
-	float rotation;
-	float height;
-	float xOffset;
-	float yOffset;
+	float distance{};
+	float rotation{};
+	float height{};
+	float xOffset{};
+	float yOffset{};
 
-	MenuLight() : formId(0) {}
+	MenuLight() : formId(0), lightRefr(nullptr) {}
 	MenuLight(TESObjectREFR* refr) : lightRefr(refr), formId(refr->formID) {}
 	MenuLight(TESObjectREFR* refr, std::string name) : lightRefr(refr), formId(refr->formID), name(name) {}
 
@@ -72,7 +72,6 @@ public:
 };
 
 extern LightManager lightManager;
-extern std::unordered_map<UInt32, const char*> lightModMap;
 
 void GetLightSelect(GFxResult& result);
 void SetLightSelect(GFxResult& result, SInt32 index);

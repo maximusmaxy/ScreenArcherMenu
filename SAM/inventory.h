@@ -27,4 +27,3 @@ void GetStaticGroups(GFxResult& result, const char* modInfoStr);
 void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex);
 void GetLastSearchResultStatic(GFxResult& result);
 void SearchStatics(GFxResult& result, const char* search);
-void PlaceAtSelected(GFxResult& result, UInt32 formId);

@@ -85,7 +85,7 @@ namespace SAF {
 	public:
 		float wxyz[4];
 
-		Quat() {}
+		Quat() : wxyz{1.0f, 0.0f, 0.0f, 0.0f} {}
 
 		Quat(float w, float x, float y, float z) {
 			wxyz[0] = w;

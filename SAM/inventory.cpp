@@ -1,14 +1,16 @@
 #include "inventory.h"
 
-#include "f4se/GameForms.h"
 #include "f4se_common/Relocation.h"
+#include "f4se/GameForms.h"
 #include "f4se/GameData.h"
 #include "f4se/GameObjects.h"
 #include "f4se/GameExtraData.h"
 #include "f4se/GameRTTI.h"
 #include "f4se/PapyrusVM.h"
+#include "f4se/NiTypes.h"
 
 #include "SAF/util.h"
+#include "SAF/conversions.h"
 
 #include "sam.h"
 #include "constants.h"
@@ -20,6 +22,8 @@
 #include "positioning.h"
 #include "strnatcmp.h"
 #include "forms.h"
+#include "papyrus.h"
+#include "functions.h"
 
 #include <thread>
 #include <fstream>
@@ -101,16 +105,10 @@ FormsSpan GetStaticsSpans() {
 	};
 }
 
-void GetItemMods(GFxResult& result) 
-{
+void GetItemMods(GFxResult& result) {
 	if (storedItemMods.empty())
 		SearchFormsSpanForMods(GetItemsSpans(), storedItemMods);
-
-	result.CreateNames();
-
-	for (auto& mod : storedItemMods) {
-		result.PushName(mod);
-	}
+	AddFormattedModsToResult(result, storedItemMods);
 }
 
 void SearchForAvailableGroups(const ModInfo* modInfo, const FormsSpan& spans, bool* availableGroups, size_t len)
@@ -145,7 +143,7 @@ void GetItemGroups(GFxResult& result, const char* modName)
 
 	result.CreateMenuItems();
 
-	for (int i = 0; i < ITEMS_SIZE; ++i) {
+	for (SInt32 i = 0; i < ITEMS_SIZE; ++i) {
 		if (availableModGroups[i])
 			result.PushItem(modGroupNames[i], i);
 	}
@@ -171,25 +169,13 @@ void GetItemList(GFxResult& result, const char* modName, SInt32 groupIndex)
 	default: return result.SetError("Group index was out of range");
 	}
 
-	UInt32 modIndex;
-	UInt32 mask;
-	GetModIndexAndMask(modInfo, &modIndex, &mask);
-
 	FormSearchResult searchResult;
-	std::mutex mutex;
-	std::for_each(std::execution::par, formSpan.begin(), formSpan.end(), [&](TESForm* form) {
-		if (form && ((form->formID & mask) == modIndex)) {
-			std::lock_guard lock(mutex);
-			searchResult.emplace_back(form->GetFullName(), form->formID);
-		}
-	});
+	SearchModForFullnameForms(modInfo, formSpan, searchResult);
 
-	SortSearchResult(searchResult);
 
 	result.CreateMenuItems();
-	for (auto& kvp : searchResult) {
-		if (kvp.first && *kvp.first)
-			result.PushItem(kvp.first, kvp.second);
+	for (auto& kvp : searchResult.result) {
+		result.PushItem(kvp.first, kvp.second);
 	}
 }
 
@@ -219,11 +205,6 @@ bool RefrHasItem(TESObjectREFR* refr, TESForm* form) {
 
 	return false;
 }
-
-typedef void (*_QueueActorUpdateModel)(UInt64 taskQueueInterface, Actor* actor, UInt16 flags, float unk);
-RelocAddr<_QueueActorUpdateModel> QueueActorUpdateModel(0xD59AA0);
-
-RelocPtr<UInt64> taskQueueInterface(0x5AC64F0);
 
 void UpdateActorModel(Actor* actor, bool force)
 {
@@ -323,9 +304,8 @@ void AddItem(GFxResult& result, UInt32 formId, bool equip) {
 void GetLastSearchResult(GFxResult& result) {
 	result.CreateMenuItems();
 
-	for (auto& kvp : itemSearchResult) {
-		if (kvp.first && *kvp.first)
-			result.PushItem(kvp.first, kvp.second);
+	for (auto& kvp : itemSearchResult.result) {
+		result.PushItem(kvp.first, kvp.second);
 	}
 }
 
@@ -342,11 +322,10 @@ void SearchItems(GFxResult& result, const char* search)
 	if (len >= MAX_PATH - 1)
 		return result.SetError("Search term is too big! 0_0");
 
-	itemSearchResult.clear();
-
+	itemSearchResult.result.clear();
 	SearchFormsForSubstring(itemSearchResult, GetItemsSpans(), search);
 
-	if (itemSearchResult.empty())
+	if (itemSearchResult.result.empty())
 		return result.SetError("Search returned no results");
 }
 
@@ -413,7 +392,6 @@ void GetMatSwaps(GFxResult& result, UInt32 formId) {
 		return result.SetError("Could not find form id");
 
 	FormSearchResult searchResult;
-	std::mutex mutex;
 	auto omods = std::span((*g_dataHandler)->arrOMOD.entries, (*g_dataHandler)->arrOMOD.count);
 	auto item = GetEquippedFromForm(selected.refr, formId);
 	if (!item)
@@ -424,19 +402,19 @@ void GetMatSwaps(GFxResult& result, UInt32 formId) {
 		if (mod && mod->targetType == BGSMod::Attachment::Mod::kTargetType_Armor && CanBeUsedOnForm(mod, form, extraData)) {
 			auto containerData = GetModContainerMatSwapData(mod);
 			if (containerData) {
-				std::lock_guard lock(mutex);
-				searchResult.emplace_back(mod->GetFullName(), mod->formID);
+				auto fullname = mod->GetFullName();
+				if (fullname && *fullname)
+					searchResult.Push(fullname, mod->formID);
 			}	
 		}
 	});
 
-	SortSearchResult(searchResult);
+	searchResult.Sort();
 
 	result.CreateMenuItems();
 
-	for (auto& kvp : searchResult) {
-		if (kvp.first && *kvp.first)
-			result.PushItem(kvp.first, kvp.second);
+	for (auto& kvp : searchResult.result) {
+		result.PushItem(kvp.first, kvp.second);
 	}
 }
 
@@ -606,14 +584,9 @@ void RemoveAllEquipment(GFxResult& result) {
 }
 
 void GetStaticMods(GFxResult& result) {
-	if (storedItemMods.empty())
+	if (storedStaticMods.empty())
 		SearchFormsSpanForMods(GetStaticsSpans(), storedStaticMods);
-
-	result.CreateNames();
-
-	for (auto& mod : storedItemMods) {
-		result.PushName(mod);
-	}
+	AddFormattedModsToResult(result, storedStaticMods);
 }
 
 void GetStaticGroups(GFxResult& result, const char* modName)
@@ -631,7 +604,7 @@ void GetStaticGroups(GFxResult& result, const char* modName)
 
 	result.CreateMenuItems();
 
-	for (int i = 0; i < STATICS_SIZE; ++i) {
+	for (SInt32 i = 0; i < STATICS_SIZE; ++i) {
 		if (availableStaticsGroups[i])
 			result.PushItem(staticGroupNames[i], i);
 	}
@@ -656,34 +629,20 @@ void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex)
 	default: return result.SetError("Group index was out of range");
 	}
 
-	UInt32 modIndex;
-	UInt32 mask;
-	GetModIndexAndMask(modInfo, &modIndex, &mask);
-
 	FormSearchResult searchResult;
-	std::mutex mutex;
-	std::for_each(std::execution::par, formSpan.begin(), formSpan.end(), [&](TESForm* form) {
-		if (form && ((form->formID & mask) == modIndex)) {
-			std::lock_guard lock(mutex);
-			searchResult.emplace_back(form->GetFullName(), form->formID);
-		}
-	});
-
-	SortSearchResult(searchResult);
+	SearchModForFullnameForms(modInfo, formSpan, searchResult);
 
 	result.CreateMenuItems();
-	for (auto& kvp : searchResult) {
-		if (kvp.first && *kvp.first)
-			result.PushItem(kvp.first, kvp.second);
+	for (auto& kvp : searchResult.result) {
+		result.PushItem(kvp.first, kvp.second);
 	}
 }
 
 void GetLastSearchResultStatic(GFxResult& result) {
 	result.CreateMenuItems();
 
-	for (auto& kvp : staticSearchResult) {
-		if (kvp.first && *kvp.first)
-			result.PushItem(kvp.first, kvp.second);
+	for (auto& kvp : staticSearchResult.result) {
+		result.PushItem(kvp.first, kvp.second);
 	}
 }
 
@@ -699,25 +658,144 @@ void SearchStatics(GFxResult& result, const char* search) {
 	if (len >= MAX_PATH - 1)
 		return result.SetError("Search term is too big! 0_0");
 
-	staticSearchResult.clear();
+	staticSearchResult.result.clear();
 
 	SearchFormsForSubstring(staticSearchResult, GetStaticsSpans(), search);
 
-	if (staticSearchResult.empty())
+	if (staticSearchResult.result.empty())
 		return result.SetError("Search returned no results");
 }
 
-typedef UInt32(*_PlaceAtMeInternal)(TESObjectREFR** result, TESObjectREFR* target, TESForm* form, int, int, int, char, bool);
-RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal(0x5121D0);
+struct PlacedStatic {
+	UInt32 refr;
+	UInt32 formId;
+	NiTransform transform;
+};
 
-void PlaceAtSelected(GFxResult& result, UInt32 formId) {
+struct PlacedStaticManager {
+	SInt32 index;
+	std::vector<PlacedStatic> objects;
+
+	PlacedStaticManager() : index(-1) {}
+
+	void Push(UInt32 refr, UInt32 formId) {
+		objects.resize(++index, {});
+		objects.push_back({ refr, formId });
+	}
+
+	void Undo(GFxResult& result) {
+		if (index < 0)
+			return result.SetError("");
+
+		auto& object = objects.at(index--);
+		auto form = LookupFormByID(object.refr);
+		if (!form)
+			return result.SetError("Unable to find form");
+
+		auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		if (!refr)
+			return result.SetError("Undo target was not a reference");
+		
+		auto root = refr->GetObjectRootNode();
+		if (root)
+			object.transform = root->m_worldTransform;
+		else
+			object.transform = SAF::TransformIdentity();
+
+		PapyrusDelete(refr);
+	}
+
+	void Redo(GFxResult& result) {
+		if (index + 1 >= (SInt32)objects.size())
+			return result.SetError("");
+
+		auto& object = objects.at(++index);
+
+		if (SAF::TransformIsDefault(object.transform)) {
+			auto playerRoot = (*g_player)->GetActorRootNode(false);
+			if (!playerRoot)
+				return result.SetError("Failed to find a location to spawn object");
+			const NiTransform mod{
+				SAF::MatrixIdentity(),
+				{0, 0, 100.0f},
+				1.0f
+			};
+			object.transform = SAF::MultiplyNiTransform(playerRoot->m_worldTransform, mod);
+		}
+
+		auto form = LookupFormByID(object.formId);
+		if (!form)
+			return result.SetError("Unable to find form");
+
+		TESObjectREFR* out = nullptr;
+		PlaceAtMeInternal(&out, *g_player, form, 1, 0, 0, false, false);
+		if (!out)
+			return result.SetError("Failed to spawn object");
+		object.refr = out->formID;
+		SetREFRTransform(out, object.transform);
+	}
+
+	void Pop() {
+		if (index < 0)
+			return;
+
+		auto& object = objects.at(index);
+		auto form = LookupFormByID(object.refr);
+		if (!form)
+			return;
+
+		auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		if (!refr)
+			return;
+
+		index--;
+		PapyrusDelete(refr);
+	}
+};
+
+PlacedStaticManager placedStaticManager;
+
+GFxReq undoPlacedStatic("UndoPlacedStatic", [](auto& result, auto args) {
+	placedStaticManager.Undo(result);
+});
+GFxReq redoPlacedStatic("RedoPlacedStatic", [](auto& result, auto args) {
+	placedStaticManager.Redo(result);
+});
+
+void PlaceAtSelected(GFxResult& result, UInt32 formId, bool placing) {
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
 
 	auto form = LookupFormByID(formId);
 	if (!form)
-		return;
+		return result.SetError("Could not find form id");
+
+	auto root = selected.refr->GetActorRootNode(false);
+	if (!root)
+		return result.SetError("Failed to get position from selected");
 
 	TESObjectREFR* out = nullptr;
-	PlaceAtMeInternal(&out, selected.refr, form, 1, 0, 0, 1, false);
+	UInt32* handle = PlaceAtMeInternal(&out, selected.refr, form, 1, 0, 0, false, false);
+
+	NiPointer<TESObjectREFR> refr;
+	GetREFRFromHandle(handle, refr);
+	if (!refr)
+		return result.SetError("Failed to spawn object");
+
+	//If not placing we are in preview mode so remove existing
+	if (!placing)
+		placedStaticManager.Pop();
+
+	placedStaticManager.Push(refr->formID, refr->baseForm->formID);
+
+	const NiTransform mod{
+		SAF::MatrixIdentity(),
+		{0, 100.0f, 0},
+		1.0f
+	};
+	const auto transform = SAF::MultiplyNiTransform(root->m_worldTransform, mod);
+	SetREFRTransform(refr, transform);
 }
+GFxReq placeStatic("PlaceStatic", [](auto& result, auto args) {
+	PlaceAtSelected(result, args->args[1].GetUInt(), args->args[2].GetBool());
+});

@@ -17,7 +17,7 @@
 		public var type:int;
 		public var dragState:int = 0;
 		public var selectable:Boolean = false;
-		public var index;
+		public var index:int;
 		
 		public var increment:Number = 0.0;
 		public var mod:Number = 1.0;

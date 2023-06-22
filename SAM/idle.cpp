@@ -174,22 +174,31 @@ IdleData* GetIdleData(TESObjectREFR* refr) {
 	return GetIdleData(actor->race->formID);
 }
 
-//IdleMenu* GetIdleMenu(UInt32 raceId) {
-//	if (!idleMenuLoaded) {
-//		LoadIdleMenus();
-//		idleMenuLoaded = true;
-//	}
-//	
-//	IdleData* idleData = GetIdleData(raceId);
-//	if (!idleData) 
-//		return nullptr;
-//
-//	auto it = idleMenus.find(idleData->behavior);
-//	if (it == idleMenus.end())
-//		return nullptr;
-//
-//	return &it->second;
-//}
+std::string displayedIdle;
+const char* GetIdleDisplayFromForm(TESIdleForm* form) {
+	displayedIdle.clear();
+	if (!form)
+		return nullptr;
+
+	const char* edid = form->editorID;
+	if (!edid || !*edid)
+		return nullptr;
+
+	auto mod = GetModName(form->formID);
+	if (mod) {
+		auto ext = strrchr(mod, '.');
+		if (ext) {
+			displayedIdle.insert(0, mod, ext - mod);
+		}
+		else {
+			displayedIdle += mod;
+		}
+		displayedIdle += ": ";
+	}
+
+	displayedIdle += edid;
+	return displayedIdle.c_str();
+}
 
 typedef bool (*_PlayIdleInternal)(Actor::MiddleProcess* middleProcess, Actor* actor, UInt32 param3, TESIdleForm* idleForm, UInt64 param5, UInt64 param6);
 RelocAddr<_PlayIdleInternal> PlayIdleInternal(0xE35510);
@@ -209,7 +218,7 @@ void PlayIdleAnimation(UInt32 formId) {
 		return;
 
 	PlayIdleInternal(actor->middleProcess, actor, 0x35, idleForm, 1, 0);
-	samManager.ShowNotification(idleForm->editorID, true);
+	samManager.ShowNotification(GetIdleDisplayFromForm(idleForm), true);
 }
 
 void ResetIdleAnimation() {
@@ -245,7 +254,8 @@ void PlayAPose() {
 	Actor* actor = (Actor*)selected.refr;
 
 	IdleData* idleData = GetIdleData(selected.race);
-	if (!idleData) return;
+	if (!idleData) 
+		return;
 
 	UInt32 aposeId = idleData->aposeId;
 	if (!aposeId) 
@@ -419,7 +429,7 @@ RelocAddr<tMutexArray<CachedIdleData>> cachedIdles(0x5B02F38);
 //	return dataChannel->actor;
 //}
 
-const char* GetCurrentIdleName() {
+TESIdleForm* GetCurrentIdleForm() {
 	if (!selected.refr) 
 		return nullptr;
 
@@ -470,13 +480,21 @@ const char* GetCurrentIdleName() {
 	std::span<TESIdleForm*> idleFormSpan(formArray->forms, formArray->count);
 
 	auto it = std::find_if(std::execution::par_unseq, idleFormSpan.begin(), idleFormSpan.end(), [&idlePath](TESIdleForm* form) {
-		return form && (form->editorID == idlePath.c_str());
+		return form && (form->animationFile == idlePath);
 	});
 
 	if (it != idleFormSpan.end())
-		return (*it)->editorID;
+		return (*it);
 
 	return nullptr;
+}
+
+const char* GetCurrentIdleName() {
+	auto form = GetCurrentIdleForm();
+	if (!form)
+		return nullptr;
+
+	return GetIdleDisplayFromForm(form);
 }
 
 void GetIdleFavorites(GFxResult& result)
@@ -509,13 +527,13 @@ bool SaveIdleFavorites()
 
 void AppendIdleFavorite(GFxResult& result)
 {
-	const char* idleName = GetCurrentIdleName();
-	if (!idleName)
-		return result.SetError("Idle name could not be found");
-
-	TESForm* form = GetFormByEditorId(idleName);
+	auto form = GetCurrentIdleForm();
 	if (!form)
-		return result.SetError("Could not find form for idle");
+		return result.SetError("Unable to find form for idle");
+
+	auto idleName = form->GetEditorID();
+	if (!idleName || !*idleName)
+		return result.SetError("Idle is missing editor id");
 
 	auto it = std::find(idleFavorites.begin(), idleFavorites.end(), idleName);
 	if (it != idleFavorites.end())

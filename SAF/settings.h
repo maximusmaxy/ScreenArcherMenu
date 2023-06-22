@@ -11,8 +11,8 @@ namespace SAF {
 		std::string pose;
 		std::string aaf;
 		std::string outfitStudioPosePath;
-		UInt32 doppelgangerID;
-		UInt32 fullDoppelgangerID;
+		UInt32 doppelgangerID{};
+		UInt32 fullDoppelgangerID{};
 
 		void Initialize();
 		void ToJson(Json::Value& value);

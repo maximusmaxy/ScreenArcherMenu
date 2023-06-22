@@ -14,25 +14,30 @@ namespace SAF {
 
 		TESNPC* npc = (TESNPC*)refr->baseForm;
 		BGSHeadPart* eyePart = npc->GetHeadPartByType(BGSHeadPart::kTypeEyes);
-		if (!eyePart) return nullptr;
+		if (!eyePart) 
+			return nullptr;
 		BSFixedString eyeName = eyePart->partName;
 
 		NiNode* rootNode = refr->GetActorRootNode(false);
-		if (!rootNode) return nullptr;
+		if (!rootNode) 
+			return nullptr;
 		NiAVObject* eyeNode = rootNode->GetObjectByName(&eyeName);
-		if (!eyeNode) return nullptr;
+		if (!eyeNode) 
+			return nullptr;
 
 		return eyeNode;
 	}
 
 	BSShaderMaterial* GetEyeMaterial(NiAVObject* eyeNode)
 	{
-		if (!eyeNode) return nullptr;
+		if (!eyeNode) 
+			return nullptr;
 
 		BSGeometry* eyeGeometry = eyeNode->GetAsBSGeometry();
 		NiPointer<NiProperty> niProperty = eyeGeometry->shaderProperty;
 		BSShaderProperty* shaderProperty = (BSShaderProperty*)niProperty.get();
-		if (!shaderProperty) return nullptr;
+		if (!shaderProperty) 
+			return nullptr;
 
 		BSShaderMaterial* eyeMaterial = shaderProperty->shaderMaterial;
 		return eyeMaterial;
@@ -40,10 +45,12 @@ namespace SAF {
 
 	bool GetEyecoords(NiAVObject* eyeNode, float* ret)
 	{
-		if (!eyeNode) return false;
+		if (!eyeNode) 
+			return false;
 
 		BSShaderMaterial* eyeMaterial = GetEyeMaterial(eyeNode);
-		if (!eyeMaterial) return false;
+		if (!eyeMaterial)
+			return false;
 
 		float u, v;
 		eyeMaterial->GetOffsetUV(&u, &v);
@@ -56,14 +63,16 @@ namespace SAF {
 	bool GetEyecoords(TESObjectREFR* refr, float* ret)
 	{
 		NiAVObject* eyeNode = GetEyeNode(refr);
-		if (!eyeNode) return false;
+		if (!eyeNode) 
+			return false;
 
 		return GetEyecoords(eyeNode, ret);
 	}
 
 	void SetEyecoords(NiAVObject* eyeNode, float x, float y)
 	{
-		if (!eyeNode) return;
+		if (!eyeNode) 
+			return;
 
 		BSGeometry* eyeGeometry = eyeNode->GetAsBSGeometry();
 		NiPointer<NiProperty> niProperty = eyeGeometry->shaderProperty;
@@ -87,10 +96,12 @@ namespace SAF {
 
 	void SetEyecoords(TESObjectREFR* refr, float x, float y)
 	{
-		if (!refr) return;
+		if (!refr) 
+			return;
 
 		NiAVObject* eyeNode = GetEyeNode(refr);
-		if (!eyeNode) return;
+		if (!eyeNode)
+			return;
 
 		SetEyecoords(eyeNode, x, y);
 	}

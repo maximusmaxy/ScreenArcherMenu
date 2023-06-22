@@ -38,7 +38,7 @@ namespace SAF {
 		UInt32 offsetLength = ComparePostfix(str, length, NodeOffsetPostfix, 7);
 		if (offsetLength)
 		{
-			if (offsetLength > NodeKeyBufferSize) {
+			if (offsetLength >= NodeKeyBufferSize) {
 				_Log("Node name too long", str);
 				return NodeKey();
 			}
@@ -55,7 +55,7 @@ namespace SAF {
 		}
 		if (poseLength)
 		{
-			if (poseLength > NodeKeyBufferSize) {
+			if (poseLength >= NodeKeyBufferSize) {
 				_Log("Node name too long", str);
 				return NodeKey();
 			}

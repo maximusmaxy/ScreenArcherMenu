@@ -33,11 +33,13 @@
 #include "io.h"
 #include "data.h"
 #include "functions.h"
+#include "scaleform.h"
+#include "coc.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
 
-SAF::SafMessagingInterface* saf;
+SAF::SafMessagingInterface* saf = nullptr;
 SelectedRefr selected;
 SamManager samManager;
 
@@ -95,7 +97,7 @@ void ScreenArcherMenu::RegisterFunctions()
 
 void ScreenArcherMenu::Invoke(Args* args)
 {
-	samFunctions.funcs.at(args->optionID).Call(args);
+	samFunctions.funcs.at(args->optionID)->Call(args);
 }
 
 NiColor GetNiColor(float r, float g, float b) {
@@ -237,16 +239,6 @@ void ScreenArcherMenu::UpdateBoneFilter()
 
 	for (auto& node : boneDisplay.nodes) {
 		node.enabled = set.count(node.node->m_name);
-	}
-}
-
-void RemoveShaderTarget(BSTArray<BSGFxShaderFXTarget*>& targets, BSGFxShaderFXTarget* target)
-{
-	for (UInt64 i = targets.count - 1; i >= 0; --i) {
-		if (target == targets.entries[i]) {
-			targets.Remove(i);
-			return;
-		}
 	}
 }
 
@@ -516,12 +508,6 @@ NiPoint3 GetCameraPivot()
 
 	return pos;
 }
-
-typedef void(*_ScaleformRefCountImplAddRef)(IMenu* menu);
-RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
-
-typedef void(*_ScaleformRefCountImplRelease)(IMenu* menu);
-RelocAddr<_ScaleformRefCountImplRelease> ScaleformRefCountImplRelease(0x210EC90);
 
 IMenuWrapper::IMenuWrapper(IMenu* _menu) {
 	menu = _menu;
@@ -1145,6 +1131,11 @@ bool SamManager::OnMenuClose() {
 	LockFfc(false);
 	selected.Clear();
 	//*((bool*)bLoadingMenuOpen.GetUIntPtr()) = false;
+
+	if (storedCoc)
+		CenterOnCell(nullptr, storedCoc);
+	storedCoc = nullptr;
+
 	return ReleaseMenu();
 }
 

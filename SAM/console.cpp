@@ -109,8 +109,7 @@ std::string FindPathInSubfolder(const char* folder, const char* stem, const char
 	for (auto& it : std::filesystem::recursive_directory_iterator(folder)) {
 		if (!it.is_directory()) {
 			const auto& native = it.path().native();
-			static const std::wstring slashes(L"\\/");
-			const size_t pos = native.find_last_of(slashes);
+			const size_t pos = native.find_last_of(L"\\/");
 			if (pos != std::wstring::npos && !_wcsicmp(native.c_str() + pos + 1, filename.c_str()))
 				return std::filesystem::path(native).string();
 		}

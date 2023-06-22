@@ -120,7 +120,6 @@ public:
 			}
 
 			UInt32 modId = (mod->recordFlags & (1 << 9)) ? ((0xFE << 24) | (mod->lightIndex << 12)) : (mod->modIndex << 24);
-			lightModMap.emplace(modId, mod->name);
 			break;
 		}
 		case kMenuTypeTongue:

@@ -32,7 +32,7 @@ RelocAddr<_ToggleWorldCollisionInternal> ToggleWorldCollisionInternal(0xFBF80);
 typedef void (*_ToggleGamePauseInternal)();
 RelocAddr<_ToggleGamePauseInternal> ToggleGamePauseInternal(0x520530);
 
-RelocPtr<UInt8> collisionsEnabled(0x58E0AE0);
+RelocPtr<UInt8> collisionDisable(0x58D08B0);
 
 TESObjectREFR* GetNonActorRefr() {
 	UInt32 handle = (*g_consoleHandle);
@@ -92,7 +92,7 @@ void ToggleGamePaused() {
 }
 
 bool GetWorldCollision() {
-	return *collisionsEnabled;
+	return !*collisionDisable;
 }
 
 void ToggleWorldCollision() {
@@ -234,10 +234,11 @@ bool UpdateRefrTranslationRelative(NiPoint3& pos, float mod, bool perpendicular)
 	if (!camera)
 		return false;
 
-	float cx, cy, cz;
+	float cx = 0.0f;
+	float cy, cz;
 	NiMatrix3ToEulerAnglesZXY(&camera->m_worldTransform.rot, &cx, &cy, &cz);
 
-	const float angle = cz + (perpendicular ? SAF::HALF_PI : 0);
+	const float angle = cx + (perpendicular ? SAF::HALF_PI : 0);
 	const auto px = std::sin(angle) * mod + pos.x;
 	const auto py = std::cos(angle) * mod + pos.y;
 	const auto newPos = NiPoint3{ px, py, pos.z };

@@ -394,6 +394,7 @@ void JsonMenuValidator::ValidateFunc(Json::Value& value)
 
 	SetDefault(value, "pop", false);
 	SetDefault(value, "refresh", false);
+	SetDefault(value, "default", true);
 
 	switch (type) {
 	case kJsonFuncFolder:
@@ -561,11 +562,11 @@ void JsonMenuValidator::ValidateEdit(Json::Value& value)
 	if (redo)
 		ValidateFunc(*redo);
 
-	Json::Value* start = GetValue(value, "start", "Failed to get edit start function data");
+	Json::Value* start = GetValue(value, "start", nullptr);
 	if (start)
 		ValidateFunc(*start);
 
-	Json::Value* end = GetValue(value, "end", "Failed to get edit end function data");
+	Json::Value* end = GetValue(value, "end", nullptr);
 	if (end)
 		ValidateFunc(*end);
 }
@@ -591,6 +592,8 @@ void JsonMenuValidator::ValidateCheckbox(Json::Value& value)
 void JsonMenuValidator::ValidateSlider(Json::Value& value)
 {
 	Json::Value* slider = GetValue(value, "slider", "Failed to get slider data");
+	if (!slider)
+		return;
 
 	//slider defaults
 	SetDefault(*slider, "type", "int");
@@ -607,6 +610,8 @@ void JsonMenuValidator::ValidateSlider(Json::Value& value)
 void JsonMenuValidator::ValidateTouch(Json::Value& value)
 {
 	Json::Value* touch = GetValue(value, "touch", "Failed to get touch data");
+	if (!touch)
+		return;
 	
 	//touch slider defaults
 	SetDefault(*touch, "type", "float");
@@ -728,9 +733,19 @@ void JsonMenuValidator::ValidateMixedMenu(Json::Value& value)
 void JsonMenuValidator::ValidateGlobalMenu(Json::Value& value)
 {
 	Json::Value* funcs = GetValue(value, "funcs", "Failed to get funcs for Global");
-	for (auto it = funcs->begin(); it != funcs->end(); ++it) {
-		ValidateHotkey(*it);
+	if (funcs) {
+		for (auto it = funcs->begin(); it != funcs->end(); ++it) {
+			ValidateHotkey(*it);
+		}
 	}
+}
+
+void JsonMenuValidator::ValidateRemoveableMenu(Json::Value& value) 
+{
+	ValidateListMenu(value);
+	Json::Value* remove = GetValue(value, "remove", "Failed to remove function for removeable menu");
+	if (remove)
+		ValidateFunc(*remove);
 }
 
 void JsonMenuValidator::ValidateMenuProperties(Json::Value& value)
@@ -802,7 +817,7 @@ void JsonMenuValidator::ValidateMenu()
 	case kJsonMenuFolderCheckbox: ValidateFolderMenu(*menuValue); break;
 	case kJsonMenuAdjustment: ValidateAdjustmentMenu(*menuValue); break;
 	case kJsonMenuGlobal: ValidateGlobalMenu(*menuValue); break;
-	case kJsonMenuRemoveable: ValidateListMenu(*menuValue); break;
+	case kJsonMenuRemoveable: ValidateRemoveableMenu(*menuValue); break;
 	}
 
 	//Defaults
@@ -909,13 +924,6 @@ void GFxToJsonArrVisitor::Visit(UInt32 idx, GFxValue* value) {
 //	{"merge", kJsonOverrideMerge}
 //};
 
-#define JSON_OVERRIDE_KEY "override"
-#define JSON_OVERRIDE_NAME "name"
-#define JSON_OVERRIDE_APPEND "append"
-#define JSON_OVERRIDE_REPLACE "replace"
-#define JSON_OVERRIDE_MERGE "merge"
-#define JSON_OVERRIDE_INDEX "index"
-
 void OverrideJson(Json::Value& overrides, Json::Value* dst) {
 	if (!overrides.isArray()) {
 		_DMESSAGE("Override is not an array type");
@@ -925,45 +933,45 @@ void OverrideJson(Json::Value& overrides, Json::Value* dst) {
 	for (auto& overrider : overrides) {
 
 		//must be overriding an array
-		Json::Value name = overrider.get(JSON_OVERRIDE_NAME, Json::Value());
+		Json::Value name = overrider.get("override", Json::Value());
 		if (name.isString()) {
 			if (dst->isMember(name.asString())) {
-				Json::Value* overidee = &(*dst)[name.asString()];
-				if (overidee->isArray()) {
+				Json::Value& overidee = (*dst)[name.asString()];
+				if (overidee.isArray()) {
 
 					//appends first
-					Json::Value append = overrider.get(JSON_OVERRIDE_APPEND, Json::Value());
+					Json::Value append = overrider.get("append", Json::Value());
 					if (append.isArray()) {
 						for (auto& item : append) {
-							overidee->append(item);
+							overidee.append(item);
 						}
 					}
 
 					//replaces
-					Json::Value replace = overrider.get(JSON_OVERRIDE_REPLACE, Json::Value());
+					Json::Value replace = overrider.get("replace", Json::Value());
 					if (replace.isArray()) {
 						for (auto& item : replace) {
-							Json::Value index = item.get(JSON_OVERRIDE_INDEX, Json::Value());
+							Json::Value index = item.get("index", Json::Value());
 							if (index.isInt()) {
 								int i = index.asInt();
-								if (i < overidee->size()) {
-									Json::Value replacer = item.get(JSON_OVERRIDE_REPLACE, Json::Value());
-									(*overidee)[i] = replacer;
+								if (i < overidee.size()) {
+									Json::Value replacer = item.get("replace", Json::Value());
+									overidee[i] = replacer;
 								}
 							}
 						}
 					}
 
 					//merges
-					Json::Value merge = overrider.get(JSON_OVERRIDE_MERGE, Json::Value());
+					Json::Value merge = overrider.get("merge", Json::Value());
 					if (merge.isArray()) {
 						for (auto& item : merge) {
-							Json::Value index = item.get(JSON_OVERRIDE_INDEX, Json::Value());
+							Json::Value index = item.get("index", Json::Value());
 							if (index.isInt()) {
 								int i = index.asInt();
-								if (i < overidee->size()) {
-									Json::Value merger = item.get(JSON_OVERRIDE_MERGE, Json::Value());
-									MergeJsons(merger, &(*overidee)[i]);
+								if (i < overidee.size()) {
+									Json::Value merger = item.get("merge", Json::Value());
+									MergeJsons(merger, &overidee[i]);
 								}
 							}
 						}
@@ -1001,7 +1009,7 @@ void MergeJsons(Json::Value& src, Json::Value* dst) {
 		for (auto it = src.begin(); it != src.end(); ++it) {
 
 			//check for override
-			if (!_stricmp(it.name().c_str(), JSON_OVERRIDE_KEY))
+			if (!_stricmp(it.name().c_str(), "override"))
 				OverrideJson(*it, dst);
 
 			//if member merge
