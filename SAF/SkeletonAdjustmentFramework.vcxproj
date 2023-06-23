@@ -35,72 +35,31 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="bodymorphs.cpp" />
-    <ClCompile Include="camera.cpp" />
-    <ClCompile Include="coc.cpp" />
-    <ClCompile Include="companion.cpp" />
-    <ClCompile Include="compatibility.cpp" />
-    <ClCompile Include="console.cpp" />
-    <ClCompile Include="data.cpp" />
-    <ClCompile Include="esp.cpp" />
+    <ClCompile Include="adjustments.cpp" />
+    <ClCompile Include="conversions.cpp" />
     <ClCompile Include="eyes.cpp" />
-    <ClCompile Include="forms.cpp" />
-    <ClCompile Include="functions.cpp" />
-    <ClCompile Include="gfx.cpp" />
     <ClCompile Include="hacks.cpp" />
-    <ClCompile Include="idle.cpp" />
-    <ClCompile Include="input.cpp" />
-    <ClCompile Include="inventory.cpp" />
     <ClCompile Include="io.cpp" />
-    <ClCompile Include="lights.cpp" />
-    <ClCompile Include="looks.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="material.cpp" />
     <ClCompile Include="messaging.cpp" />
-    <ClCompile Include="mfg.cpp" />
-    <ClCompile Include="options.cpp" />
     <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="pose.cpp" />
-    <ClCompile Include="positioning.cpp" />
-    <ClCompile Include="sam.cpp" />
-    <ClCompile Include="scaleform.cpp" />
-    <ClCompile Include="smartpointer.cpp" />
-    <ClCompile Include="strnatcmp.cpp" />
+    <ClCompile Include="serialization.cpp" />
+    <ClCompile Include="settings.cpp" />
     <ClCompile Include="types.cpp" />
+    <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bodymorphs.h" />
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="coc.h" />
-    <ClInclude Include="companion.h" />
-    <ClInclude Include="compatibility.h" />
-    <ClInclude Include="console.h" />
-    <ClInclude Include="constants.h" />
-    <ClInclude Include="data.h" />
-    <ClInclude Include="esp.h" />
+    <ClInclude Include="adjustments.h" />
+    <ClInclude Include="conversions.h" />
     <ClInclude Include="eyes.h" />
-    <ClInclude Include="forms.h" />
-    <ClInclude Include="functions.h" />
-    <ClInclude Include="gfx.h" />
     <ClInclude Include="hacks.h" />
-    <ClInclude Include="idle.h" />
-    <ClInclude Include="input.h" />
-    <ClInclude Include="inventory.h" />
     <ClInclude Include="io.h" />
-    <ClInclude Include="lights.h" />
-    <ClInclude Include="looks.h" />
-    <ClInclude Include="material.h" />
     <ClInclude Include="messaging.h" />
-    <ClInclude Include="mfg.h" />
-    <ClInclude Include="options.h" />
     <ClInclude Include="papyrus.h" />
-    <ClInclude Include="pose.h" />
-    <ClInclude Include="positioning.h" />
-    <ClInclude Include="sam.h" />
-    <ClInclude Include="scaleform.h" />
-    <ClInclude Include="smartpointer.h" />
-    <ClInclude Include="strnatcmp.h" />
+    <ClInclude Include="serialization.h" />
+    <ClInclude Include="settings.h" />
     <ClInclude Include="types.h" />
+    <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
@@ -115,15 +74,12 @@
     <ProjectReference Include="..\f4se_common\f4se_common.vcxproj">
       <Project>{20c6411c-596f-4b85-be4e-8bc91f59d8a6}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\SkeletonAdjustmentFramework\SkeletonAdjustmentFramework.vcxproj">
-      <Project>{b8d478fe-1357-4443-9e88-b4460014a7ae}</Project>
-    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{d9297d07-a3b6-4829-99ef-a73a54022173}</ProjectGuid>
-    <RootNamespace>ScreenArcherMenu</RootNamespace>
+    <ProjectGuid>{b8d478fe-1357-4443-9e88-b4460014a7ae}</ProjectGuid>
+    <RootNamespace>SkeletonAdjustmentFramework</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -154,7 +110,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -166,7 +122,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -209,23 +165,35 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <VcpkgConfiguration>Debug</VcpkgConfiguration>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetName>SAF</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SAFDebug|x64'">
+    <TargetName>SAF</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetName>SAF</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='SAFRelease|x64'">
+    <TargetName>SAF</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='SAFDebug|x64'">
     <VcpkgConfiguration>Debug</VcpkgConfiguration>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='SAFRelease|x64'">
+    <VcpkgConfiguration>Release</VcpkgConfiguration>
+  </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <VcpkgConfiguration>Release</VcpkgConfiguration>
   </PropertyGroup>
-  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='SAFRelease|x64'">
-    <VcpkgConfiguration>Release</VcpkgConfiguration>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgConfiguration>Debug</VcpkgConfiguration>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -240,7 +208,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -257,7 +225,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -276,7 +244,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -293,8 +261,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_DEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
@@ -307,19 +275,18 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
     </Link>
-    <PostBuildEvent>
-      <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -interface -sam -debug</Command>
-    </PostBuildEvent>
+    <Lib>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='SAFDebug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_DEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
@@ -332,8 +299,12 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAFDebug\f4se_1_10_163.lib;$(SolutionDir)x64\SAFDebug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -saf -debug</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -341,8 +312,8 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>NDEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
@@ -357,12 +328,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Release\f4se_1_10_163.lib;$(SolutionDir)x64\Release\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib;$(SolutionDir)x64\Release\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
     </Link>
-    <PostBuildEvent>
-      <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -interface -sam -release</Command>
-    </PostBuildEvent>
+    <Lib>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Release\f4se_1_10_163.lib;$(SolutionDir)x64\Release\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='SAFRelease|x64'">
     <ClCompile>
@@ -370,14 +340,14 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;SCREENARCHERMENU_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>NDEBUG;SKELETONADJUSTMENTFRAMEWORK_EXPORTS;_WINDOWS;_USRDLL</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -386,11 +356,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAFRelease\f4se_1_10_163.lib;$(SolutionDir)x64\SAFRelease\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -saf -release</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

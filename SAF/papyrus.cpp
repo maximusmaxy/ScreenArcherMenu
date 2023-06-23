@@ -4,8 +4,8 @@
 #include "f4se/PapyrusNativeFunctions.h"
 #include "f4se/PapyrusArgs.h"
 
-#include "GameReferences.h"
-#include "GameObjects.h"
+#include "f4se/GameReferences.h"
+#include "f4se/GameObjects.h"
 
 #include "adjustments.h"
 #include "conversions.h"
@@ -205,7 +205,8 @@ namespace SAF {
 
 		for (auto& nodeName : adjustments->nodeSets->allStrings) {
 			if (adjustments->HasNode(nodeName)) {
-				result.Push(&BSFixedString(nodeName));
+				BSFixedString str(nodeName);
+				result.Push(&str);
 			}
 		}
 
@@ -221,7 +222,8 @@ namespace SAF {
 
 		for (auto& nodeName : adjustments->nodeSets->baseStrings) {
 			if (adjustments->HasNode(nodeName)) {
-				result.Push(&BSFixedString(nodeName));
+				BSFixedString str;
+				result.Push(&str);
 			}
 		}
 
@@ -237,7 +239,8 @@ namespace SAF {
 
 		for (auto& nodeName : adjustments->nodeSets->center) {
 			if (adjustments->HasNode(nodeName)) {
-				result.Push(&BSFixedString(nodeName));
+				BSFixedString str(nodeName);
+				result.Push(&str);
 			}
 		}
 
@@ -253,7 +256,8 @@ namespace SAF {
 
 		for (auto& kvp : adjustments->nodeSets->mirror) {
 			if (adjustments->HasNode(kvp.first)) {
-				result.Push(&BSFixedString(kvp.first));
+				BSFixedString str(kvp.first);
+				result.Push(&str);
 			}
 		}
 
@@ -269,7 +273,8 @@ namespace SAF {
 
 		for (auto& kvp : adjustments->nodeSets->mirror) {
 			if (adjustments->HasNode(kvp.second)) {
-				result.Push(&BSFixedString(kvp.second));
+				BSFixedString str(kvp.second);
+				result.Push(&str);
 			}
 		}
 
@@ -416,8 +421,9 @@ namespace SAF {
 			return result;
 
 		adjustment->ForEachTransformOrDefault([&](const NodeKey* nodeKey, NiTransform* transform) {
-			result.Push(&TransformToPapyrus(*transform, nodeKey->name, nodeKey->offset));
-			}, &adjustments->nodeSets->all);
+			auto papyrusTransform = TransformToPapyrus(*transform, nodeKey->name, nodeKey->offset);
+			result.Push(&papyrusTransform);
+		}, &adjustments->nodeSets->all);
 
 		return result;
 	}

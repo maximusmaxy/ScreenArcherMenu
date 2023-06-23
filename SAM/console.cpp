@@ -156,6 +156,7 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 	case kConsolePairLights: folder = LIGHTS_PATH; ext = ".json";  break;
 	case kConsolePairFaceMorphs: folder = FACEMORPHS_PATH; ext = ".txt";  break;
 	case kConsolePairCamera: folder = CAMERA_PATH; ext = ".json"; break;
+	default: return false;
 	}
 
 	std::string path;

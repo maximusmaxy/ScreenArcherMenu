@@ -1,74 +1,218 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="scaleform.cpp" />
-    <ClCompile Include="hacks.cpp" />
-    <ClCompile Include="sam.cpp" />
-    <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="pose.cpp" />
-    <ClCompile Include="mfg.cpp" />
-    <ClCompile Include="idle.cpp" />
-    <ClCompile Include="console.cpp" />
-    <ClCompile Include="strnatcmp.cpp" />
-    <ClCompile Include="positioning.cpp" />
-    <ClCompile Include="compatibility.cpp" />
-    <ClCompile Include="options.cpp" />
-    <ClCompile Include="input.cpp" />
-    <ClCompile Include="camera.cpp" />
-    <ClCompile Include="lights.cpp" />
-    <ClCompile Include="gfx.cpp" />
-    <ClCompile Include="data.cpp" />
-    <ClCompile Include="inventory.cpp" />
-    <ClCompile Include="eyes.cpp" />
-    <ClCompile Include="io.cpp" />
-    <ClCompile Include="types.cpp" />
-    <ClCompile Include="companion.cpp" />
-    <ClCompile Include="material.cpp" />
-    <ClCompile Include="messaging.cpp" />
-    <ClCompile Include="bodymorphs.cpp" />
-    <ClCompile Include="smartpointer.cpp" />
-    <ClCompile Include="functions.cpp" />
-    <ClCompile Include="looks.cpp" />
-    <ClCompile Include="forms.cpp" />
-    <ClCompile Include="coc.cpp" />
-    <ClCompile Include="esp.cpp" />
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="scaleform.h" />
-    <ClInclude Include="hacks.h" />
-    <ClInclude Include="sam.h" />
-    <ClInclude Include="papyrus.h" />
-    <ClInclude Include="pose.h" />
-    <ClInclude Include="mfg.h" />
-    <ClInclude Include="idle.h" />
-    <ClInclude Include="console.h" />
-    <ClInclude Include="strnatcmp.h" />
-    <ClInclude Include="positioning.h" />
-    <ClInclude Include="compatibility.h" />
-    <ClInclude Include="options.h" />
-    <ClInclude Include="input.h" />
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="lights.h" />
-    <ClInclude Include="gfx.h" />
-    <ClInclude Include="data.h" />
-    <ClInclude Include="constants.h" />
-    <ClInclude Include="inventory.h" />
-    <ClInclude Include="eyes.h" />
-    <ClInclude Include="io.h" />
-    <ClInclude Include="types.h" />
-    <ClInclude Include="companion.h" />
-    <ClInclude Include="material.h" />
-    <ClInclude Include="messaging.h" />
-    <ClInclude Include="bodymorphs.h" />
-    <ClInclude Include="smartpointer.h" />
-    <ClInclude Include="functions.h" />
-    <ClInclude Include="looks.h" />
-    <ClInclude Include="forms.h" />
-    <ClInclude Include="coc.h" />
-    <ClInclude Include="esp.h" />
+    <ClCompile Include="bodymorphs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="coc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="companion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="compatibility.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="console.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="data.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="esp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="eyes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="forms.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gfx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hacks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="idle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="input.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="inventory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="io.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lights.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="looks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="material.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="messaging.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mfg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="options.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="papyrus.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pose.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="positioning.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sam.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="scaleform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="smartpointer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="strnatcmp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="types.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="exports.def" />
+    <ClInclude Include="bodymorphs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="coc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="companion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="compatibility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="console.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="constants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="esp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="eyes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="forms.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="functions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gfx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hacks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="idle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="input.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inventory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="io.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lights.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="looks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="material.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="messaging.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mfg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="options.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="papyrus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pose.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="positioning.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sam.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="scaleform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="smartpointer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="strnatcmp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="exports.def">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

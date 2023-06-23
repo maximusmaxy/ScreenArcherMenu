@@ -1,6 +1,7 @@
 #include "util.h"
 
 #include "f4se/GameData.h"
+#include "f4se/GameTypes.h"
 
 #include <algorithm>
 #include <sstream>
@@ -53,7 +54,8 @@ public:
 
 const char* GetModName(UInt32 formId)
 {
-	ModInfo* info = (*g_dataHandler)->modList.modInfoList.Find(FindModForFormId(formId));
+	auto functor = FindModForFormId(formId);
+	ModInfo* info = (*g_dataHandler)->modList.modInfoList.Find(functor);
 	if (!info)
 		return nullptr;
 
