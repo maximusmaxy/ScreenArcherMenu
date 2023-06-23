@@ -39,7 +39,7 @@ extern GFxFunctions samFunctions;
 
 class GFxFunctionBinding {
 public:
-	constexpr GFxFunctionBinding(const std::string& name, const GFxFunctionFunctor& func) {
+	GFxFunctionBinding(const std::string& name, const GFxFunctionFunctor& func) {
 		samFunctions.names.push_back(name);
 		samFunctions.funcs.push_back(new GFxFunction(func));
 	}

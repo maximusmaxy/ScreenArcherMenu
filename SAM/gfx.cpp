@@ -13,7 +13,7 @@ GFxResult::~GFxResult() {
 void GFxResult::Finalize(GFxMovieRoot* _root)
 {
 	params[0].SetUInt(type);
-	if (type == kGFxResultItems) {
+	if (type == Items) {
 		_root->CreateObject(&params[1], "GFxItems", itemParams, 2);
 	}
 	_root->CreateObject(result, "GFxResult", params, 2);
@@ -48,64 +48,74 @@ void GFxResult::InvokeCallback()
 }
 
 void GFxResult::CreateNames() {
-	type = kGFxResultNames;
+	type = Names;
 	root->CreateArray(&params[1]);
 }
 
 void GFxResult::CreateValues() {
-	type = kGFxResultValues;
+	type = Values;
 	root->CreateArray(&params[1]);
 }
 
 void GFxResult::CreateMenuItems() {
-	type = kGFxResultItems;
+	type = Items;
 	root->CreateArray(&itemParams[0]);
 	root->CreateArray(&itemParams[1]);
 }
 
 void GFxResult::CreateFolder() {
-	type = kGFxResultFolder;
+	type = Folder;
 	root->CreateArray(&params[1]);
 }
 
 void GFxResult::CreateFolderCheckbox() {
-	type = kGFxResultFolderCheckbox;
+	type = FolderCheckbox;
 	root->CreateArray(&params[1]);
 }
 
 void GFxResult::SetError(const char* message) {
-	type = kGFxResultError;
+	type = Error;
 	params[1].SetString(message);
 }
 
+void GFxResult::SetError(const std::string& str) {
+	type = Error;
+	root->CreateString(&params[1], str.c_str());
+}
+
 void GFxResult::SetWaiting() {
-	type = kGfxResultWaiting;
+	type = Waiting;
 	params[1].SetBool(true);
 }
 
 void GFxResult::SetMenu(Json::Value* json) {
-	type = kGFxResultMenu;
+	type = Menu;
 	JsonToGFx(root, &params[1], *json);
 }
 
 void GFxResult::SetNotification(GFxMovieRoot* _root, const char* name) {
-	type = kGFxResultNotification;
+	type = Notification;
 	_root->CreateString(&params[1], name);
 }
 
 void GFxResult::SetTitle(GFxMovieRoot* _root, const char* name) {
-	type = kGFxResultTitle;
+	type = Title;
 	_root->CreateString(&params[1], name);
 }
 
+void GFxResult::SetString(const char* str) {
+	type = String;
+	params[1].SetString(str);
+}
+
 void GFxResult::SetManagedString(GFxMovieRoot* _root, const char* name) {
-	type = kGFxResultString;
+	type = String;
 	_root->CreateString(&params[1], name);
 }
 
 void GFxResult::PushName(const char* name) {
 	GFxValue nameValue(name);
-	if (type == kGFxResultItems) {
+	if (type == Items) {
 		
 		itemParams[0].PushBack(&nameValue);
 	}

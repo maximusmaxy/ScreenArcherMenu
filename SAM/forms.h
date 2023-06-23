@@ -15,11 +15,15 @@
 #include <algorithm>
 #include <execution>
 
+typedef TESForm* (*_GetFormByEditorId)(const char* edid);
+extern RelocAddr<_GetFormByEditorId> GetFormByEditorId;
+typedef void (*_GetREFRFromHandle)(UInt32* handle, NiPointer<TESObjectREFR>& refr);
+extern RelocAddr<_GetREFRFromHandle> GetREFRFromHandle;
+
 //out, actor, form, 1, 0, 0, false, false
 typedef UInt32* (*_PlaceAtMeInternal)(TESObjectREFR** out, TESObjectREFR* actor, TESForm* form, int unk4, int unk5, int unk6, bool unk7, bool unk8);
 extern RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal;
-typedef void (*_GetREFRFromHandle)(UInt32* handle, NiPointer<TESObjectREFR>& refr);
-extern RelocAddr<_GetREFRFromHandle> GetREFRFromHandle;
+
 typedef void(*_SetREFRLocation)(TESObjectREFR* refr, const NiPoint3& point);
 extern RelocAddr<_SetREFRLocation> SetREFRLocation;
 typedef void(*_SetREFROrientation)(TESObjectREFR* refr, const NiMatrix43& matrix);
@@ -39,9 +43,11 @@ class FormSearchResult {
 private:
 	std::mutex mutex;
 public:
-	std::vector<std::pair<const char*, UInt32>> result;
+	using vec = std::vector<std::pair<const char*, UInt32>>;
+	vec result;
 	void Push(const char* name, UInt32 formId);
 	void Sort();
+	void Sort(vec::iterator start, vec::iterator end);
 };
 
 typedef std::vector<std::span<TESForm*>> FormsSpan;
@@ -52,6 +58,7 @@ std::span<TESForm*> MakeFormsSpan(tArray<T*> forms) {
 };
 
 void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask);
+void GetModIndexAndFormMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask);
 void AddFormattedModsToResult(GFxResult& result, const std::vector<const char*>& searchResult);
 
 void GetModVectors(std::vector<bool>& esp, std::vector<bool>& esl);

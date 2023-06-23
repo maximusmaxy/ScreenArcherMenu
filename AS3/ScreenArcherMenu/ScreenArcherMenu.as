@@ -11,7 +11,6 @@
 	import scaleform.gfx.*;
 	import utils.Debug;
 	import flash.utils.*;
-	import utils.Translator;
 
 	public class ScreenArcherMenu extends Shared.IMenu
 	{
@@ -87,7 +86,6 @@
 			
 			this.BGSCodeObj = new Object();
 			Extensions.enabled = true;
-			Translator.Create(root);
 			
 			InitButtonHints();
 			InitFunctions();
@@ -588,6 +586,9 @@
 //						sliderList.scrollList(1);
 //					}
 //					return;
+				case 520://CTRL+Backspace
+					CtrlBackspace();
+					return;
 
 				case 601://CTRL+Y	
 					if (Data.extraHotkeys)
@@ -2434,7 +2435,7 @@
 
 		public function InitLightVisible(selectedLight:int):GFxResult
 		{
-			var isVisible:Boolean = Data.getLightVisible(selectedLight);
+			var isVisible:Boolean = sam.GetLightVisible(selectedLight);
 			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
 			
 			return Data.resultSuccess;
@@ -2442,7 +2443,7 @@
 		
 		public function InitAllLightsVisible():GFxResult
 		{
-			var isVisible:Boolean = Data.getAllLightsVisible();
+			var isVisible:Boolean = sam.GetAllLightsVisible();
 			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
 			
 			return Data.resultSuccess;
@@ -2450,7 +2451,7 @@
 		
 		public function ToggleLightVisible(checked:Boolean, selectedLight:int):GFxResult
 		{
-			var isVisible:Boolean = Data.toggleLightVisible(selectedLight);
+			var isVisible:Boolean = sam.ToggleLightVisible(selectedLight);
 			Data.locals.lightVisible = isVisible;
 			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
 
@@ -2459,7 +2460,7 @@
 		
 		public function ToggleAllLightsVisible(checked:Boolean):GFxResult
 		{
-			var isVisible:Boolean = Data.toggleAllLightsVisible();
+			var isVisible:Boolean = sam.ToggleAllLightsVisible();
 			Data.locals.allLightsVisible = isVisible;
 			buttonHintExtra.ButtonText = (isVisible ? "$SAM_Visible" : "$SAM_Invisible");
 			
@@ -2468,14 +2469,14 @@
 		
 		public function GetAllLightsVisible():GFxResult
 		{
-			Data.locals.allLightsVisible = Data.getAllLightsVisible();
+			Data.locals.allLightsVisible = sam.GetAllLightsVisible();
 			
 			return Data.resultSuccess;
 		}
 		
 		public function GetLightVisible(selectedLight:int):GFxResult
 		{
-			Data.locals.lightVisible = Data.getLightVisible(selectedLight);
+			Data.locals.lightVisible = sam.GetLightVisible(selectedLight);
 			
 			return Data.resultSuccess;
 		}
@@ -2591,6 +2592,18 @@
 		{
 			this.sliderList.visible = true;
 			return Data.resultSuccess;
+		}
+		
+		public function CtrlBackspace()
+		{
+			if (stage.focus == null)
+				return;
+				
+			var type:String = getQualifiedClassName(stage.focus);
+			if (type == "TextField") {
+				var textField:TextField = stage.focus;
+				textField.text.length = 0;
+			}
 		}
 		
 		public function CanClose():Boolean

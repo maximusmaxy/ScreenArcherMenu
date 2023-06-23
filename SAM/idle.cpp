@@ -33,9 +33,6 @@ const char* storedIdleBehavior = nullptr;
 
 std::vector<std::string> idleFavorites;
 
-typedef TESForm* (*_GetFormByEditorId)(const char* edid);
-RelocAddr<_GetFormByEditorId> GetFormByEditorId(0x152EB0);
-
 //I'm not sure exactly what this is but it contains an array of every idle in the game
 class BSTCaseInsensitiveStringMapIdle
 {
@@ -115,8 +112,8 @@ void FindIdleForms(const ModInfo* mod, IdleData* data, std::vector<std::pair<con
 			return false;
 		//if (*(UInt64*)form != TESIdleFormVFTable)
 		//	return false;
-		if (!form->formID)
-			return false;
+		//if (!form->formID)
+		//	return false;
 		if (!form->editorID)
 			return false;
 		if (!(form->behaviorGraph == behavior))
@@ -471,8 +468,8 @@ TESIdleForm* GetCurrentIdleForm() {
 	if (!cachedIdle)
 		return nullptr;
 
-	auto idlePath = cachedIdle->animationFile;
-	if (!idlePath.c_str() || !*idlePath.c_str())
+	auto idlePath = cachedIdle->animationFile.c_str();
+	if (!idlePath || !*idlePath)
 		return nullptr;
 
 	//Search the actors idle forms for the form that has the animation path

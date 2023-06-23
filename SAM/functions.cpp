@@ -23,6 +23,7 @@
 
 GFxFunctions samFunctions;
 
+//menu
 GFxReq getMenu("GetMenu", [](auto& result, auto args) {
 	GetMenuData(result, args->args[0].GetString());
 });
@@ -109,6 +110,12 @@ GFxFunc isFreeCamera("IsFreeCamera", [](auto args) {
 });
 GFxFunc filterMenu("FilterMenu", [](auto args) {
 	FilterMenuNamesBySubstring(args->movie->movieRoot, &args->args[0], args->args[1].GetString(), args->result);
+});
+GFxFunc getTranslation("GetTranslation", [](auto args) {
+	GetTranslation(args->movie->movieRoot, args->result, args->args[0].GetString());
+});
+GFxFunc getTranslations("GetTranslations", [](auto args) {
+	GetTranslations(args->movie->movieRoot, &args->args[0]);
 });
 
 //hacks
@@ -261,11 +268,9 @@ GFxReq getExportTypes("GetExportTypes", [](auto& result, auto args) {
 GFxReq mergeAdjustmentDown("MergeAdjustmentDown", [](auto& result, auto args) {
 	MergeAdjustment(result, args->args[2].GetUInt());
 });
-
 //GFxReq mirrorAdjustment("MirrorAdjustment", [](auto& result, auto args) {
 //	MirrorAdjustment(result, args[2].GetUInt());
 //});
-
 GFxReq addPoseFavorite("AddPoseFavorite", [](auto& result, auto args) {
 	AppendPoseFavorite(result);
 });
@@ -303,7 +308,7 @@ GFxReq resetIdle("ResetIdle", [](auto& result, auto args) {
 	ResetJsonPose();
 });
 GFxReq getIdleName("GetIdleName", [](auto& result, auto args) {
-	result.SetManagedString(args->movie->movieRoot, GetCurrentIdleName());
+	result.SetString(GetCurrentIdleName());
 });
 GFxReq getIdleFavorites("GetIdleFavorites", [](auto& result, auto args) {
 	GetIdleFavorites(result);
@@ -535,11 +540,14 @@ GFxReq getWorldspacesFromMod("GetWorldspacesFromMod", [](auto& result, auto args
 	GetWorldspacesFromMod(result, args->args[0].GetString());
 });
 GFxReq getWorldspaceCells("GetWorldspaceCells", [](auto& result, auto args) {
-	GetWorldspaceCells(result, args->args[0].GetUInt());
+	GetWorldspaceCells(result, args->args[0].GetString(), args->args[1].GetUInt());
 });
 GFxReq getLastSearchResultCell("GetLastSearchResultCell", [](auto& result, auto args) {
 	GetLastSearchResultCell(result);
 });
 GFxReq searchCoc("SearchCells", [](auto& result, auto args) {
 	SearchCells(result, args->args[0].GetString());
+});
+GFxReq getCellName("GetCellName", [](auto& result, auto args) {
+	result.SetString(GetCurrentDisplayedCell());
 });

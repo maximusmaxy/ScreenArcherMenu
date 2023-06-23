@@ -121,6 +121,7 @@
     <ClCompile Include="compatibility.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="data.cpp" />
+    <ClCompile Include="esp.cpp" />
     <ClCompile Include="eyes.cpp" />
     <ClCompile Include="forms.cpp" />
     <ClCompile Include="functions.cpp" />
@@ -155,6 +156,7 @@
     <ClInclude Include="console.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="data.h" />
+    <ClInclude Include="esp.h" />
     <ClInclude Include="eyes.h" />
     <ClInclude Include="forms.h" />
     <ClInclude Include="functions.h" />

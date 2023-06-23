@@ -9,18 +9,58 @@
 RelocAddr<_ScaleformRefCountImplAddRef> ScaleformRefCountImplAddRef(0x210EBF0);
 RelocAddr<_ScaleformRefCountImplRelease> ScaleformRefCountImplRelease(0x210EC90);
 
-TranslatorWrapper::TranslatorWrapper(GFxMovieRoot* root) {
+Translator::Translator(GFxMovieRoot* root) {
 	auto stateBag = (GFxStateBag*)(*((UInt64*)root + 0x2) + 0x10);
 	translator = (BSScaleformTranslator*)stateBag->GetStateAddRef(GFxState::kInterface_Translator);
 }
 
-TranslatorWrapper::~TranslatorWrapper() {
-	if (translator)
-		ScaleformRefCountImplRelease(translator);
+Translator::~Translator() {
+	ScaleformRefCountImplRelease(translator);
 }
 
-void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char* search, GFxValue* result)
-{
+void GetTranslation(GFxMovieRoot* root, GFxValue* result, const char* str) {
+	if (!str)
+		return result->SetString("");
+	if (*str != '$')
+		return result->SetString(str);
+
+	Translator translator(root);
+
+	std::wstring wide;
+	CStringToWide(str, wide);
+	BSFixedString wideStr(wide.c_str());
+	auto translation = translator->translations.Find(&wideStr);
+	if (!translation)
+		return result->SetString(str);
+
+	std::string managed;
+	WideToString(translation->translation.wc_str(), managed);
+	root->CreateString(result, managed.c_str());
+}
+
+void GetTranslations(GFxMovieRoot* root, GFxValue* arr) {
+	Translator translator(root);
+	std::wstring wide;
+	std::string managed;
+
+	auto size = arr->GetArraySize();
+	for (UInt32 i = 0; i < size; ++i) {
+		GFxValue element;
+		arr->GetElement(i, &element);
+		auto str = element.GetString();
+		if (str && *str == '$') {
+			CStringToWide(str, wide);
+			BSFixedString wideStr(wide.c_str());
+			auto translation = translator->translations.Find(&wideStr);
+			if (translation) {
+				WideToString(translation->translation.wc_str(), managed);
+				root->CreateString(&element, managed.c_str());
+			}
+		}
+	}
+}
+
+void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char* search, GFxValue* result) {
 	root->CreateArray(result);
 	if (!search)
 		return;
@@ -42,22 +82,17 @@ void FilterMenuNamesBySubstring(GFxMovieRoot* root, GFxValue* names, const char*
 	char searchTerm[MAX_PATH];
 	GetLoweredCString(searchTerm, search);
 
+	Translator translator(root);
 	std::wstring wide;
-	TranslatorWrapper wrapper(root);
-	const auto& translations = wrapper.translator->translations;
 	
 	for (SInt32 i = 0; i < size; ++i) {
 		GFxValue name;
 		names->GetElement(i, &name);
 		const char* nameStr = name.GetString();
 		if (nameStr[0] == '$') {
-			auto len = strlen(nameStr);
-			wide.resize(len);
-			for (int c = 0; c < len; ++c) {
-				wide[c] = (wchar_t)nameStr[c];
-			}
+
 			BSFixedString wideStr(wide.c_str());
-			auto translation = translations.Find(&wideStr);
+			auto translation = translator->translations.Find(&wideStr);
 			if (translation) {
 				auto wideTranslation = translation->translation.wc_str();
 				if (wideTranslation && *wideTranslation && HasInsensitiveSubstring(wideTranslation, searchTerm)) {

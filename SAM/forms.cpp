@@ -6,8 +6,11 @@
 
 #include <ranges>
 
-RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal(0x5121D0);
+RelocAddr<_GetFormByEditorId> GetFormByEditorId(0x152EB0);
 RelocAddr<_GetREFRFromHandle> GetREFRFromHandle(0xAC90);
+
+RelocAddr<_PlaceAtMeInternal> PlaceAtMeInternal(0x5121D0);
+
 RelocAddr<_SetREFRLocation> SetREFRLocation(0x40C060);
 RelocAddr<_SetREFROrientation> SetREFROrientation(0x408700);
 RelocAddr<_SetREFRScale> SetREFRScale(0x3F85B0);
@@ -33,6 +36,12 @@ void FormSearchResult::Sort() {
 	});
 }
 
+void FormSearchResult::Sort(vec::iterator start, vec::iterator end) {
+	std::sort(start, end, [](auto& lhs, auto& rhs) {
+		return strnatcasecmp(lhs.first, rhs.first) < 0;
+	});
+}
+
 void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
 {
 	if (modInfo->IsLight()) {
@@ -42,6 +51,18 @@ void GetModIndexAndMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
 	else {
 		*modIndex = modInfo->modIndex << 24;
 		*mask = 0xFF000000;
+	}
+}
+
+void GetModIndexAndFormMask(const ModInfo* modInfo, UInt32* modIndex, UInt32* mask)
+{
+	if (modInfo->IsLight()) {
+		*modIndex = (0xFE000000 | (modInfo->lightIndex << 12));
+		*mask = 0x00000FFF;
+	}
+	else {
+		*modIndex = modInfo->modIndex << 24;
+		*mask = 0x00FFFFFF;
 	}
 }
 

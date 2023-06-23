@@ -49,3 +49,33 @@ inline bool HasInsensitiveSubstring(T str, const char* substr) {
 	}
 	return false;
 }
+
+inline void StringToWide(const std::string& str, std::wstring& result) {
+	result.resize(str.size());
+	for (int i = 0; i < str.size(); ++i) {
+		result[i] = (wchar_t)str[i];
+	}
+}
+
+inline void CStringToWide(const char* str, std::wstring& result) {
+	auto len = strlen(str);
+	result.resize(len);
+	for (int i = 0; i < len; ++i) {
+		result[i] = (wchar_t)str[i];
+	}
+}
+
+inline void WideToString(const std::wstring& str, std::string& result) {
+	result.resize(str.size());
+	for (int i = 0; i < str.size(); ++i) {
+		result[i] = (char)str[i];
+	}
+}
+
+inline void WStringToString(const wchar_t* str, std::string& result) {
+	auto len = wcslen(str);
+	result.resize(len);
+	for (int i = 0; i < len; ++i) {
+		result[i] = (char)str[i];
+	}
+}

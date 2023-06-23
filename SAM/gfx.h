@@ -7,34 +7,33 @@
 
 #include "json/json.h"
 
-//Needs to be identical to the const values in the Scaleform
-enum {
-	kGFxResultSuccess = 1,
-	kGFxResultError,
-	kGfxResultWaiting,
-	kGFxResultMenu,
-	kGFxResultValues,
-	kGFxResultItems,
-	kGFxResultNames,
-	kGFxResultString,
-	kGFxResultFolder,
-	kGFxResultFolderCheckbox,
-	kGFxResultNotification,
-	kGFxResultTitle
-};
-
 class GFxResult {
 public:
+	//Needs to be identical to the const values in the Scaleform
+	enum Result{
+		Success = 1,
+		Error,
+		Waiting,
+		Menu,
+		Values,
+		Items,
+		Names,
+		String,
+		Folder,
+		FolderCheckbox,
+		Notification,
+		Title
+	};
+
 	GFxMovieRoot* root;
 	GFxValue* result;
 	UInt32 type;
 	GFxValue params[2]; //0 = Type, 1 = Result object
 	GFxValue itemParams[2]; //0 = names, 1 = values
 
-
-	GFxResult(GFxValue* value) : root(nullptr), result(value), type(kGFxResultSuccess) {}
-	GFxResult(GFxMovieRoot* root, GFxValue* value) : root(root), result(value), type(kGFxResultSuccess) {}
-	GFxResult(GFxFunctionHandler::Args* args) : root(args->movie->movieRoot), result(args->result), type(kGFxResultSuccess) {}
+	GFxResult(GFxValue* value) : root(nullptr), result(value), type(Success) {}
+	GFxResult(GFxMovieRoot* root, GFxValue* value) : root(root), result(value), type(Success) {}
+	GFxResult(GFxFunctionHandler::Args* args) : root(args->movie->movieRoot), result(args->result), type(Success) {}
 	~GFxResult();
 
 	GFxValue* GetResult(GFxMovieRoot* root);
@@ -44,7 +43,9 @@ public:
 	void InvokeCallback();
 
 	void SetError(const char* message);
+	void SetError(const std::string& str);
 	void SetWaiting();
+	void SetString(const char* name);
 	void SetManagedString(GFxMovieRoot* _root, const char* name);
 	void SetMenu(Json::Value* menu);
 	void SetNotification(GFxMovieRoot* _root, const char* message);
@@ -60,7 +61,7 @@ public:
 	template <class T>
 	void PushValue(T var) {
 		GFxValue varValue(var);
-		if (type == kGFxResultItems) {
+		if (type == Items) {
 			itemParams[1].PushBack(&varValue);
 		}
 		else {

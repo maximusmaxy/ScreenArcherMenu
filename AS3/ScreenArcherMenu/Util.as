@@ -158,7 +158,7 @@
 			return new Matrix3D(v);
 		}
 		
-		public static function traceObj(obj:Object, key:Object = null):void
+		public static function traceObj(obj, key:Object = null):void
 		{
 			if (obj == null) {
 				if (key == null) {

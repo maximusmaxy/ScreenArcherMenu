@@ -7,7 +7,6 @@
 	import flash.text.*;
 	import flash.utils.*;
 	import Shared.EntryEvent;
-	import utils.Translator;
 	
 	public class SliderList extends BSUIComponent
 	{

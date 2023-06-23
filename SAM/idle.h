@@ -24,8 +24,6 @@ public:
 	UInt64 unk68;
 };
 
-typedef std::vector<std::pair<std::string, std::vector<std::pair<std::string, UInt32>>>> IdleMenu;
-
 struct IdleData
 {
 	UInt32 raceId;

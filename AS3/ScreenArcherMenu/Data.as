@@ -1167,9 +1167,10 @@
 					var result:GFxResult = sam.GetCursorPosition();
 					if (result.type == RESULT_VALUES) {
 						sam.SetCursorPosition(cursorPosX, cursorPosY);
-						result.result[0] = (result.result[0] - cursorPosX) * dif;
-						result.result[1] = (result.result[1] - cursorPosY) * dif;
-						return result.result;
+						var coords:Array = result.result as Array;
+						coords[0] = (result.result[0] - cursorPosX) * dif;
+						coords[1] = (result.result[1] - cursorPosY) * dif;
+						return coords;
 					}
 				}
 				catch (e:Error)
@@ -1198,116 +1199,8 @@
 			}
 			return false;
 		}
-				
-		public static function setAdjustmentPersistent(persistent:Boolean)
-		{
-			try
-			{
-				sam.SetAdjustmentPersistence(selectedAdjustment, persistent);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set adjustment persistence");
-			}
-		}
 		
-		public static function setAdjustmentScale(scale:int)
-		{
-			try
-			{
-				sam.SetAdjustmentScale(selectedAdjustment, scale);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to set adjustment weight");
-			}
-		}
-		
-		public static function resetAdjustment()
-		{
-			try
-			{
-				sam.ResetAdjustment(selectedAdjustment);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to reset adjustment");
-			}
-		}
-		
-		public static function removeAdjustment(id:int)
-		{
-			try
-			{
-				sam.RemoveAdjustment(id);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to remove adjustment");
-			}
-		}
-				
-		public static function moveAdjustment(id:int, inc:Boolean):Boolean
-		{
-			try
-			{
-				return sam.MoveAdjustment(menuValues[id], inc);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to move adjustment");
-			}
-			return false;
-		}
-		
-		public static function getNodeName()
-		{
-			try {
-				boneName = sam.GetNodeNameFromIndexes(selectedCategory, selectedBone);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get node");
-				boneName = "";
-			}
-		}
-		
-		public static function getNodeIsOffset() : Boolean
-		{
-			try {
-				return sam.GetNodeIsOffset(boneName);
-			}
-			catch (e:Error) {
-				trace("Failed to check if node is offset");
-			}
-			return true;
-		}
-		
-		public static function toggleNodeName() : Boolean
-		{
-			try {
-				boneName = sam.ToggleNodeName(boneName);
-				return true;
-			}
-			catch (e:Error) {
-				trace("Failed to toggle node name");
-			}
-			return false;
-		}
-		
-		public static function getIdleName():String
-		{
-			try {
-				return sam.GetIdleName();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get idle name");
-			}
-			return null;
-		}
-				
-		public static function updateFolderNames():Array
+		public static function updateFolderNames():void
 		{
 			setMenuSize(menuFolder.length);
 			for (var i:int = 0; i < menuFolder.length; i++) {
@@ -1324,7 +1217,7 @@
 					if (result.type == RESULT_FOLDER) {
 						return result;
 					} else if (result.type == RESULT_ERROR) {
-						error = result.result;
+						error = String(result.result);
 						return null;
 					}
 				}
@@ -1351,7 +1244,7 @@
 					if (result.type == RESULT_FOLDERCHECKBOX) {
 						return result;
 					} else if (result.type == RESULT_ERROR) {
-						error = result.result;
+						error = String(result.result);
 						return null;
 					}
 				}
@@ -1369,12 +1262,12 @@
 			folderData = data;
 			//Util.traceObj(folderData);
 			//folderStack.length = 0;
-			menuFolder = result.result;
+			menuFolder = result.result as Array;
 			//Util.traceObj(menuFolder);
 			updateFolderNames();
 		}
 		
-		public static function pushFolder(path:String, result:Object)
+		public static function pushFolder(path:String, result:Array)
 		{
 			folderStack.push(path);
 			updateFolder(result);
@@ -1391,7 +1284,7 @@
 			return getCurrentFolder();
 		}
 		
-		public static function updateFolder(result:Object)
+		public static function updateFolder(result:Array)
 		{
 			menuFolder = result;
 			updateFolderNames();
@@ -1440,59 +1333,6 @@
 			];
 
 			return null;
-		}
-		
-		public static function getLightVisible(selectedLight:int):Boolean
-		{
-			try
-			{
-				return sam.GetLightVisible(selectedLight);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get light visibility");
-			}
-			
-			return false;
-		}
-		
-		public static function toggleLightVisible(selectedLight:int):Boolean
-		{
-			try
-			{
-				return sam.ToggleLightVisible(selectedLight);
-			}
-			catch (e:Error)
-			{
-				trace("Failed to toggle light visiblity");
-				return true;
-			}
-		}
-		
-		public static function getAllLightsVisible():Boolean
-		{
-			try
-			{
-				return sam.GetAllLightsVisible();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to get light visibility");
-				return false;
-			}
-		}
-		
-		public static function toggleAllLightsVisible():Boolean
-		{
-			try
-			{
-				return sam.ToggleAllLightsVisible();
-			}
-			catch (e:Error)
-			{
-				trace("Failed to toggle lights visibility");
-				return true;
-			}
 		}
 		
 		public static function updateFilter(filter:Array)

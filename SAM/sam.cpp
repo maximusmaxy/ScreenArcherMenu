@@ -496,16 +496,29 @@ void UpdateBoneFilter()
 NiPoint3 GetCameraPivot()
 {
 	NiPoint3 pos = selected.refr->pos;
-	pos.z += 100;
+
+	auto GetChestHeight = [](TESObjectREFR* refr, const NiPoint3& pos) {
+		auto root = selected.refr->GetActorRootNode(false);
+		if (root) {
+			BSFixedString chestStr("Chest");
+			auto chest = root->GetObjectByName(&chestStr);
+			if (chest)
+				return chest->m_worldTransform.pos.z - pos.z;
+		}
+		return 100.0f;
+	};
 
 	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu)
+	if (!wrapped.menu) {
+		pos.z += GetChestHeight(selected.refr, pos);
 		return pos;
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
+	}
 
+	auto menu = (ScreenArcherMenu*)wrapped.menu;
 	if (menu->boneDisplay.selectedNode)
 		return menu->boneDisplay.selectedNode->node->m_worldTransform.pos;
 
+	pos.z += GetChestHeight(selected.refr, pos);
 	return pos;
 }
 
