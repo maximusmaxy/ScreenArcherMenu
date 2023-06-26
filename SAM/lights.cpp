@@ -29,6 +29,8 @@ using namespace Serialization;
 #include "SAF/io.h"
 using namespace SAF;
 
+#include <filesystem>
+
 LightManager lightManager;
 
 //false
@@ -828,6 +830,9 @@ bool LoadLightsFile(const char* filename)
 bool LoadLightsPath(const char* path)
 {
 	if (!selected.refr)
+		return false;
+
+	if (!std::filesystem::exists(path))
 		return false;
 
 	Json::Value value;

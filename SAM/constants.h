@@ -29,6 +29,7 @@
 #define IDLE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\IdleFavorites.txt"
 //#define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"
 #define POSE_FAVORITES "Favorites"
+#define CELL_FAVORITES "Data\\F4SE\\Plugins\\SAM\\CellFavorites.txt"
 
 //Errors 
 #define CONSOLE_ERROR "$SAM_ConsoleError"						//selected.refr is null
@@ -61,8 +62,3 @@
 
 #define MORPH_MAX 54
 #define CAM_SAVE_STATE_SLOTS 3
-
-//#define SAM_X -646.85f
-//#define SAM_Y -360.9f
-//#define SAM_WIDTH 1279.6f
-//#define SAM_HEIGHT 719.6f

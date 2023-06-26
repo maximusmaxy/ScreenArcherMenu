@@ -533,6 +533,9 @@ GFxReq getCells("GetCells", [](auto& result, auto args) {
 GFxReq setCell("SetCell", [](auto& result, auto args) {
 	SetCell(result, args->args[1].GetUInt());
 });
+GFxReq setWorldspace("SetWorldspace", [](auto& result, auto args) {
+	SetWorldspace(result, args->args[1].GetString());
+});
 GFxReq getWorldspaceMods("GetWorldspaceMods", [](auto& result, auto args) {
 	GetWorldspaceMods(result);
 });
@@ -550,4 +553,13 @@ GFxReq searchCoc("SearchCells", [](auto& result, auto args) {
 });
 GFxReq getCellName("GetCellName", [](auto& result, auto args) {
 	result.SetString(GetCurrentDisplayedCell());
+});
+GFxReq getCellFavorites("GetCellFavorites", [](auto& result, auto args) {
+	GetCellFavorites(result);
+});
+GFxReq appendCellFavorite("AddCellFavorite", [](auto& result, auto args) {
+	AppendCellFavorite(result);
+});
+GFxReq removeCellFavorite("RemoveCellFavorite", [](auto& result, auto args) {
+	RemoveCellFavorite(result, args->args[0].GetInt());
 });

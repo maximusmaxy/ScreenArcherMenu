@@ -46,6 +46,13 @@ void GetWorldspaceMods(GFxResult& result);
 void GetWorldspacesFromMod(GFxResult& result, const char* mod);
 void GetWorldspaceCells(GFxResult& result, const char* mod, UInt32 formId);
 void SetCell(GFxResult&, UInt32);
+void SetWorldspace(GFxResult&, const char*);
 void GetLastSearchResultCell(GFxResult&);
 void SearchCells(GFxResult& result, const char* search);
 const char* GetCurrentDisplayedCell();
+
+void GetCellFavorites(GFxResult& result);
+bool SaveCellFavorites();
+void AppendCellFavorite(GFxResult& result);
+void RemoveCellFavorite(GFxResult& result, SInt32 index);
+bool LoadCellFavorites();

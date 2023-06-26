@@ -43,11 +43,13 @@ SAF::SafMessagingInterface* saf = nullptr;
 SelectedRefr selected;
 SamManager samManager;
 
+RelocPtr<bool> bLoadingMenuOpen(0x58D08B3);
+
 ScreenArcherMenu::ScreenArcherMenu() : GameMenuBase()
 {
 	//looksmenu = 0x8058404
 	flags =
-		IMenu::kFlag_AlwaysOpen |
+		//IMenu::kFlag_AlwaysOpen |
 		IMenu::kFlag_UsesCursor |
 		IMenu::kFlag_Modal |
 		IMenu::kFlag_DisablePauseMenu |
@@ -614,8 +616,6 @@ IMenuWrapper SamManager::GetWrapped() {
 	return IMenuWrapper(storedMenu);
 }
 
-RelocAddr<bool> bLoadingMenuOpen(0x58D08B3);
-
 void SamManager::OpenOrCloseMenu(const char* menuName) {
 	BSFixedString menuStr(SAM_MENU_NAME);
 	BSFixedString containerMenu(CONTAINER_MENU_NAME);
@@ -637,8 +637,12 @@ void SamManager::OpenOrCloseMenu(const char* menuName) {
 						result = gfxResult.GetBool();
 
 					if (result) {
-						//*((bool*)bLoadingMenuOpen.GetUIntPtr()) = true;
-						CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuStr, kMessage_Close);
+						if (menuOptions.confirmclose) {
+							ShowCloseMessage();
+						}
+						else {
+							CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuStr, kMessage_Close);
+						}
 					}	
 				}
 			}
@@ -659,7 +663,7 @@ void SamManager::OpenOrCloseMenu(const char* menuName) {
 }
 
 void SamManager::ToggleMenu() {
-	OpenOrCloseMenu(nullptr);
+	OpenOrCloseMenu();
 }
 
 void SamManager::OpenExtensionMenu(const char* extensionName)
@@ -669,11 +673,64 @@ void SamManager::OpenExtensionMenu(const char* extensionName)
 
 void SamManager::CloseMenu()
 {
-	auto wrapped = GetWrapped();
-	if (wrapped.IsOpen()) {
-		BSFixedString samMenuName(SAM_MENU_NAME);
-		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
+	if (menuOptions.confirmclose)
+		ShowCloseMessage();
+	else {
+		auto wrapped = GetWrapped();
+		if (wrapped.IsOpen()) {
+			BSFixedString samMenuName(SAM_MENU_NAME);
+			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
+		}
 	}
+}
+
+struct SamCloseCallback;
+struct SamCloseCallbackVFTable {
+	void(*Destructor)(SamCloseCallback*, UInt8);
+	void(*Callback)(SamCloseCallback*, UInt8);
+};
+
+void SamCloseDestructorFunction(SamCloseCallback* _this, UInt8 message) {
+	//
+}
+
+void SamCloseCallbackFunction(SamCloseCallback* _this, UInt8 message) {
+	samManager.closeMessage = "$SAM_CloseMenu";
+	if (message == 0) {
+		BSFixedString menuStr(SAM_MENU_NAME);
+		CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(menuStr, kMessage_Close);
+	}
+	else {
+		samManager.CancelClose();
+	}
+}
+
+SamCloseCallbackVFTable samCloseCallbackVFTable{
+	SamCloseDestructorFunction,
+	SamCloseCallbackFunction
+};
+
+struct SamCloseCallback {
+	SamCloseCallbackVFTable* vftable;
+	UInt64 unk08;
+	UInt64 unk10;
+};
+SamCloseCallback samCloseCallback;
+
+typedef void(*_MessageMenuManagerCreate)(void* messageManager, const char*, const char*, SamCloseCallback*,
+	UInt32, const char*, const char*, const char*, const char*, bool);
+RelocAddr<_MessageMenuManagerCreate> MessageMenuManagerCreate(0x12AD190);
+
+RelocPtr<void*> menuMessageManager(0x58D0AE8);
+
+void SamManager::ShowCloseMessage() {
+	samCloseCallback = { &samCloseCallbackVFTable, 0, 0 };
+	MessageMenuManagerCreate(*menuMessageManager, "", closeMessage, &samCloseCallback, 0x1A, "$SAM_Ok", "$SAM_Cancel", 0, 0, false);
+}
+
+void SamManager::CancelClose() {
+	ClearData();
+	Invoke("root1.Menu_mc.CancelClose", nullptr, nullptr, 0);
 }
 
 bool SamManager::Invoke(const char* func, GFxValue* result, GFxValue* args, UInt32 numArgs)
@@ -738,18 +795,21 @@ bool SamManager::LoadData(GFxMovieRoot* root, GFxValue* result)
 void SamManager::ClearData()
 {
 	refr = nullptr;
+	storedCoc = nullptr;
+	storedEdid.clear();
+	closeMessage = "$SAM_CloseMenu";
 }
 
 void SamManager::ForceQuit()
 {
 	ClearData();
 
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
-		return;
+	//auto wrapped = GetWrapped();
+	//auto root = wrapped.GetRoot();
+	//if (!root)
+	//	return;
+	//root->Invoke("root1.Menu_mc.CleanUp", nullptr, nullptr, 0);
 
-	root->Invoke("root1.Menu_mc.CleanUp", nullptr, nullptr, 0);
 	BSFixedString samMenuName(SAM_MENU_NAME);
 	CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
 }
@@ -983,15 +1043,15 @@ void SamManager::SetVisible(bool isVisible)
 	root->SetVariable("root1.Menu_mc.visible", &value);
 }
 
-void MenuAlwaysOn(BSFixedString menuStr, bool enabled) {
-	auto menu = GetWrappedMenu(menuStr);
-	if (menu.IsOpen()) {
-		if (enabled)
-			menu.menu->flags |= 0x02;
-		else
-			menu.menu->flags &= ~0x02;
-	}
-}
+//void MenuAlwaysOn(BSFixedString menuStr, bool enabled) {
+//	auto menu = GetWrappedMenu(menuStr);
+//	if (menu.IsOpen()) {
+//		if (enabled)
+//			menu.menu->flags |= 0x02;
+//		else
+//			menu.menu->flags &= ~0x02;
+//	}
+//}
 
 bool GetCursor(SInt32* pos)
 {
@@ -1143,11 +1203,14 @@ bool SamManager::OnMenuClose() {
 	SetInputEnableLayer(false);
 	LockFfc(false);
 	selected.Clear();
-	//*((bool*)bLoadingMenuOpen.GetUIntPtr()) = false;
 
 	if (storedCoc)
 		CenterOnCell(nullptr, storedCoc);
+	else if (storedEdid.size())
+		CenterOnCell(storedEdid.c_str(), nullptr);
+		
 	storedCoc = nullptr;
+	storedEdid.clear();
 
 	return ReleaseMenu();
 }

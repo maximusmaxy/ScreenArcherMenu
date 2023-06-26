@@ -1149,7 +1149,6 @@
 		
 		public function PopMenu():void
 		{
-//			trace("Pop Menu");
 			if (this.filenameInput.visible)
 			{
 				ClearEntry();
@@ -1166,7 +1165,6 @@
 				Exit();
 				return;
 			}
-			
 			//trace("popping menu state", stateStack.length);
 			currentState = stateStack.pop();
 			this.nextMenu = currentState.menu;
@@ -2100,23 +2098,21 @@
 		public function Exit():void
 		{
 			isOpen = false;
-			CleanUp();
+			//CleanUp();
 			if (!saved) {
 				Data.clearState();
 			}
-			
 			closeTimer = new Timer(100,1);
 			closeTimer.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:TimerEvent) {
 				Close();
 			});
-			
 			closeTimer.start();
 		}
 		
 		public function Close()
 		{
 			try {
-				this.sam.CloseMenu("ScreenArcherMenu");
+				this.sam.CloseMenu();
 			}
 			catch (e:Error)
 			{
@@ -2608,6 +2604,8 @@
 		
 		public function CanClose():Boolean
 		{
+			if (!isOpen)
+				return false;
 			if (filenameInput.visible)
 				return false;
 			if (stage.focus == sliderList.title)
@@ -2627,7 +2625,7 @@
 				if (CanClose())
 				{
 					SaveState();
-					CleanUp();
+					//CleanUp();
 					saved = true;
 					isOpen = false;
 					Util.playCancel();
@@ -2638,26 +2636,33 @@
 			catch (e:Error) {
 				trace("Error occured while trying to close the menu");
 				trace(e.message);
+				CancelClose();
 			}
 			
 			return true;
 		}
 		
-		//To work around a crash on close bug, sam is no longer destroyed so we have to clean up manually
-		public function CleanUp()
+		public function CancelClose():void
 		{
-			//trace("Clean up");
-			InitState();
-			InitEvents();
-			Util.unselectText();
-			if (hold) {
-				stage.removeEventListener(MouseEvent.MOUSE_MOVE, this.holdMoveFunc);
-				hold = false;
-			}
-			stage.removeEventListener(MouseEvent.MOUSE_UP, OnMouseUp);
-			ctrlHold = false;
-			mouseHold = false
-			Data.clearLatents();
+			saved = false;
+			isOpen = true;
 		}
+		
+		//To work around a crash on close bug, sam is no longer destroyed so we have to clean up manually
+//		public function CleanUp()
+//		{
+//			//trace("Clean up");
+//			InitState();
+//			InitEvents();
+//			Util.unselectText();
+//			if (hold) {
+//				stage.removeEventListener(MouseEvent.MOUSE_MOVE, this.holdMoveFunc);
+//				hold = false;
+//			}
+//			stage.removeEventListener(MouseEvent.MOUSE_UP, OnMouseUp);
+//			ctrlHold = false;
+//			mouseHold = false
+//			Data.clearLatents();
+//		}
 	}
 }

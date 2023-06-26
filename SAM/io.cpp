@@ -11,6 +11,7 @@
 #include "data.h"
 #include "pose.h"
 #include "options.h"
+#include "coc.h"
 
 #include <filesystem>
 
@@ -414,6 +415,7 @@ void LoadMenuFiles() {
 
 	LoadJsonMenus();
 	LoadIdleFavorites();
+	LoadCellFavorites();
 	LoadOptionsFile(OPTIONS_PATH);
 }
 

@@ -234,13 +234,12 @@ void PapyrusToggleMenu(StaticFunctionTag*) {
 void PapyrusReregisterMenu(StaticFunctionTag*) {
 	BSFixedString menuName(SAM_MENU_NAME);
 	(*g_ui)->UnregisterMenu(menuName, true);
-	(*g_ui)->Register(menuName.c_str(), CreateCustomMenu);
+	(*g_ui)->Register(menuName.c_str(), CreateScreenArcherMenu);
 }
 
 void PapyrusLogMenu(StaticFunctionTag*, BSFixedString menuName) 
 {
 	auto menu = GetCachedMenu(menuName.c_str());
-
 	if (!menu)
 		return;
 

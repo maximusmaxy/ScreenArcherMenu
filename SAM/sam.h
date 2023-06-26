@@ -161,14 +161,18 @@ public:
 	std::string storedName;
 	IMenu* storedMenu{};
 	TESObjectCELL* storedCoc{};
+	std::string storedEdid;
+	const char* closeMessage = "$SAM_CloseMenu";
 
 	IMenuWrapper StoreMenu();
 	bool ReleaseMenu();
 	IMenuWrapper GetWrapped();
 
-	void OpenOrCloseMenu(const char* menuName);
+	void OpenOrCloseMenu(const char* menuName = nullptr);
 	void ToggleMenu();
 	void CloseMenu();
+	void ShowCloseMessage();
+	void CancelClose();
 	bool Invoke(const char* name, GFxValue* result, GFxValue* args, UInt32 numArgs);
 	void SetVariable(const char* pVarPath, const GFxValue* value, UInt32 setType = 0);
 
@@ -205,7 +209,7 @@ extern SamManager samManager;
 TESObjectREFR* GetRefr();
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible);
-void MenuAlwaysOn(BSFixedString menuStr, bool enabled);
+//void MenuAlwaysOn(BSFixedString menuStr, bool enabled);
 
 bool GetCursor(SInt32* pos);
 bool SetCursor(SInt32 x, SInt32 y);

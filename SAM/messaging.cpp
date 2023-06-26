@@ -50,14 +50,14 @@ public:
 						inputHandler.enabled = true;
 					}
 				}
-				else if (evn->menuName == cursorMenu) {
-					//cursor opened while sam is open
-					if (evn->isOpen) {
-						MenuAlwaysOn(cursorMenu, true);
-					}
-				}
+				//else if (evn->menuName == cursorMenu) {
+				//	//cursor opened while sam is open
+				//	if (evn->isOpen) {
+				//		MenuAlwaysOn(cursorMenu, true);
+				//	}
+				//}
 				else if (evn->menuName == containerMenu ||
-						evn->menuName == looksMenu) {
+						 evn->menuName == looksMenu) {
 					//container menu opened while sam is open
 					if (evn->isOpen) {
 						inputHandler.enabled = false;
@@ -72,14 +72,14 @@ public:
 					}
 				}
 			}
-			else {
-				if (evn->menuName == cursorMenu) {
-					//cursor opened while sam is closed
-					if (evn->isOpen) {
-						MenuAlwaysOn(cursorMenu, false);
-					}
-				}
-			}
+			//else {
+			//	if (evn->menuName == cursorMenu) {
+			//		//cursor opened while sam is closed
+			//		if (evn->isOpen) {
+			//			MenuAlwaysOn(cursorMenu, false);
+			//		}
+			//	}
+			//}
 		}
 		return kEvent_Continue;
 	};

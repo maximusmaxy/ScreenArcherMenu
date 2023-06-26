@@ -10,10 +10,22 @@
 
 class Options {
 public:
+	enum OptionType {
+		Hotswap = 0,
+		Alignment,
+		Widescreen,
+		ExtraHotkeys,
+		ConfirmClose,
+		CameraControl,
+		BoneOverlay,
+		PosingGizmo
+	};
+
 	bool hotswap;
 	bool alignment;
 	bool widescreen;
 	bool extrahotkeys;
+	bool confirmclose;
 	bool cameracontrol;
 	bool boneoverlay;
 	bool posinggizmo;

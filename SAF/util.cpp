@@ -6,12 +6,16 @@
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
+#include <format>
+
+void _Log(const std::string& str) {
+	_DMESSAGE(str.c_str());
+}
 
 UInt32 GetFormId(const char* modName, UInt32 formId) {
 	const ModInfo* mod = (*g_dataHandler)->LookupModByName(modName);
 
 	if (mod && mod->modIndex != 0xFF) {
-		
 		UInt32 flags = mod->recordFlags;
 		if (flags & (1 << 9)) {
 			formId &= 0xFFF;
@@ -19,6 +23,7 @@ UInt32 GetFormId(const char* modName, UInt32 formId) {
 			formId |= mod->lightIndex << 12;
 		}
 		else {
+			formId &= 0xFFFFFF;
 			formId |= mod->modIndex << 24;
 		}
 		return formId;
@@ -27,18 +32,7 @@ UInt32 GetFormId(const char* modName, UInt32 formId) {
 }
 
 UInt32 GetFormId(const char* modName, const char* idString) {
-	UInt32 formId = HexStringToUInt32(idString) & 0xFFFFFF;
-	return GetFormId(modName, formId);
-}
-
-UInt32 GetModId(UInt32 formId)
-{
-	return (formId & 0xFE000000) == 0xFE000000 ? (formId & 0xFFFFF000) : (formId & 0xFF000000);
-}
-
-UInt32 GetBaseId(UInt32 formId)
-{
-	return (formId & 0xFE000000) == 0xFE000000 ? (formId & 0xFFF) : (formId & 0xFFFFFF);
+	return GetFormId(modName, HexStringToUInt32(idString));
 }
 
 class FindModForFormId {
@@ -60,10 +54,6 @@ const char* GetModName(UInt32 formId)
 		return nullptr;
 
 	return info->name;
-}
-
-float Modulo(float a, float b) {
-	return fmodf((fmodf(a, b) + b), b);
 }
 
 std::string UInt32ToHexString(UInt32 hex)
@@ -142,4 +132,16 @@ void GetLoweredCString(char* buffer, const char* str)
 		str++;
 	}
 	*buffer = 0;
+}
+
+std::string ToFormIdentifier(UInt32 formId) {
+	auto modname = GetModName(formId);
+	return std::format("{}|{:08X}", modname ? modname : "", GetBaseId(formId));
+}
+
+UInt32 FromFormIdentifier(const std::string& str) {
+	const char* pipe = strchr(str.c_str(), '|');
+	if (!pipe)
+		return 0;
+	return GetFormId(str.substr(0, pipe - str.c_str()).c_str(), (pipe + 1));
 }

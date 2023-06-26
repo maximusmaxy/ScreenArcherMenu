@@ -28,6 +28,6 @@ namespace SAF {
 		aaf = BSFixedString(value.get("aafName", "AAF.esm").asCString());
 		outfitStudioPosePath = value.get("outfitstudioposepath", "Data\\tools\\bodyslide\\PoseData").asString();
 		doppelgangerID = value.get("doppelgangerID", 0x72E2).asUInt();
-		fullDoppelgangerID = GetFormId(BSFixedString(aaf.c_str()).c_str(), doppelgangerID);
+		fullDoppelgangerID = GetFormId(aaf.c_str(), doppelgangerID);
 	}
 }

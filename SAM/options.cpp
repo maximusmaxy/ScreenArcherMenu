@@ -10,6 +10,7 @@ void Options::Initialize() {
 	alignment = false;
 	widescreen = false;
 	extrahotkeys = true;
+	confirmclose = false;
 	cameracontrol = true;
 	boneoverlay = true;
 	posinggizmo = true;
@@ -30,6 +31,7 @@ void Options::ToJson(Json::Value& value) {
 	value["alignment"] = alignment;
 	value["widescreen"] = widescreen;
 	value["extrahotkeys"] = extrahotkeys;
+	value["confirmclose"] = confirmclose;
 	value["cameracontrol"] = cameracontrol;
 	value["boneoverlay"] = boneoverlay;
 	value["posinggizmo"] = posinggizmo;
@@ -42,6 +44,7 @@ void Options::FromJson(Json::Value& value) {
 	alignment = value.get("alignment", false).asBool();
 	widescreen = value.get("widescreen", false).asBool();
 	extrahotkeys = value.get("extrahotkeys", true).asBool();
+	confirmclose = value.get("confirmclose", false).asBool();
 	cameracontrol = value.get("cameracontrol", true).asBool();
 	boneoverlay = value.get("boneoverlay", true).asBool();
 	posinggizmo = value.get("posinggizmo", true).asBool();
@@ -71,30 +74,22 @@ void GetMenuOptions(GFxResult& result)
 	result.PushValue(menuOptions.alignment);
 	result.PushValue(menuOptions.widescreen);
 	result.PushValue(menuOptions.extrahotkeys);
+	result.PushValue(menuOptions.confirmclose);
 	result.PushValue(menuOptions.cameracontrol);
 	result.PushValue(menuOptions.boneoverlay);
 	result.PushValue(menuOptions.posinggizmo);
 }
 
-enum {
-	kOptionHotswap = 0,
-	kOptionAlignment,
-	kOptionWidescreen,
-	kOptionExtraHotkeys,
-	kOptionCameraControl,
-	kOptionBoneOverlay,
-	kOptionPosingGizmo,
-};
-
 void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
 	switch (index) {
-	case kOptionHotswap: menuOptions.hotswap = value; break;
-	case kOptionAlignment: menuOptions.alignment = value; break;
-	case kOptionWidescreen: menuOptions.widescreen = value; break;
-	case kOptionExtraHotkeys: menuOptions.extrahotkeys = value; break;
-	case kOptionCameraControl: menuOptions.cameracontrol = value; break;
-	case kOptionBoneOverlay: menuOptions.boneoverlay = value; break;
-	case kOptionPosingGizmo: menuOptions.posinggizmo = value; break;
+	case Options::Hotswap: menuOptions.hotswap = value; break;
+	case Options::Alignment: menuOptions.alignment = value; break;
+	case Options::Widescreen: menuOptions.widescreen = value; break;
+	case Options::ExtraHotkeys: menuOptions.extrahotkeys = value; break;
+	case Options::ConfirmClose: menuOptions.confirmclose = value; break;
+	case Options::CameraControl: menuOptions.cameracontrol = value; break;
+	case Options::BoneOverlay: menuOptions.boneoverlay = value; break;
+	case Options::PosingGizmo: menuOptions.posinggizmo = value; break;
 	default: return;
 	}
 
