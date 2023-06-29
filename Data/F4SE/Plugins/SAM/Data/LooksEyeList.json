@@ -1,0 +1,17 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetLooksEyes",
+        "args": [
+            {
+                "type": "var",
+                "name": "eyeMod"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetLooksEyes"
+    }
+}

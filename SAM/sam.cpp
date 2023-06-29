@@ -35,6 +35,7 @@
 #include "functions.h"
 #include "scaleform.h"
 #include "coc.h"
+#include "inventory.h"
 
 #include <WinUser.h>
 #include <libloaderapi.h>
@@ -405,33 +406,31 @@ void SetBoneDisplay(GFxResult& result, bool enabled) {
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
 
-	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu)
+	auto menu = samManager.GetWrapped();
+	if (!menu)
 		return result.SetError(MENU_MISSING_ERROR);
 
 	auto actorAdjustments = saf->GetActorAdjustments(selected.refr->formID);
 	if (!actorAdjustments)
 		return result.SetError(SKELETON_ERROR);
 
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
-
+	auto sam = menu.Get<ScreenArcherMenu>();
 	if (enabled)
-		menu->EnableBoneDisplay(actorAdjustments);
+		sam->EnableBoneDisplay(actorAdjustments);
 	else
-		menu->DisableBoneDisplay();
+		sam->DisableBoneDisplay();
 }
 
 void SetRotateTool(GFxResult& result, bool enabled) {
-	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu)
+	auto menu = samManager.GetWrapped();
+	if (!menu)
 		return result.SetError(MENU_MISSING_ERROR);
-
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
+	auto sam = menu.Get<ScreenArcherMenu>();
 
 	if (enabled)
-		menu->EnableRotateDisplay();
+		sam->EnableRotateDisplay();
 	else
-		menu->DisableRotateDisplay();
+		sam->DisableRotateDisplay();
 }
 
 bool ScreenArcherMenu::SelectNode(const char* name) {
@@ -463,12 +462,12 @@ void SelectNodeMarker(GFxResult& result, const char* name, bool pushMenu) {
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
 
-	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu)
+	auto menu = samManager.GetWrapped();
+	if (!menu)
 		return result.SetError(MENU_MISSING_ERROR);
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
+	auto sam = menu.Get<ScreenArcherMenu>();
 
-	if (!menu->SelectNode(name))
+	if (!sam->SelectNode(name))
 		return result.SetError("Failed to select node");
 
 	if (pushMenu)
@@ -477,22 +476,22 @@ void SelectNodeMarker(GFxResult& result, const char* name, bool pushMenu) {
 
 void UnselectNodeMarker(GFxResult& result)
 {
-	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu)
+	auto menu = samManager.GetWrapped();
+	if (!menu)
 		return result.SetError(MENU_MISSING_ERROR);
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
+	auto sam = menu.Get<ScreenArcherMenu>();
 
-	menu->UnselectNode();
+	sam->UnselectNode();
 }
 
 void UpdateBoneFilter()
 {
-	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu)
+	auto menu = samManager.GetWrapped();
+	if (!menu)
 		return;
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
+	auto sam = menu.Get<ScreenArcherMenu>();
 
-	menu->UpdateBoneFilter();
+	sam->UpdateBoneFilter();
 }
 
 NiPoint3 GetCameraPivot()
@@ -510,15 +509,15 @@ NiPoint3 GetCameraPivot()
 		return 100.0f;
 	};
 
-	auto wrapped = samManager.GetWrapped();
-	if (!wrapped.menu) {
+	auto menu = samManager.GetWrapped();
+	if (!menu) {
 		pos.z += GetChestHeight(selected.refr, pos);
 		return pos;
 	}
 
-	auto menu = (ScreenArcherMenu*)wrapped.menu;
-	if (menu->boneDisplay.selectedNode)
-		return menu->boneDisplay.selectedNode->node->m_worldTransform.pos;
+	auto sam = menu.Get<ScreenArcherMenu>();
+	if (sam->boneDisplay.selectedNode)
+		return sam->boneDisplay.selectedNode->node->m_worldTransform.pos;
 
 	pos.z += GetChestHeight(selected.refr, pos);
 	return pos;
@@ -528,6 +527,7 @@ IMenuWrapper::IMenuWrapper(IMenu* _menu) {
 	menu = _menu;
 	if (menu)
 		ScaleformRefCountImplAddRef(menu);
+	root = GetRoot();
 }
 
 IMenuWrapper::~IMenuWrapper() {
@@ -568,13 +568,12 @@ IMenuWrapper GetWrappedMenu(BSFixedString name) {
 
 void SetMenuVisible(BSFixedString menuName, const char* visiblePath, bool visible)
 {
-	auto wrapped = GetWrappedMenu(menuName);
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrappedMenu(menuName);
+	if (!menu)
 		return;
 
 	GFxValue isVisible(visible);
-	if (!root->SetVariable(visiblePath, &isVisible))
+	if (!menu->SetVariable(visiblePath, &isVisible))
 		_Log("Failed to set visibility of menu: ", menuName.c_str());
 }
 
@@ -624,16 +623,15 @@ void SamManager::OpenOrCloseMenu(const char* menuName) {
 	//should make this a set or something
 	if (!(*g_ui)->IsMenuOpen(containerMenu) &&
 		!(*g_ui)->IsMenuOpen(looksMenu)) {
-		auto wrapped = GetWrapped();
+		auto menu = GetWrapped();
 
-		if (wrapped.IsOpen()) {
+		if (menu.IsOpen()) {
 			if (!menuName || !_stricmp(storedName.c_str(), menuName)) {
-				auto root = wrapped.GetRoot();
-				if (root) {
+				if (menu) {
 
 					bool result = false;
 					GFxValue gfxResult;
-					if (root->Invoke("root1.Menu_mc.TryClose", &gfxResult, nullptr, 0))
+					if (menu->Invoke("root1.Menu_mc.TryClose", &gfxResult, nullptr, 0))
 						result = gfxResult.GetBool();
 
 					if (result) {
@@ -676,8 +674,8 @@ void SamManager::CloseMenu()
 	if (menuOptions.confirmclose)
 		ShowCloseMessage();
 	else {
-		auto wrapped = GetWrapped();
-		if (wrapped.IsOpen()) {
+		auto menu = GetWrapped();
+		if (menu.IsOpen()) {
 			BSFixedString samMenuName(SAM_MENU_NAME);
 			CALL_MEMBER_FN(*g_uiMessageManager, SendUIMessage)(samMenuName, kMessage_Close);
 		}
@@ -735,12 +733,11 @@ void SamManager::CancelClose() {
 
 bool SamManager::Invoke(const char* func, GFxValue* result, GFxValue* args, UInt32 numArgs)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return false;
 
-	if (!root->Invoke(func, result, args, numArgs)) {
+	if (!menu->Invoke(func, result, args, numArgs)) {
 		_Log("Failed to invoke UI function: ", func);
 		return false;
 	}
@@ -750,12 +747,11 @@ bool SamManager::Invoke(const char* func, GFxValue* result, GFxValue* args, UInt
 
 void SamManager::SetVariable(const char* pVarPath, const GFxValue* value, UInt32 setType)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
-	if (!root->SetVariable(pVarPath, value, setType))
+	if (!menu->SetVariable(pVarPath, value, setType))
 		_Log("Failed to set menu variable", pVarPath);
 }
 
@@ -816,110 +812,114 @@ void SamManager::ForceQuit()
 
 void SamManager::PushMenu(const char* name)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue result;
 	GFxValue args(name);
-	root->Invoke("root1.Menu_mc.PushMenu", &result, &args, 1);
+	menu->Invoke("root1.Menu_mc.PushMenu", &result, &args, 1);
 }
 
 void SamManager::PopMenu()
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue ret;
-	root->Invoke("root1.Menu_mc.PopMenu", &ret, nullptr, 0);
+	menu->Invoke("root1.Menu_mc.PopMenu", &ret, nullptr, 0);
 }
 
 void SamManager::PopMenuTo(const char* name)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue ret;
 	GFxValue args(name);
-	root->Invoke("root1.Menu_mc.PopMenuTo", &ret, &args, 1);
+	menu->Invoke("root1.Menu_mc.PopMenuTo", &ret, &args, 1);
 }
 
 void SamManager::RefreshMenu()
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue ret;
-	root->Invoke("root1.Menu_mc.RefreshValues", nullptr, nullptr, 0);
+	menu->Invoke("root1.Menu_mc.RefreshValues", nullptr, nullptr, 0);
+}
+
+void SamManager::RefreshCamera()
+{
+	auto menu = GetWrapped();
+	if (!menu)
+		return;
+
+	GFxValue menuName;
+	menu->GetVariable(&menuName, "Data.menuName");
+	if (!_stricmp(menuName.GetString(), "Camera")) {
+		menu->Invoke("RefreshValues", nullptr, nullptr, 0);
+	}
 }
 
 void SamManager::UpdateMenu()
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue ret;
-	root->Invoke("root1.Menu_mc.ReloadMenu", nullptr, nullptr, 0);
+	menu->Invoke("root1.Menu_mc.ReloadMenu", nullptr, nullptr, 0);
 }
 
 void SamManager::ShowNotification(const char* msg, bool store)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args[2];
 	args[0] = GFxValue(msg);
 	args[1] = GFxValue(true);
 
-	root->Invoke("root1.Menu_mc.ShowNotification", nullptr, args, 2);
+	menu->Invoke("root1.Menu_mc.ShowNotification", nullptr, args, 2);
 }
 
 void SamManager::SetNotification(const char* msg)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args;
-	GFxResult result(root, &args);
-	result.SetNotification(root, msg);
+	GFxResult result(menu.root, &args);
+	result.SetNotification(menu.root, msg);
 	result.InvokeCallback();
 }
 
 void SamManager::SetTitle(const char* title)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args;
-	GFxResult result(root, &args);
-	result.SetTitle(root, title);
+	GFxResult result(menu.root, &args);
+	result.SetTitle(menu.root, title);
 	result.InvokeCallback();
 }
 
 void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args;
-	GFxResult result(root, &args);
+	GFxResult result(menu.root, &args);
 	result.CreateNames();
 
 	for (int i = 0; i < vmNames.Length(); i++) {
@@ -933,13 +933,12 @@ void SamManager::SetMenuNames(VMArray<BSFixedString>& vmNames)
 
 void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args;
-	GFxResult result(root, &args);
+	GFxResult result(menu.root, &args);
 	result.CreateValues();
 
 	for (int i = 0; i < vmValues.Length(); i++) {
@@ -947,7 +946,7 @@ void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 		vmValues.Get(&var, i);
 
 		GFxValue value;
-		VMVariableToGFx(root, &value, &var);
+		VMVariableToGFx(menu.root, &value, &var);
 
 		result.PushValue(&value);
 	}
@@ -957,13 +956,12 @@ void SamManager::SetMenuValues(VMArray<VMVariable>& vmValues)
 
 void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariable>& vmValues)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args;
-	GFxResult result(root, &args);
+	GFxResult result(menu.root, &args);
 
 	//make sure both arrays are the same length
 	//if (vmNames.Length() != vmValues.Length()) {
@@ -980,13 +978,11 @@ void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariabl
 	}
 
 	for (int i = 0; i < vmValues.Length(); i++) {
-
-
 		VMVariable var;
 		vmValues.Get(&var, i);
 
 		GFxValue value;
-		VMVariableToGFx(root, &value, &var);
+		VMVariableToGFx(menu.root, &value, &var);
 
 		result.PushValue(&value);
 	}
@@ -996,51 +992,47 @@ void SamManager::SetMenuItems(VMArray<BSFixedString>& vmNames, VMArray<VMVariabl
 
 void SamManager::SetSuccess()
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue value;
-	GFxResult result(root, &value);
+	GFxResult result(menu.root, &value);
 	result.InvokeCallback();
 }
 
 void SamManager::SetError(const char* error)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue value;
-	GFxResult result(root, &value);
+	GFxResult result(menu.root, &value);
 	result.SetError(error);
 	result.InvokeCallback();
 }
 
 void SamManager::SetLocal(const char* key, GFxValue* value)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue args[2];
 	args[0] = GFxValue(key);
 	args[1] = *value;
-	root->Invoke("root1.Menu_mc.SetLocalVariable", nullptr, args, 2);
+	menu->Invoke("root1.Menu_mc.SetLocalVariable", nullptr, args, 2);
 }
 
 void SamManager::SetVisible(bool isVisible)
 {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root)
+	auto menu = GetWrapped();
+	if (!menu)
 		return;
 
 	GFxValue value(isVisible);
-	root->SetVariable("root1.Menu_mc.visible", &value);
+	menu->SetVariable("root1.Menu_mc.visible", &value);
 }
 
 //void MenuAlwaysOn(BSFixedString menuStr, bool enabled) {
@@ -1146,9 +1138,8 @@ void GetMenuTarget(GFxValue& data) {
 }
 
 bool SamManager::OnMenuOpen() {
-	auto wrapped = StoreMenu();
-	auto root = wrapped.GetRoot();
-	if (!root) {
+	auto menu = StoreMenu();
+	if (!menu) {
 		_DMESSAGE("Failed to get root on menu open");
 		return false;
 	}
@@ -1163,7 +1154,7 @@ bool SamManager::OnMenuOpen() {
 	UpdateNonActorRefr();
 
 	GFxValue data;
-	root->CreateObject(&data);
+	menu->CreateObject(&data);
 
 	GFxValue storedNameValue(storedName.c_str());
 	data.SetMember("menuName", &storedNameValue);
@@ -1171,7 +1162,7 @@ bool SamManager::OnMenuOpen() {
 	GetMenuTarget(data);
 
 	GFxValue saved;
-	if (LoadData(root, &saved))
+	if (LoadData(menu.root, &saved))
 		data.SetMember("saved", &saved);
 
 	GFxValue widescreen(menuOptions.widescreen);
@@ -1186,13 +1177,13 @@ bool SamManager::OnMenuOpen() {
 	auto globalJson = GetCachedMenu("Global");
 	if (globalJson) {
 		GFxValue global;
-		JsonToGFx(root, &global, *globalJson);
+		JsonToGFx(menu.root, &global, *globalJson);
 		data.SetMember("global", &global);
 	}
 
-	root->Invoke("root1.Menu_mc.MenuOpened", nullptr, &data, 1);
+	menu->Invoke("root1.Menu_mc.MenuOpened", nullptr, &data, 1);
 	GFxValue isMenuVisible(true);
-	root->SetVariable("root1.Menu_mc.visible", &isMenuVisible);
+	menu->SetVariable("root1.Menu_mc.visible", &isMenuVisible);
 
 	return true;
 }
@@ -1216,15 +1207,14 @@ bool SamManager::OnMenuClose() {
 }
 
 bool SamManager::OnConsoleUpdate() {
-	auto wrapped = GetWrapped();
-	auto root = wrapped.GetRoot();
-	if (!root) {
+	auto menu = GetWrapped();
+	if (!menu) {
 		_DMESSAGE("Failed to get menu root on console update");
 		return false;
 	}
 
 	GFxValue data;
-	root->CreateObject(&data);
+	menu->CreateObject(&data);
 
 	UpdateNonActorRefr();
 	TESObjectREFR* refr = GetRefr();
@@ -1241,7 +1231,7 @@ bool SamManager::OnConsoleUpdate() {
 
 	GetMenuTarget(data);
 
-	root->Invoke("root1.Menu_mc.ConsoleRefUpdated", nullptr, &data, 1);
+	menu->Invoke("root1.Menu_mc.ConsoleRefUpdated", nullptr, &data, 1);
 
 	return true;
 }
@@ -1291,6 +1281,7 @@ void SamSerializeRevert(const F4SESerializationInterface* ifc)
 {
 	RevertCamera();
 	RevertLights();
+	RevertInventory();
 	lastSelectedPose.clear();
 }
 

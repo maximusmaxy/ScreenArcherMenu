@@ -1,0 +1,12 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetLooksEyeMods"
+    },
+    "set": {
+        "type": "menu",
+        "name": "LooksEyeList",
+        "var": "eyeMod"
+    }
+}

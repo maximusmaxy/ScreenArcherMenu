@@ -205,30 +205,30 @@ NiPoint3 RadianToPositiveDegree(NiPoint3& rot) {
 //	MoveRefrToPosition(refr, &nullHandle, parentCell, worldspace, &pos, &rot);
 //}
 
-void SetRefrTranslation(UInt32 flags, char axis, double value)
+void SetRefrTranslation(TESObjectREFR* refr, UInt32 flags, char axis, double value)
 {
 	TranslationParam p1;
 	p1.axis = axis;
 	TranslationParam p2;
 	p2.value = value;
 
-	UpdateTranslationInternal(*unkTranslation, flags, selectedNonActor.refr, p1, p2);
+	UpdateTranslationInternal(*unkTranslation, flags, refr, p1, p2);
 }
 
-void UpdateRefrTranslation(UInt32 flags, char axis, float& prop, float mod)
+void UpdateRefrTranslation(TESObjectREFR* refr, UInt32 flags, char axis, float& prop, float mod)
 {
 	float value = prop + mod;
 	
 	//if rot, convert radian to degree
 	if (flags == 0x1009)
-		SetRefrTranslation(flags, axis, value * SAF::RADIAN_TO_DEGREE);
+		SetRefrTranslation(refr, flags, axis, value * SAF::RADIAN_TO_DEGREE);
 	else
-		SetRefrTranslation(flags, axis, value);
+		SetRefrTranslation(refr, flags, axis, value);
 
 	prop = value;
 }
 
-bool UpdateRefrTranslationRelative(NiPoint3& pos, float mod, bool perpendicular)
+bool UpdateRefrTranslationRelative(TESObjectREFR* refr, NiPoint3& pos, float mod, bool perpendicular)
 {
 	auto camera = GetCameraNode();
 	if (!camera)
@@ -243,15 +243,15 @@ bool UpdateRefrTranslationRelative(NiPoint3& pos, float mod, bool perpendicular)
 	const auto py = std::cos(angle) * mod + pos.y;
 	const auto newPos = NiPoint3{ px, py, pos.z };
 
-	SetRefrTranslation(0x1007, 0x58, newPos.x);
-	SetRefrTranslation(0x1007, 0x59, newPos.y);
-	SetRefrTranslation(0x1007, 0x6A, newPos.z);
+	SetRefrTranslation(refr, 0x1007, 0x58, newPos.x);
+	SetRefrTranslation(refr, 0x1007, 0x59, newPos.y);
+	SetRefrTranslation(refr, 0x1007, 0x6A, newPos.z);
 	pos = newPos;
 
 	return true;
 }
 
-void SetRefrScale(double value)
+void SetRefrScale(TESObjectREFR* refr, double value)
 {
 	TranslationParam p1;
 	p1.value = value;
@@ -262,53 +262,57 @@ void SetRefrScale(double value)
 	//selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(value);
 
 	//force scale update
-	SetRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x);
+	SetRefrTranslation(refr, 0x1007, 'X', selectedNonActor.refr->pos.x);
 }
 
 void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool hasStep) {
 	if (!selectedNonActor.refr)
 		return result.SetError(CONSOLE_ERROR);
-	
+
 	if (type == kAdjustPositionStep) {
 		positioningStep = value.GetInt();
 		return;
 	}
 
-	float step = hasStep ? positioningStep * 0.01f : 1.0f;
-	float dif = value.GetNumber() * step;
+	const float step = hasStep ? positioningStep * 0.01f : 1.0f;
+	const float dif = value.GetNumber() * step;
 
+	AdjustRefrPosition(selectedNonActor.refr, type, dif);
+}
+
+void AdjustRefrPosition(TESObjectREFR* refr, int type, float dif) {
 	switch (type) {
 	case kAdjustPositionX:
-		if (!UpdateRefrTranslationRelative(selectedNonActor.refr->pos, dif, true))
-			UpdateRefrTranslation(0x1007, 'X', selectedNonActor.refr->pos.x, dif);
+		if (!UpdateRefrTranslationRelative(refr, refr->pos, dif, true))
+			UpdateRefrTranslation(refr, 0x1007, 'X', refr->pos.x, dif);
 		break;
 	case kAdjustPositionY:
-		if (!UpdateRefrTranslationRelative(selectedNonActor.refr->pos, dif, false))
-			UpdateRefrTranslation(0x1007, 'Y', selectedNonActor.refr->pos.y, dif);
+		if (!UpdateRefrTranslationRelative(refr, refr->pos, dif, false))
+			UpdateRefrTranslation(refr, 0x1007, 'Y', refr->pos.y, dif);
 		break;
 	case kAdjustPositionZ:
-		UpdateRefrTranslation(0x1007, 'Z', selectedNonActor.refr->pos.z, dif);
+		UpdateRefrTranslation(refr, 0x1007, 'Z', refr->pos.z, dif);
 		break;
 	case kAdjustRotationX:
-		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
-		UpdateRefrTranslation(0x1009, 'X', selectedNonActor.refr->rot.x, dif);
+		if (refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
+		UpdateRefrTranslation(refr, 0x1009, 'X', refr->rot.x, dif);
 		break;
 	case kAdjustRotationY:
-		if (selectedNonActor.refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
-		UpdateRefrTranslation(0x1009, 'Y', selectedNonActor.refr->rot.y, dif);
+		if (refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
+		UpdateRefrTranslation(refr, 0x1009, 'Y', refr->rot.y, dif);
 		break;
 	case kAdjustRotationZ:
-		UpdateRefrTranslation(0x1009, 'Z', selectedNonActor.refr->rot.z, dif);
+		UpdateRefrTranslation(refr, 0x1009, 'Z', refr->rot.z, dif);
 		break;
 	case kAdjustScale:
-		float scale = (UInt16)selectedNonActor.refr->unk104 * 0.01 + dif;
+		float scale = (UInt16)refr->unk104 * 0.01 + dif;
 		if (scale < 0.01) {
 			scale = 0.01;
 		}
 		else if (scale > 10.0) {
 			scale = 10.0;
 		}
-		SetRefrScale(scale);
+		SetRefrScale(refr, scale);
 		return;
 	}
 }
@@ -316,9 +320,9 @@ void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool has
 void ResetObjectPosition() {
 	if (!selectedNonActor.refr) return;
 
-	SetRefrTranslation(0x1007, 0x58, selectedNonActor.translation.position.x);
-	SetRefrTranslation(0x1007, 0x59, selectedNonActor.translation.position.y);
-	SetRefrTranslation(0x1007, 0x6A, selectedNonActor.translation.position.z);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x58, selectedNonActor.translation.position.x);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x59, selectedNonActor.translation.position.y);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x6A, selectedNonActor.translation.position.z);
 	
 	selectedNonActor.refr->pos = selectedNonActor.translation.position;
 }
@@ -329,12 +333,12 @@ void ResetObjectRotation() {
 
 	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.translation.rotation);
 
-	SetRefrTranslation(0x1009, 0x6A, rot.z);
+	SetRefrTranslation(selectedNonActor.refr, 0x1009, 0x6A, rot.z);
 
 	//don't update xy rot of actors
 	if (selectedNonActor.refr->formType != kFormType_ACHR) {
-		SetRefrTranslation(0x1009, 0x58, rot.x);
-		SetRefrTranslation(0x1009, 0x59, rot.y);
+		SetRefrTranslation(selectedNonActor.refr, 0x1009, 0x58, rot.x);
+		SetRefrTranslation(selectedNonActor.refr, 0x1009, 0x59, rot.y);
 
 		selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
 	}
@@ -343,14 +347,14 @@ void ResetObjectRotation() {
 	}
 
 	//force update
-	SetRefrTranslation(0x1007, 0x58, selectedNonActor.refr->pos.x);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x58, selectedNonActor.refr->pos.x);
 }
 
 void ResetObjectScale() {
 	if (!selectedNonActor.refr) 
 		return;
 
-	SetRefrScale(selectedNonActor.translation.scale * 0.01);
+	SetRefrScale(selectedNonActor.refr, selectedNonActor.translation.scale * 0.01);
 	selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(selectedNonActor.translation.scale);
 }
 
@@ -359,25 +363,25 @@ void SetDefaultObjectTranslation() {
 		return;
 
 	//sca
-	SetRefrScale(selectedNonActor.translation.scale * 0.01);
+	SetRefrScale(selectedNonActor.refr, selectedNonActor.translation.scale * 0.01);
 	selectedNonActor.refr->unk104 = (selectedNonActor.refr->unk104 & 0xFFFF0000) + static_cast<int>(selectedNonActor.translation.scale);
 
 	//pos
-	SetRefrTranslation(0x1007, 0x58, selectedNonActor.translation.position.x);
-	SetRefrTranslation(0x1007, 0x59, selectedNonActor.translation.position.y);
-	SetRefrTranslation(0x1007, 0x6A, selectedNonActor.translation.position.z);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x58, selectedNonActor.translation.position.x);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x59, selectedNonActor.translation.position.y);
+	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x6A, selectedNonActor.translation.position.z);
 
 	selectedNonActor.refr->pos = selectedNonActor.translation.position;
 
 	//rot
 	NiPoint3 rot = RadianToPositiveDegree(selectedNonActor.translation.rotation);
 
-	SetRefrTranslation(0x1009, 0x6A, rot.z);
+	SetRefrTranslation(selectedNonActor.refr, 0x1009, 0x6A, rot.z);
 
 	//don't update xy rot of actors
 	if (selectedNonActor.refr->formType != kFormType_ACHR) {
-		SetRefrTranslation(0x1009, 0x58, rot.x);
-		SetRefrTranslation(0x1009, 0x59, rot.y);
+		SetRefrTranslation(selectedNonActor.refr, 0x1009, 0x58, rot.x);
+		SetRefrTranslation(selectedNonActor.refr, 0x1009, 0x59, rot.y);
 
 		selectedNonActor.refr->rot = selectedNonActor.translation.rotation;
 	}

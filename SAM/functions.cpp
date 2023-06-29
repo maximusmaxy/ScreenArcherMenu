@@ -533,8 +533,8 @@ GFxReq getCells("GetCells", [](auto& result, auto args) {
 GFxReq setCell("SetCell", [](auto& result, auto args) {
 	SetCell(result, args->args[1].GetUInt());
 });
-GFxReq setWorldspace("SetWorldspace", [](auto& result, auto args) {
-	SetWorldspace(result, args->args[1].GetString());
+GFxReq setCellEdid("SetCellEdid", [](auto& result, auto args) {
+	SetCellEdid(result, args->args[1].GetString());
 });
 GFxReq getWorldspaceMods("GetWorldspaceMods", [](auto& result, auto args) {
 	GetWorldspaceMods(result);

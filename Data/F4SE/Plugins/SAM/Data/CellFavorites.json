@@ -1,0 +1,29 @@
+{
+    "type": "removeable",
+    "get": {
+        "type": "sam",
+        "name": "GetCellFavorites"
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetCellEdid"
+    },
+    "save": {
+        "name": "$SAM_Favorite",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "AddCellFavorite",
+            "update": true
+        }
+    },
+    "notification": {
+        "type": "sam",
+        "name": "GetCellName"
+    },
+    "remove": {
+        "type": "sam",
+        "name": "RemoveCellFavorite",
+        "update": true
+    }
+}

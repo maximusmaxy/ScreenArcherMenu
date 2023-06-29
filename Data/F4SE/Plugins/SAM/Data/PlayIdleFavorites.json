@@ -1,5 +1,5 @@
 {
-    "type": "list",
+    "type": "removeable",
     "get": {
         "type": "sam",
         "name": "GetIdleFavorites"
@@ -28,5 +28,10 @@
                 "name": "RotateIdle"
             }
         }
+    },        
+    "remove": {
+        "type": "sam",
+        "name": "RemoveIdleFavorite",
+        "update": true
     }
 }

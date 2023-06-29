@@ -1,0 +1,20 @@
+{
+    "type": "list",
+    "update": true,
+    "list": [
+        {
+            "name": "$SAM_ShowLooksMenu",
+            "func": {
+                "type": "sam",
+                "name": "ShowLooksMenu"
+            }
+        },
+        {
+            "name": "$SAM_BodyMorphsMenu",
+            "func": {
+                "type": "menu",
+                "name": "BodyMorphs"
+            }
+        }
+    ]
+}

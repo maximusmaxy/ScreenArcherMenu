@@ -1,0 +1,34 @@
+{
+    "type": "list",
+    "update": true,
+    "get": {
+        "type": "sam",
+        "name": "GetWorldspaceCells",
+        "args": [
+            {
+                "type": "var",
+                "name": "worldspaceMod"
+            },
+            {
+                "type": "var",
+                "name": "worldspaceForm"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetCellEdid"
+    },
+    "save": {
+        "name": "$SAM_Favorite",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "AddCellFavorite"
+        }
+    },
+    "notification": {
+        "type": "sam",
+        "name": "GetCellName"
+    }
+}

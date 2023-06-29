@@ -139,11 +139,23 @@ class IMenuWrapper
 {
 public:
 	IMenu* menu;
+	GFxMovieRoot* root;
 
-	IMenuWrapper() : menu(nullptr) {}
+	IMenuWrapper() : menu(nullptr), root(nullptr) {}
 	IMenuWrapper(IMenu* menu);
 	~IMenuWrapper();
 
+	operator bool() const {
+		return root;
+	}
+	GFxMovieRoot* operator->() {
+		return root;
+	}
+
+	template <class T>
+	T* Get() {
+		return reinterpret_cast<T*>(menu);
+	}
 	GFxMovieRoot* GetRoot();
 	bool IsOpen();
 	bool IsRegistered();
@@ -192,6 +204,7 @@ public:
 	void PopMenu();
 	void PopMenuTo(const char* name);
 	void RefreshMenu();
+	void RefreshCamera();
 	void UpdateMenu();
 	void ShowNotification(const char* name, bool store);
 	void SetTitle(const char* name);

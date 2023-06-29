@@ -131,8 +131,10 @@
 			
 			this.sliderList.title.addEventListener(MouseEvent.CLICK, function(event:MouseEvent) {
 				if (isSearching) {
-					if (stage.focus != sliderList.title)
+					if (stage.focus != sliderList.title) {
+						stage.focus = sliderList.title;
 						sliderList.title.setSelection(sliderList.title.length, sliderList.title.length);
+					}
 				} else {
 					StartSearchInput();
 				}
@@ -223,6 +225,19 @@
 			}
 			
 			Data.scrollNodeMarker = ScrollNodeMarker;
+			
+			Util.unselectText = function() {
+				if (Data.selectedText != null)
+				{
+					Data.selectedText.value.type = TextFieldType.DYNAMIC;
+					Data.selectedText.value.setSelection(0,0);
+					Data.selectedText.value.selectable = false;
+					Data.selectedText = null;
+					if (!Data.extraHotkeys)
+						Data.f4se.AllowTextInput(false);
+					stage.focus = null;
+				}
+			}
 		}
 		
 		public function ScrollNodeMarker(inc:Boolean) {
@@ -519,6 +534,9 @@
 					return;
 				case 13://Enter
 				case 276://Pad A
+					if (isSearching && (stage.focus == sliderList.title)) {
+						sliderList.focus = sliderList;
+					}
 					if (buttonHintConfirm.ButtonVisible) {
 						ConfirmButton();
 					} else {
@@ -586,9 +604,9 @@
 //						sliderList.scrollList(1);
 //					}
 //					return;
-				case 520://CTRL+Backspace
-					CtrlBackspace();
-					return;
+//				case 520://CTRL+Backspace
+//					CtrlBackspace();
+//					return;
 
 				case 601://CTRL+Y	
 					if (Data.extraHotkeys)
@@ -740,9 +758,20 @@
 					case 191://forwardslash
 						if (sliderList.title.text.length == 0) {
 							StopSearchInput();
+							sliderList.updateState(currentState.pos);
+							sliderList.update();
+							sliderList.updateSelected(currentState.x, currentState.y);
+							Util.playOk();
 						} else {
 							stage.focus = sliderList;
 						}
+						return true;
+					case 9://Tab
+						StopSearchInput();
+						sliderList.updateState(currentState.pos);
+						sliderList.update();
+						sliderList.updateSelected(currentState.x, currentState.y);
+						Util.playCancel();
 						return true;
 				}
 			} else {
@@ -821,6 +850,7 @@
 		public function SelectFolder(i:int)
 		{
 			var type:int = Data.getType(i);
+			i = Data.getIndex(i);
 			if (type == Data.ITEM_LIST) {
 				//trace("Select folder list");
 				var path:String = Data.getFolderPath(i);
@@ -846,6 +876,7 @@
 		{
 			//trace("Select folder checkbox", i, checked);
 			var type:int = Data.getType(i);
+			i = Data.getIndex(i);
 			if (type == Data.ITEM_FOLDER) {
 				var folderResult:GFxResult = Data.getFolderCheckbox(Data.menuFolder[i].path, Data.folderData.ext, Data.menuData.race);
 				if (!CheckError(folderResult))
@@ -1412,6 +1443,7 @@
 			//trace("Update reload");
 			Data.updateMenu(Data.menuName, Data.menuData, Data.latentGet.result);
 			Data.latentGet.Clear();
+			UpdateEditFunctions(Data.menuData);
 			StopSearchInput();
 			sliderList.storeSelected();
 			sliderList.update();
@@ -1473,15 +1505,16 @@
 		public function SelectList(i:int) 
 		{
 			//trace("Select List", i);
-			i = Data.getIndex(i);
 			switch (Data.menuType) {
 				case Data.MENU_LIST:
 				case Data.MENU_MIXED:
 				case Data.MENU_ADJUSTMENT:
 				case Data.MENU_REMOVEABLE:
+					i = Data.getIndex(i);
 					CallSet(i, Data.menuValues[i]);
 					break;
 				case Data.MENU_MAIN:
+					i = Data.getIndex(i);
 					PushMenu(Data.menuData.values[i])
 					break;
 				case Data.MENU_FOLDER:
@@ -1515,7 +1548,9 @@
 		public function SelectCheckbox(i:int, checked:Boolean = false)
 		{
 			//trace("Select Checkbox", i, checked);
-			i = Data.getIndex(i);
+			if (Data.menuType != Data.MENU_FOLDERCHECKBOX)
+				i = Data.getIndex(i);
+				
 			switch (Data.menuType) 
 			{
 				case Data.MENU_CHECKBOX:
@@ -1790,7 +1825,7 @@
 		
 		public function MoveAdjustmentDown(id:int):GFxResult
 		{
-			if (Data.moveAdjustment(id, true)) {
+			if (sam.MoveAdjustment(Data.menuValues[id], true)) {
 				var result:GFxResult = CallDataFunction(Data.menuData.get);
 				if (result && result.type != Data.RESULT_ERROR) {
 					Data.updateMenu(Data.menuName, Data.menuData, result);
@@ -1808,7 +1843,7 @@
 		
 		public function MoveAdjustmentUp(id:int):GFxResult
 		{
-			if (Data.moveAdjustment(id, false)) {
+			if (sam.MoveAdjustment(Data.menuValues[id], false)) {
 				var result:GFxResult = CallDataFunction(Data.menuData.get);
 				if (result && result.type != Data.RESULT_ERROR) {
 					Data.updateMenu(Data.menuName, Data.menuData, result);
@@ -1968,6 +2003,8 @@
 					AllowTextInput(false);
 			}
 		}
+		
+		
 		
 		public function OnSearch(e:Event) {
 			//var filtered:Array = FilterTest(Data.menuOptions, sliderList.title.text);
@@ -2590,17 +2627,32 @@
 			return Data.resultSuccess;
 		}
 		
-		public function CtrlBackspace()
+		public function RefreshCamera():void
+		{
+			if (Data.menuName == "Camera")
+				RefreshValues();
+		}
+		
+		public function IsTextFocused():Boolean
 		{
 			if (stage.focus == null)
-				return;
+				return false;
 				
 			var type:String = getQualifiedClassName(stage.focus);
-			if (type == "TextField") {
-				var textField:TextField = stage.focus;
-				textField.text.length = 0;
-			}
+			return (type == "TextField");
 		}
+		
+//		public function CtrlBackspace()
+//		{
+//			if (stage.focus == null)
+//				return;
+//				
+//			var type:String = getQualifiedClassName(stage.focus);
+//			if (type == "TextField") {
+//				var textField:TextField = stage.focus;
+//				textField.text.length = 0;
+//			}
+//		}
 		
 		public function CanClose():Boolean
 		{
@@ -2625,7 +2677,8 @@
 				if (CanClose())
 				{
 					SaveState();
-					//CleanUp();
+					Util.unselectText();
+					StopSearchInput();
 					saved = true;
 					isOpen = false;
 					Util.playCancel();

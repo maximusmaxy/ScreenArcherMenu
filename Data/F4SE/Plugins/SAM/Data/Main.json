@@ -11,11 +11,12 @@
         "$SAM_FaceMorphsMenu",
         "$SAM_EyesMenu",
         "$SAM_InventoryMenu",
+        "$SAM_LooksMenu",
         "$SAM_LightMenu",
         "$SAM_CameraMenu",
+        "$SAM_LocationMenu",
         "$SAM_HacksMenu",
         "$SAM_OptionsMenu",
-        "$SAM_BodyMorphsMenu",
         "$SAM_ExtensionsMenu"
     ],
     "values": [
@@ -29,11 +30,12 @@
         "FaceMorphCategories",
         "Eyes",
         "Inventory",
+        "Looks",
         "LightSelect",
         "Camera",
+        "Location",
         "Hacks",
         "Options",
-        "BodyMorphs",
         "Extensions"
     ]
 }

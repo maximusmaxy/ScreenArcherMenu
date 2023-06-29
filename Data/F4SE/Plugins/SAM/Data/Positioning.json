@@ -134,7 +134,8 @@
         },
         {
             "name": "$SAM_TGP",
-            "type": "list",
+            "type": "checkbox",
+            "refresh": true,
             "func": {
                 "type": "sam",
                 "name": "SelectPositioning"
@@ -142,7 +143,8 @@
         },
         {
             "name": "$SAM_TCL",
-            "type": "list",
+            "type": "checkbox",
+            "refresh": "true",
             "func": {
                 "type": "sam",
                 "name": "SelectPositioning"

@@ -37,6 +37,22 @@
                 "type": "local",
                 "name": "SetExtraHotkeys"
             }
+        },
+        {
+            "name": "$SAM_ConfirmClose",
+            "type": "checkbox"
+        },
+        {
+            "name": "$SAM_CameraControl",
+            "type": "checkbox"
+        },
+        {
+            "name": "$SAM_BoneOverlay",
+            "type": "checkbox"
+        },
+        {
+            "name": "$SAM_PosingGizmo",
+            "type": "checkbox"
         }
     ]
 }

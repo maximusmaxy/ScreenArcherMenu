@@ -67,6 +67,11 @@ int Function GetAdjustmentFile(ObjectReference akRef, string filename) native gl
 ; Removes the adjustment by filename
 Function RemoveAdjustmentFile(ObjectReference akRef, string filename) native global
 
+; Copies the specified adjustment handle from src actor to dst actor and returns the new adjustment handle
+int Function CopyAdjustment(ObjectReference srcRef, int handle, ObjectReference dstRef) native global
+
+; Copies all adjustments from src actor to dst actor, any existing adjustments are removed
+bool Function CopyAllAdjustments(ObjectReference srcRef, ObjectReference dstRef) native global
 
 ;---------------------------------------------------------------
 ; Node Lists

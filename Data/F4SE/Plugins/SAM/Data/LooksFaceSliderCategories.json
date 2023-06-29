@@ -1,0 +1,12 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetLooksFaceSliderCategories"
+    },
+    "set": {
+        "type": "menu",
+        "name": "LooksFaceSliders",
+        "var": "faceSliderCategory"
+    }
+}

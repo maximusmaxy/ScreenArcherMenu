@@ -1,0 +1,17 @@
+{
+    "type": "list",
+    "get": {
+        "type": "sam",
+        "name": "GetLooksHairs",
+        "args": [
+            {
+                "type": "var",
+                "name": "hairMod"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetLooksHair"
+    }
+}

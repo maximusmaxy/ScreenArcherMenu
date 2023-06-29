@@ -53,6 +53,7 @@ void UpdateNonActorRefr();
 void SaveObjectTranslation();
 
 void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool hasStep);
+void AdjustRefrPosition(TESObjectREFR* refr, int type, float dif);
 void ResetObjectPosition();
 void ResetObjectRotation();
 void ResetObjectScale();

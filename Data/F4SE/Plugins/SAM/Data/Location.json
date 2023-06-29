@@ -1,0 +1,46 @@
+{
+    "type": "list",
+    "update": true,
+    "list": [
+        {
+            "name": "$SAM_COCInterior",
+            "func": {
+                "type": "menu",
+                "name": "CellMods"
+            }
+        },
+        {
+            "name": "$SAM_COCWorldspace",
+            "func": {
+                "type": "menu",
+                "name": "WorldspaceMods"
+            }
+        },
+        {
+            "name": "$SAM_COCFavorites",
+            "func": {
+                "type": "menu",
+                "name": "CellFavorites"
+            }
+        },
+        {
+            "name": "$SAM_COCSearch",
+            "func": {
+                "type": "menu",
+                "name": "CellSearch"
+            }
+        }
+    ],
+    "save": {
+        "name": "$SAM_Favorite",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "AddCellFavorite"
+        }
+    },
+    "notification": {
+        "type": "sam",
+        "name": "GetCellName"
+    }
+}

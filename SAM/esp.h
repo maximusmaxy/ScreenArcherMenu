@@ -6,10 +6,28 @@
 
 #include "f4se/GameData.h"
 
-#include "zlib.h"
+#include "miniz/miniz.h"
 
 namespace ESP {
-	struct RecordHeader {
+	//constexpr UInt32 Sig(const char* val) {
+	//	UInt32 result = 0;
+	//	result |= (UInt8)val[3];
+	//	result |= (UInt8)val[2] << 8;
+	//	result |= (UInt8)val[1] << 16;
+	//	result |= (UInt8)val[0] << 24;
+	//	return result;
+	//}
+
+	constexpr UInt32 Sig(const char* val) {
+		UInt32 result = 0;
+		result |= (UInt8)val[0];
+		result |= (UInt8)val[1] << 8;
+		result |= (UInt8)val[2] << 16;
+		result |= (UInt8)val[3] << 24;
+		return result;
+	}
+
+	struct Record {
 		UInt32 sig;
 		UInt32 size;
 		UInt32 flags;
@@ -17,6 +35,10 @@ namespace ESP {
 		UInt32 info1;
 		UInt16 version;
 		UInt16 info2;
+
+		inline bool IsCompressed() {
+			return flags & (1 << 18);
+		}
 	};
 
 	struct Group {
@@ -29,15 +51,20 @@ namespace ESP {
 	};
 
 	union Header {
-		RecordHeader record;
+		Record record;
 		Group group;
+	};
+
+	struct Element {
+		UInt32 sig;
+		UInt16 len;
 	};
 
 	class Reader {
 		using Masters = std::vector<std::pair<UInt32, UInt32>>;
 	private:
 		std::ifstream filestream;
-		std::stringstream stringstream;
+		std::istringstream stringstream;
 		std::istream* in;
 		const ModInfo* modInfo;
 		Masters masters;
@@ -51,7 +78,7 @@ namespace ESP {
 			return filestream.fail();
 		}
 		bool Eof() {
-			return filestream.eof();
+			return filestream.rdstate() & (std::ios::badbit | std::ios::failbit | std::ios::eofbit);
 		}
 
 		inline void Skip(UInt32 offset) {
@@ -74,6 +101,11 @@ namespace ESP {
 			return *this;
 		}
 
+		Reader& operator>>(Element& rhs) {
+			*this >> rhs.sig >> rhs.len;
+			return *this;
+		}
+
 		template <class T = UInt32>
 		T Get() {
 			T result;
@@ -81,70 +113,40 @@ namespace ESP {
 			return result;
 		}
 
-		void ForEachSig(UInt32 size, const std::function<void(UInt32 sig, UInt32 len)>& functor) {
+		void ForEachSig(UInt32 size, const std::function<void(Element& element)>& functor) {
 			auto count = 0;
-			UInt32 sig;
-			UInt16 len;
+			Element element;
 			while (count < size) {
-				*this >> sig >> len;
-				count += (6 + len);
-				functor(sig, len);
+				*this >> element;
+				count += (6 + element.len);
+				functor(element);
 			}
 		}
 
-		void ReadHeader() {
-			auto PushMaster = [](Masters& masters, const ModInfo* info) {
-				if (info != nullptr) {
-					if (info->IsLight()) {
-						masters.push_back(std::make_pair(0xFE | info->lightIndex << 12, 0xFFF));
-					}
-					else {
-						masters.push_back(std::make_pair(info->modIndex << 24, 0xFFFFFF));
-					}
+		void ForEachRecord(Group& group, const std::function<void(Record& record)>& functor) {
+			Record record;
+			auto count = 0;
+			const auto size = group.size - 0x18;
+			std::string buffer;
+			while (count < size) {
+				*this >> record;
+				count += (0x18 + record.size);
+
+				bool success = true;
+				bool compressed = record.IsCompressed();
+				if (compressed) {
+					auto dstLen = Get();
+					success = Inflate(record.size - 4, dstLen, buffer);
+					record.size = dstLen;
 				}
-				else {
-					masters.push_back(std::make_pair(0xFF000000, 0xFFFFFF));
-				}
-			};
 
-			RecordHeader header;
-			*this >> header;
+				if (success) {
+					functor(record);
 
-			std::string masterName;
-			ForEachSig(header.size, [&](auto sig, auto len) {
-				switch (sig) {
-				case 'TSAM':
-				{
-					auto count = 0;
-					while (count < len) {
-						*this >> masterName;
-						count += (masterName.size() + 1);
-						auto info = (*g_dataHandler)->LookupModByName(masterName.c_str());
-						PushMaster(masters, info);
-					}
-					break;
-				}
-				default:
-					Skip(len);
-				}
-			});
-
-			PushMaster(masters, modInfo);
-		}
-
-		inline UInt32 GetFormId(UInt32 formId) {
-			const auto [modIndex, mask] = masters.at(formId >> 24);
-			if (modIndex == 0xFF000000)
-				return 0;
-			return modIndex | (formId & mask);
-		}
-
-		inline UInt32 ReadFormId() {
-			return GetFormId(Get());
-		}
-
-		inline void SkipGroup(UInt32 len) {
-			Skip(len - 0x18);
+					if (compressed)
+						EndInflate();
+				}	
+			}
 		}
 
 		bool SeekToGroup(UInt32 sig) {
@@ -161,21 +163,114 @@ namespace ESP {
 			return false;
 		}
 
-		void Inflate(UInt32 srcLen) {
-			auto dstLen = Get();
-			std::string srcbuffer;
-			srcbuffer.resize(srcLen);
-			filestream.read(srcbuffer.data(), srcLen - 4);
+		bool SeekToGroup(UInt32 sig, Group& group) {
+			while (!Eof()) {
+				*this >> group;
+				if (group.value != sig) {
+					SkipGroup(group.size);
+				}
+				else {
+					return true;
+				}
+			}
+			return false;
+		}
 
-			std::string dstbuffer;
-			dstbuffer.resize(dstLen);
-			uncompress((UInt8*)dstbuffer.data(), &dstLen, (UInt8*)srcbuffer.data(), srcLen);
+		//Returns the remaining length of the record after current element
+		UInt32 SeekToElement(UInt32 len, UInt32 sig) {
+			UInt32 count = 0;
+			Element element;
+			while (count < len) {
+				*this >> element;
+				count += 6;
+				if (element.sig == sig)
+					return len - count;
+				count += element.len;
+				Skip(element.len);
+			}
+			return 0;
+		}
 
-			stringstream = std::stringstream(dstbuffer);
+		UInt32 SeekToElement(UInt32 len, UInt32 sig, Element& element) {
+			UInt32 count = 0;
+			while (count < len) {
+				*this >> element;
+				count += 6;
+				if (element.sig == sig)
+					return len - count;
+				count += element.len;
+				Skip(element.len);
+			}
+			return 0;
+		}
+
+		void ReadHeader() {
+			auto PushMaster = [](Masters& masters, const ModInfo* info) {
+				if (info != nullptr) {
+					if (info->IsLight()) {
+						masters.push_back(std::make_pair(0xFE000000 | (info->lightIndex << 12), 0xFFF));
+					}
+					else {
+						masters.push_back(std::make_pair(info->modIndex << 24, 0xFFFFFF));
+					}
+				}
+				else {
+					masters.push_back(std::make_pair(0xFF000000, 0xFFFFFF));
+				}
+			};
+
+			Record header;
+			*this >> header;
+
+			std::string masterName;
+			Element element;
+			auto remaining = SeekToElement(header.size, Sig("MAST"), element);
+			while (remaining > 0) {
+				remaining -= element.len;
+				*this >> masterName;
+				auto info = (*g_dataHandler)->LookupModByName(masterName.c_str());
+				PushMaster(masters, info);
+				remaining = SeekToElement(remaining, Sig("MAST"), element);
+			}
+			PushMaster(masters, modInfo);
+		}
+
+		inline UInt32 GetFormId(UInt32 formId) {
+			const auto index = formId >> 24;
+			if (index >= masters.size())
+				return 0;
+			const auto [modIndex, mask] = masters.at(index);
+			if (modIndex == 0xFF000000)
+				return 0;
+			return modIndex | (formId & mask);
+		}
+
+		inline UInt32 ReadFormId() {
+			return GetFormId(Get());
+		}
+
+		inline void SkipGroup(UInt32 len) {
+			Skip(len - 0x18);
+		}
+
+		//This is not efficient in the slightest. 
+		bool Inflate(UInt32 srcLen, UInt32 dstLen, std::string& srcBuffer) {
+			srcBuffer.resize(srcLen);
+			filestream.read(srcBuffer.data(), srcLen);
+
+			std::string dstBuffer;
+			dstBuffer.resize(dstLen);
+			if (uncompress((UInt8*)dstBuffer.data(), &dstLen, (UInt8*)srcBuffer.data(), srcLen) != 0)
+				return false;
+
+			stringstream = std::istringstream(std::move(dstBuffer));
 			in = &stringstream;
+
+			return true;
 		}
 
 		void EndInflate() {
+			stringstream.clear();
 			in = &filestream;
 		}
 	};

@@ -1,0 +1,24 @@
+{
+    "type": "slider",
+    "slider": {
+        "type": "float",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "stepkey": 1
+    },
+    "get": {
+        "type": "sam",
+        "name": "GetLooksFaceSliders",
+        "args": [
+            {
+                "type": "var",
+                "name": "faceSliderCategory"
+            }
+        ]
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetLooksFaceSlider"
+    }
+}

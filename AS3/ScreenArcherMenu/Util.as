@@ -31,18 +31,19 @@
 			playSound(UI_CANCEL);
 		}
 		
-		public static function unselectText() {
-			if (Data.selectedText != null)
-			{
-				Data.selectedText.value.type = TextFieldType.DYNAMIC;
-				Data.selectedText.value.setSelection(0,0);
-				Data.selectedText.value.selectable = false;
-				Data.selectedText = null;
-
-				if (!Data.extraHotkeys)
-					Data.f4se.AllowTextInput(false);
-			}
-		}
+		public static var unselectText:Function = function() {}
+//		public static function unselectText() {
+//			if (Data.selectedText != null)
+//			{
+//				Data.selectedText.value.type = TextFieldType.DYNAMIC;
+//				Data.selectedText.value.setSelection(0,0);
+//				Data.selectedText.value.selectable = false;
+//				Data.selectedText = null;
+//
+//				if (!Data.extraHotkeys)
+//					Data.f4se.AllowTextInput(false);
+//			}
+//		}
 		
 		public static function shallowCopyArray(arr:Array):Array {
 			var result:Array = new Array(arr.length);

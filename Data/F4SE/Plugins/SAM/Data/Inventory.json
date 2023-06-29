@@ -10,13 +10,6 @@
             }
         },
         {
-            "name": "$SAM_ShowLooksMenu",
-            "func": {
-                "type": "sam",
-                "name": "ShowLooksMenu"
-            }
-        },
-        {
             "name": "$SAM_AddItem",
             "func": {
                 "type": "menu",
@@ -42,6 +35,20 @@
             "func": {
                 "type": "menu",
                 "name": "InventoryRemove"
+            }
+        },
+        {
+            "name": "$SAM_PlaceStatic",
+            "func": {
+                "type": "menu",
+                "name": "PlaceStaticMods"
+            }
+        },
+        {
+            "name": "$SAM_SearchStatic",
+            "func": {
+                "type": "menu",
+                "name": "SearchStatic"
             }
         }
     ]

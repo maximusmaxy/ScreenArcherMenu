@@ -46,7 +46,7 @@ void GetWorldspaceMods(GFxResult& result);
 void GetWorldspacesFromMod(GFxResult& result, const char* mod);
 void GetWorldspaceCells(GFxResult& result, const char* mod, UInt32 formId);
 void SetCell(GFxResult&, UInt32);
-void SetWorldspace(GFxResult&, const char*);
+void SetCellEdid(GFxResult&, const char*);
 void GetLastSearchResultCell(GFxResult&);
 void SearchCells(GFxResult& result, const char* search);
 const char* GetCurrentDisplayedCell();

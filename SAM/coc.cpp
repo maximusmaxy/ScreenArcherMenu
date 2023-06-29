@@ -19,7 +19,10 @@
 #include <format>
 
 FormSearchResult teleportSearchResult;
+
+TESWorldSpace* lastWorldspace = nullptr;
 std::vector<std::pair<std::string, std::string>> cellResult;
+
 std::vector<std::string> cellFavorites;
 
 typedef void(*_CenterOnCellInternal)(TESObjectREFR* player, const char* edid, TESObjectCELL* cell);
@@ -77,7 +80,7 @@ void SetCell(GFxResult& result, UInt32 formId) {
 	samManager.OpenOrCloseMenu();
 }
 
-void SetWorldspace(GFxResult& result, const char* edid) {
+void SetCellEdid(GFxResult& result, const char* edid) {
 	samManager.storedEdid = edid;
 	samManager.closeMessage = "$SAM_COCMessage";
 	samManager.OpenOrCloseMenu();
@@ -109,97 +112,116 @@ void GetWorldspacesFromMod(GFxResult& result, const char* mod) {
 
 void GetWorldspaceCellsFromFile(GFxResult& result, TESWorldSpace* worldspace, const ModInfo* info)
 {
-	ESP::Reader esp(info);
+	using namespace ESP;
+
+	Reader esp(info);
 	if (esp.Fail())
 		return result.SetError(std::string("Failed to read esp: ") + info->name);
 
 	esp.ReadHeader();
-	if (!esp.SeekToGroup('DLRW'))
+	Header header;
+	if (!esp.SeekToGroup(Sig("WRLD"), header.group))
 		return result.SetError("No worldspaces in esp");
-
-	ESP::Header header;
+	
 	esp >> header;
-	if (header.group.sig != 'DLRW')
+	if (header.group.sig != Sig("WRLD"))
 		return result.SetError("No worldspaces in esp");
 	
 	const int gridSentinel = 0x7FFFFFFF;
 	std::string edid;
+	std::string buffer;
 
-	while (header.record.sig == 'DLRW' && !esp.Eof()) 
+	while (header.record.sig == Sig("WRLD") && !esp.Eof())
 	{
 		//world
 		esp.Skip(header.record.size);
 		if (esp.GetFormId(header.record.formId) == worldspace->formID) {
 			esp >> header;
 			//world subgroup
-			if (header.group.sig == 'PURG') {
+			if (header.group.sig == Sig("GRUP")) {
 				esp >> header;
 				//persistent cell
-				if (header.record.sig == 'LLEC') {
+				if (header.record.sig == Sig("CELL")) {
 					esp.Skip(header.record.size); 
 					auto cellform = header.record.formId;
 					esp >> header;
 					//persistent cell refs
-					if (header.group.sig == 'PURG' && header.group.value == cellform) {
+					if (header.group.sig == Sig("GRUP") && header.group.value == cellform) {
 						esp.SkipGroup(header.group.size); 
 						esp >> header;
 					}
 				}
 
 				//Cell blocks and sublocks
-				while (header.record.sig != 'DLRW' && !esp.Eof()) {
+				while (header.record.sig != Sig("WRLD") && !esp.Eof()) {
 					switch (header.record.sig) {
-					case 'PURG':
+					case Sig("GRUP"):
 						esp >> header;
 						break;
-					case 'LLEC':
+					case Sig("CELL"):
 					{
-						bool compressed = header.record.flags & (1 << 18);
-						if (compressed)
-							esp.Inflate(header.record.size);
 
-						SInt32 gridx = gridSentinel;
-						SInt32 gridy = gridSentinel;
-						edid.clear();
+						bool compressed = header.record.IsCompressed();
+						bool success = true;
+						if (compressed) {
+							auto dstLen = esp.Get();
+							success = esp.Inflate(header.record.size - 4, dstLen, buffer);
+							header.record.size = dstLen;
+						}
 
-						esp.ForEachSig(header.record.size, [&](auto elementsig, auto elementlen) {
-							switch (elementsig) {
-							case 'DIDE':
+						if (success) {
+							//SInt32 gridx = gridSentinel;
+							//SInt32 gridy = gridSentinel;
+							//edid.clear();
+
+							//esp.ForEachSig(header.record.size, [&](auto& element) {
+							//	switch (element.sig) {
+							//	case Sig("EDID"):
+							//		esp >> edid;
+							//		break;
+							//	case Sig("XCLC"):
+							//		esp >> gridx >> gridy;
+							//		esp.Skip(4);
+							//		break;
+							//	default:
+							//		esp.Skip(element.len);
+							//	}
+							//});
+
+							//if (edid.size()) {
+							//	cellResult.emplace_back(edid, edid);
+							//}
+							//else if (gridx != gridSentinel && gridy != gridSentinel) {
+							//	cellResult.emplace_back(std::format("Grid {}, {}", gridx, gridy), );
+							//}
+
+							auto remaining = esp.SeekToElement(header.record.size, Sig("EDID"));
+							if (remaining > 0) {
 								esp >> edid;
-								break;
-							case 'CLCX':
-								esp >> gridx >> gridy;
-								esp.Skip(4);
-								break;
-							default:
-								esp.Skip(elementlen);
+								remaining -= (edid.size() + 1);
+								if (edid.size())
+									cellResult.emplace_back(edid, edid);
+								esp.Skip(remaining);
 							}
-						});
+
+							if (compressed)
+								esp.EndInflate();
+						}
 
 						auto cellform = header.record.formId;
-						if (edid.size()) {
-							cellResult.emplace_back(edid, edid);
-						}
-						//else if (gridx != gridSentinel && gridy != gridSentinel) {
-						//	cellResult.emplace_back(std::format("Grid {}, {}", gridx, gridy), );
-						//}
-
-						if (compressed)
-							esp.EndInflate();
-
 						esp >> header;
 						//cell refs
-						if (header.group.sig == 'PURG' && header.group.value == cellform) {
+						if (header.group.sig == Sig("GRUP") && header.group.value == cellform) {
 							esp.SkipGroup(header.group.size);
 							esp >> header;
 						}
 						break;
 					}
-					case 'DLRW':
+					case Sig("WRLD"):
 						break;
 					default:
 						//force to break if unrecognized
-						header.record.sig = 'DLRW';
+						header.record.sig = Sig("WRLD");
 					}
 				}
 			}
@@ -209,7 +231,7 @@ void GetWorldspaceCellsFromFile(GFxResult& result, TESWorldSpace* worldspace, co
 		else {
 			esp >> header;
 			//skip world subgroup
-			if (header.group.sig == 'PURG') {
+			if (header.group.sig == Sig("GRUP")) {
 				esp.SkipGroup(header.group.size);
 				esp >> header;
 			}
@@ -247,34 +269,38 @@ void GetWorldspaceCells(GFxResult& result, const char* mod, UInt32 formId) {
 	if (!worldspace)
 		return result.SetError("Form was not a worldspace");
 
-	//collect seperately to add empty grid cells after named edid cells
-	cellResult.clear();
-	//gridResult.clear();
+	if (lastWorldspace != worldspace) {
+		//collect seperately to add empty grid cells after named edid cells
+		cellResult.clear();
+		//gridResult.clear();
 
-	const std::vector<UInt32> ignoreWorldspaces{
-		0x3C //Commonwealth
-	};
-	auto ignore = std::find(ignoreWorldspaces.begin(), ignoreWorldspaces.end(), formId) != ignoreWorldspaces.end();
+		const std::vector<UInt32> ignoreWorldspaces{
+			0x3C //Commonwealth
+		};
+		auto ignore = std::find(ignoreWorldspaces.begin(), ignoreWorldspaces.end(), formId) != ignoreWorldspaces.end();
 
-	if (ignore) {
-		GetWorldspaceCellsFromData(result, worldspace);
+		if (ignore) {
+			GetWorldspaceCellsFromData(result, worldspace);
+		}
+		else {
+			const ModInfo* info = (*g_dataHandler)->LookupModByName(mod);
+			if (!info)
+				return result.SetError("Could not find mod");
+
+			GetWorldspaceCellsFromFile(result, worldspace, info);
+		}
+
+		if (result.type == GFxResult::Error)
+			return;
+
+		auto SortCells = [](auto& lhs, auto& rhs) {
+			return strnatcasecmp(lhs.first.c_str(), rhs.first.c_str()) < 0;
+		};
+		std::sort(cellResult.begin(), cellResult.end(), SortCells);
+		//std::sort(gridResult.begin(), gridResult.end(), SortCells);
+
+		lastWorldspace = worldspace;
 	}
-	else {
-		const ModInfo* info = (*g_dataHandler)->LookupModByName(mod);
-		if (!info)
-			return result.SetError("Could not find mod");
-
-		GetWorldspaceCellsFromFile(result, worldspace, info);
-	}
-	
-	if (result.type == GFxResult::Error)
-		return;
-
-	auto SortCells = [](auto& lhs, auto& rhs) {
-		return strnatcasecmp(lhs.first.c_str(), rhs.first.c_str()) < 0;
-	};
-	std::sort(cellResult.begin(), cellResult.end(), SortCells);
-	//std::sort(gridResult.begin(), gridResult.end(), SortCells);
 
 	result.CreateMenuItems();
 	for (auto& [name, edid] : cellResult) {
@@ -384,14 +410,7 @@ void GetCellFavorites(GFxResult& result)
 
 	result.CreateMenuItems();
 	for (auto& item : cellFavorites) {
-		auto formId = FromFormIdentifier(item.c_str());
-		if (formId) {
-			auto form = LookupFormByID(formId);
-			if (form) {
-				auto edid = form->GetEditorID();
-				result.PushItem((edid && *edid && edid != aWilderness) ? edid : item.c_str(), formId);
-			}
-		}
+		result.PushItem(item.c_str(), item.c_str());
 	}
 }
 
@@ -418,25 +437,21 @@ void AppendCellFavorite(GFxResult& result)
 	if (!cell)
 		return result.SetError("Could not find current cell");
 
-	auto identifier = ToFormIdentifier(cell->formID);
-	const bool hasIdentifier = std::any_of(cellFavorites.begin(), cellFavorites.end(), [&identifier](auto& rhs) {
-		return _stricmp(identifier.c_str(), rhs.c_str()) == 0;
+	auto edid = cell->GetEditorID();
+	if (!edid || !*edid || edid == aWilderness)
+		return result.SetError("Could not favorite cell. No editor ID");
+
+	const bool hasIdentifier = std::any_of(cellFavorites.begin(), cellFavorites.end(), [&edid](auto& rhs) {
+		return _stricmp(edid, rhs.c_str()) == 0;
 	});
 	if (hasIdentifier)
 		return result.SetError("Cell has already been favorited");
 
-	cellFavorites.push_back(identifier);
-
+	cellFavorites.push_back(edid);
 	if (!SaveCellFavorites())
 		return result.SetError("Failed to save CellFavorites.txt");
 
-	std::string notif;
-	auto edid = cell->GetEditorID();
-	if (edid && *edid && edid != aWilderness)
-		notif.append(edid);
-	else
-		notif.append("Cell");
-	notif.append(" has been favorited!");
+	std::string notif = std::format("{} has been favorited!", edid);
 	samManager.ShowNotification(notif.c_str(), false);
 }
 

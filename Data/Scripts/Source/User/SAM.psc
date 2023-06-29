@@ -41,7 +41,7 @@ Function SetItems(string[] names, var[] values) native global
 Function SetNames(string[] names) native global
 
 ; This is for notification callbacks
-Function SetNotifcation(string msg) native global
+Function SetNotification(string msg) native global
 
 ; This is for title callbacks
 Function SetTitle(string msg) native global
@@ -94,3 +94,6 @@ function ForceQuit() native global
 
 ; Used by MCM for the menu toggle hotkey
 Function ToggleMenu() native global
+
+; Reregister for debugging purposes
+Function ReregisterMenu() native global

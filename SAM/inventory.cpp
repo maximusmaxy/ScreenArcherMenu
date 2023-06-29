@@ -24,6 +24,8 @@
 #include "forms.h"
 #include "papyrus.h"
 #include "functions.h"
+#include "esp.h"
+#include "positioning.h"
 
 #include <thread>
 #include <fstream>
@@ -36,9 +38,13 @@
 
 FormSearchResult itemSearchResult;
 FormSearchResult staticSearchResult;
+
 std::vector<const char*> storedItemMods;
 std::vector<const char*> storedStaticMods;
 std::string lastSelectedMod;
+
+std::vector<std::pair<std::string, UInt32>> staticFileItems;
+std::pair<const char*, UInt32> lastStaticFile{ nullptr, 0 };
 
 #define ITEMS_SIZE 9
 #define STATICS_SIZE 8
@@ -610,31 +616,86 @@ void GetStaticGroups(GFxResult& result, const char* modName)
 	}
 }
 
+void FindItemsFromFile(GFxResult& result, const ModInfo* info, UInt32 signature,
+	std::vector<std::pair<std::string, UInt32>>& items) 
+{
+	using namespace ESP;
+
+	Reader esp(info);
+	if (esp.Fail())
+		return result.SetError("Failed to read esp");
+
+	esp.ReadHeader();
+	Group group;
+	if (!esp.SeekToGroup(signature, group))
+		return result.SetError("Failed to find item type in file");
+
+	std::string edid;
+	esp.ForEachRecord(group, [&](Record& record) {
+		UInt32 remaining = esp.SeekToElement(record.size, Sig("EDID"));
+		if (remaining) {
+			esp >> edid;
+			remaining -= (edid.size() + 1);
+			const auto formId = esp.GetFormId(record.formId);
+			if (formId)
+				items.push_back(std::make_pair(edid, formId));
+			esp.Skip(remaining);
+		}
+	});
+
+	std::sort(items.begin(), items.end(), [](auto& lhs, auto& rhs) {
+		return strnatcasecmp(lhs.first.c_str(), rhs.first.c_str()) < 0;
+	});
+}
+
 void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex)
 {
 	const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(modName);
 	if (!modInfo)
 		return result.SetError("Mod info was not found");
 
-	std::span<TESForm*> formSpan;
-	switch (groupIndex) {
-	case 0: formSpan = MakeFormsSpan((*g_dataHandler)->arrDOOR); break;
-	case 1: formSpan = MakeFormsSpan((*g_dataHandler)->arrFLOR); break;
-	case 2: formSpan = MakeFormsSpan((*g_dataHandler)->arrFURN); break;
-	case 3: formSpan = MakeFormsSpan((*g_dataHandler)->arrLIGH); break;
-	case 4: formSpan = MakeFormsSpan((*g_dataHandler)->arrMSTT); break;
-	case 5: formSpan = MakeFormsSpan((*g_dataHandler)->arrNPC_); break;
-	case 6: formSpan = MakeFormsSpan((*g_dataHandler)->arrSCOL); break;
-	case 7: formSpan = MakeFormsSpan((*g_dataHandler)->arrSTAT); break;
-	default: return result.SetError("Group index was out of range");
+	//std::span<TESForm*> formSpan;
+	//switch (groupIndex) {
+	//case 0: formSpan = MakeFormsSpan((*g_dataHandler)->arrDOOR); break;
+	//case 1: formSpan = MakeFormsSpan((*g_dataHandler)->arrFLOR); break;
+	//case 2: formSpan = MakeFormsSpan((*g_dataHandler)->arrFURN); break;
+	//case 3: formSpan = MakeFormsSpan((*g_dataHandler)->arrLIGH); break;
+	//case 4: formSpan = MakeFormsSpan((*g_dataHandler)->arrMSTT); break;
+	//case 5: formSpan = MakeFormsSpan((*g_dataHandler)->arrNPC_); break;
+	//case 6: formSpan = MakeFormsSpan((*g_dataHandler)->arrSCOL); break;
+	//case 7: formSpan = MakeFormsSpan((*g_dataHandler)->arrSTAT); break;
+	//default: return result.SetError("Group index was out of range");
+	//}
+
+	//FormSearchResult searchResult;
+	//SearchModForFullnameForms(modInfo, formSpan, searchResult);
+
+	auto pair = std::make_pair(modName, (UInt32)groupIndex);
+	if (lastStaticFile != pair) {
+		lastStaticFile = pair;
+
+		UInt32 signature;
+		switch (groupIndex) {
+		case 0: signature = ESP::Sig("DOOR"); break;
+		case 1:	signature = ESP::Sig("FLOR"); break;
+		case 2:	signature = ESP::Sig("FURN"); break;
+		case 3:	signature = ESP::Sig("LIGH"); break;
+		case 4:	signature = ESP::Sig("MSTT"); break;
+		case 5:	signature = ESP::Sig("NPC_"); break;
+		case 6:	signature = ESP::Sig("SCOL"); break;
+		case 7:	signature = ESP::Sig("STAT"); break;
+		default: return result.SetError("Group index was out of range");
+		}
+
+		staticFileItems.clear();
+		FindItemsFromFile(result, modInfo, signature, staticFileItems);
+		if (result.type == GFxResult::Error)
+			return;
 	}
 
-	FormSearchResult searchResult;
-	SearchModForFullnameForms(modInfo, formSpan, searchResult);
-
 	result.CreateMenuItems();
-	for (auto& kvp : searchResult.result) {
-		result.PushItem(kvp.first, kvp.second);
+	for (auto& kvp : staticFileItems) {
+		result.PushItem(kvp.first.c_str(), kvp.second);
 	}
 }
 
@@ -666,90 +727,286 @@ void SearchStatics(GFxResult& result, const char* search) {
 		return result.SetError("Search returned no results");
 }
 
-struct PlacedStatic {
+
+struct StaticAction {
+	enum Type {
+		Add = 0,
+		Remove,
+		Swap
+	};
+
 	UInt32 refr;
 	UInt32 formId;
+	Type type;
 	NiTransform transform;
 };
 
 struct PlacedStaticManager {
 	SInt32 index;
-	std::vector<PlacedStatic> objects;
+	std::vector<StaticAction> actions;
+	TESObjectCELL* lastCell;
 
-	PlacedStaticManager() : index(-1) {}
+	PlacedStaticManager() : index(-1), lastCell(nullptr) {}
 
-	void Push(UInt32 refr, UInt32 formId) {
-		objects.resize(++index, {});
-		objects.push_back({ refr, formId });
+	auto SetCell(TESObjectCELL* cell) {
+		index = -1;
+		actions.clear();
+		lastCell = cell;
+	}
+
+	void UpdateCell() {
+		auto player = (*g_player);
+		if (!player)
+			return SetCell(nullptr);
+
+		auto cell = player->parentCell;
+		if (cell != lastCell)
+			return SetCell(cell);
+	}
+
+	TESObjectREFR* GetRefr(UInt32 refrId) {
+		auto form = LookupFormByID(refrId);
+		if (!form)
+			return nullptr;
+
+		auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		if (!refr)
+			return nullptr;
+
+		return refr;
+	}
+
+	void SetTransform(TESObjectREFR* refr, StaticAction& action) {
+		auto root = refr->GetObjectRootNode();
+		if (root)
+			action.transform = root->m_worldTransform;
+		else
+			action.transform = SAF::TransformIdentity();
+	}
+
+	bool PlaceFromAction(StaticAction& action) {
+		auto form = LookupFormByID(action.formId);
+		if (!form)
+			return false;
+
+		TESObjectREFR* out = nullptr;
+		UInt32* handle = PlaceAtMeInternal(&out, *g_player, form, 1, 0, 0, false, false);
+		if (!handle)
+			return false;
+
+		NiPointer<TESObjectREFR> refr;
+		GetREFRFromHandle(handle, refr);
+		if (!refr)
+			return false;
+
+		action.refr = refr->formID;
+		SetREFRTransform(refr, action.transform);
+
+		return true;
+	}
+
+	bool UpdateActionTransform(StaticAction& action) {
+		if (SAF::TransformIsDefault(action.transform)) {
+			auto playerRoot = (*g_player)->GetActorRootNode(false);
+			if (!playerRoot)
+				return false;
+			const NiTransform mod{
+				SAF::MatrixIdentity(),
+				{0, 100.0f, 0},
+				1.0f
+			};
+			action.transform = SAF::MultiplyNiTransform(playerRoot->m_worldTransform, mod);
+		}
+
+		return true;
+	}
+
+	TESObjectREFR* Place(UInt32 formId) {
+		auto form = LookupFormByID(formId);
+		if (!form)
+			return nullptr;
+
+		auto root = selected.refr->GetActorRootNode(false);
+		if (!root)
+			return nullptr;
+
+		TESObjectREFR* out = nullptr;
+		UInt32* handle = PlaceAtMeInternal(&out, selected.refr, form, 1, 0, 0, false, false);
+		if (!handle)
+			return nullptr;
+
+		NiPointer<TESObjectREFR> refr;
+		GetREFRFromHandle(handle, refr);
+		if (!refr)
+			return nullptr;
+
+		const NiTransform mod{
+			SAF::MatrixIdentity(),
+			{0, 100.0f, 0},
+			1.0f
+		};
+		const auto transform = SAF::MultiplyNiTransform(root->m_worldTransform, mod);
+		SetREFRTransform(refr, transform);
+
+		return refr;
+	}
+
+	void Push(TESObjectREFR* refr, bool add) {
+		UpdateCell();
+		actions.resize(++index, {});
+		StaticAction::Type type = add ? StaticAction::Add : StaticAction::Swap;
+		
+		if (index <= 0) {
+			type = StaticAction::Add;
+		}
+		else {
+			auto& prevAction = actions.at(index - 1);
+			if (prevAction.type == StaticAction::Remove)
+				type = StaticAction::Add;
+
+			if (type == StaticAction::Swap) {
+				auto refr = GetRefr(prevAction.refr);
+				if (refr) {
+					SetTransform(refr, prevAction);
+					PapyrusDelete(refr);
+				}
+			}
+		}
+
+		actions.push_back({ refr->formID, refr->baseForm->formID, type });
 	}
 
 	void Undo(GFxResult& result) {
+		UpdateCell();
 		if (index < 0)
 			return result.SetError("");
 
-		auto& object = objects.at(index--);
-		auto form = LookupFormByID(object.refr);
-		if (!form)
-			return result.SetError("Unable to find form");
+		auto& action = actions.at(index--);
 
-		auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-		if (!refr)
-			return result.SetError("Undo target was not a reference");
-		
-		auto root = refr->GetObjectRootNode();
-		if (root)
-			object.transform = root->m_worldTransform;
-		else
-			object.transform = SAF::TransformIdentity();
+		switch (action.type) {
+		case StaticAction::Add:
+		{
+			auto refr = GetRefr(action.refr);
+			if (!refr)
+				return result.SetError("Unable to find refr");
 
-		PapyrusDelete(refr);
+			SetTransform(refr, action);
+			PapyrusDelete(refr);
+			break;
+		}
+		case StaticAction::Swap:
+		{
+			auto refr = GetRefr(action.refr);
+			if (!refr)
+				return result.SetError("Unable to find refr");
+
+			SetTransform(refr, action);
+			PapyrusDelete(refr);
+
+			if (index >= 0) {
+				auto& prevAction = actions.at(index);
+				if (UpdateActionTransform(prevAction)) {
+					PlaceFromAction(prevAction);
+				}
+			}
+			break;
+		}
+		case StaticAction::Remove:
+		{
+			auto form = LookupFormByID(action.formId);
+			if (!form)
+				return result.SetError("Unable to find form");
+
+			auto newRefr = Place(action.formId);
+			if (index >= 0) {
+				auto& prevAction = actions.at(index);
+				prevAction.refr = newRefr->formID;
+			}
+			break;
+		}
+		}
 	}
 
 	void Redo(GFxResult& result) {
-		if (index + 1 >= (SInt32)objects.size())
+		UpdateCell();
+		if (index + 1 >= (SInt32)actions.size())
 			return result.SetError("");
 
-		auto& object = objects.at(++index);
-
-		if (SAF::TransformIsDefault(object.transform)) {
-			auto playerRoot = (*g_player)->GetActorRootNode(false);
-			if (!playerRoot)
+		auto& action = actions.at(++index);
+		switch (action.type) {
+		case StaticAction::Add:
+		{
+			if (!UpdateActionTransform(action))
 				return result.SetError("Failed to find a location to spawn object");
-			const NiTransform mod{
-				SAF::MatrixIdentity(),
-				{0, 0, 100.0f},
-				1.0f
-			};
-			object.transform = SAF::MultiplyNiTransform(playerRoot->m_worldTransform, mod);
+
+			if (!PlaceFromAction(action))
+				return result.SetError("Failed to spawn object");
+			break;
 		}
+		case StaticAction::Swap:
+		{
+			if (index > 0) {
+				auto& prevAction = actions.at(index - 1);
+				auto refr = GetRefr(prevAction.refr);
+				if (refr) {
+					SetTransform(refr, prevAction);
+					PapyrusDelete(refr);
+				}
+			}
+			
+			if (!UpdateActionTransform(action))
+				return result.SetError("Failed to find a location to spawn object");
 
-		auto form = LookupFormByID(object.formId);
-		if (!form)
-			return result.SetError("Unable to find form");
-
-		TESObjectREFR* out = nullptr;
-		PlaceAtMeInternal(&out, *g_player, form, 1, 0, 0, false, false);
-		if (!out)
-			return result.SetError("Failed to spawn object");
-		object.refr = out->formID;
-		SetREFRTransform(out, object.transform);
+			if (!PlaceFromAction(action))
+				return result.SetError("Failed to spawn object");
+			break;
+		}
+		case StaticAction::Remove:
+		{
+			if (index > 0) {
+				auto& prevAction = actions.at(index - 1);
+				auto refr = GetRefr(prevAction.refr);
+				if (refr) {
+					SetTransform(refr, prevAction);
+					PapyrusDelete(refr);
+				}
+			}
+			break;
+		}
+		}
 	}
 
-	void Pop() {
+	bool Delete() {
+		UpdateCell();
 		if (index < 0)
-			return;
+			return false;
 
-		auto& object = objects.at(index);
-		auto form = LookupFormByID(object.refr);
-		if (!form)
-			return;
+		auto& action = actions.at(index);
+		if (action.type == StaticAction::Remove)
+			return false;
 
-		auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		auto refr = GetRefr(action.refr);
 		if (!refr)
-			return;
+			return false;
 
-		index--;
+		StaticAction newAction{ 0, action.formId, StaticAction::Remove };
+		SetTransform(refr, newAction);
 		PapyrusDelete(refr);
+		actions.emplace_back(newAction);
+
+		index++;
+		return true;
+	}
+
+	TESObjectREFR* GetCurrentRefr() {
+		if (index < 0)
+			return nullptr;
+
+		auto& action = actions.at(index);
+		if (action.type == StaticAction::Remove)
+			return nullptr;
+
+		return GetRefr(action.refr);
 	}
 };
 
@@ -762,40 +1019,36 @@ GFxReq redoPlacedStatic("RedoPlacedStatic", [](auto& result, auto args) {
 	placedStaticManager.Redo(result);
 });
 
-void PlaceAtSelected(GFxResult& result, UInt32 formId, bool placing) {
+void PlaceAtSelected(GFxResult& result, UInt32 formId, bool add) {
 	if (!selected.refr)
 		return result.SetError(CONSOLE_ERROR);
 
-	auto form = LookupFormByID(formId);
-	if (!form)
-		return result.SetError("Could not find form id");
-
-	auto root = selected.refr->GetActorRootNode(false);
-	if (!root)
-		return result.SetError("Failed to get position from selected");
-
-	TESObjectREFR* out = nullptr;
-	UInt32* handle = PlaceAtMeInternal(&out, selected.refr, form, 1, 0, 0, false, false);
-
-	NiPointer<TESObjectREFR> refr;
-	GetREFRFromHandle(handle, refr);
+	auto refr = placedStaticManager.Place(formId);
 	if (!refr)
 		return result.SetError("Failed to spawn object");
 
-	//If not placing we are in preview mode so remove existing
-	if (!placing)
-		placedStaticManager.Pop();
-
-	placedStaticManager.Push(refr->formID, refr->baseForm->formID);
-
-	const NiTransform mod{
-		SAF::MatrixIdentity(),
-		{0, 100.0f, 0},
-		1.0f
-	};
-	const auto transform = SAF::MultiplyNiTransform(root->m_worldTransform, mod);
-	SetREFRTransform(refr, transform);
+	placedStaticManager.Push(refr, add);
 }
 GFxReq placeStatic("PlaceStatic", [](auto& result, auto args) {
 	PlaceAtSelected(result, args->args[1].GetUInt(), args->args[2].GetBool());
 });
+
+void DeleteStatic(GFxResult& result) {
+	if (!placedStaticManager.Delete())
+		return result.SetError("");
+}
+GFxReq deleteStatic("DeleteStatic", [](auto& result, auto args) {
+	DeleteStatic(result);
+});
+
+GFxReq rotateStatic("RotateStatic", [](auto& result, auto args) {
+	auto refr = placedStaticManager.GetCurrentRefr();
+	if (!refr)
+		return;
+
+	AdjustRefrPosition(refr, kAdjustRotationZ, args->args[0].GetNumber());
+});
+
+void RevertInventory() {
+	placedStaticManager.SetCell(nullptr);
+}

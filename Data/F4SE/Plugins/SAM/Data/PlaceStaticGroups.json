@@ -1,0 +1,50 @@
+{
+    "type": "list",
+    "update": true,
+    "get": {
+        "type": "sam",
+        "name": "GetStaticGroups",
+        "args": [
+            {
+                "type": "var",
+                "name": "placeStaticMod"
+            }
+        ]
+    },
+    "set": {
+        "type": "menu",
+        "name": "PlaceStaticItems",
+        "var": "placeStaticGroup"
+    },
+    "reset": {
+        "name": "$SAM_Delete",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "DeleteStatic"
+        }
+    },
+    "save": {
+        "name": "$SAM_Rotate",
+        "type": "hold",
+        "hold": {
+            "type": "float",
+            "step": 0.1,
+            "mod": 0.01,
+            "func": {
+                "type": "sam",
+                "name": "RotateStatic"
+            }
+        }
+    },
+    "edit": {
+        "undo": {
+            "type": "sam",
+            "name": "UndoPlacedStatic"
+        },
+        "redo": {
+            "type": "sam",
+            "name": "RedoPlacedStatic"
+        }
+    }
+}

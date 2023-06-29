@@ -458,6 +458,8 @@ void UpdateCameraRotation(GFxResult& result, float x, float y)
 			!(y < 0 && pitch < MATH_PI * - 0.5))
 			camera->pitch = pitch;
 	}
+
+	samManager.Invoke("root1.Menu_mc.RefreshCamera", nullptr, nullptr, 0);
 }
 
 void UpdateCameraPan(GFxResult& result, float x, float y)
@@ -477,6 +479,8 @@ void UpdateCameraPan(GFxResult& result, float x, float y)
 	camera->x = t.pos.x;
 	camera->y = t.pos.y;
 	camera->z = t.pos.z;
+
+	samManager.Invoke("root1.Menu_mc.RefreshCamera", nullptr, nullptr, 0);
 }
 
 void UpdateCameraZoom(GFxResult& result, float x)
@@ -496,4 +500,6 @@ void UpdateCameraZoom(GFxResult& result, float x)
 	camera->x = t.pos.x;
 	camera->y = t.pos.y;
 	camera->z = t.pos.z;
+
+	samManager.Invoke("root1.Menu_mc.RefreshCamera", nullptr, nullptr, 0);
 }

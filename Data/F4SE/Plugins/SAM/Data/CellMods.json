@@ -1,0 +1,25 @@
+{
+    "type": "list",
+    "update": "true",
+    "get": {
+        "type": "sam",
+        "name": "GetCellMods"
+    },
+    "set": {
+        "type": "menu",
+        "name": "CellList",
+        "var": "cellMod"
+    },
+    "save": {
+        "name": "$SAM_Favorite",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "AddCellFavorite"
+        }
+    },
+    "notification": {
+        "type": "sam",
+        "name": "GetCellName"
+    }
+}
