@@ -394,10 +394,10 @@ void LightManager::Update()
 	});
 }
 
-void LightManager::Push(MenuLight light)
+void LightManager::Push(const MenuLight&& light)
 {
 	if (lights)
-		lights->push_back(light);
+		lights->emplace_back(light);
 }
 
 void LightManager::Erase(UInt32 id)
@@ -606,7 +606,7 @@ void CreateLight(GFxResult& result, UInt32 formId)
 	light.yOffset = 0;
 	light.Update();
 
-	lightManager.Push(light);
+	lightManager.Push(std::move(light));
 }
 
 void AddLight(GFxResult& result)
@@ -626,8 +626,7 @@ void AddLight(GFxResult& result)
 
 	MenuLight light(selectedNonActor.refr, pair->second);
 	light.Initialize();
-
-	lightManager.Push(light);
+	lightManager.Push(std::move(light));
 
 	return;
 }
@@ -678,6 +677,27 @@ void RenameLight(GFxResult& result, const char* name, SInt32 selectedLight)
 		return result.SetError(LIGHT_INDEX_ERROR);
 
 	light->Rename(name);
+}
+
+void DuplicateLight(GFxResult& result, SInt32 selectedLight)
+{
+	MenuLight* light = lightManager.GetLight(selectedLight);
+	if (!light)
+		return result.SetError(LIGHT_INDEX_ERROR);
+
+	MenuLight newLight = CreateLightFromId(light->lightRefr->baseForm->formID);
+	if (!newLight.formId)
+		return result.SetError(LIGHT_FORM_ERROR);
+
+	newLight.name = std::string(light->name);
+	newLight.distance = light->distance;
+	newLight.rotation = light->rotation;
+	newLight.height = light->height;
+	newLight.xOffset = light->xOffset;
+	newLight.yOffset = light->yOffset;
+	newLight.Update();
+
+	lightManager.Push(std::move(newLight));
 }
 
 void SwapLight(GFxResult& result, UInt32 formId, SInt32 selectedLight)
@@ -864,7 +884,7 @@ bool LoadLightsPath(const char* path)
 			menuLight.xOffset = ReadJsonFloat(light, "xoffset", 0.0f);
 			menuLight.yOffset = ReadJsonFloat(light, "yoffset", 0.0f);
 			menuLight.Update();
-			lightManager.Push(menuLight);
+			lightManager.Push(std::move(menuLight));
 		}
 	}
 

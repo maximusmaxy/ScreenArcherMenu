@@ -5,6 +5,10 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 
+class TESWeather : public TESForm {
+	//...
+};
+
 struct WorldCellItem {
 	UInt32 key;
 	UInt32 pad;
@@ -56,3 +60,7 @@ bool SaveCellFavorites();
 void AppendCellFavorite(GFxResult& result);
 void RemoveCellFavorite(GFxResult& result, SInt32 index);
 bool LoadCellFavorites();
+
+void GetWeatherMods(GFxResult& result);
+void GetWeathers(GFxResult& result, const char* mod);
+void SetWeather(GFxResult& result, UInt32 formId);

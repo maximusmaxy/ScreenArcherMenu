@@ -18,7 +18,8 @@ public:
 		ConfirmClose,
 		CameraControl,
 		BoneOverlay,
-		PosingGizmo
+		PosingGizmo,
+		CameraRelative
 	};
 
 	bool hotswap;
@@ -29,6 +30,7 @@ public:
 	bool cameracontrol;
 	bool boneoverlay;
 	bool posinggizmo;
+	bool camerarelative;
 	std::string sliderSet;
 	NaturalSortedSet sliderGroups;
 

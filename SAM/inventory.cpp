@@ -43,7 +43,7 @@ std::vector<const char*> storedItemMods;
 std::vector<const char*> storedStaticMods;
 std::string lastSelectedMod;
 
-std::vector<std::pair<std::string, UInt32>> staticFileItems;
+EdidList staticFileItems;
 std::pair<const char*, UInt32> lastStaticFile{ nullptr, 0 };
 
 #define ITEMS_SIZE 9
@@ -616,38 +616,6 @@ void GetStaticGroups(GFxResult& result, const char* modName)
 	}
 }
 
-void FindItemsFromFile(GFxResult& result, const ModInfo* info, UInt32 signature,
-	std::vector<std::pair<std::string, UInt32>>& items) 
-{
-	using namespace ESP;
-
-	Reader esp(info);
-	if (esp.Fail())
-		return result.SetError("Failed to read esp");
-
-	esp.ReadHeader();
-	Group group;
-	if (!esp.SeekToGroup(signature, group))
-		return result.SetError("Failed to find item type in file");
-
-	std::string edid;
-	esp.ForEachRecord(group, [&](Record& record) {
-		UInt32 remaining = esp.SeekToElement(record.size, Sig("EDID"));
-		if (remaining) {
-			esp >> edid;
-			remaining -= (edid.size() + 1);
-			const auto formId = esp.GetFormId(record.formId);
-			if (formId)
-				items.push_back(std::make_pair(edid, formId));
-			esp.Skip(remaining);
-		}
-	});
-
-	std::sort(items.begin(), items.end(), [](auto& lhs, auto& rhs) {
-		return strnatcasecmp(lhs.first.c_str(), rhs.first.c_str()) < 0;
-	});
-}
-
 void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex)
 {
 	const ModInfo* modInfo = (*g_dataHandler)->LookupModByName(modName);
@@ -688,7 +656,7 @@ void GetStaticItems(GFxResult& result, const char* modName, SInt32 groupIndex)
 		}
 
 		staticFileItems.clear();
-		FindItemsFromFile(result, modInfo, signature, staticFileItems);
+		FindEdidsFromFile(result, modInfo, signature, staticFileItems);
 		if (result.type == GFxResult::Error)
 			return;
 	}
@@ -992,9 +960,9 @@ struct PlacedStaticManager {
 		StaticAction newAction{ 0, action.formId, StaticAction::Remove };
 		SetTransform(refr, newAction);
 		PapyrusDelete(refr);
-		actions.emplace_back(newAction);
 
-		index++;
+		actions.resize(++index, {});
+		actions.emplace_back(newAction);
 		return true;
 	}
 

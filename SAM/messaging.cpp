@@ -4,6 +4,7 @@
 #include "input.h"
 #include "io.h"
 #include "compatibility.h"
+#include "options.h"
 
 SamMessaging samMessaging;
 
@@ -62,13 +63,15 @@ public:
 					if (evn->isOpen) {
 						inputHandler.enabled = false;
 						samManager.SetVisible(false);
-						(*g_inputMgr)->AllowTextInput(false);
+						if (menuOptions.extrahotkeys)
+							(*g_inputMgr)->AllowTextInput(false);
 					}
 					//container menu closed while sam is open
 					else {
 						inputHandler.enabled = true;
 						samManager.SetVisible(true);
-						(*g_inputMgr)->AllowTextInput(true);
+						if (menuOptions.extrahotkeys)
+							(*g_inputMgr)->AllowTextInput(true);
 					}
 				}
 			}

@@ -10,6 +10,7 @@
 #include "forms.h"
 #include "constants.h"
 #include "functions.h"
+#include "strnatcmp.h"
 
 #include <algorithm>
 #include <execution>
@@ -248,4 +249,60 @@ void SetLooksFaceSlider(GFxResult& result, SInt32 index, double value) {
 }
 GFxReq setLooksFaceSlider("SetLooksFaceSlider", [](auto& result, auto args) {
 	SetLooksFaceSlider(result, args->args[0].GetInt(), args->args[1].GetNumber());
+});
+
+RelocPtr<tArray<BGSKeyword*>> typedKeywords(0x59DA3C0);
+
+void GetTypedKeywords(GFxResult& result, UInt32 type) {
+	auto& keywords = typedKeywords[type];
+	if (!keywords.entries)
+		return result.SetError("No anims found");
+
+	const std::span<BGSKeyword*> span(keywords.entries, keywords.count);
+	std::vector<std::pair<const char*, UInt32>> searchResult;
+	std::for_each(span.begin(), span.end(), [&searchResult](BGSKeyword* keyword) {
+		if (keyword)
+			searchResult.push_back(std::make_pair(keyword->keyword.c_str(), keyword->formID));
+	});
+
+	std::sort(searchResult.begin(), searchResult.end(), [](auto& lhs, auto& rhs) {
+		return strnatcasecmp(lhs.first, rhs.first) < 0;
+	});
+
+	result.CreateMenuItems();
+	for (auto& [edid, formId] : searchResult) {
+		result.PushItem(edid, formId);
+	}
+}
+GFxReq getTypedKeywords("GetAnimFaceArchetypes", [](auto& result, auto args) {
+	GetTypedKeywords(result, KeywordType::AnimFace);
+});
+
+typedef bool(*_ChangeAnimArchetype)(TESObjectREFR* refr, BGSKeyword* keyword);
+RelocAddr<_ChangeAnimArchetype> ChangeAnimArchetype(0x0CA5D20);
+typedef void(*_ChangeFaceArchetypeExpression)(TESObjectREFR* refr, BGSKeyword* keyword);
+RelocAddr<_ChangeFaceArchetypeExpression> ChangeFaceArchetypeExpression(0xDB93B0);
+
+void SetAnimFaceArchetype(GFxResult& result, UInt32 formId) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	TESForm* form = LookupFormByID(formId);
+	if (!form)
+		return result.SetError("Could not find animfacearchetype");
+
+	BGSKeyword* keyword = DYNAMIC_CAST(form, TESForm, BGSKeyword);
+	if (!keyword)
+		return result.SetError("Could not find animfacearchetype");
+
+	ChangeFaceArchetypeExpression(selected.refr, keyword);
+}
+GFxReq setAnimFaceArchetype("SetAnimFaceArchetype", [](auto& result, auto args) {
+	SetAnimFaceArchetype(result, args->args[1].GetUInt());
+});
+GFxReq resetAnimFaceArchetype("ResetAnimFaceArchetype", [](auto& result, auto args) {
+	if (!selected.refr)
+		return result.SetError(CONSOLE_ERROR);
+
+	ChangeFaceArchetypeExpression(selected.refr, nullptr);
 });

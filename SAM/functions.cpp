@@ -410,6 +410,9 @@ GFxReq resetLight("ResetLight", [](auto& result, auto args) {
 GFxReq renameLight("RenameLight", [](auto& result, auto args) {
 	RenameLight(result, args->args[0].GetString(), args->args[1].GetInt());
 });
+GFxReq duplicateLight("DuplicateLight", [](auto& result, auto args) {
+	DuplicateLight(result, args->args[2].GetInt());
+});
 GFxFunc getLightVisible("GetLightVisible", [](auto args) {
 	args->result->SetBool(GetLightVisible(args->args[0].GetInt()));
 });
@@ -562,4 +565,13 @@ GFxReq appendCellFavorite("AddCellFavorite", [](auto& result, auto args) {
 });
 GFxReq removeCellFavorite("RemoveCellFavorite", [](auto& result, auto args) {
 	RemoveCellFavorite(result, args->args[0].GetInt());
+});
+GFxReq getWeatherMods("GetWeatherMods", [](auto& result, auto args) {
+	GetWeatherMods(result);
+});
+GFxReq getWeathers("GetWeathers", [](auto& result, auto args) {
+	GetWeathers(result, args->args[0].GetString());
+});
+GFxReq setWeather("SetWeather", [](auto& result, auto args) {
+	SetWeather(result, args->args[1].GetUInt());
 });

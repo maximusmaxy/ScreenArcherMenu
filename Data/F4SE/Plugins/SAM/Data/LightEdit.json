@@ -146,6 +146,20 @@
             }
         },
         {
+            "name": "$SAM_Duplicate",
+            "type": "list",
+            "func": {
+                "type": "sam",
+                "name": "DuplicateLight",
+                "args": [
+                    {
+                        "type": "var",
+                        "name": "selectedLight"
+                    }
+                ]
+            }
+        },
+        {
             "name": "$SAM_Delete",
             "type": "list",
             "func": {

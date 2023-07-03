@@ -1,0 +1,20 @@
+{
+    "type": "list",
+    "update": true,
+    "get": {
+        "type": "sam",
+        "name": "GetAnimFaceArchetypes"
+    },
+    "set": {
+        "type": "sam",
+        "name": "SetAnimFaceArchetype"
+    },
+    "reset": {
+        "name": "$SAM_Reset",
+        "type": "func",
+        "func": {
+            "type": "sam",
+            "name": "ResetAnimFaceArchetype"
+        }
+    }
+}

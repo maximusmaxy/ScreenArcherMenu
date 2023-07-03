@@ -61,7 +61,7 @@ public:
 	void UpdateLightList();
 
 	void Update();
-	void Push(MenuLight light);
+	void Push(const MenuLight&& light);
 	void Erase(UInt32 id);
 	void Clear();
 
@@ -84,6 +84,7 @@ void CreateLight(GFxResult& result, UInt32 formId);
 void AddLight(GFxResult& result);
 void EditLight(GFxResult& result, UInt32 type, float value, SInt32 selectedLight);
 void RenameLight(GFxResult& result, const char* name, SInt32 selectedLight);
+void DuplicateLight(GFxResult& result, SInt32 selectedLight);
 void SwapLight(GFxResult& result, UInt32 formId, SInt32 selectedLight);
 bool GetLightVisible(SInt32 selectedLight);
 bool ToggleLightVisible(SInt32 selectedLight);

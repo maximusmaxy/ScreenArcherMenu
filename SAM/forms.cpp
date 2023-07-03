@@ -3,6 +3,7 @@
 #include "f4se/NiNodes.h"
 #include "strnatcmp.h"
 #include "SAF/types.h"
+#include "esp.h"
 
 #include <ranges>
 
@@ -18,6 +19,8 @@ RelocAddr<_SetActorPosition> SetActorPosition(0xD77690);
 
 RelocAddr<_QueueActorUpdateModel> QueueActorUpdateModel(0xD59AA0);
 RelocPtr<UInt64> taskQueueInterface(0x5AC64F0);
+
+RelocAddr<_GetIndexForTypedKeyword> GetIndexForTypedKeyword(0x568FF0);
 
 void SetREFRTransform(TESObjectREFR* refr, const NiTransform& transform) {
 	SetREFRLocation(refr, transform.pos);
@@ -228,4 +231,35 @@ void SearchSpanForSubstring(FormSearchResult& searchResult, const std::span<TESF
 	});
 
 	searchResult.Sort();
+}
+
+void FindEdidsFromFile(GFxResult& result, const ModInfo* info, UInt32 signature, EdidList& items)
+{
+	using namespace ESP;
+
+	Reader esp(info);
+	if (esp.Fail())
+		return result.SetError("Failed to read esp");
+
+	esp.ReadHeader();
+	Group group;
+	if (!esp.SeekToGroup(signature, group))
+		return result.SetError("Failed to find item type in file");
+
+	std::string edid;
+	esp.ForEachRecord(group, [&](Record& record) {
+		UInt32 remaining = esp.SeekToElement(record.size, Sig("EDID"));
+		if (remaining) {
+			esp >> edid;
+			remaining -= (edid.size() + 1);
+			const auto formId = esp.GetFormId(record.formId);
+			if (formId)
+				items.push_back(std::make_pair(edid, formId));
+			esp.Skip(remaining);
+		}
+	});
+
+	std::sort(items.begin(), items.end(), [](auto& lhs, auto& rhs) {
+		return strnatcasecmp(lhs.first.c_str(), rhs.first.c_str()) < 0;
+	});
 }

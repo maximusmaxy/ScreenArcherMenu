@@ -5,6 +5,7 @@
 #include "SAF/util.h"
 #include "constants.h"
 #include "camera.h"
+#include "options.h"
 
 #include <math.h>
 
@@ -283,11 +284,11 @@ void AdjustObjectPosition(GFxResult& result, int type, GFxValue& value, bool has
 void AdjustRefrPosition(TESObjectREFR* refr, int type, float dif) {
 	switch (type) {
 	case kAdjustPositionX:
-		if (!UpdateRefrTranslationRelative(refr, refr->pos, dif, true))
+		if (!menuOptions.camerarelative || !UpdateRefrTranslationRelative(refr, refr->pos, dif, true))
 			UpdateRefrTranslation(refr, 0x1007, 'X', refr->pos.x, dif);
 		break;
 	case kAdjustPositionY:
-		if (!UpdateRefrTranslationRelative(refr, refr->pos, dif, false))
+		if (!menuOptions.camerarelative || !UpdateRefrTranslationRelative(refr, refr->pos, dif, false))
 			UpdateRefrTranslation(refr, 0x1007, 'Y', refr->pos.y, dif);
 		break;
 	case kAdjustPositionZ:

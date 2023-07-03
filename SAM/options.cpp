@@ -14,6 +14,7 @@ void Options::Initialize() {
 	cameracontrol = true;
 	boneoverlay = true;
 	posinggizmo = true;
+	camerarelative = true;
 	sliderSet = "CBBE";
 	sliderGroups = NaturalSortedSet{ "CBBE", "CBBE Bodies" };
 }
@@ -35,6 +36,7 @@ void Options::ToJson(Json::Value& value) {
 	value["cameracontrol"] = cameracontrol;
 	value["boneoverlay"] = boneoverlay;
 	value["posinggizmo"] = posinggizmo;
+	value["camerarelative"] = camerarelative;
 	value["sliderSet"] = sliderSet;
 	value["sliderGroups"] = JsonArrayFromSortedSet(sliderGroups);
 }
@@ -48,6 +50,7 @@ void Options::FromJson(Json::Value& value) {
 	cameracontrol = value.get("cameracontrol", true).asBool();
 	boneoverlay = value.get("boneoverlay", true).asBool();
 	posinggizmo = value.get("posinggizmo", true).asBool();
+	camerarelative = value.get("camerarelative", true).asBool();
 	sliderSet = value.get("sliderSet", "CBBE").asString();
 
 	auto groups = value.get("sliderGroups", Json::Value());
@@ -78,6 +81,7 @@ void GetMenuOptions(GFxResult& result)
 	result.PushValue(menuOptions.cameracontrol);
 	result.PushValue(menuOptions.boneoverlay);
 	result.PushValue(menuOptions.posinggizmo);
+	result.PushValue(menuOptions.camerarelative);
 }
 
 void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
@@ -90,6 +94,7 @@ void SetMenuOption(GFxResult& result, SInt32 index, bool value) {
 	case Options::CameraControl: menuOptions.cameracontrol = value; break;
 	case Options::BoneOverlay: menuOptions.boneoverlay = value; break;
 	case Options::PosingGizmo: menuOptions.posinggizmo = value; break;
+	case Options::CameraRelative: menuOptions.camerarelative = value; break;
 	default: return;
 	}
 

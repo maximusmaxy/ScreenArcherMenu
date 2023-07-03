@@ -296,7 +296,7 @@ timeout (optional) - To prevent hanging from get functions, sam will wait a spec
 
 {
     "type": "global",
-    "script" "ScriptName",
+    "script": "ScriptName",
     "name": "FuncName",
     "wait": true,
     "timeout": 1000

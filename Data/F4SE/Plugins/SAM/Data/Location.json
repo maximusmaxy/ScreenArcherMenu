@@ -29,6 +29,13 @@
                 "type": "menu",
                 "name": "CellSearch"
             }
+        },
+        {
+            "name": "$SAM_Weather",
+            "func": {
+                "type": "menu",
+                "name": "WeatherMods"
+            }
         }
     ],
     "save": {

@@ -15,6 +15,13 @@
                 "type": "menu",
                 "name": "BodyMorphs"
             }
+        },
+        {
+            "name": "$SAM_AnimFaceArchetypes",
+            "func": {
+                "type": "menu",
+                "name": "AnimFaceArchetypes"
+            }
         }
     ]
 }

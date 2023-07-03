@@ -37,6 +37,9 @@ typedef void (*_QueueActorUpdateModel)(UInt64 taskQueueInterface, Actor* actor, 
 extern RelocAddr<_QueueActorUpdateModel> QueueActorUpdateModel;
 extern RelocPtr<UInt64> taskQueueInterface;
 
+typedef void(*_GetIndexForTypedKeyword)(BGSKeyword* keyword, int type);
+extern RelocAddr<_GetIndexForTypedKeyword> GetIndexForTypedKeyword;
+
 void SetREFRTransform(TESObjectREFR* refr, const NiTransform& transform);
 
 class FormSearchResult {
@@ -148,3 +151,6 @@ void SearchModForEdidForms(const ModInfo* info, std::span<T*>& span, FormSearchR
 
 	result.Sort();
 }
+
+typedef std::vector<std::pair<std::string, UInt32>> EdidList;
+void FindEdidsFromFile(GFxResult& result, const ModInfo* info, UInt32 signature, EdidList& edids);

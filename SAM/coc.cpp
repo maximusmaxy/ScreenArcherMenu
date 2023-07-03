@@ -25,6 +25,9 @@ std::vector<std::pair<std::string, std::string>> cellResult;
 
 std::vector<std::string> cellFavorites;
 
+EdidList weatherResult;
+const char* lastWeatherMod = nullptr;
+
 typedef void(*_CenterOnCellInternal)(TESObjectREFR* player, const char* edid, TESObjectCELL* cell);
 RelocAddr<_CenterOnCellInternal> CenterOnCellInternal(0xE9A990);
 
@@ -160,7 +163,6 @@ void GetWorldspaceCellsFromFile(GFxResult& result, TESWorldSpace* worldspace, co
 						break;
 					case Sig("CELL"):
 					{
-
 						bool compressed = header.record.IsCompressed();
 						bool success = true;
 						if (compressed) {
@@ -170,31 +172,6 @@ void GetWorldspaceCellsFromFile(GFxResult& result, TESWorldSpace* worldspace, co
 						}
 
 						if (success) {
-							//SInt32 gridx = gridSentinel;
-							//SInt32 gridy = gridSentinel;
-							//edid.clear();
-
-							//esp.ForEachSig(header.record.size, [&](auto& element) {
-							//	switch (element.sig) {
-							//	case Sig("EDID"):
-							//		esp >> edid;
-							//		break;
-							//	case Sig("XCLC"):
-							//		esp >> gridx >> gridy;
-							//		esp.Skip(4);
-							//		break;
-							//	default:
-							//		esp.Skip(element.len);
-							//	}
-							//});
-
-							//if (edid.size()) {
-							//	cellResult.emplace_back(edid, edid);
-							//}
-							//else if (gridx != gridSentinel && gridy != gridSentinel) {
-							//	cellResult.emplace_back(std::format("Grid {}, {}", gridx, gridy), );
-							//}
-
 							auto remaining = esp.SeekToElement(header.record.size, Sig("EDID"));
 							if (remaining > 0) {
 								esp >> edid;
@@ -496,4 +473,53 @@ bool LoadCellFavorites()
 	}
 
 	return true;
+}
+
+void GetWeatherMods(GFxResult& result) {
+	auto& weathers = (*g_dataHandler)->arrWTHR;
+	std::span<TESWeather*> span((TESWeather**)weathers.entries, weathers.count);
+	std::vector<const char*> weatherMods;
+	SearchSpanForMods(span, weatherMods);
+	AddFormattedModsToResult(result, weatherMods);
+}
+
+void GetWeathers(GFxResult& result, const char* mod) {
+	const ModInfo* info = (*g_dataHandler)->LookupModByName(mod);
+	if (!info)
+		return result.SetError("Could not find mod");
+
+	if (mod != lastWeatherMod) {
+		lastWeatherMod = mod;
+		weatherResult.clear();
+		FindEdidsFromFile(result, info, ESP::Sig("WTHR"), weatherResult);
+		if (result.type == GFxResult::Error)
+			return;
+	}
+
+	result.CreateMenuItems();
+	for (auto& [edid, formId] :weatherResult) {
+		result.PushItem(edid.c_str(), formId);
+	}
+}
+
+//typedef void*(*_GetSkyInstance)();
+//RelocAddr<_GetSkyInstance> GetSkyInstance(0x128CB0);
+//typedef void(*_SetWeatherExternal)(void* sky, TESWeather* weather, bool, char);
+//RelocAddr<_SetWeatherExternal> SetWeatherExternal(0x651A60);
+//typedef void(*_ForceWeatherExternal)(void* sky, TESWeather* weather, bool);
+//RelocAddr<_ForceWeatherExternal> ForceWeatherExternal(0x651BE0);
+
+typedef void(*_QueueForceWeather)(UInt64 taskQueue, TESWeather* weather, bool);
+RelocAddr<_QueueForceWeather> QueueForceWeather(0xD5C8C0);
+
+void SetWeather(GFxResult& result, UInt32 formId) {
+	auto form = LookupFormByID(formId);
+	if (!form)
+		return result.SetError("Failed to find weather form");
+
+	auto weather = DYNAMIC_CAST(form, TESForm, TESWeather);
+	if (!weather)
+		return result.SetError("Form was not a weather");
+
+	QueueForceWeather(*taskQueueInterface, weather, false);
 }

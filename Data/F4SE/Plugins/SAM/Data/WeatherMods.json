@@ -1,0 +1,17 @@
+{
+    "type": "list",
+    "update": "true",
+    "get": {
+        "type": "sam",
+        "name": "GetWeatherMods"
+    },
+    "set": {
+        "type": "menu",
+        "name": "WeatherList",
+        "var": "weatherMod"
+    },
+    "notification": {
+        "type": "sam",
+        "name": "GetCellName"
+    }
+}
