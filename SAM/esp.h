@@ -204,6 +204,15 @@ namespace ESP {
 			return 0;
 		}
 
+		UInt32 NextElement(UInt32 len, Element& element) {
+			if (!len) {
+				element = { 0, 0 };
+				return len;
+			}
+			*this >> element;
+			return (len - 6);
+		}
+
 		void ReadHeader() {
 			auto PushMaster = [](Masters& masters, const ModInfo* info) {
 				if (info != nullptr) {
@@ -225,12 +234,21 @@ namespace ESP {
 			std::string masterName;
 			Element element;
 			auto remaining = SeekToElement(header.size, Sig("MAST"), element);
-			while (remaining > 0) {
-				remaining -= element.len;
-				*this >> masterName;
-				auto info = (*g_dataHandler)->LookupModByName(masterName.c_str());
-				PushMaster(masters, info);
-				remaining = SeekToElement(remaining, Sig("MAST"), element);
+			if (remaining > 0) {
+				while (element.sig == Sig("MAST")) {
+					remaining -= element.len;
+					*this >> masterName;
+					auto info = (*g_dataHandler)->LookupModByName(masterName.c_str());
+					PushMaster(masters, info);
+
+					//Data
+					remaining = NextElement(remaining, element);
+					remaining -= element.len;
+					Skip(element.len);
+
+					remaining = NextElement(remaining, element);
+				}
+				Skip(remaining);
 			}
 			PushMaster(masters, modInfo);
 		}

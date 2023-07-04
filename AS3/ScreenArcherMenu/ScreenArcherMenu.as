@@ -993,7 +993,6 @@
 		
 		public function GetState():Object
 		{
-			//trace("get state");
 			return {
 				"menu": Data.menuName,
 				"x": sliderList.selectedX,
@@ -1004,9 +1003,9 @@
 		
 		public function GetMenuData(name:String):GFxResult
 		{
-			//trace("Get menu data");
+			//trace("Get menu data", name);
 			var menuResult:GFxResult = Data.getMenu(name);
-			
+
 			if (!CheckError(menuResult))
 				return null;
 				
@@ -1084,7 +1083,6 @@
 		public function PushMenu(name:String)
 		{
 			//trace("Push menu", name);
-			
 			this.nextMenu = name;
 			
 			//get menu data
@@ -1180,6 +1178,7 @@
 		
 		public function PopMenu():void
 		{
+			//trace("pop menu");
 			if (this.filenameInput.visible)
 			{
 				ClearEntry();
@@ -1198,17 +1197,18 @@
 			}
 			//trace("popping menu state", stateStack.length);
 			currentState = stateStack.pop();
+			//trace("poppingmenu state", currentState.menu);
 			this.nextMenu = currentState.menu;
 			
 			var menuData:GFxResult = GetMenuData(currentState.menu);
-			
+
 			//if menu data get fails, need to use a dummy menu and dummy get result to prevent locks
 			if (!menuData) {
 				LoadMenu(currentState.menu, Data.popFailMenu.result, Data.popFailGet);
 				return;
 			}
 
-			var getResult:int = GetMenuGetLatent(menuData.result, name, Data.LATENT_POP);
+			var getResult:int = GetMenuGetLatent(menuData.result, currentState.menu, Data.LATENT_POP);
 			
 			//If get fails load dummy menu
 			if (getResult == Data.RESULT_ERROR) {
@@ -1217,15 +1217,16 @@
 			}
 				
 			//If waiting, it's safe to return without loading a menu
-			if (getResult == Data.RESULT_WAITING)
+			if (getResult == Data.RESULT_WAITING) {
 				return;
-				
+			}
+
 			UpdatePop(menuData.result, Data.latentGet.result, currentState.menu);
 		}
 		
 		public function UpdatePop(data:Object, result:GFxResult, name:String)
 		{
-			//trace("Update pop");
+			//trace("Update pop", name);
 			UpdateEnterLeave(Data.menuData, data.enter);
 			
 			LoadMenu(name, data, result);
@@ -1302,7 +1303,7 @@
 		
 		public function LoadMenu(name:String, data:Object, get:GFxResult):void
 		{
-			//trace("Load Menu", data, get);
+			//trace("Load Menu", name);
 			Data.updateMenu(name, data, get);
 			UpdateEditFunctions(data);
 			state = STATE_MAIN;
