@@ -6,9 +6,10 @@
 #include "f4se/PapyrusNativeFunctions.h"
 #include "f4se/GameTypes.h"
 
-#include "rapidxml/rapidxml.hpp"
-#include "rapidxml/rapidxml_print.hpp"
-#include "rapidxml/rapidxml_utils.hpp"
+#include <rapidxml/rapidxml_ext.hpp>
+#include <rapidxml/rapidxml.hpp>
+#include <rapidxml/rapidxml_print.hpp>
+#include <rapidxml/rapidxml_utils.hpp>
 
 #include "SAF/util.h"
 #include "SAF/io.h"

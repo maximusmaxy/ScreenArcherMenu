@@ -40,6 +40,7 @@ extern RelocPtr<UInt64> taskQueueInterface;
 typedef void(*_GetIndexForTypedKeyword)(BGSKeyword* keyword, int type);
 extern RelocAddr<_GetIndexForTypedKeyword> GetIndexForTypedKeyword;
 
+const ModInfo* GetModInfo(UInt32 formId);
 void SetREFRTransform(TESObjectREFR* refr, const NiTransform& transform);
 
 class FormSearchResult {

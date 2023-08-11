@@ -126,7 +126,8 @@ typedef bool(*_LookupREFRByHandle)(const UInt32& handleIn, NiPointer<TESObjectRE
 extern RelocAddr <_LookupREFRByHandle> LookupREFRByHandle;
 
 void SetFootIK(const char* enabled) {
-	if (!selectedNonActor.refr || selectedNonActor.refr->formType != kFormType_ACHR) return;
+	if (!selectedNonActor.refr || selectedNonActor.refr->formType != kFormType_ACHR) 
+		return;
 
 	UInt64* animGraphHolder = (UInt64*)selectedNonActor.refr + 9;
 	NiPointer<BSAnimationGraphManagerRef> graphManager;
@@ -154,19 +155,23 @@ void SetFootIK(const char* enabled) {
 }
 
 bool GetRefrCollision(TESObjectREFR* refr) {
-	if (!refr) return false;
+	if (!refr) 
+		return false;
 
 	TESObjectREFR::LoadedData* data = refr->unkF0;
-	if (!data) return false;
+	if (!data) 
+		return false;
 
 	return !((data->flags >> 11) & 1);
 }
 
 void SetRefrCollision(TESObjectREFR* refr, bool enabled) {
-	if (!refr) return;
+	if (!refr) 
+		return;
 
 	TESObjectREFR::LoadedData* data = refr->unkF0;
-	if (!data) return;
+	if (!data) 
+		return;
 
 	if (enabled) {
 		data->flags &= 0xFFFFFFFFFFFFF7FF;
@@ -295,11 +300,13 @@ void AdjustRefrPosition(TESObjectREFR* refr, int type, float dif) {
 		UpdateRefrTranslation(refr, 0x1007, 'Z', refr->pos.z, dif);
 		break;
 	case kAdjustRotationX:
-		if (refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
+		if (refr->formType == kFormType_ACHR) 
+			return; //Use pose adjustments instead
 		UpdateRefrTranslation(refr, 0x1009, 'X', refr->rot.x, dif);
 		break;
 	case kAdjustRotationY:
-		if (refr->formType == kFormType_ACHR) return; //Use pose adjustments instead
+		if (refr->formType == kFormType_ACHR) 
+			return; //Use pose adjustments instead
 		UpdateRefrTranslation(refr, 0x1009, 'Y', refr->rot.y, dif);
 		break;
 	case kAdjustRotationZ:
@@ -319,7 +326,8 @@ void AdjustRefrPosition(TESObjectREFR* refr, int type, float dif) {
 }
 
 void ResetObjectPosition() {
-	if (!selectedNonActor.refr) return;
+	if (!selectedNonActor.refr) 
+		return;
 
 	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x58, selectedNonActor.translation.position.x);
 	SetRefrTranslation(selectedNonActor.refr, 0x1007, 0x59, selectedNonActor.translation.position.y);

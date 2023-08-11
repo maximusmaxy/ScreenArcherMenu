@@ -22,6 +22,23 @@ RelocPtr<UInt64> taskQueueInterface(0x5AC64F0);
 
 RelocAddr<_GetIndexForTypedKeyword> GetIndexForTypedKeyword(0x568FF0);
 
+class FindModForFormId {
+public:
+	UInt32 formId;
+
+	FindModForFormId(UInt32 formId) : formId(formId) {}
+
+	bool Accept(ModInfo* modInfo) {
+		return modInfo->IsFormInMod(formId);
+	}
+};
+
+const ModInfo* GetModInfo(UInt32 formId)
+{
+	auto functor = FindModForFormId(formId);
+	return (*g_dataHandler)->modList.modInfoList.Find(functor);
+}
+
 void SetREFRTransform(TESObjectREFR* refr, const NiTransform& transform) {
 	SetREFRLocation(refr, transform.pos);
 	SetREFROrientation(refr, transform.rot);

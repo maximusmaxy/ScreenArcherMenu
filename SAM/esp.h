@@ -214,7 +214,7 @@ namespace ESP {
 		}
 
 		void ReadHeader() {
-			auto PushMaster = [](Masters& masters, const ModInfo* info) {
+			const auto& PushMaster = [](Masters& masters, const ModInfo* info) {
 				if (info != nullptr) {
 					if (info->IsLight()) {
 						masters.push_back(std::make_pair(0xFE000000 | (info->lightIndex << 12), 0xFFF));
@@ -269,6 +269,31 @@ namespace ESP {
 
 		inline void SkipGroup(UInt32 len) {
 			Skip(len - 0x18);
+		}
+
+		//For single form access only
+		bool SeekToFormId(UInt32 formId, UInt32 signature, Record& record) {
+			Group group;
+			if (!SeekToGroup(signature, group))
+				return false;
+
+			auto count = 0;
+			const auto size = group.size - 0x18;
+			while (count < size) {
+				*this >> record;
+				count += (0x18 + record.size);
+				if (record.formId == formId) {
+					if (record.IsCompressed()) {
+						std::string buffer;
+						auto dstLen = Get();
+						bool success = Inflate(record.size - 4, dstLen, buffer);
+						record.size = dstLen;
+					}
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		//This is not efficient in the slightest. 

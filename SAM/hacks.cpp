@@ -19,8 +19,8 @@ enum {
 void SetHack(SInt32 index, bool enabled)
 {
 	switch (index) {
-	case kHackBlink: SetBlinkState(enabled);
-	case kHackMorphs: SetForceMorphUpdate(enabled);
-	case kHackEyeCoords: SetDisableEyecoordUpdate(enabled);
+	case kHackBlink: SetBlinkState(enabled); break;
+	case kHackMorphs: SetForceMorphUpdate(enabled); break;
+	case kHackEyeCoords: SetDisableEyecoordUpdate(enabled); break;
 	}
 }

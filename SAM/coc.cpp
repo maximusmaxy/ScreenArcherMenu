@@ -27,6 +27,8 @@ std::vector<std::string> cellFavorites;
 
 EdidList weatherResult;
 const char* lastWeatherMod = nullptr;
+EdidList imagespaceResult;
+const char* lastImagespace = nullptr;
 
 typedef void(*_CenterOnCellInternal)(TESObjectREFR* player, const char* edid, TESObjectCELL* cell);
 RelocAddr<_CenterOnCellInternal> CenterOnCellInternal(0xE9A990);
@@ -522,4 +524,513 @@ void SetWeather(GFxResult& result, UInt32 formId) {
 		return result.SetError("Form was not a weather");
 
 	QueueForceWeather(*taskQueueInterface, weather, false);
+}
+
+void GetImagespaceMods(GFxResult& result) {
+	auto& imagespaces = (*g_dataHandler)->arrIMGS;
+	std::span<TESForm*> span((TESForm**)imagespaces.entries, imagespaces.count);
+	std::vector<const char*> imagespaceMods;
+	SearchSpanForMods(span, imagespaceMods);
+	AddFormattedModsToResult(result, imagespaceMods);
+}
+
+void GetImagespaces(GFxResult& result, const char* mod) {
+	const ModInfo* info = (*g_dataHandler)->LookupModByName(mod);
+	if (!info)
+		return result.SetError("Could not find mod");
+
+	if (mod != lastImagespace) {
+		lastImagespace = mod;
+		imagespaceResult.clear();
+		FindEdidsFromFile(result, info, ESP::Sig("IMGS"), imagespaceResult);
+		if (result.type == GFxResult::Error)
+			return;
+	}
+
+	result.CreateMenuItems();
+	for (auto& [edid, formId] : imagespaceResult) {
+		result.PushItem(edid.c_str(), formId);
+	}
+}
+
+//RelocPtr<UInt64> imagespaceManager(0x67220E8);
+//
+//typedef void(*_ImageSpaceSetOverrideBaseData)(UInt64 imagespaceManager, ImageSpaceBaseData* baseData);
+//RelocAddr<_ImageSpaceSetOverrideBaseData> ImagespaceSetOverrideBaseData(0x505930);
+
+typedef void(*_CellSetImageSpace)(TESObjectCELL* cell, TESImageSpace* imagespace);
+RelocAddr<_CellSetImageSpace> CellSetImageSpace(0x3B5270);
+
+void SetImagespace(GFxResult& result, UInt32 formId) {
+	//If no formId then reset
+	//if (!formId) {
+	//	ImagespaceSetOverrideBaseData(*imagespaceManager, nullptr);
+	//	return;
+	//}
+
+	auto form = LookupFormByID(formId);
+	if (!form)
+		return result.SetError("Failed to find imagespace form");
+
+	auto imagespace = DYNAMIC_CAST(form, TESForm, TESImageSpace);
+	if (!imagespace)
+		return result.SetError("Form was not an imagespace");
+
+	//ImagespaceSetOverrideBaseData(*imagespaceManager, &imagespace->baseData);
+
+	auto cell = (*g_player)->parentCell;
+	if (!cell)
+		return result.SetError("Player was not in a cell");
+
+	CellSetImageSpace(cell, imagespace);
+}
+
+struct CellLighting {
+	struct Color {
+		UInt8 r;
+		UInt8 g;
+		UInt8 b;
+		UInt8 a;
+	};
+
+	struct HSV {
+		int hue;
+		int saturation;
+		int value;
+	};
+
+	Color ambientColor;
+	Color directionalColor;
+	Color fogColorNear;
+	float fogNear;
+	float fogFar;
+	UInt32 directionalRotationXY;
+	UInt32 directionalRotationZ;
+	float directionalFade;
+	float fogClipDistance;
+	float fogPower;
+
+	struct DirectionalAmbientLighting {
+		enum Type {
+			XPlus = 0,
+			XNegative,
+			YPlus,
+			YNegative,
+			ZPlus,
+			ZNegative,
+		};
+
+		Color color[6];
+		Color specular;
+		float scale;
+	} dalc;
+
+	Color fogColorFar;
+	float fogMax;
+	float lightFadeBegin;
+	float lightFadeEnd;
+	UInt32 inherits;
+	float nearHeightMid;
+	float nearHeightRange;
+	Color fogColorHighNear;
+	Color fogColorHighFar;
+	float highDensityScale;
+	float fogNearScale;
+	float fogFarScale;
+	float fogHighNearScale;
+	float fogHighFarScale;
+	float farHeightMid;
+	float farHeightRange;
+};
+
+CellLighting* GetInteriorCellLighting(GFxResult& result) {
+	if (!g_player) {
+		result.SetError("Could not find player");
+		return nullptr;
+	}
+	auto cell = (*g_player)->parentCell;
+	if (!cell) {
+		result.SetError("Could not find current cell");
+		return nullptr;
+	}
+	if ((!cell->flags & 0x1)) {
+		result.SetError("Cell is not an interior");
+		return nullptr;
+	}
+	if (!cell->unk50)
+		result.SetError("Could not find cell lighting data");
+	return (CellLighting*)cell->unk50;
+}
+
+void GetLightingMenu(GFxResult& result) {
+	auto lighting = GetInteriorCellLighting(result);
+	if (!lighting)
+		return;
+
+	result.CreateMenuItems();
+
+	const char* itemNames[] = {
+		"$SAM_FogDistance",
+		"$SAM_FogNearColor",
+		"$SAM_FogFarColor",
+		"$SAM_FogHighNearColor",
+		"$SAM_FogHighFarColor",
+		"$SAM_AmbientColor",
+		"$SAM_DirectionalColor",
+		"$SAM_X+",
+		"$SAM_X-",
+		"$SAM_Y+",
+		"$SAM_Y-",
+		"$SAM_Z+",
+		"$SAM_Z-"
+	};
+
+	SInt32 index = 0;
+	for (auto& name : itemNames) {
+		result.PushItem(name, index++);
+	}
+}
+
+enum LightingMenus {
+	Distance = 0,
+	FogNear,
+	FogFar,
+	FogHighNear,
+	FogHighFar,
+	Ambient,
+	Directional,
+	XPlus,
+	XNegative,
+	YPlus,
+	YNegative,
+	ZPlus,
+	ZNegative,
+};
+
+void SetLightingMenu(GFxResult& result, SInt32 index) {
+	auto lighting = GetInteriorCellLighting(result);
+	if (!lighting)
+		return;
+
+	switch (index) {
+	case Distance:
+		samManager.PushMenu("LightingDistances");
+		break;
+	case FogNear:
+	case FogFar:
+	case FogHighNear:
+	case FogHighFar:
+		samManager.PushMenu("LightingFogEdit");
+		break;
+	case Directional:
+		samManager.PushMenu("LightingDirectionalEdit");
+		break;
+	case Ambient:
+	case XPlus:
+	case XNegative:
+	case YPlus:
+	case YNegative:
+	case ZPlus:
+	case ZNegative:
+		samManager.PushMenu("LightingColorEdit");
+		break;
+	}
+}
+
+void GetLightingDistance(GFxResult& result) {
+	auto lighting = GetInteriorCellLighting(result);
+	if (!lighting)
+		return;
+
+	result.CreateValues();
+	result.PushValue(lighting->fogNear);
+	result.PushValue(lighting->fogFar);
+	result.PushValue(lighting->nearHeightMid);
+	result.PushValue(lighting->nearHeightRange);
+	result.PushValue(lighting->farHeightMid);
+	result.PushValue(lighting->farHeightRange);
+	result.PushValue(lighting->fogPower);
+	result.PushValue(lighting->fogMax);
+	result.PushValue(lighting->fogClipDistance);
+	result.PushValue(lighting->highDensityScale);
+	result.PushValue(lighting->lightFadeBegin);
+	result.PushValue(lighting->lightFadeEnd);
+}
+
+void SetLightingDistance(GFxResult& result, SInt32 index, double value) {
+	enum LightingDistance {
+		Near = 0,
+		Far,
+		NearHeightMid,
+		NearHeightRange,
+		FarHeightMid,
+		FarHeightRange,
+		Power,
+		Max,
+		ClipDistance,
+		HighDensityScale,
+		LightFadeBegin,
+		LightFadeEnd,
+	};
+
+	auto lighting = GetInteriorCellLighting(result);
+	if (!lighting)
+		return;
+
+	const float distance = (float)value;
+
+	switch (index) {
+	case Near: lighting->fogNear = distance; break;
+	case Far: lighting->fogFar = distance; break;
+	case NearHeightMid: lighting->nearHeightMid = distance; break;
+	case NearHeightRange: lighting->nearHeightRange = distance; break;
+	case FarHeightMid: lighting->farHeightMid = distance; break;
+	case FarHeightRange: lighting->farHeightRange = distance; break;
+	case Power: lighting->fogPower = distance; break;
+	case Max: lighting->fogMax = distance; break;
+	case ClipDistance: lighting->fogClipDistance = distance; break;
+	case HighDensityScale: lighting->highDensityScale = distance; break;
+	case LightFadeBegin: lighting->lightFadeBegin = distance; break;
+	case LightFadeEnd: lighting->lightFadeEnd = distance; break;
+	default: return result.SetError("Index out of range");
+	}
+}
+
+CellLighting::HSV RGBToHSV(const CellLighting::Color& color) {
+	const double r = color.r * (1 / 255.0);
+	const double g = color.g * (1 / 255.0);
+	const double b = color.b * (1 / 255.0);
+	const double cmax = (std::max)((std::max)(r, g), b);
+	const double cmin = (std::min)((std::min)(r, g), b);
+	const double dif = cmax - cmin;
+
+	constexpr double sqrt3over2 = 0.86602540378444;
+
+	const double alpha = (2.0 * r - g - b) / 2.0;
+	const double beta = (g - b) * sqrt3over2;
+	const double h = std::atan2(beta, alpha);
+	const double s = cmax == 0 ? 0.0 : dif / cmax;
+
+	constexpr double rad2degree = 180.0 / 3.14159265358979323846;
+	constexpr double twopi = 3.14159265358979323846 * 2.0;
+
+	return {
+		(int)std::round((h < 0.0 ? h + twopi : h) * rad2degree),
+		(int)std::round(s * 100),
+		(int)std::round(cmax * 100)
+	};
+}
+
+CellLighting::Color HSVToRGB(const CellLighting::HSV& hsv) {
+	const double h = std::fmod(hsv.hue, 360.0);
+	const double s = std::clamp((double)hsv.saturation, 0.0, 100.0) / 100.0;
+	const double v = std::clamp((double)hsv.value, 0.0, 100.0) / 100.0;
+	const double c = v * s;
+	const double hdash = h / 60.0;
+	const int sextant = (int)std::floor(hdash);
+	const double x = c * (1.0 - std::abs(std::fmod(hdash, 2.0) - 1.0));
+	double r, g, b;
+	switch (sextant) {
+	case 0:
+		r = c;
+		g = x;
+		b = 0;
+		break;
+	case 1:
+		r = x;
+		g = c;
+		b = 0;
+		break;
+	case 2:
+		r = 0;
+		g = c;
+		b = x;
+		break;
+	case 3:
+		r = 0;
+		g = x;
+		b = c;
+		break;
+	case 4:
+		r = x;
+		g = 0;
+		b = c;
+		break;
+	case 5:
+		r = c;
+		g = 0;
+		b = x;
+		break;
+	default:
+		r = 0;
+		g = 0;
+		b = 0;
+	}
+	const double m = v - c;
+	return {
+		(UInt8)std::round((r + m) * 255.0),
+		(UInt8)std::round((g + m) * 255.0),
+		(UInt8)std::round((b + m) * 255.0),
+	};
+}
+
+CellLighting::Color& GetLightingColorType(CellLighting* lighting, SInt32 type) {
+	switch (type) {
+	case FogNear: return lighting->fogColorNear;
+	case FogFar: return lighting->fogColorFar;
+	case FogHighNear: return lighting->fogColorHighNear;
+	case FogHighFar: return lighting->fogColorHighFar;
+	case Ambient: return lighting->ambientColor;
+	case Directional: return lighting->directionalColor;
+	case XPlus:
+	case XNegative: 
+	case YPlus: 
+	case YNegative: 
+	case ZPlus:
+	case ZNegative:
+		return lighting->dalc.color[type - XPlus - 1];
+	}
+	return lighting->ambientColor;
+}
+
+void GetLightingColor(GFxResult& result, SInt32 selected) {
+	auto lighting = GetInteriorCellLighting(result);
+	if (!lighting)
+		return;
+
+	if (selected < 0 || selected > ZNegative)
+		return result.SetError("Index out of range");
+
+	result.CreateMenuItems();
+
+	const auto& color = GetLightingColorType(lighting, selected);
+	result.PushItem("Red", (SInt32)color.r);
+	result.PushItem("Green", (SInt32)color.g);
+	result.PushItem("Blue", (SInt32)color.b);
+	const auto hsv = RGBToHSV(color);
+	result.PushItem("Hue", (SInt32)hsv.hue);
+	result.PushItem("Saturation", (SInt32)hsv.saturation);
+	result.PushItem("Value", (SInt32)hsv.value);
+
+	switch (selected) {
+	case FogNear: result.PushItem("Scale", lighting->fogNearScale); break;
+	case FogFar: result.PushItem("Scale", lighting->fogFarScale); break;
+	case FogHighNear: result.PushItem("Scale", lighting->fogHighNearScale); break;
+	case FogHighFar: result.PushItem("Scale", lighting->fogHighFarScale); break;
+	case Directional: 
+		result.PushItem("Rotation XY", lighting->directionalRotationXY);
+		result.PushItem("Rotation Z", lighting->directionalRotationZ);
+		result.PushItem("Fade", lighting->directionalFade);
+		break;
+	}
+}
+
+void SetLightingColor(GFxResult& result, SInt32 index, GFxValue& value, SInt32 selected) {
+	auto lighting = GetInteriorCellLighting(result);
+	if (!lighting)
+		return;
+
+	enum RGBHSV {
+		Red = 0,
+		Green,
+		Blue,
+		Hue,
+		Saturation,
+		Value,
+		Scale,
+		Rotation,
+		Fade
+	};
+
+	if (index <= Value) {
+		auto& color = GetLightingColorType(lighting, selected);
+
+		if (index <= Blue) {
+			switch (index) {
+			case Red: color.r = value.GetUInt(); break;
+			case Green: color.g = value.GetUInt(); break;
+			case Blue: color.b = value.GetUInt(); break;
+			}
+		}
+		else {
+			auto hsv = RGBToHSV(color);
+			switch (index) {
+			case Hue: hsv.hue = value.GetInt(); break;
+			case Saturation: hsv.saturation = value.GetInt(); break;
+			case Value: hsv.value = value.GetInt(); break;
+			}
+			color = HSVToRGB(hsv);
+		}
+
+		if (selected == Ambient) 
+		{
+			CellLighting::Color halfColor{
+				(UInt8)(color.r / 2),
+				(UInt8)(color.g / 2),
+				(UInt8)(color.b / 2)
+			};
+			using Type = CellLighting::DirectionalAmbientLighting::Type;
+			lighting->dalc.color[Type::XPlus] = halfColor;
+			lighting->dalc.color[Type::YPlus] = halfColor;
+			lighting->dalc.color[Type::ZPlus] = halfColor;
+			lighting->dalc.color[Type::XNegative] = color;
+			lighting->dalc.color[Type::YNegative] = color;
+			lighting->dalc.color[Type::ZNegative] = color;
+		}
+	}
+	else {
+		switch (selected) {
+		case FogNear: lighting->fogNearScale = (float)value.GetNumber(); break;
+		case FogFar: lighting->fogFarScale = (float)value.GetNumber(); break;
+		case FogHighNear: lighting->fogHighNearScale = (float)value.GetNumber(); break;
+		case FogHighFar: lighting->fogHighFarScale = (float)value.GetNumber(); break;
+		case Directional:
+			switch (index) {
+			case Scale: lighting->directionalRotationXY = value.GetUInt(); break;
+			case Rotation: lighting->directionalRotationZ = value.GetUInt(); break;
+			case Fade: lighting->directionalFade = (float)value.GetNumber(); break;
+			}
+			break;
+		}
+	}
+}
+
+void ResetLighting(GFxResult& result) {
+	if (!g_player)
+		return result.SetError("Could not find player");
+
+	auto cell = (*g_player)->parentCell;
+	if (!cell)
+		return result.SetError("Could not find current cell");
+
+	if ((!cell->flags & 0x1))
+		return result.SetError("Cell is not an interior");
+
+	if (!cell->unk50)
+		return result.SetError("Could not find cell lighting data");
+	auto lighting = (CellLighting*)cell->unk50;
+
+	const auto modInfo = GetModInfo(cell->formID);
+	if (!modInfo)
+		return result.SetError("Could not find esp for cell");
+
+	using namespace ESP;
+
+	Reader esp(modInfo);
+	if (esp.Fail())
+		return result.SetError("Failed to read esp");
+
+	esp.ReadHeader();
+	Record record;
+	if (!esp.SeekToFormId(cell->formID, Sig("CELL"), record))
+		return result.SetError("Failed to find form in esp");
+
+	if (record.version != 131)
+		return result.SetError("Form version not supported for reset");
+
+	UInt32 count = esp.SeekToElement(record.size, Sig("XCLL"));
+	if (!count)
+		return result.SetError("Form had no lighting data");
+
+	esp >> *lighting;
 }

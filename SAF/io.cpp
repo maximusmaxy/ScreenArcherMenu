@@ -9,9 +9,9 @@
 #include "conversions.h"
 #include "settings.h"
 
-#include "rapidxml/rapidxml.hpp"
-#include "rapidxml/rapidxml_print.hpp"
-using namespace rapidxml;
+#include <rapidxml/rapidxml_ext.hpp>
+#include <rapidxml/rapidxml.hpp>
+#include <rapidxml/rapidxml_print.hpp>
 
 #include <filesystem>
 #include <io.h>
@@ -695,6 +695,8 @@ namespace SAF {
 
 	bool SaveOutfitStudioXml(const char* path, TransformMap* poseMap)
 	{
+		using namespace rapidxml;
+
 		IFileStream file;
 
 		IFileStream::MakeAllDirs(path);

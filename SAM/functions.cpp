@@ -575,3 +575,33 @@ GFxReq getWeathers("GetWeathers", [](auto& result, auto args) {
 GFxReq setWeather("SetWeather", [](auto& result, auto args) {
 	SetWeather(result, args->args[1].GetUInt());
 });
+GFxReq getImagespaceMods("GetImagespaceMods", [](auto& result, auto args) {
+	GetImagespaceMods(result);
+});
+GFxReq getImagespaces("GetImagespaces", [](auto& result, auto args) {
+	GetImagespaces(result, args->args[0].GetString());
+});
+GFxReq setImagespace("SetImagespace", [](auto& result, auto args) {
+	SetImagespace(result, args->args[1].GetUInt());
+});
+GFxReq getLightingMenu("GetLightingMenu", [](auto& result, auto args) {
+	GetLightingMenu(result);
+});
+GFxReq setLightingMenu("SetLightingMenu", [](auto& result, auto args) {
+	SetLightingMenu(result, args->args[0].GetInt());
+});
+GFxReq getLightingDistance("GetLightingDistance", [](auto& result, auto args) {
+	GetLightingDistance(result);
+});
+GFxReq setLightingDistance("SetLightingDistance", [](auto& result, auto args) {
+	SetLightingDistance(result, args->args[0].GetInt(), args->args[1].GetNumber());
+});
+GFxReq getLightingColor("GetLightingColor", [](auto& result, auto args) {
+	GetLightingColor(result, args->args[0].GetInt());
+});
+GFxReq setLightingColor("SetLightingColor", [](auto& result, auto args) {
+	SetLightingColor(result, args->args[0].GetInt(), args->args[1], args->args[2].GetInt());
+});
+GFxReq resetLighting("ResetLighting", [](auto& result, auto args) {
+	ResetLighting(result);
+});

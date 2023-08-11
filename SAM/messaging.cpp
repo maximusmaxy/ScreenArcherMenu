@@ -15,13 +15,11 @@ public:
 	virtual	EventResult	ReceiveEvent(MenuOpenCloseEvent* evn, void* dispatcher) override
 	{
 		BSFixedString samMenu(SAM_MENU_NAME);
-		BSFixedString photoMenu(PHOTO_MENU_NAME);
-		BSFixedString consoleMenu(CONSOLE_MENU_NAME);
-		BSFixedString cursorMenu(CURSOR_MENU_NAME);
-		BSFixedString containerMenu(CONTAINER_MENU_NAME);
-		BSFixedString looksMenu(LOOKS_MENU_NAME);
 
 		if (evn->menuName == samMenu) {
+
+			BSFixedString photoMenu(PHOTO_MENU_NAME);
+
 			if (evn->isOpen) {
 				inputHandler.enabled = true;
 				auto handler = (BSInputEventUser*)&inputHandler;
@@ -40,6 +38,11 @@ public:
 		}
 		else {
 			if ((*g_ui)->IsMenuOpen(samMenu)) {
+
+				BSFixedString consoleMenu(CONSOLE_MENU_NAME);
+				BSFixedString containerMenu(CONTAINER_MENU_NAME);
+				BSFixedString looksMenu(LOOKS_MENU_NAME);
+
 				if (evn->menuName == consoleMenu) {
 					//console opened while sam is open
 					if (evn->isOpen) {

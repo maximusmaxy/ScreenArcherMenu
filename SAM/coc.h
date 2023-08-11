@@ -64,3 +64,26 @@ bool LoadCellFavorites();
 void GetWeatherMods(GFxResult& result);
 void GetWeathers(GFxResult& result, const char* mod);
 void SetWeather(GFxResult& result, UInt32 formId);
+
+struct ImageSpaceBaseData {
+	float eyeAdaptSpeed;
+	//...
+};
+
+class TESImageSpace : public TESForm {
+public:
+	ImageSpaceBaseData baseData;
+	//...
+};
+
+void GetImagespaceMods(GFxResult& result);
+void GetImagespaces(GFxResult& result, const char* mod);
+void SetImagespace(GFxResult& result, UInt32 formId);
+
+void GetLightingMenu(GFxResult& result);
+void SetLightingMenu(GFxResult& result, SInt32 index);
+void GetLightingDistance(GFxResult& result);
+void SetLightingDistance(GFxResult& result, SInt32 index, double value);
+void GetLightingColor(GFxResult& result, SInt32 selected);
+void SetLightingColor(GFxResult& result, SInt32 index, GFxValue& value, SInt32 selected);
+void ResetLighting(GFxResult& result);
