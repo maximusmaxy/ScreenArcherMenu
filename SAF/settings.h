@@ -2,7 +2,7 @@
 
 #include "f4se/GameTypes.h"
 
-#include "json/json.h"
+#include <json/json.h>
 
 namespace SAF {
 	class Settings {

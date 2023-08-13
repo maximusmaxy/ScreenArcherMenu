@@ -10,13 +10,13 @@
 #include "f4se/GameMenus.h"
 #include "f4se/NiTypes.h"
 
-#include "json.h"
 #include "SAF/adjustments.h"
 #include "SAF/types.h"
 #include "SAF/messaging.h"
 
 #include "gfx.h"
 
+#include <json/json.h>
 #include <unordered_map>
 #include <mutex>
 #include <list>

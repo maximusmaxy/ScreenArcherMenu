@@ -13,7 +13,6 @@
 
 #include "f4se_common/Relocation.h"
 #include "f4se/Serialization.h"
-using namespace Serialization;
 
 #include "common/IFileStream.h"
 
@@ -943,6 +942,8 @@ MenuLightCacheList GetValidLights()
 
 void SerializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 {
+	using namespace Serialization;
+
 	lightManager.ValidateLights();
 
 	auto lightLists = GetValidLights();
@@ -979,6 +980,8 @@ void SerializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 
 void DeserializeLights(const F4SESerializationInterface* ifc, UInt32 version)
 {
+	using namespace Serialization;
+
 	ReadData<float>(ifc, &lightManager.pos.x);
 	ReadData<float>(ifc, &lightManager.pos.y);
 	ReadData<float>(ifc, &lightManager.pos.z);

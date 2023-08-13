@@ -304,7 +304,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -312,7 +312,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAMDebug\f4se_1_10_163.lib;$(SolutionDir)x64\SAMDebug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib;$(SolutionDir)x64\SAMDebug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAMDebug\f4se_1_10_163.lib;$(SolutionDir)x64\SAMDebug\f4se_common.lib;$(SolutionDir)x64\SAMDebug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -330,7 +330,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -338,7 +338,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='SAMRelease|x64'">
@@ -354,7 +354,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -364,7 +364,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAMRelease\f4se_1_10_163.lib;$(SolutionDir)x64\SAMRelease\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib;$(SolutionDir)x64\SAMRelease\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAMRelease\f4se_1_10_163.lib;$(SolutionDir)x64\SAMRelease\f4se_common.lib;$(SolutionDir)x64\SAMRelease\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -384,7 +384,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -394,7 +394,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\Debug\f4se_1_10_163.lib;$(SolutionDir)x64\Debug\f4se_common.lib;$(SolutionDir)x64\Debug\SAF.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>

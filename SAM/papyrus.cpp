@@ -15,8 +15,7 @@
 #include "io.h"
 #include "data.h"
 
-#include "json/json.h"
-
+#include <json/json.h>
 #include <filesystem>
 
 typedef void (*_PapyrusDeleteInternal)(VirtualMachine* vm, UInt64 unk2, TESObjectREFR* refr);

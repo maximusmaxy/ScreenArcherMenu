@@ -6,7 +6,8 @@
 #include "f4se/PapyrusArgs.h"
 
 #include "SAF/types.h"
-#include "json.h"
+
+#include <json/json.h>
 #include <sstream>
 #include <vector>
 

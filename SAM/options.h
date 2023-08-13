@@ -3,7 +3,7 @@
 #include "f4se/ScaleformMovie.h"
 #include "f4se/ScaleformValue.h"
 
-#include "json/json.h"
+#include <json/json.h>
 
 #include "gfx.h"
 #include "types.h"

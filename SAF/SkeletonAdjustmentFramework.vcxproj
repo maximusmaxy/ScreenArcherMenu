@@ -60,6 +60,7 @@
     <ClInclude Include="settings.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="util.h" />
+    <ClInclude Include="xml.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
@@ -272,7 +273,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -297,7 +298,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -306,7 +307,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAFDebug\f4se_1_10_163.lib;$(SolutionDir)x64\SAFDebug\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\debug\lib\jsoncpp.lib</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAFDebug\f4se_1_10_163.lib;$(SolutionDir)x64\SAFDebug\f4se_common.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -saf -debug</Command>
@@ -325,7 +326,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -354,7 +355,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>common/IPrefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\include\json;$(SolutionDir)..\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -365,7 +366,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
-      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAFRelease\f4se_1_10_163.lib;$(SolutionDir)x64\SAFRelease\f4se_common.lib;$(VcpkgRoot)\packages\jsoncpp_x64-windows-static\lib\jsoncpp.lib</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;$(SolutionDir)x64\SAFRelease\f4se_1_10_163.lib;$(SolutionDir)x64\SAFRelease\f4se_common.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>$(SolutionDir)samcli\target\debug\samcli.exe -plugin -saf -release</Command>

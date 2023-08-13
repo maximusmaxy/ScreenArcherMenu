@@ -18,7 +18,7 @@
 #include "f4se_common/Utilities.h"
 
 #include <mutex>
-#include <winnt.h>
+//#include <winnt.h>
 
 namespace SAF {
 	DECLARE_STRUCT(Transform, "SAF")

@@ -5,7 +5,7 @@
 #include "f4se/ScaleformValue.h"
 #include "f4se/ScaleformMovie.h"
 
-#include "json/json.h"
+#include <json/json.h>
 
 class GFxResult {
 public:

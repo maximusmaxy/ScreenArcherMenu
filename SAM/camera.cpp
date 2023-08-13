@@ -2,14 +2,13 @@
 
 #include "f4se/NiNodes.h"
 #include "f4se/Serialization.h"
-using namespace Serialization;
 
 #include "SAF/util.h"
 #include "SAF/io.h"
 #include "SAF/conversions.h"
 using namespace SAF;
 
-#include "json/json.h"
+#include <json/json.h>
 
 #include "constants.h"
 #include "compatibility.h"
@@ -306,6 +305,8 @@ void LoadCameraGFx(GFxResult& result, const char* path) {
 
 void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 {
+	using namespace Serialization;
+
 	if (version == CAM_SERIALIZE_VERSION) {
 		UInt32 size = CAM_SAVE_STATE_SLOTS;
 		WriteData<UInt32>(ifc, &size);
@@ -326,6 +327,8 @@ void SerializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 
 void DeserializeCamera(const F4SESerializationInterface* ifc, UInt32 version)
 {
+	using namespace Serialization;
+
 	if (version == CAM_SERIALIZE_VERSION)
 	{
 		UInt32 size;

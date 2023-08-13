@@ -8,8 +8,7 @@
 #include "strnatcmp.h"
 #include "sam.h"
 
-#include "json/json.h"
-
+#include <json/json.h>
 #include <ostream>
 
 typedef std::map<std::string, Json::Value, SAF::CaseInsensitiveCompareStr> JsonCache;

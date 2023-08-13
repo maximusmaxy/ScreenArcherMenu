@@ -5,8 +5,7 @@
 #include "adjustments.h"
 #include "util.h"
 
-#include "json/json.h"
-
+#include <json/json.h>
 #include <regex>
 #include <fstream>
 

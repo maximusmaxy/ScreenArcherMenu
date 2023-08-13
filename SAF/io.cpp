@@ -8,10 +8,7 @@
 #include "util.h"
 #include "conversions.h"
 #include "settings.h"
-
-#include <rapidxml/rapidxml_ext.hpp>
-#include <rapidxml/rapidxml.hpp>
-#include <rapidxml/rapidxml_print.hpp>
+#include "xml.h"
 
 #include <filesystem>
 #include <io.h>

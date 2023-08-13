@@ -6,7 +6,7 @@
 
 #include "f4se/GameData.h"
 
-#include "miniz/miniz.h"
+#include <miniz/miniz.h>
 
 namespace ESP {
 	//constexpr UInt32 Sig(const char* val) {
