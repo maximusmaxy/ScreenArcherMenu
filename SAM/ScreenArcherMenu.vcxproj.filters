@@ -111,6 +111,9 @@
     <ClCompile Include="types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="script.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bodymorphs.h">
@@ -207,6 +210,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="script.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

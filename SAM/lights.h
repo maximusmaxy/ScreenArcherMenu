@@ -10,6 +10,39 @@
 #include <vector>
 #include <unordered_map>
 
+class NiLight : public NiAVObject {
+public: 
+	NiColor ambientColor;	//120
+	NiColor diffuseColor;	//12C
+	NiColor specularColor;	//138
+	float dimmer;		//144
+	float unk148;
+	float unk14C;
+	float unk150;
+	float unk154;
+	float unk158;
+	float unk15C;
+	float unk160;
+	float unk164;
+	float unk168;
+	float unk16C;
+};
+
+class NiPointLight : public NiLight {
+public:
+	float constantAttenuation;
+	float linearAttenuation;
+	float quadraticAttenuation;
+};
+
+class NiDirectionalLight : public NiLight {
+public:
+	float unk170;
+	float unk174;
+	float unl178;
+	NiColor effectColor;
+};
+
 class MenuLight
 {
 public:
@@ -54,8 +87,8 @@ public:
 	LightList tempLights;
 
 	MenuLight* GetLight(UInt32 id);
-	void ForEach(const std::function<void(MenuLight*)>& functor);
-	void ForEachWithIndex(const std::function<void(MenuLight*,SInt32)>& functor);
+	void ForEach(const std::function<void(MenuLight&)>& functor);
+	void ForEachWithIndex(const std::function<void(MenuLight&,SInt32)>& functor);
 
 	LightList* GetLightList();
 	void UpdateLightList();

@@ -12,6 +12,7 @@
 #include "sam.h"
 #include "strnatcmp.h"
 #include "esp.h"
+#include "lights.h"
 
 #include <span>
 #include <algorithm>
@@ -1033,4 +1034,121 @@ void ResetLighting(GFxResult& result) {
 		return result.SetError("Form had no lighting data");
 
 	esp >> *lighting;
+}
+
+struct Sun {
+	void* vftable;
+	NiNode* root;
+	NiNode* billboard;
+	NiNode* billboard2;
+	BSTriShape* shape;
+	BSTriShape* shape2;
+	BSTriShape* shape3;
+	NiDirectionalLight* light;
+	NiDirectionalLight* light2;
+};
+
+struct Sky {
+	void* vftable;
+	NiNode* unkNode08;
+	NiNode* unkNode10;
+	void* unk18;
+	void* unk20;
+	void* unk28;
+	void* unk30;
+	void* unk38;
+	void* climate;
+	TESWeather* weather48;
+	void* unk50;
+	TESWeather* weather58;
+	void* unk60;
+	void* unk68;
+	void* atmosphere;
+	void* stars;
+	Sun* sun;
+	void* clouds;
+	void* unk90;
+	void* unk98;
+	void* unkA0;
+	NiColor unkA8;
+	NiColor unkB4;
+};
+
+RelocPtr<Sky*> skyInstance(0x59DB980);
+
+RelocPtr<float> fSunXExtreme(0x3719210);
+RelocPtr<float> fSunYExtreme(0x3719228);
+RelocPtr<float> fSunZExtreme(0x3719240);
+
+//this gets overridden by something from Sky::UpdateColors
+RelocPtr<NiColorA> sunColor(0x6722D20);
+
+void GetSunExtreme(GFxResult& result) {
+	result.CreateValues();
+
+	result.PushValue((double)*fSunXExtreme);
+	result.PushValue((double)*fSunYExtreme);
+	result.PushValue((double)*fSunZExtreme);
+	//result.PushValue((double)sunColor->r);
+	//result.PushValue((double)sunColor->g);
+	//result.PushValue((double)sunColor->b);
+	const auto sun = (*skyInstance)->sun;
+	const auto light = sun ? sun->light : nullptr;
+	result.PushValue(light ? (double)light->dimmer : 0.0);
+}
+
+void SetSunExtreme(GFxResult& result, SInt32 index, double value) {
+	enum SunType {
+		X = 0,
+		Y,
+		Z,
+		//Red,
+		//Green,
+		//Blue,
+		Strength,
+		Rotation
+	};
+
+	switch (index) {
+	case X: *fSunXExtreme = value; break;
+	case Y: *fSunYExtreme = value; break;
+	case Z: *fSunZExtreme = value; break;
+	//case Red: sunColor->r = value; break;
+	//case Green: sunColor->g = value; break;
+	//case Blue: sunColor->b = value; break;
+	case Strength:
+	{
+		const auto sun = (*skyInstance)->sun;
+		const auto light = sun ? sun->light : nullptr;
+		if (light)
+			light->dimmer = value;
+		break;
+	}
+	case Rotation:
+	{
+		const double xDif = *fSunXExtreme;
+		const double yDif = *fSunYExtreme;
+		const double distance = std::sqrt((xDif * xDif) + (yDif * yDif));
+
+		double angle;
+		if (yDif < 0.0) {
+			angle = std::asin(-xDif / distance) + MATH_PI;
+		}
+		else {
+			angle = std::asin(xDif / distance);
+		}
+		angle += (value * (MATH_PI / 180));
+
+		*fSunXExtreme = (float)(std::sin(angle) * distance);
+		*fSunYExtreme = (float)(std::cos(angle) * distance);
+		break;
+	}
+	}
+}
+
+void ResetSunExtreme(GFxResult& result) {
+	//Should get the defaults dynamically but cbf
+	*fSunXExtreme = 600.0f;
+	*fSunYExtreme = -325.0f;
+	*fSunZExtreme = -150.0f;
 }

@@ -317,25 +317,24 @@ MenuLight* LightManager::GetLight(UInt32 id)
 	return nullptr;
 }
 
-void LightManager::ForEach(const std::function<void(MenuLight*)>& functor)
+void LightManager::ForEach(const std::function<void(MenuLight&)>& functor)
 {
 	if (lights) {
-
 		for (auto& light : *lights) {
 			if (light.GetRefr()) {
-				functor(&light);
+				functor(light);
 			}
 		}
 	}
 }
 
-void LightManager::ForEachWithIndex(const std::function<void(MenuLight*,SInt32)>& functor)
+void LightManager::ForEachWithIndex(const std::function<void(MenuLight&,SInt32)>& functor)
 {
 	if (lights) {
 		for (SInt32 i = 0; i < lights->size(); ++i) {
 			auto& light = (*lights)[i];
 			if (light.GetRefr()) {
-				functor(&light, i);
+				functor(light, i);
 			}
 		}
 	}
@@ -388,8 +387,8 @@ void LightManager::UpdateLightList()
 
 void LightManager::Update()
 {
-	ForEach([&](MenuLight* light) {
-		light->Update();
+	ForEach([&](MenuLight& light) {
+		light.Update();
 	});
 }
 
@@ -439,8 +438,8 @@ void LightManager::ValidateLights()
 
 void LightManager::EraseAll()
 {
-	ForEach([](MenuLight* light) {
-		light->Erase();
+	ForEach([](MenuLight& light) {
+		light.Erase();
 	});
 
 	if (lights) 
@@ -475,8 +474,8 @@ void GetLightSelect(GFxResult& result)
 	lightManager.ValidateLights();
 
 	//TODO using the index is unsafe because a light might get deleted while this menu is open. Need better method
-	lightManager.ForEachWithIndex([&](MenuLight* light, SInt32 i) {
-		result.PushItem(light->name.c_str(), i);
+	lightManager.ForEachWithIndex([&](MenuLight& light, SInt32 i) {
+		result.PushItem(light.name.c_str(), i);
 	});
 
 	SInt32 size = lightManager.lights->size();
@@ -780,8 +779,8 @@ void DeleteLight(GFxResult& result, SInt32 selectedLight)
 
 void UpdateAllLights()
 {
-	lightManager.ForEach([](MenuLight* light) {
-		light->Update();
+	lightManager.ForEach([](MenuLight& light) {
+		light.Update();
 	});
 }
 
@@ -794,8 +793,8 @@ bool ToggleAllLightsVisible()
 {
 	bool visible = !lightManager.GetVisible();
 
-	lightManager.ForEach([&](MenuLight* light) {
-		light->SetVisible(visible);
+	lightManager.ForEach([&](MenuLight& light) {
+		light.SetVisible(visible);
 	});
 
 	return visible;
@@ -819,16 +818,16 @@ bool SaveLightsJson(const char* filename)
 	WriteJsonFloat(value, "z", lightManager.pos.z, buffer, "%.06f");
 	WriteJsonFloat(value, "rotation", lightManager.rot, buffer, "%.06f");
 
-	lightManager.ForEach([&](MenuLight* light) {
+	lightManager.ForEach([&](MenuLight& light) {
 		Json::Value lightValue;
-		lightValue["name"] = light->name;
-		lightValue["mod"] = GetModName(light->lightRefr->baseForm->formID);
-		lightValue["id"] = UInt32ToHexString(GetBaseId(light->lightRefr->baseForm->formID));
-		WriteJsonFloat(lightValue, "distance", light->distance, buffer, "%.06f");
-		WriteJsonFloat(lightValue, "rotation", light->rotation, buffer, "%.06f");
-		WriteJsonFloat(lightValue, "height", light->height, buffer, "%.06f");
-		WriteJsonFloat(lightValue, "xoffset", light->xOffset, buffer, "%.06f");
-		WriteJsonFloat(lightValue, "yoffset", light->yOffset, buffer, "%.06f");
+		lightValue["name"] = light.name;
+		lightValue["mod"] = GetModName(light.lightRefr->baseForm->formID);
+		lightValue["id"] = UInt32ToHexString(GetBaseId(light.lightRefr->baseForm->formID));
+		WriteJsonFloat(lightValue, "distance", light.distance, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "rotation", light.rotation, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "height", light.height, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "xoffset", light.xOffset, buffer, "%.06f");
+		WriteJsonFloat(lightValue, "yoffset", light.yOffset, buffer, "%.06f");
 		lights.append(lightValue);
 	});
 

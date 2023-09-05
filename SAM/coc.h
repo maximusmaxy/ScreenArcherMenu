@@ -87,3 +87,7 @@ void SetLightingDistance(GFxResult& result, SInt32 index, double value);
 void GetLightingColor(GFxResult& result, SInt32 selected);
 void SetLightingColor(GFxResult& result, SInt32 index, GFxValue& value, SInt32 selected);
 void ResetLighting(GFxResult& result);
+
+void GetSunExtreme(GFxResult& result);
+void SetSunExtreme(GFxResult& result, SInt32 index, double value);
+void ResetSunExtreme(GFxResult& result);

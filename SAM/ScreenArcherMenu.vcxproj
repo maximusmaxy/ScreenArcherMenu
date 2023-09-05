@@ -64,6 +64,7 @@
     <ClCompile Include="positioning.cpp" />
     <ClCompile Include="sam.cpp" />
     <ClCompile Include="scaleform.cpp" />
+    <ClCompile Include="script.cpp" />
     <ClCompile Include="smartpointer.cpp" />
     <ClCompile Include="strnatcmp.cpp" />
     <ClCompile Include="types.cpp" />
@@ -98,6 +99,7 @@
     <ClInclude Include="positioning.h" />
     <ClInclude Include="sam.h" />
     <ClInclude Include="scaleform.h" />
+    <ClInclude Include="script.h" />
     <ClInclude Include="smartpointer.h" />
     <ClInclude Include="strnatcmp.h" />
     <ClInclude Include="types.h" />

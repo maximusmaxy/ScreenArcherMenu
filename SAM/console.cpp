@@ -1,6 +1,5 @@
 #include "console.h"
 
-#include "f4se/GameAPI.h"
 #include "f4se/GameReferences.h"
 #include "f4se/GameMenus.h"
 #include "f4se/ObScript.h"
@@ -19,6 +18,7 @@
 #include "constants.h"
 #include "camera.h"
 #include "io.h"
+//#include "script.h"
 
 #include <filesystem>
 
@@ -28,42 +28,44 @@ RelocAddr<_ParseObString> ParseObString(0x4E37D0);
 typedef bool (*_ParseObString2)(void* paramInfo, void* scriptData, UInt32* opcodeOffsetPtr, TESObjectREFR* thisObj, void* containingObj, void* scriptObj, void* locals, char* str1, char* str2);
 RelocAddr<_ParseObString2> ParseObString2(0x4E37D0);
 
-enum {
-	kConsoleSingleReset = 1,
-	kConsoleSingleReloadMenus,
-	kConsoleSingleForceQuit
+enum ConsoleSingle {
+	Reset = 1,
+	ReloadMenus,
+	ForceQuit
 };
 
 SAF::InsensitiveUInt32Map obscriptSingleMap = {
-	{"reset", kConsoleSingleReset},
-	{"reloadmenus", kConsoleSingleReloadMenus},
-	{"forcequit", kConsoleSingleForceQuit}
+	{"reset", ConsoleSingle::Reset},
+	{"reloadmenus", ConsoleSingle::ReloadMenus},
+	{"forcequit", ConsoleSingle::ForceQuit}
 };
 
-enum {
-	kConsolePairAdjustment = 1,
-	kConsolePairPose,
-	kConsolePairFaceMorphs,
-	kConsolePairLights,
-	kConsolePairCamera
+enum ConsolePair {
+	Adjustment = 1,
+	Pose,
+	FaceMorphs,
+	Lights,
+	Camera,
+	Lua,
 };
 
 SAF::InsensitiveUInt32Map obscriptPairMap = {
-	{"a", kConsolePairAdjustment},
-	{"adjustment", kConsolePairAdjustment},
-	{"adjustments", kConsolePairAdjustment},
-	{"p", kConsolePairPose},
-	{"pose", kConsolePairPose},
-	{"poses", kConsolePairPose},
-	{"f", kConsolePairFaceMorphs},
-	{"facemorph", kConsolePairFaceMorphs},
-	{"facemorphs", kConsolePairFaceMorphs},
-	{"mfg", kConsolePairFaceMorphs},
-	{"l", kConsolePairLights},
-	{"light", kConsolePairLights},
-	{"lights", kConsolePairLights},
-	{"c", kConsolePairCamera},
-	{"camera", kConsolePairCamera}
+	{"a", ConsolePair::Adjustment},
+	{"adjustment", ConsolePair::Adjustment},
+	{"adjustments", ConsolePair::Adjustment},
+	{"p", ConsolePair::Pose},
+	{"pose", ConsolePair::Pose},
+	{"poses", ConsolePair::Pose},
+	{"f", ConsolePair::FaceMorphs},
+	{"facemorph", ConsolePair::FaceMorphs},
+	{"facemorphs", ConsolePair::FaceMorphs},
+	{"mfg", ConsolePair::FaceMorphs},
+	{"l", ConsolePair::Lights},
+	{"light", ConsolePair::Lights},
+	{"lights", ConsolePair::Lights},
+	{"c", ConsolePair::Camera},
+	{"camera", ConsolePair::Camera},
+	//{"lua", ConsolePair::Lua},
 };
 
 // Show Bones
@@ -84,19 +86,6 @@ void samObScriptInit()
 	{
 		_DMESSAGE("Attempted to replace \"ShowBones\" console command and failed");
 	}
-}
-
-void ConsolePrintConcat(const char* st1, const char* st2) {
-	ConsoleManager* mgr = *g_console;
-	if (!mgr)
-		return;
-
-	std::stringstream ss;
-	ss << st1;
-	ss << st2;
-	ss << '\n';
-
-	CALL_MEMBER_FN(mgr, Print)(ss.str().c_str());
 }
 
 std::string FindPathInSubfolder(const char* folder, const char* stem, const char* ext)
@@ -132,30 +121,22 @@ bool LoadSamFile(const char* filename)
 	if (LoadLightsFile(filename))
 		return true;
 
-	ConsolePrintConcat("Could not find: ", filename);
+	ConsolePrint("Could not find {}", filename);
 
 	return false;
 }
 
-bool LoadSamFolder(const char* typeStr, const char* filename)
+bool LoadSamFolder(UInt32 type, const char* filename)
 {
-	auto it = obscriptPairMap.find(typeStr);
-	if (it == obscriptPairMap.end()) {
-		ConsolePrintConcat("Could not recognize type: ", typeStr);
-		return false;
-	}
-
-	UInt32 type = it->second;
-
 	const char* folder;
 	const char* ext;
 
 	switch (type) {
-	case kConsolePairAdjustment: folder = ADJUSTMENTS_PATH; ext = ".json";  break;
-	case kConsolePairPose: folder = POSES_PATH; ext = ".json";  break;
-	case kConsolePairLights: folder = LIGHTS_PATH; ext = ".json";  break;
-	case kConsolePairFaceMorphs: folder = FACEMORPHS_PATH; ext = ".txt";  break;
-	case kConsolePairCamera: folder = CAMERA_PATH; ext = ".json"; break;
+	case ConsolePair::Adjustment: folder = ADJUSTMENTS_PATH; ext = ".json";  break;
+	case ConsolePair::Pose: folder = POSES_PATH; ext = ".json";  break;
+	case ConsolePair::Lights: folder = LIGHTS_PATH; ext = ".json";  break;
+	case ConsolePair::FaceMorphs: folder = FACEMORPHS_PATH; ext = ".txt";  break;
+	case ConsolePair::Camera: folder = CAMERA_PATH; ext = ".json"; break;
 	default: return false;
 	}
 
@@ -173,11 +154,11 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 
 	if (!path.empty()) {
 		switch (type) {
-		case kConsolePairAdjustment: success = LoadAdjustmentPath(path.c_str()); break;
-		case kConsolePairPose: success = LoadPosePath(path.c_str()); break;
-		case kConsolePairLights: success = LoadLightsPath(path.c_str()); break;
-		case kConsolePairFaceMorphs: success = LoadMfgPath(path.c_str()); break;
-		case kConsolePairCamera: success = LoadCameraPath(path.c_str()); break;
+		case ConsolePair::Adjustment: success = LoadAdjustmentPath(path.c_str()); break;
+		case ConsolePair::Pose: success = LoadPosePath(path.c_str()); break;
+		case ConsolePair::Lights: success = LoadLightsPath(path.c_str()); break;
+		case ConsolePair::FaceMorphs: success = LoadMfgPath(path.c_str()); break;
+		case ConsolePair::Camera: success = LoadCameraPath(path.c_str()); break;
 		default: return false;
 		}
 	}
@@ -186,17 +167,17 @@ bool LoadSamFolder(const char* typeStr, const char* filename)
 		return true;
 
 	const char* error;
+
 	switch (type) {
-	case kConsolePairAdjustment: error = "Could not find adjustment: "; break;
-	case kConsolePairPose: error = "Could not find pose: "; break;
-	case kConsolePairLights: error = "Could not find lights: "; break;
-	case kConsolePairFaceMorphs: error = "Could not find morphs: "; break;
-	case kConsolePairCamera: error = "Could not find camera state: "; break;
+	case ConsolePair::Adjustment: error = "adjustment"; break;
+	case ConsolePair::Pose: error = "pose"; break;
+	case ConsolePair::Lights: error = "lights"; break;
+	case ConsolePair::FaceMorphs: error = "face morphs"; break;
+	case ConsolePair::Camera: error = "camera state"; break;
 	default: return false;
 	}
 
-	ConsolePrintConcat(error, filename);
-
+	ConsolePrint("Could not find {} {}", error, filename);
 	return false;
 }
 
@@ -224,8 +205,21 @@ bool samObScriptExecute(void* paramInfo, void* scriptData, TESObjectREFR* thisOb
 			//If param 2 exists
 			if (str2[0]) 
 			{
-				if (selected.refr) {
-					LoadSamFolder(str1, str2);
+				auto it = obscriptPairMap.find(str1);
+				if (it != obscriptPairMap.end()) {
+					switch (it->second) {
+					case ConsolePair::Lua:
+						//ExecuteLuaScript(str2);
+						break;
+					default:
+						if (selected.refr)
+							LoadSamFolder(it->second, str2);
+						break;
+					}
+				}
+				else {
+					ConsolePrint("Could not recognize type {}", str1);
+					return false;
 				}
 			}
 			//only param 1
@@ -235,9 +229,9 @@ bool samObScriptExecute(void* paramInfo, void* scriptData, TESObjectREFR* thisOb
 				auto it = obscriptSingleMap.find(str1);
 				if (it != obscriptSingleMap.end()) {
 					switch (it->second) {
-					case kConsoleSingleReset: ResetJsonPose(); break;
-					case kConsoleSingleReloadMenus: ReloadJsonMenus(); break;
-					case kConsoleSingleForceQuit: samManager.ForceQuit(); break;
+					case ConsoleSingle::Reset: ResetJsonPose(); break;
+					case ConsoleSingle::ReloadMenus: ReloadJsonMenus(); break;
+					case ConsoleSingle::ForceQuit: samManager.ForceQuit(); break;
 					}
 				}
 

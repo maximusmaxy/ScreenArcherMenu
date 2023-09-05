@@ -605,3 +605,12 @@ GFxReq setLightingColor("SetLightingColor", [](auto& result, auto args) {
 GFxReq resetLighting("ResetLighting", [](auto& result, auto args) {
 	ResetLighting(result);
 });
+GFxReq getSunExtreme("GetSunExtreme", [](auto& result, auto args) {
+	GetSunExtreme(result);
+});
+GFxReq setSunExtreme("SetSunExtreme", [](auto& result, auto args) {
+	SetSunExtreme(result, args->args[0].GetInt(), args->args[1].GetNumber());
+});
+GFxReq resetSunExtreme("ResetSunExtreme", [](auto& result, auto args) {
+	ResetSunExtreme(result);
+});

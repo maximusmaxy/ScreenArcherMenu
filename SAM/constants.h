@@ -25,6 +25,7 @@
 #define RESOURCES_PATH "Data\\F4SE\\Plugins\\SAM\\Resources"
 #define BODYSLIDE_PRESETS_PATH "Data\\tools\\bodyslide\\SliderPresets"
 #define BODYSLIDE_SLIDERSETS_PATH "Data\\tools\\bodyslide\\SliderSets"
+#define LUA_PATH "Data\\F4SE\\Plugins\\SAM\\Lua"
 
 #define IDLE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\IdleFavorites.txt"
 //#define POSE_FAVORITES "Data\\F4SE\\Plugins\\SAM\\PoseFavorites.txt"
